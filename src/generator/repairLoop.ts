@@ -16,6 +16,8 @@ import { renderSess, type Refs } from "./renderer.ts";
 import { sealPlan } from "./seal.ts";
 import { sessionLoad, type AthleteRefs } from "../engine/loadModel.ts";
 import { estIntouchable } from "../engine/prioriteFinancement.ts";
+import { raceRunBand } from "../engine/predictor.ts";
+import { runHoursPerWeekOf } from "../engine/planVolume.ts";
 
 
 export interface AuditedPlan {
@@ -364,6 +366,46 @@ export function generateAudited(profile: AthleteProfile, auditOpts?: Partial<Aud
   // rescaler des répétitions après la génération. Toute prose dérivée d'un nombre se resynchronise
   // ici, une fois que plus rien ne bougera — cette fois pour de vrai.
   syncDerivedLabels(best.plan);
+
+  // ---- T-16d — TOUT DESCRIPTEUR DU PLAN EST CALCULÉ APRÈS CONVERGENCE ----------------------
+  //
+  // La bande « allure du jour J » (`rn.mara`) joue DEUX rôles, et c'est ce qui a caché le défaut :
+  //
+  //   elle MODIFIE le plan   `zoneClass` classe `rn.mara` en « dur » ou « modéré » SELON elle,
+  //                          donc C26c et la part de facile en dépendent. À ce titre elle doit
+  //                          être connue PENDANT la construction, et elle l'est (planGenerator).
+  //   elle DÉCRIT le plan    `zoneOf` l'écrit dans le texte de la séance. À ce titre elle doit
+  //                          décrire l'état FINAL — celui-ci, le seul dont la sortie est livrée.
+  //
+  // Deux défauts mesurés le 19/08/2026, tous deux invisibles depuis B-22 :
+  //
+  //   1. `refs` ci-dessus porte `bikeRp` et PAS `runMara`, alors que le commentaire d'O-11 juste
+  //      au-dessus énonce la règle pour les deux : « la boucle de réparation re-rend des séances,
+  //      elle ne doit pas les re-rendre avec une AUTRE définition ». Chaque re-rendu de cette
+  //      boucle retombait donc sur `ZDEF["rn.mara"]` — la table STATIQUE que B-22 existe pour
+  //      remplacer. Sur un tri/M : 4 séances sur 5 affichaient 4'35-4'48/km (la table) au lieu de
+  //      4'09-4'20 (la bande de l'athlète). La substitution était défaite par le dernier maillon.
+  //   2. La bande et la prédiction lisaient deux grandeurs DIFFÉRENTES du même volume — moyenne
+  //      sur toutes les semaines contre médiane des semaines de charge (1,26 h contre 1,62 h).
+  //      `runHoursPerWeekOf` est désormais la seule définition, importée par les deux (R11.1).
+  //
+  // La propriété à garder porte sur la CLASSE, pas sur cette bande : un descripteur se calcule
+  // après convergence. C'est ce qui ferme la quatorzième occurrence de la famille du point fixe
+  // ET empêche la quinzième.
+  {
+    const bande = raceRunBand(
+      String(reasoned.profile.sport),
+      String(reasoned.profile.format ?? ""),
+      reasoned.baseRefs.thrPace,
+      runHoursPerWeekOf(best.plan) ?? undefined,
+    );
+    if (bande) {
+      refs.runMara = bande;
+      for (const w of best.plan.weeks) for (const d of w.days) for (const s of d.sessions)
+        if ((s.steps ?? []).some((st) => (st as { zone?: string }).zone === "rn.mara"))
+          renderSess(s, refs, reasoned.hz, reasoned.baseRefs);
+    }
+  }
   // …et les décisions C30b sont celles du DERNIER passage, pas celles d'un état intermédiaire :
   // le chiffre affiché à l'athlète (« 64 min, soit 33 % de la semaine ») doit décrire le plan
   // qu'il a sous les yeux. Même règle que « l'audit rendu est celui du plan rendu », ci-dessous.

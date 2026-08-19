@@ -427,6 +427,25 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   paie parmi le reste**, et quand plus personne ne peut payer ce n'est pas un défaut d'arbitrage
   mais **le plafond structurel qui est trop bas** — un signal différent, à traiter comme tel.
 
+- **Un objet qui MODIFIE le plan et un objet qui le DÉCRIT ne se calculent pas au même moment,
+  même quand c'est le même objet** (arbitrage T-16c, 19/08/2026). Ce qui modifie va DANS la boucle
+  du point fixe, sinon le total bouge sans rééquilibrage ; ce qui décrit va APRÈS convergence,
+  sinon il décrit un état intermédiaire. Confondre les deux coûte dans les deux sens — mettre un
+  descripteur dans la boucle le fait participer à ce qu'il décrit (la boucle d'O-43 sous une autre
+  forme). Mesuré : la bande « allure du jour J » sert les DEUX rôles — `zoneClass` la lit pour
+  classer `rn.mara` en dur/modéré (donc C26c en dépend), `zoneOf` l'écrit dans le texte. Une seule
+  source, `raceRunBand`, évaluée deux fois. Corollaire opérationnel : **quand un pipeline
+  reconstruit ses `refs` en cours de route, la liste des substitutions qu'il transporte doit être
+  RELUE** — celle de la boucle de réparation portait `bikeRp` et pas `runMara`, sous un commentaire
+  qui énonçait la règle pour les deux, et 4 séances sur 5 affichaient la table statique.
+
+- **Une observation sur UN point n'est pas une mesure, et elle ment le plus souvent dans le sens
+  rassurant** (même arbitrage, §3). Sur une semaine d'un profil, les pièces du lot vélo faisaient
+  passer « Nage vitesse » de 149 à 93 min et j'allais publier « elles empêchent le plan de parquer
+  une heure dans une séance absurde » ; sur les 187 profils tri, elles font l'INVERSE — séances
+  > 90 min 1,9 % → 5,1 %, maximum 144 → 210 min. C'est la règle 15 dans sa forme la plus simple :
+  avant de tirer une tendance d'un cas, la rejouer sur la population.
+
 - **Toute protection qui dépend d'une SÉANCE SURVIVANTE rate le profil qui a le moins de
   séances** (arbitrage du fondateur, 18/08/2026, « C26c AU PIC » §5) — cinq occurrences, une
   seule cause : `sonde:b17` sans débutant · 53 titres menteurs sur C15 · zéro palier sur M à
@@ -508,6 +527,48 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
 avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
+
+**T-16d livré — le descripteur décrivait un autre plan que celui qu'il accompagne** (arbitrage
+« T-16c — MESURER LE RAYON AVANT DE L'APPELER UN CHANTIER », 19/08/2026 — voir `BUGS_OUVERTS.md`
+« T-16d », garde `T-50` au banc `lotPhysio`) : le fondateur posait la question qui décide — *« qui
+lit la bande d'allure entre sa position et le point fixe ? personne → c'est un déplacement ; un ou
+deux sites → le chantier est là »*. **La mesure a renversé la prémisse** : la bande a DEUX familles
+de lecteurs, et une seule est un descripteur. `zoneClass` la lit pour classer `rn.mara` en
+dur/modéré — donc C26c, C26d et la part de facile en dépendent, et elle doit être connue PENDANT la
+construction ; `zoneOf` l'écrit dans le texte, et celle-là doit décrire l'état FINAL. Une seule
+source (`raceRunBand`), évaluée aux deux instants où sa réponse est la bonne pour son usage.
+**Deux défauts vivants depuis B-22, tous deux invisibles à la relecture.** (1) `generateAudited`
+reconstruit ses `refs` sous un commentaire qui énonce la règle POUR LES DEUX substitutions — il ne
+portait que `bikeRp`. Chaque re-rendu de la boucle de réparation retombait donc sur `ZDEF["rn.mara"]`,
+la table statique que B-22 existe pour remplacer : sur un `tri/M`, **4 séances sur 5** affichaient
+`4'35-4'48/km` là où la bande de l'athlète vaut `4'09-4'20`. (2) La bande PRESCRITE et le leg PRÉDIT
+lisaient deux STATISTIQUES du même volume sur deux POPULATIONS de semaines — moyenne de toutes les
+semaines (**1,26 h**) contre médiane des semaines de charge dev/spec/peak (**1,62 h**) — au point
+d'être DISJOINTS sur le format M (prescrit 275-288 s/km, prédit 247-262). `src/engine/planVolume.ts`
+porte désormais la seule définition, importée par le pont ET par la boucle (R11.1).
+La garde porte sur la CLASSE : **ce qui est affiché se redérive du plan LIVRÉ**, 187 profils tri et
+1 812 séances. Le correctif le moins coûteux qui la ferait passer EST la propriété (règle 19), et
+une constante gelée ne la satisfait pas. **Deux fautes d'instrument à moi, publiées** : ma sonde de
+type a d'abord rendu « 0 profil bouge · ✓ » — un ZÉRO SATURÉ, elle lisait `p.k` quand le champ
+s'appelle `key` ; et `T-50` lisait `a.format`, le format DEMANDÉ, alors que B-17 rabat un Full sur
+un 70.3 — 79 affichages déclarés faux quand c'était la sonde qui jugeait le plan livré contre
+l'intention de l'athlète, exactement la faute que le critère mesure.
+**Portée : 160 profils du golden, 1 690 feuilles, TOUTES des chaînes `.det`** — vérifié par une
+sonde qui énumère les feuilles PAR TYPE (l'agrégat « plus grand écart numérique 0 » ne voit pas un
+nombre devenu chaîne). Les cliquets du sceau et la composition du pic sont inchangés : un
+descripteur ne modifie pas le plan qu'il décrit, mesuré et non supposé.
+**Les pièces du lot vélo restent NON LIVRÉES, et leur cause descend d'un cran** : T-16c passe bien
+au vert avec elles, mais `R14.1-G` rougit — la sensibilité de la projection au volume demandé tombe
+de **×1,13 à ×1,05** (attribution prouvée par retrait du seul facteur, témoin immobile à 12,1 %).
+La cause n'est pas dans les pièces : **« Nage vitesse » est le DÉVERSOIR du plan tri et n'a aucune
+borne haute** — jusqu'à **210 min** de nage VITESSE, et les pièces routent plus de volume à travers
+lui (séances > 90 min : 1,9 % → 5,1 %). Troisième occurrence de la famille fermée par R13 (footing
+tri, 213 min) et R20.3 (footing swimrun, O-8) : *une réallocation a besoin d'un puits BORNÉ*. C'est
+le lot suivant, et il vient avant les pièces. **Trouvé en chemin, préexistant : O-77** — la sortie
+longue RÉTRÉCIT quand `vol_max` augmente (82 → 62 min de 9 à 13 h/sem), troisième inversion de
+monotonie du dépôt après `I13` (niveau) et `O-21` (allure), sur un troisième axe.
+**31 gates verts, golden 989 recapturé (160 profils, texte seul), `audit:v1` 459 à 0 violation
+dure, `lotPhysio` 25 verts · 0 régression.**
 
 **O-42 livré — il y avait QUATRE conversions mètres ↔ minutes pour une seule grandeur, et aucune
 n'était celle que l'athlète lit** (arbitrage `O42_AUTORITE_DEFINITION_ZONE`, 15/08/2026 — voir

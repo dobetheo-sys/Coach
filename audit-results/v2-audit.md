@@ -18,7 +18,7 @@ aucune ne se cite seule comme un effet.
 | run | 108 | 0.98 | 0.94–0.99 | 0 | 0 | 0 | 0.47 | 0 | 84% | 0 | 99 |
 | bike | 135 | 0.99 | 0.97–1.00 | 0 | 0 | 0 | 0.44 | 0 | 91% | 0 | 99 |
 | swim | 108 | 0.97 | 0.91–1.00 | 0 | 0 | 0 | 0.49 | 0 | 86% | 18 | 98 |
-| tri | 108 | 0.97 | 0.93–1.00 | 0 | 0 | 0 | 0.44 | 6 | 77% | 4 | 95 |
+| tri | 108 | 0.97 | 0.93–1.00 | 0 | 0 | 0 | 0.44 | 6 | 77% | 4 | 94 |
 | trail | 27 | 0.96 | 0.94–0.99 | 0 | 0 | 0 | 0.28 | 0 | 96% | 0 | 97 |
 | duathlon | 108 | 0.97 | 0.93–0.99 | 0 | 0 | 0 | 0.38 | 0 | 87% | 0 | 99 |
 
@@ -29,7 +29,7 @@ aucune ne se cite seule comme un effet.
 | run | 0.98 → 0.98 | 0.88 → 0.88 | 99 → 99 |
 | bike | 0.99 → 0.99 | 0.97 → 0.97 | 99 → 99 |
 | swim | 0.97 → 0.97 | 0.83 → 0.83 | 98 → 98 |
-| tri | 0.96 → 0.97 | 0.89 → 0.89 | 96 → 95 |
+| tri | 0.97 → 0.97 | 0.89 → 0.89 | 95 → 94 |
 | trail | NaN → 0.96 | 1.00 → 0.91 | NaN → 97 |
 | duathlon | NaN → 0.97 | 1.00 → 0.91 | NaN → 99 |
 
@@ -43,4 +43,4 @@ aucune ne se cite seule comme un effet.
 - **B17-paliers** · Nages continues prescrites : `1 palier(s) en phase spécifique` — La continuité se construit par une MONTÉE, jamais par un test unique à la fin : découvrir la distance trois semaines avant l'épreuve laisse le temps de s'inquiéter, pas celui de s'adapter — et le nombre est borné par la place réellement disponible
 - **courbe** · Courbe de charge : `base 0.5→peak 1.0→affûtage 0.3` — Bandes normalisées × pic, récup ×0.62, lissage C22 ≤+10%/sem
 - **R12-ref** · Tes références d'intensité : `CSS · FTP · allure seuil (déclarées)` — Toutes tes références sont déclarées : les séances portent des cibles chiffrées et le volume promis est calé sur ta vraie vitesse.
-- **R20.2** · Ton volume max demandé (10 h) n'est pas atteint : `pic à 8,1 h — ce qui borne, c'est la durée de ta préparation (−1,6 h/sem)` — Sur 20 semaines, la charge monte progressivement (≤ +10 % par semaine sur ce qui a réellement été livré) et atteint 8,4 h/sem au pic — pas encore ce que tes capacités autorisent. Avec plus de semaines devant toi, le même profil monterait plus haut. Si tu levais cette contrainte, ton volume demandé te plafonnerait à 10 h. Ton plan démarre bas parce que ton volume récent n'est pas renseigné : le moteur part alors du bas de la courbe, par prudence. Le renseigner au Profil est le levier qui change ce plan.
+- **R20.2** · Ton volume max demandé (10 h) n'est pas atteint : `pic à 8 h — ce qui borne, c'est la durée de ta préparation (−1,7 h/sem)` — Sur 20 semaines, la charge monte progressivement (≤ +10 % par semaine sur ce qui a réellement été livré) et atteint 8,3 h/sem au pic — pas encore ce que tes capacités autorisent. Avec plus de semaines devant toi, le même profil monterait plus haut. Si tu levais cette contrainte, ton volume demandé te plafonnerait à 10 h. Ton plan démarre bas parce que ton volume récent n'est pas renseigné : le moteur part alors du bas de la courbe, par prudence. Le renseigner au Profil est le levier qui change ce plan.

@@ -15,10 +15,12 @@ import { knownSports, sportModule } from "../sports/registry.ts";
 import { generatePlan } from "../generator/planGenerator.ts";
 import { longRunSpecificityFloor } from "../engine/longRunSpecificity.ts";
 import { swimDivergence } from "../engine/swimContinuity.ts";
+import { runHoursPerWeekOf } from "../engine/planVolume.ts";
 import { adjustDay, type DayAdjustment } from "../readiness/dailyAdjuster.ts";
 import {
   predictRace, courseProfileOf, legProfileOf, type Prediction,
   SWIM_RACE, TRI_SWIM, TRI_BIKE, TRI_BIKE_KM, TRI_RUN, TRI_TRANSITION, bikeIFShift, riegelSecWith, RUN_KM,
+  raceRunBand,
 } from "../engine/predictor.ts";
 import { bikeTimeEstimate, assumedSetup, RELIEF_PROFILE } from "../engine/cyclingSpeed.ts";
 import { DUA_RUN1, DUA_BIKE, DUA_RUN2, DUA_BIKE_POWER, DUA_BIKE_PREFATIGUE, DUA_TRANSITION } from "../sports/duathlon/tables.ts";
@@ -821,25 +823,6 @@ function sessionSplitForUI(s: unknown, answers?: AppAnswers): { easyMin: number;
   return intensitySplit(s as never, refs as never);
 }
 
-function runHoursPerWeekOf(plan: V1Plan): number | null {
-  const w = plan.weeks.filter((x) => !x.isRecup && ["dev", "spec", "peak"].includes(String(x.phase && x.phase.id)));
-  if (!w.length) return null;
-  const parSemaine: number[] = [];
-  for (const wk of w) {
-    let min = 0;
-    for (const d of wk.days) for (const s of d.sessions) {
-      if (s.d === "rs" || s.race) continue;
-      if (s.d === "rn") { min += s.min || 0; continue; }
-      for (const st of (s.steps ?? []) as { d?: string; reps?: number; durationMin?: number }[])
-        if ((st.d || s.d) === "rn" && st.durationMin) min += (st.reps || 1) * st.durationMin;
-    }
-    parSemaine.push(min);
-  }
-  parSemaine.sort((a, b) => a - b);
-  const med = parSemaine[Math.floor(parSemaine.length / 2)] / 60;
-  return med > 0 ? med : null;
-}
-
 /** Secondes/km → « 4:50 » : le parseur d'allure est unique (E1/E2), son inverse doit l'être aussi. */
 function secToPace(secPerKm: number): string {
   const s = Math.max(1, Math.round(secPerKm));
@@ -1237,6 +1220,13 @@ function coachOnIngestV2(sport: string, answers: AppAnswers, ingested: IngestedS
   // plafonds de sécurité sont gardés séparément par `C30-B`.
   longRunSpecTarget: (fmt: string | undefined, thrPaceSecPerKm: number, runHoursPerWeek?: number) =>
     longRunSpecificityFloor(fmt, thrPaceSecPerKm, 0, Number.MAX_SAFE_INTEGER, runHoursPerWeek),
+  // T-16d — LE DESCRIPTEUR, REDÉRIVABLE DEPUIS LE PLAN LIVRÉ. Exposé pour la même raison que
+  // `longRunSpecTarget` : la garde doit pouvoir REFAIRE le calcul avec la fonction du moteur, et
+  // non avec une copie qui divergerait au premier réglage. La propriété gardée est « ce qui est
+  // AFFICHÉ est une fonction du plan LIVRÉ » — elle n'a de sens que si les deux côtés partagent
+  // la fonction.
+  raceRunBandOfPlan: (sport: string, format: string, thrPaceSecPerKm: number, plan: V1Plan) =>
+    raceRunBand(sport, format, thrPaceSecPerKm, runHoursPerWeekOf(plan) ?? undefined),
   // R10 phase 1 — le REGISTRE DE SPORTS exposé à l'UI : elle n'a plus à savoir quel sport
   // teste quoi (`typesForSport` recopiait la liste). Un sport ajouté au moteur devient
   // automatiquement complet côté interface.

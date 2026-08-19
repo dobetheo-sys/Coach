@@ -7723,6 +7723,219 @@ attendu: /C26c — plafond de temps dur\s+1[0-9][0-9] \/ 98[0-9]/
 cmd: npm run --silent mesure:morsure
 ```
 
+## T-16d — LE DESCRIPTEUR DÉCRIVAIT UN AUTRE PLAN QUE CELUI QU'IL ACCOMPAGNE · ✅ **LIVRÉ** (19/08/2026)
+
+Le §1 de « T-16c — MESURER LE RAYON AVANT DE L'APPELER UN CHANTIER » posait la question qui
+décide : *« qui lit la bande d'allure prescrite entre sa position actuelle et le point fixe ?
+personne → c'est un déplacement ; un ou deux sites → le chantier est là »*.
+
+**La mesure a RENVERSÉ la prémisse du fondateur**, et c'est elle qui a dicté le correctif : la
+bande n'a pas « des lecteurs », elle a **deux FAMILLES de lecteurs**, et une seule est un
+descripteur.
+
+```
+elle MODIFIE le plan   zoneClass (loadModel.ts:349) classe `rn.mara` en « dur » ou « modéré »
+                       SELON la bande → intensitySplit → C26c, C26d, part facile.
+                       Elle doit donc être connue PENDANT la construction. Elle l'est.
+elle DÉCRIT le plan    zoneOf (renderer.ts:94) écrit la fourchette dans le texte de la séance.
+                       Celle-là, et elle seule, doit décrire l'état FINAL.
+```
+
+Ce n'est donc ni un déplacement ni un chantier : c'est **le même objet qui sert deux rôles à deux
+moments**, une seule source (`raceRunBand`) évaluée deux fois. Et en le construisant, deux défauts
+sont apparus — tous deux vivants depuis B-22, tous deux invisibles à la relecture.
+
+### Défaut 1 — la boucle de réparation re-rendait avec la table STATIQUE
+
+`generateAudited` reconstruit ses `refs` sous un commentaire qui énonce la règle **pour les
+deux substitutions** : *« la boucle de réparation re-rend des séances, elle ne doit pas les
+re-rendre avec une AUTRE définition »*. Il ne portait que `bikeRp`. **`runMara` manquait**, donc
+chacun de ses re-rendus retombait sur `ZDEF["rn.mara"]` — la table 1,08–1,13 × allure seuil que
+B-22 existe précisément pour remplacer.
+
+Mesuré sur un `tri/M` (seuil 4:15, `vol_max` 12) : **4 séances sur 5** affichaient
+`4'35-4'48/km` (la table) là où la bande de l'athlète vaut `4'09-4'20`. La substitution était
+défaite par le dernier maillon du pipeline.
+
+### Défaut 2 — deux STATISTIQUES du même volume, sur deux POPULATIONS de semaines
+
+```
+bande PRESCRITE   moyenne des minutes de course sur TOUTES les semaines construites   1,26 h/sem
+leg PRÉDIT        MÉDIANE des semaines dev/spec/peak hors récup (runHoursPerWeekOf)   1,62 h/sem
+```
+
+Le plan promettait donc une allure que sa propre prédiction contredisait, **sur le format M au
+point d'être disjoints** (prescrit 275-288 s/km, prédit 247-262). `src/engine/planVolume.ts` porte
+désormais la seule définition, importée par le pont ET par la boucle de réparation (R11.1). La
+médiane des semaines de charge est la définition retenue, et sa raison est écrite dans le module :
+l'exposant de Riegel décrit l'athlète tel qu'il ARRIVE à sa course.
+
+### Ce qui est livré
+
+Le calcul de la bande **après convergence, avant le sceau** (juste après `syncDerivedLabels`, le
+point que le code documente lui-même comme « plus rien ne bougera — cette fois pour de vrai »), et
+un re-rendu des seules séances qui portent `rn.mara`. **`st.maraBand` n'est PAS touché** : la
+classification a déjà servi, la modifier ici ferait entrer un descripteur dans ce qu'il décrit —
+la boucle d'O-43 sous une autre forme.
+
+### La garde porte sur la CLASSE, pas sur la bande
+
+`T-50` (banc `lotPhysio`) : **ce qui est AFFICHÉ se redérive du plan LIVRÉ**, au caractère près,
+sur 187 profils tri et 1 812 séances `rn.mara`. Elle appelle `EBV2.raceRunBandOfPlan` — la
+fonction du moteur, jamais une copie (même convention que `longRunSpecTarget`).
+
+*Quel est le correctif le moins coûteux qui ferait passer ce test ?* (règle 19) — calculer la bande
+depuis le plan livré et la rendre, c'est-à-dire la propriété elle-même : le test n'est pas
+sous-spécifié. Et une constante gelée ne le satisfait pas : figer la bande la ferait diverger de la
+redérivation dès qu'un plan a un autre volume de course.
+
+**Faute d'instrument, publiée** : ma première écriture de `T-50` lisait `a.format` — le format
+DEMANDÉ. B-17 rabat un Full sur un 70.3, et c'est le format RABATTU que le plan met en œuvre : 79
+affichages sur 1 812 étaient déclarés « non redérivables » alors que le moteur avait raison et que
+c'était ma sonde qui jugeait le plan livré contre l'intention de l'athlète. La faute est exactement
+celle que le critère mesure, commise dans le critère.
+
+**Portée : 160 profils du golden bougent, 1 690 feuilles, TOUTES des chaînes `.det`.** Vérifié par
+une sonde qui énumère les feuilles en écart PAR TYPE — l'agrégat du golden rend « plus grand écart
+numérique 0 », mais `countDiff` ne renseigne ce maximum que si les deux feuilles sont des nombres,
+donc un nombre devenu chaîne y serait invisible. **Aucune feuille numérique ne bouge : le plan est
+identique, seule sa description change.** Les trois cliquets du sceau et la composition du pic sont
+inchangés — un descripteur ne modifie pas le plan qu'il décrit, et c'est mesuré, pas supposé.
+
+**Faute d'instrument n° 2, publiée** : cette même sonde a d'abord rendu « 0 profil bouge · ✓ seule
+la description change » — un ZÉRO SATURÉ. Elle lisait `p.k` quand le champ s'appelle `key`, donc la
+photo n'était jamais trouvée et la boucle sortait par `continue` sur les 989 profils. Le vert rendu
+était exactement la conclusion que je cherchais.
+
+### Contre-preuves — les deux rouges, par `npm run casser`
+
+```
+substitution retirée      refs.runMara = bande;  →  supprimée
+                          T-50 ROUGE, 1 817 / 1 817 · « affiche 4'52-5'05, redérivé 3'55-4'05 »
+                          (4'52-5'05 EST la table ZDEF, 1,08-1,13 × l'allure seuil : la preuve
+                          que sans cette ligne le rendu retombe sur la table statique)
+
+bande GELÉE               runHoursPerWeekOf(best.plan)  →  la constante 5
+                          T-50 ROUGE, 1 817 / 1 817 · « affiche 4'04-4'16, redérivé 3'55-4'05 »
+```
+
+La seconde est celle qui compte : c'est la question de la **règle 19** — *quel est le correctif le
+moins coûteux qui ferait passer ce test ?* Une constante gelée ne le passe pas. Un test d'identité
+entre l'affiché et le redérivé n'est satisfait que par le calcul lui-même.
+
+```verify
+id: T-16d
+quoi: ce qui est affiché se redérive du plan livré (187 profils tri, 1 812 séances rn.mara)
+attendu: /T-50 \[vert \]/
+cmd: node scripts/lotPhysio.mjs
+```
+
+---
+
+## LOT VÉLO (3ᵉ passe) · Le verrou T-16d posé, un SECOND gate objecte — et sa cause est un DÉVERSOIR sans borne · 🔴 **NON LIVRÉ, cause nommée un cran plus bas**
+
+T-16d est livré et **T-16c passe au vert avec les pièces en place** : le fondateur avait raison sur
+ce point, c'était bien le verrou. Mais les pièces rejouées font rougir un SECOND gate, et il ne
+mesure pas la même chose.
+
+```
+audit:r14.1  R14.1-G   un plan qui monte le volume projette plus qu'un plan de maintien
+             sans les pièces   maintien 12,1 %  →  montée 13,7 %   ×1,13   (barre 1,10)
+             avec les pièces   maintien 12,1 %  →  montée 12,7 %   ×1,05   ROUGE
+```
+
+**Attribution PROUVÉE PAR RETRAIT DU SEUL FACTEUR** : T-16d seul, pièces retirées → ×1,13, tous
+les gates verts. Pièces remises → ×1,05. Et le témoin ne bouge pas (« maintien » à 12,1 % dans les
+deux états) : ce n'est pas un critère dont la référence a glissé.
+
+### La cause, mesurée par phase puis sur le corpus
+
+Le plan à `vol_max: 13` perd **0,39 h/sem** de volume prescrit moyen. La perte n'est PAS une rampe
+(qui serait l'effet voulu d'une trajectoire) : elle est concentrée sur la phase **spécifique**,
+`10,31 → 9,34 h/sem`, la phase la plus proche de la course.
+
+**Et ma première lecture de cette perte était FAUSSE, dans le sens rassurant.** Sur la semaine 34
+du profil, la seule différence était « Nage vitesse » `149 → 93 min` — j'allais publier « les
+pièces ne détruisent pas du volume, elles empêchent le plan de parquer une heure dans une nage
+vitesse de 2 h 29 ». **Le corpus dit l'inverse :**
+
+```
+« Nage vitesse » sur les 187 profils tri (3 172 séances)     sans les pièces    avec
+  > 90 min                                                     61 (1,9 %)      163 (5,1 %)
+  > 120 min                                                    29 (0,9 %)       80 (2,5 %)
+  > 150 min                                                     0 (0,0 %)       10 (0,3 %)
+  maximum                                                     144 min          210 min
+```
+
+Une observation sur UNE semaine d'UN profil, prise pour une tendance. C'est la règle 15 dans sa
+forme temporelle : une mesure sur un point n'est pas une mesure.
+
+### Ce qui bloque réellement : `sw.speed` est le DÉVERSOIR du plan tri, sans borne haute
+
+Le créneau « Nage vitesse » absorbe ce que la courbe accorde et que les autres créneaux ne peuvent
+pas prendre — **210 minutes de nage VITESSE**, ce qu'aucun entraîneur ne prescrit. Les pièces ne
+créent pas ce défaut, elles **routent plus de volume à travers lui**, et c'est pour ça qu'elles
+sont bloquées : *une réallocation a besoin d'un puits BORNÉ.*
+
+C'est la **troisième occurrence** d'une famille déjà fermée deux fois, et jamais rejouée ici :
+
+```
+R13     le footing du triathlon n'avait aucune borne — 213 min mesurées, déversoir des remplissages
+R20.3   le footing du swimrun n'avait aucune borne (O-8) — 179 à 226 min, devant la pivot
+ICI     « Nage vitesse » du triathlon n'a aucune borne haute — jusqu'à 210 min
+```
+
+**C'est le lot suivant, et il vient AVANT les pièces.** R20.3 a mesuré et RÉFUTÉ deux écritures de
+la borne avant d'en adopter une troisième : la même méthode s'applique, et elle ne se fait pas dans
+la foulée d'un lot de descripteurs.
+
+### Ce qui reste vrai des pièces, et qui n'est pas perdu
+
+Leur gain est mesuré et il tient : **nage 49 → 29 %, vélo 29 → 47 %** (fourchette visée 45-50 %),
+volume préservé, maximum du plan au PIC. Elles font aussi descendre le sceau `S4` de **349 à 342**
+— sept violations de moins qu'avant le lot, le critère d'un ALIGNEMENT au sens du §3 du fondateur.
+Leur code est intégralement décrit dans l'entrée « 2ᵉ passe » ci-dessous — c'est là qu'il se
+récupère, pas dans un fichier de travail.
+
+### §4 du fondateur, écrit ici et dans l'entrée de la 2ᵉ passe
+
+**Deux pièces qui ajoutent de la charge doivent déclarer leur PHASE, pas seulement leur fréquence.**
+Tombant la même semaine (paires toutes les deux), elles empilent au lieu de répartir : nage 37 %,
+vélo 43 %. Décalées (long vélo en paires, routage `doubles` en impaires) : nage 29 %, vélo 47 %.
+Personne ne l'avait prédit — ni le fondateur ni moi n'avions pensé à leur interaction calendaire.
+
+---
+
+## O-77 — la sortie longue RÉTRÉCIT quand le volume demandé AUGMENTE (inversion sur l'axe `vol_max`)
+
+Trouvé en instrumentant le lot vélo, **PRÉEXISTANT** (mesuré identique avec et sans les pièces).
+Profil 70.3, 43 semaines, `vol_recent: 9`, seul `vol_max` varie :
+
+```
+vol_max  9    « Sortie longue CAP »  18× · 82-88 min  (médiane 82)
+vol_max 11    « Sortie longue CAP »  18× · 63-88 min  (médiane 63)
+vol_max 13    « Sortie longue CAP »  18× · 51-88 min  (médiane 62)
+```
+
+**Déclarer 4 h de plus par semaine RACCOURCIT sa sortie longue de 20 minutes.** C'est la troisième
+inversion de monotonie mesurée dans ce dépôt, sur un troisième axe : `I13` sur le NIVEAU (le
+débutant recevait plus que l'inter), `O-21` sur l'ALLURE (le coureur lent recevait plus que le
+rapide), celle-ci sur le VOLUME DEMANDÉ. Aucune des trois n'aurait été trouvée par un gate — elles
+demandent toutes de faire varier UNE entrée et de regarder la sortie.
+
+Piste, non vérifiée : à `vol_max` élevé le plan ajoute des SÉANCES plutôt que de la taille, et le
+point fixe C22 rescale ensuite la semaine au prorata — la longue perd donc en part ce que la
+fréquence gagne. À mesurer avant d'écrire quoi que ce soit.
+
+```verify
+id: O-77
+quoi: la sortie longue d'un 70.3 rétrécit quand vol_max monte (82 → 62 min)
+attendu: /INVERSION : déclarer plus de volume RACCOURCIT/
+cmd: npm run mesure:longue-volmax
+```
+
+---
+
 ## LOT VÉLO (2ᵉ passe) · L'ordre du fondateur suivi : 2+3 d'abord, sans réveiller la boucle · 🔴 **UN SEUL ROUGE RESTANT, sa cause nommée**
 
 Le §5 d'« O-43 BLOQUE LE LOT VÉLO » prescrit l'ordre le moins cher : *« essayer d'abord ce qui ne
@@ -7742,6 +7955,10 @@ peut rester ouvert, exactement comme le fondateur l'avait posé en condition.
 Un réglage a compté et il est mesuré : les deux pièces tombaient d'abord la MÊME semaine (paires).
 Décalées (long vélo en paires, routage `doubles` en impaires), la nage passe de 37 à **29 %** et
 le vélo de 43 à **47 %** — la charge vélo se répartit au lieu de s'empiler.
+
+> **Deux pièces qui ajoutent de la charge doivent déclarer leur PHASE, pas seulement leur
+> fréquence** (§4 du fondateur, 19/08/2026). Personne n'aurait prédit cette interaction calendaire
+> — c'est la mesure qui l'a montrée, et c'est le genre de réglage qu'on redécouvre à ses dépens.
 
 ### Trois alignements, tous sur des règles EXISTANTES — et l'un d'eux AMÉLIORE le moteur
 
@@ -7780,6 +7997,11 @@ fixe : un chantier à part entière, pas une quatrième exclusion.
 **Rien n'est donc livré côté moteur** (`src/` byte-identique à HEAD), et le code des deux pièces
 est intégralement décrit ci-dessus pour être rejoué. L'ordre du fondateur reste bon : ce qui
 manque n'est plus O-43 — c'est la cohérence de la bande d'allure au point fixe.
+
+> **SUITE (19/08/2026) — le verrou est posé, et il ne suffit pas.** T-16d est livré et T-16c passe
+> au VERT avec ces deux pièces en place : le diagnostic ci-dessus était juste. Mais un SECOND gate
+> objecte (`R14.1-G`, ×1,13 → ×1,05), et sa cause est un cran plus bas — « Nage vitesse » est le
+> déversoir du plan tri et n'a aucune borne haute. Voir l'entrée « LOT VÉLO (3ᵉ passe) ».
 
 ### §4 — les deux mécanismes à ne pas perdre, confirmés
 

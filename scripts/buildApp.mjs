@@ -22,6 +22,9 @@ const ORDER = [
   "src/engine/trace.ts",
   "src/engine/medicalHold.ts",
   "src/engine/prioriteFinancement.ts",
+  // T-16d — le volume de course d'un plan, défini une seule fois (le pont et la boucle de
+  // réparation le lisent tous les deux). Aucune dépendance : peut venir tôt.
+  "src/engine/planVolume.ts",
   "src/engine/measured.ts",
   // R22 — la règle de troncature, lue par le schéma (pour proposer la sortie) et par
   // le pont (pour l'appliquer). Doit précéder answerSchema, qui l'importe.

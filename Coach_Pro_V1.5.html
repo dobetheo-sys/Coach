@@ -2274,6 +2274,66 @@ function rangCession(
   return 1;                                                          // …la nage seuil après lui
 }
 
+// ===== src/engine/planVolume.ts =====
+/**
+ * T-16d — LE VOLUME DE COURSE HEBDOMADAIRE D'UN PLAN, DÉFINI UNE SEULE FOIS.
+ *
+ * Cette grandeur pilote l'exposant de Riegel (R14 P5, B-21) : elle décide À LA FOIS de la bande
+ * « allure du jour J » PRESCRITE dans le texte des séances (`raceRunBand`, via `refs.runMara`) et
+ * du chrono PRÉDIT pour le leg de course (`predict()`, via `opts.runHoursPerWeek`). Les deux
+ * doivent donc lire le MÊME nombre — sans quoi le plan promet une allure que sa propre prédiction
+ * contredit.
+ *
+ * Ils ne le lisaient pas. Mesuré le 19/08/2026 sur un tri/M (`audit:r18` T-16c) :
+ *
+ *     bande prescrite    moyenne des minutes de course sur TOUTES les semaines construites
+ *                        (générateur, avant le point fixe)          →  1,26 h/sem
+ *     leg prédit         MÉDIANE des semaines dev/spec/peak hors récup
+ *                        (`runHoursPerWeekOf`, dans le pont)        →  1,62 h/sem
+ *
+ * Deux STATISTIQUES différentes (moyenne / médiane) sur deux POPULATIONS différentes (toutes les
+ * semaines / les seules semaines de charge des trois dernières phases). C'est la forme exacte que
+ * ce dépôt a fermée treize fois sur des BORNES — « générateur et auditeur lisent la même source »
+ * (T-28) — jamais encore sur une grandeur DESCRIPTIVE.
+ *
+ * La définition retenue est celle qui existait déjà et qui est la plus défendable : la MÉDIANE des
+ * semaines de charge de dev/spec/peak. La médiane parce qu'une semaine tronquée ou une décharge
+ * mal classée ne doit pas déplacer une grandeur qui décrit un régime ; ces trois phases parce que
+ * l'exposant décrit l'athlète tel qu'il ARRIVE à sa course, pas tel qu'il a démarré.
+ */
+
+/** La forme minimale qu'un plan doit avoir pour que le volume de course s'y mesure. */
+                                     
+                    
+                          
+                                                                                                                                      
+ 
+
+/** Minutes de COURSE À PIED d'une semaine — la course objectif et le repos exclus (R13.4). */
+function runMinutesOfWeek(wk                    )         {
+  let min = 0;
+  for (const d of wk.days) for (const s of d.sessions) {
+    if (s.d === "rs" || s.race) continue;
+    if (s.d === "rn") { min += s.min || 0; continue; }
+    for (const st of s.steps ?? [])
+      if ((st.d || s.d) === "rn" && st.durationMin) min += (st.reps || 1) * st.durationMin;
+  }
+  return min;
+}
+
+/**
+ * Heures de course par semaine de CHARGE (dev/spec/peak), en médiane. `null` quand la grandeur
+ * n'est pas mesurable — jamais 0 : un zéro se lirait comme « il ne court pas », ce qui est un
+ * fait, alors que l'absence de semaine de charge est une propriété du plan.
+ */
+function runHoursPerWeekOf(plan                                 )                {
+  const w = plan.weeks.filter((x) => !x.isRecup && ["dev", "spec", "peak"].includes(String(x.phase && x.phase.id)));
+  if (!w.length) return null;
+  const parSemaine = w.map(runMinutesOfWeek).sort((a, b) => a - b);
+  const med = parSemaine[Math.floor(parSemaine.length / 2)] / 60;
+  return med > 0 ? med : null;
+}
+
 // ===== src/engine/measured.ts =====
 /**
  * `measured` — L'INSTANTANÉ DE CE QUE L'ATHLÈTE A RÉELLEMENT FAIT (décisions produit R6, §2-§3).
@@ -15386,6 +15446,8 @@ function sealPlan(plan        , opts                                        )   
 
 
 
+
+
 const MAX_ITERATIONS = 3;
 
 /** Minutes d'une semaine mesurées avec le MODÈLE DE L'AUDITEUR (récup inter-répétitions
@@ -15724,6 +15786,46 @@ function generateAudited(profile                , auditOpts                     
   // rescaler des répétitions après la génération. Toute prose dérivée d'un nombre se resynchronise
   // ici, une fois que plus rien ne bougera — cette fois pour de vrai.
   syncDerivedLabels(best.plan);
+
+  // ---- T-16d — TOUT DESCRIPTEUR DU PLAN EST CALCULÉ APRÈS CONVERGENCE ----------------------
+  //
+  // La bande « allure du jour J » (`rn.mara`) joue DEUX rôles, et c'est ce qui a caché le défaut :
+  //
+  //   elle MODIFIE le plan   `zoneClass` classe `rn.mara` en « dur » ou « modéré » SELON elle,
+  //                          donc C26c et la part de facile en dépendent. À ce titre elle doit
+  //                          être connue PENDANT la construction, et elle l'est (planGenerator).
+  //   elle DÉCRIT le plan    `zoneOf` l'écrit dans le texte de la séance. À ce titre elle doit
+  //                          décrire l'état FINAL — celui-ci, le seul dont la sortie est livrée.
+  //
+  // Deux défauts mesurés le 19/08/2026, tous deux invisibles depuis B-22 :
+  //
+  //   1. `refs` ci-dessus porte `bikeRp` et PAS `runMara`, alors que le commentaire d'O-11 juste
+  //      au-dessus énonce la règle pour les deux : « la boucle de réparation re-rend des séances,
+  //      elle ne doit pas les re-rendre avec une AUTRE définition ». Chaque re-rendu de cette
+  //      boucle retombait donc sur `ZDEF["rn.mara"]` — la table STATIQUE que B-22 existe pour
+  //      remplacer. Sur un tri/M : 4 séances sur 5 affichaient 4'35-4'48/km (la table) au lieu de
+  //      4'09-4'20 (la bande de l'athlète). La substitution était défaite par le dernier maillon.
+  //   2. La bande et la prédiction lisaient deux grandeurs DIFFÉRENTES du même volume — moyenne
+  //      sur toutes les semaines contre médiane des semaines de charge (1,26 h contre 1,62 h).
+  //      `runHoursPerWeekOf` est désormais la seule définition, importée par les deux (R11.1).
+  //
+  // La propriété à garder porte sur la CLASSE, pas sur cette bande : un descripteur se calcule
+  // après convergence. C'est ce qui ferme la quatorzième occurrence de la famille du point fixe
+  // ET empêche la quinzième.
+  {
+    const bande = raceRunBand(
+      String(reasoned.profile.sport),
+      String(reasoned.profile.format ?? ""),
+      reasoned.baseRefs.thrPace,
+      runHoursPerWeekOf(best.plan) ?? undefined,
+    );
+    if (bande) {
+      refs.runMara = bande;
+      for (const w of best.plan.weeks) for (const d of w.days) for (const s of d.sessions)
+        if ((s.steps ?? []).some((st) => (st                     ).zone === "rn.mara"))
+          renderSess(s, refs, reasoned.hz, reasoned.baseRefs);
+    }
+  }
   // …et les décisions C30b sont celles du DERNIER passage, pas celles d'un état intermédiaire :
   // le chiffre affiché à l'athlète (« 64 min, soit 33 % de la semaine ») doit décrire le plan
   // qu'il a sous les yeux. Même règle que « l'audit rendu est celui du plan rendu », ci-dessous.
@@ -20462,6 +20564,7 @@ function dailyEnergy(input             )                             {
 
 
 
+
 /** R21 — exportée : la spec du coach proactif construit ses profils comme le pont, pas autrement. */
 function toProfile(sport        , answers            )                 {
   return { ...(answers          ), sport }                  ;
@@ -21238,25 +21341,6 @@ function sessionSplitForUI(s         , answers             )                    
   return intensitySplit(s         , refs         );
 }
 
-function runHoursPerWeekOf(plan        )                {
-  const w = plan.weeks.filter((x) => !x.isRecup && ["dev", "spec", "peak"].includes(String(x.phase && x.phase.id)));
-  if (!w.length) return null;
-  const parSemaine           = [];
-  for (const wk of w) {
-    let min = 0;
-    for (const d of wk.days) for (const s of d.sessions) {
-      if (s.d === "rs" || s.race) continue;
-      if (s.d === "rn") { min += s.min || 0; continue; }
-      for (const st of (s.steps ?? [])                                                         )
-        if ((st.d || s.d) === "rn" && st.durationMin) min += (st.reps || 1) * st.durationMin;
-    }
-    parSemaine.push(min);
-  }
-  parSemaine.sort((a, b) => a - b);
-  const med = parSemaine[Math.floor(parSemaine.length / 2)] / 60;
-  return med > 0 ? med : null;
-}
-
 /** Secondes/km → « 4:50 » : le parseur d'allure est unique (E1/E2), son inverse doit l'être aussi. */
 function secToPace(secPerKm        )         {
   const s = Math.max(1, Math.round(secPerKm));
@@ -21654,6 +21738,13 @@ function coachOnIngestV2(sport        , answers            , ingested           
   // plafonds de sécurité sont gardés séparément par `C30-B`.
   longRunSpecTarget: (fmt                    , thrPaceSecPerKm        , runHoursPerWeek         ) =>
     longRunSpecificityFloor(fmt, thrPaceSecPerKm, 0, Number.MAX_SAFE_INTEGER, runHoursPerWeek),
+  // T-16d — LE DESCRIPTEUR, REDÉRIVABLE DEPUIS LE PLAN LIVRÉ. Exposé pour la même raison que
+  // `longRunSpecTarget` : la garde doit pouvoir REFAIRE le calcul avec la fonction du moteur, et
+  // non avec une copie qui divergerait au premier réglage. La propriété gardée est « ce qui est
+  // AFFICHÉ est une fonction du plan LIVRÉ » — elle n'a de sens que si les deux côtés partagent
+  // la fonction.
+  raceRunBandOfPlan: (sport        , format        , thrPaceSecPerKm        , plan        ) =>
+    raceRunBand(sport, format, thrPaceSecPerKm, runHoursPerWeekOf(plan) ?? undefined),
   // R10 phase 1 — le REGISTRE DE SPORTS exposé à l'UI : elle n'a plus à savoir quel sport
   // teste quoi (`typesForSport` recopiait la liste). Un sport ajouté au moteur devient
   // automatiquement complet côté interface.

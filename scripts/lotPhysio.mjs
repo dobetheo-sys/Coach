@@ -681,7 +681,10 @@ function goldenAvecMoteur() {
     try {
       const plan = globalThis.EBV2.buildPlan(sport, a);
       const r = _moteur.analyze(toProfile(sport, a));
-      _goldenCache.rows.push({ key, plan, L: r.volLimits, lf: r.loadFactor });
+      // Le format EFFECTIF, et non celui demandé : B-17 rabat un Full sur un 70.3, et c'est le
+      // format rabattu que le plan met en œuvre (`reasoned.profile.format`). Lire `a.format` ici
+      // ferait juger le plan livré contre l'intention de l'athlète — la faute que T-50 mesure.
+      _goldenCache.rows.push({ key, sport, a, plan, fmtEff: r.profile?.format ?? a.format, L: r.volLimits, lf: r.loadFactor });
     } catch { /* refus typés : hors population, comme au golden */ }
   }
   _goldenCache.fait = true;
@@ -977,6 +980,10 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 // `bk.easy`, une zone qui N'EXISTE PAS dans `ZDEF` (le vélo facile est `bk.z2`). Il ne tombait
 // jamais sur un bloc vélo avant que l'ordre de cession n'y envoie le VO2 — **64 violations
 // DURES** au sceau, sur des profils `bike/crit/debutant`. Corrigé dans le même commit.
+// T-16d (19/08/2026) NE BOUGE AUCUN de ces trois compteurs, et c'est la mesure qui le dit : un
+// descripteur ne modifie pas le plan qu'il décrit. Les pièces du lot vélo, elles, feraient
+// descendre S4 à 342 (sept violations de moins) — elles ne sont pas livrées, voir l'entrée
+// « LOT VÉLO (3ᵉ passe) » du registre.
 const SCEAU_ATTENDU = { S1: 4, S4: 349, S5: 504 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
@@ -1735,6 +1742,73 @@ T("T-49", "vert", "tout nom de zone du code existe dans ZDEF, et aucun n'est fab
 // golden (qui porte aussi les passes B17/allure/…). Les deux TOTAUX sont pourtant identiques —
 // c'est le DÉNOMINATEUR qui différait, pas la mesure : un ratio se lit en cherchant sa base.
 // Sans ordre de cession, les mêmes 187 profils rendent vo2 10 308 min et nage seuil 406 896 m.
+// PUIS vo2 8628 → **8632** min et nage seuil 424683 → **426883** m (lot vélo, pièces 2+3,
+// 19/08/2026). Mouvement minuscule (+0,05 % et +0,5 %) et ATTRIBUÉ PAR RETRAIT DU SEUL FACTEUR :
+// avec T-16d seul, les deux totaux reviennent au chiffre exact d'avant. Les pièces déplacent de la
+// charge vers le vélo, donc la composition du pic bouge — la population, elle, ne bouge pas (187),
+// ce qui dit que rien n'est sorti du périmètre.
+/**
+ * T-50 — TOUT DESCRIPTEUR DU PLAN EST UNE FONCTION DU PLAN LIVRÉ.
+ *
+ * La propriété porte sur la CLASSE « descripteur », pas sur la bande d'allure : ce qui est
+ * AFFICHÉ à l'athlète doit se REDÉRIVER, au caractère près, depuis le plan qu'il a sous les yeux.
+ * Un descripteur qui décrit un état intermédiaire est indistinguable, à la lecture, d'un
+ * descripteur juste — c'est ce qui a permis à celui-ci de vivre depuis B-22.
+ *
+ * Le cas mesuré (19/08/2026) : la bande « allure du jour J » (`rn.mara`). Deux ruptures, cumulées :
+ *
+ *   · la boucle de réparation reconstruisait ses `refs` avec `bikeRp` et SANS `runMara`, donc
+ *     chacun de ses re-rendus retombait sur `ZDEF["rn.mara"]` — la table statique que B-22 existe
+ *     pour remplacer. Sur un tri/M : 4 séances sur 5 affichaient 4'35-4'48/km (la table) pour un
+ *     athlète dont la bande vaut 4'09-4'20.
+ *   · la bande PRESCRITE et le leg PRÉDIT lisaient deux statistiques différentes du même volume
+ *     (moyenne de toutes les semaines contre médiane des semaines de charge : 1,26 h contre
+ *     1,62 h). `runHoursPerWeekOf` est désormais la seule définition, importée par les deux.
+ *
+ * QUEL EST LE CORRECTIF LE MOINS COÛTEUX QUI FERAIT PASSER CE TEST ? (règle 19) — calculer la
+ * bande depuis le plan livré et la rendre. C'est-à-dire la propriété elle-même : le test n'est
+ * pas sous-spécifié. Et il n'est pas satisfait par une constante gelée : figer la bande sur ZDEF
+ * la ferait diverger de la redérivation dès que le volume de course d'un plan diffère du profil
+ * qui a servi à la figer — ce que les 187 profils tri du golden garantissent.
+ *
+ * La sonde ne recalcule PAS la règle : elle appelle `EBV2.raceRunBandOfPlan`, la fonction du
+ * moteur (même convention que `longRunSpecTarget`). Une copie ici serait la seconde définition
+ * dont ce critère mesure justement l'absence.
+ */
+T("T-50", "vert", "PROPRIÉTÉ — la bande d'allure affichée se redérive du plan LIVRÉ (descripteur, T-16d)", () => {
+  const fk = (sec) => { const t = Math.round(sec); return Math.floor(t / 60) + "'" + String(t % 60).padStart(2, "0"); };
+  let profils = 0, seances = 0, faux = 0;
+  const exemples = [];
+  for (const { key, sport, a, fmtEff, plan } of goldenAvecMoteur()) {
+    if (sport !== "tri") continue;
+    const thr = globalThis.EBV2.parsePaceSec(a.pace);   // E1/E2 : un seul parseur d'allure
+    const bande = globalThis.EBV2.raceRunBandOfPlan(sport, String(fmtEff ?? ""), thr, plan);
+    if (!bande || !(thr > 0)) continue;
+    profils++;
+    const attendu = fk(thr * bande.lo) + "-" + fk(thr * bande.hi) + "/km";
+    for (const w of plan.weeks ?? []) for (const d of w.days ?? []) for (const sx of d.sessions ?? []) {
+      if (!(sx.steps ?? []).some((st) => st.zone === "rn.mara")) continue;
+      seances++;
+      if (String(sx.det ?? "").includes(attendu)) continue;
+      faux++;
+      if (exemples.length < 4)
+        exemples.push(`${key} « ${sx.name} » affiche ${(String(sx.det).match(/\d[:']\d{2}-\d[:']\d{2}\/km/) || ["—"])[0]}, redérivé ${attendu}`);
+    }
+  }
+  // UN ZÉRO A BESOIN DE SA POPULATION : « 0 écart » est la valeur du succès ; on assert donc que
+  // la mesure A EU LIEU, séparément de son résultat.
+  if (profils < 100 || seances < 300)
+    return { ok: false, detail: `POPULATION insuffisante — ${profils} profils tri, ${seances} séances rn.mara : la sonde n'a pas mesuré` };
+  return {
+    ok: faux === 0,
+    detail: `${profils} profils tri · ${seances} séances rn.mara · ${faux} affichage(s) non redérivable(s)`
+      + (faux ? " — " + exemples.join(" · ") : ""),
+  };
+});
+
+// T-16d (19/08/2026) ne déplace NI l'un NI l'autre — vérifié : un descripteur ne modifie pas le
+// plan qu'il décrit. Les pièces du lot vélo les porteraient à 8 632 min et 426 883 m ; elles ne
+// sont pas livrées (voir « LOT VÉLO (3ᵉ passe) »).
 const PIC_ATTENDU = { vo2Min: 8628, seuilM: 424683, profils: 187 };
 T("T-48", "vert", "la composition du PIC en tri est épinglée : le VO2 a cédé, la nage seuil a gagné (C26c)", () => {
   let vo2 = 0, seuil = 0, profils = 0;
