@@ -694,7 +694,13 @@ function applyDisciplineCoverage(r: ReasonedPlan, days: GenDay[], refs: Refs, hz
       if (disc === "bk") {
         const sess = crossTrainingSession(r, false, false);
         sess.name = "Endurance vélo (couverture discipline)";
-        sess.note = "Ton enveloppe de jours laisse peu de place : cette sortie garantit qu'il reste au moins une séance de vélo dans la semaine. Un plan de duathlon sans vélo n'est pas un plan allégé, c'est un plan d'un autre sport.";
+        // Relecture REEL (19/08/2026, famille U9) — la note nommait « duathlon » en dur : écrite
+        // quand la passe servait le duathlon, elle était livrée telle quelle sur un plan de
+        // TRIATHLON (semaines de récup du profil réel). Et sa causale « ton enveloppe de jours
+        // laisse peu de place » n'est qu'UN des déclencheurs (R4.6 se déclenche aussi quand la
+        // récup a coupé toute séance vélo) : la note ne garde que ce qui est vrai dans tous les
+        // cas — la fonction de la séance, pas une cause devinée.
+        sess.note = "Cette sortie garantit qu'il reste au moins une séance de vélo dans la semaine. Un plan dont le vélo est une discipline ne passe pas une semaine sans vélo : ce ne serait pas un plan allégé, ce serait le plan d'un autre sport.";
         renderSess(sess, refs, hz, r.baseRefs);
         if (tooHeavy(sess)) { pool.unshift(donor); continue; } // le donneur reste disponible pour la discipline suivante
         donor.sessions = [sess];

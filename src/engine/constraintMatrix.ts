@@ -366,6 +366,22 @@ export const PROG_DOSE_DEPART = rule("lot-progression", "fraction de la dose de 
  * La valeur porte sur le PIC : c'est la borne haute de la trajectoire, pas la dose de départ.
  */
 export const O81_FOOTING_CIBLE_PIC_MIN = rule("O-81", "plafond du footing au pic quand la table du format le laisse au ras du plancher de dignité : la sortie facile de référence d'une préparation à leg course long", 50);
+/**
+ * O-88 (constat du fondateur sur son plan réel, 19/08/2026) — LE NOMBRE D'ACCÉLÉRATIONS EST
+ * BORNÉ EN ABSOLU, JAMAIS DÉRIVÉ DE LA LONGUEUR DU BLOC.
+ *
+ * La séance « Nage aérobie + accélérations » promettait « la moitié en accélérations de 50 m » :
+ * un compte-FRACTION, donc `bloc plus long → plus d'accélérations` — l'inverse de ce qu'il faut.
+ * Un bloc plus long veut dire plus de fatigue accumulée, donc MOINS de rappels de fréquence ;
+ * livré sur le profil réel : 3 200 m → 32 accélérations, et la relecture complète a trouvé un
+ * bloc de 8 075 m → 81. *« Une accélération faite avec un geste dégradé enseigne le geste
+ * dégradé. »* Même famille que `PT(lo, hi)` d'O-78 : une grandeur de COMPTAGE calculée par un
+ * facteur de TAILLE (règle 14 — un facteur de taille ne multiplie jamais un compte).
+ *
+ * La valeur vient de la fourchette du fondateur (~8 à 12), posée comme ORDRE DE GRANDEUR et non
+ * comme mesure — révocable sans re-mesure. Le reste du bloc reste aérobie continu.
+ */
+export const O88_NB_ACCELERATIONS = rule("O-88", "accélérations de 50 m par séance « Nage aérobie + accélérations » : un compte absolu, indépendant de la longueur du bloc", 10);
 export const DOSE_CAP_MIN = rule(
   "C25",
   "au-delà de ~40 min de seuil ou ~25 min de VO2max dans une séance, ce n'est plus un entraînement dur mais une course : personne ne l'enchaîne semaine après semaine sans casser",

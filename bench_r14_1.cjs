@@ -116,7 +116,7 @@ check("R14.1-F", "vélo projeté = cible ANCRÉE (identique) + FTP projetée sup
 });
 
 /* ========== R14.1-G — facteur volume ========== */
-check("R14.1-G", "un plan qui monte le volume projette plus qu'un plan de maintien (≥ 15 %)", () => {
+check("R14.1-G", "la projection suit le volume que le plan LIVRE — plus s'il livre plus, pareil s'il refuse", () => {
   const maint = proj(ans({ vol_max: "9", vol_recent: "9" }));
   const monte = proj(ans({ vol_max: "13", vol_recent: "9" }));
   if (!maint || !monte || !maint.gainPct) return { ok: false, info: "gainPct absent" };
@@ -127,7 +127,34 @@ check("R14.1-G", "un plan qui monte le volume projette plus qu'un plan de mainti
   // gains montant en absolu. La propriété gardée reste la MÊME (monotonie + sensibilité
   // matérielle au volume, le jumeau de sensibilité de P10) ; seule la base du seuil a bougé,
   // par le moteur et volontairement. Même famille que le re-basage de P7 (§4).
-  return { ok: r >= 1.10, info: `maintien ${(maint.gainPct.ftp * 100).toFixed(1)}% → montée ${(monte.gainPct.ftp * 100).toFixed(1)}% (×${r.toFixed(2)})` };
+  //
+  // O-85 (19/08/2026) — LE CRITÈRE GAGNE SA DEUXIÈME BRANCHE, PAR LE MÊME PRINCIPE. La borne de
+  // charge d'épaule retire au plan « montée » la nage-déversoir qui absorbait la hausse de
+  // `vol_max` : le volume LIVRÉ moyen (dev+spec+peak) ne monte plus que de 8,17 → 8,67 h (+6 %)
+  // contre 8,17 → 9,95 (+22 %) avant — les deux ratios tombent sous la première ancre de P10 et
+  // le facteur devient identique (×1,00 mesuré, attribué par bisection de moteur ec56e95 →
+  // ee40395). Ce n'est pas le facteur qui a cassé, c'est le PLAN qui refuse désormais le volume
+  // demandé sur ce profil (plafond structurel O-43 §2) — et une projection qui récompenserait un
+  // volume que le plan ne livre pas mentirait (P8). La propriété se lit donc sur le LIVRÉ
+  // (règle 15) : si le plan « montée » livre ≥ 15 % de plus, la projection doit suivre (≥ ×1,10) ;
+  // s'il livre moins que ça, elle doit rester COLLÉE (×0,95-1,05) — l'insensibilité EST alors la
+  // propriété (le domaine du jumeau de sensibilité, arbitrage du 17/08). La branche 1 reste
+  // vérifiée verte contre le moteur d'AVANT O-85 (×1,15) : aucune barre n'est desserrée, le
+  // domaine est rendu explicite. La branche 2 est une ENVELOPPE, pas une égalité : entre les
+  // deux (livré +1 à +15 %), un gain partiel est légitime — ce qu'elle interdit est l'inversion
+  // (moins de gain pour plus de volume) et le saut sans volume (plus de ×1,10 de gain quand le
+  // livré n'a pas bougé de 15 %).
+  const meanH = (a) => {
+    const p = E.buildPlan("tri", a);
+    const w = p.weeks.filter((x) => !x.isRecup && ["dev", "spec", "peak"].includes(String(x.phase && x.phase.id)));
+    let min = 0;
+    for (const wk of w) for (const d of wk.days) for (const s of d.sessions) if (s.d !== "rs" && !s.race) min += s.min || 0;
+    return w.length ? min / 60 / w.length : 0;
+  };
+  const mMaint = meanH(ans({ vol_max: "9", vol_recent: "9" })), mMonte = meanH(ans({ vol_max: "13", vol_recent: "9" }));
+  const livre = mMonte / Math.max(1e-6, mMaint);
+  const ok = livre >= 1.15 ? r >= 1.10 : r >= 0.95 && r <= 1.10;
+  return { ok, info: `livré ${mMaint.toFixed(2)} → ${mMonte.toFixed(2)} h/sem (×${livre.toFixed(2)}) · gain ${(maint.gainPct.ftp * 100).toFixed(1)}% → ${(monte.gainPct.ftp * 100).toFixed(1)}% (×${r.toFixed(2)}) · branche ${livre >= 1.15 ? "livre plus → projette plus" : "refuse → projection collée"}` };
 });
 
 /* ========== R14.1-H — confiance honnête au jour 0 ========== */

@@ -3890,8 +3890,12 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
           sx.long = false;
           sx.brick = false;
           sx.name = k === 1 ? "Déverrouillage (veille de course)" : "Endurance allégée (avant course)";
+          // Relecture REEL (19/08/2026) — la NOTE avait le défaut que R13.4 a corrigé pour la
+          // ZONE trois lignes plus haut : « on réveille les jambes … on range les chaussures »
+          // livré sur une VEILLE EN NATATION (allures en /100 m). La chute suit la discipline.
           sx.note = k === 1
-            ? "Veille de course : on réveille les jambes, on ne les fatigue pas. Échauffement doux, trois accélérations franches — puis on range les chaussures."
+            ? "Veille de course : on réveille le corps, on ne le fatigue pas. Échauffement doux, trois accélérations franches — puis "
+              + (sx.d === "sw" ? "on sort de l'eau" : sx.d === "bk" ? "on range le vélo" : "on range les chaussures") + "."
             : "La course approche : le volume descend, l'intensité aussi. Ce que tu gagnes maintenant, c'est de la fraîcheur, pas de la forme.";
           renderSess(sx, refs, r.hz, r.baseRefs);
         }

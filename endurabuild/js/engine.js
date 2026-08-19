@@ -2192,6 +2192,22 @@ const PROG_DOSE_DEPART = rule("lot-progression", "fraction de la dose de pic att
  * La valeur porte sur le PIC : c'est la borne haute de la trajectoire, pas la dose de départ.
  */
 const O81_FOOTING_CIBLE_PIC_MIN = rule("O-81", "plafond du footing au pic quand la table du format le laisse au ras du plancher de dignité : la sortie facile de référence d'une préparation à leg course long", 50);
+/**
+ * O-88 (constat du fondateur sur son plan réel, 19/08/2026) — LE NOMBRE D'ACCÉLÉRATIONS EST
+ * BORNÉ EN ABSOLU, JAMAIS DÉRIVÉ DE LA LONGUEUR DU BLOC.
+ *
+ * La séance « Nage aérobie + accélérations » promettait « la moitié en accélérations de 50 m » :
+ * un compte-FRACTION, donc `bloc plus long → plus d'accélérations` — l'inverse de ce qu'il faut.
+ * Un bloc plus long veut dire plus de fatigue accumulée, donc MOINS de rappels de fréquence ;
+ * livré sur le profil réel : 3 200 m → 32 accélérations, et la relecture complète a trouvé un
+ * bloc de 8 075 m → 81. *« Une accélération faite avec un geste dégradé enseigne le geste
+ * dégradé. »* Même famille que `PT(lo, hi)` d'O-78 : une grandeur de COMPTAGE calculée par un
+ * facteur de TAILLE (règle 14 — un facteur de taille ne multiplie jamais un compte).
+ *
+ * La valeur vient de la fourchette du fondateur (~8 à 12), posée comme ORDRE DE GRANDEUR et non
+ * comme mesure — révocable sans re-mesure. Le reste du bloc reste aérobie continu.
+ */
+const O88_NB_ACCELERATIONS = rule("O-88", "accélérations de 50 m par séance « Nage aérobie + accélérations » : un compte absolu, indépendant de la longueur du bloc", 10);
 const DOSE_CAP_MIN = rule(
   "C25",
   "au-delà de ~40 min de seuil ou ~25 min de VO2max dans une séance, ce n'est plus un entraînement dur mais une course : personne ne l'enchaîne semaine après semaine sans casser",
@@ -6475,7 +6491,10 @@ function buildTriSessions(kit            )              {
     : { name: "Nage seuil (+dist)", note: "Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.", steps: [Wm(300, "+ 4×50m éducatifs"), Object.assign(Bd(1, Math.max(200, Math.round((swimDist * 0.7) / 50) * 50), "sw.css", "15-20s", ", fractionné en séries régulières si besoin", false, "sw"), { bnd: { floor: Math.max(200, Math.round((swimDistCaps.lo * 0.7) / 50) * 50), cap: Math.round(triSwimVolCap * 0.7) }, progCap: _gSw }), Object.assign(Bd(1, Math.max(150, Math.round((swimDist * 0.3) / 50) * 50), "sw.aero", "", " souple, technique relâchée entre les séries", false, "sw"), { bnd: { floor: 150, cap: Math.round(triSwimVolCap * 0.3) } }), Cm(200, "souple")] };
   let swTech = beginner
     ? { name: "Nage éducatifs", note: "Zéro chrono ici : uniquement le geste. Alterne les éducatifs, ne les enchaîne pas en force.", steps: [Wm(100, "souple"), Bd(1, swTechDist, "sw.easy", "20-30s", ", par 50m, 1 point technique à la fois — " + swimDrillGlossary, false, "sw"), Cm(100, "dos souple")] }
-    : { name: "Nage aérobie + accélérations", note: "Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. La technique ne doit pas se dégrader sur les derniers 50m.", steps: [Wm(200, "+ 4×25m accélérations progressives"), Bd(1, swTechDist, "sw.aero", "30-40s sur les 50m rapides", ", dont la moitié en accélérations de 50m", false, "sw"), Cm(150, "souple")] };
+    // O-88 — le COMPTE d'accélérations est une constante absolue, jamais une fraction du bloc :
+    // « la moitié en accélérations » donnait le plus de répétitions techniques exactement quand
+    // le geste est le moins bon (bloc long = fatigue), 81 accélérations mesurées sur le livré.
+    : { name: "Nage aérobie + accélérations", note: "Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.", steps: [Wm(200, "+ 4×25m accélérations progressives"), Bd(1, swTechDist, "sw.aero", "30-40s sur les 50m rapides", ", en 50m accéléré / 50m souple au début du bloc — " + O88_NB_ACCELERATIONS + " accélérations au plus, puis aérobie continu", false, "sw"), Cm(150, "souple")] };
   // B1c (audit v6) — l'épaule existait pour les triathlètes dans le QUESTIONNAIRE mais
   // pas dans le générateur (branche morte : le traitement vivait sous sp === "swim").
   // Ici : mêmes substitutions que le nageur, au budget de la séance remplacée (bnd).
@@ -8815,7 +8834,13 @@ function applyDisciplineCoverage(r              , days          , refs      , hz
       if (disc === "bk") {
         const sess = crossTrainingSession(r, false, false);
         sess.name = "Endurance vélo (couverture discipline)";
-        sess.note = "Ton enveloppe de jours laisse peu de place : cette sortie garantit qu'il reste au moins une séance de vélo dans la semaine. Un plan de duathlon sans vélo n'est pas un plan allégé, c'est un plan d'un autre sport.";
+        // Relecture REEL (19/08/2026, famille U9) — la note nommait « duathlon » en dur : écrite
+        // quand la passe servait le duathlon, elle était livrée telle quelle sur un plan de
+        // TRIATHLON (semaines de récup du profil réel). Et sa causale « ton enveloppe de jours
+        // laisse peu de place » n'est qu'UN des déclencheurs (R4.6 se déclenche aussi quand la
+        // récup a coupé toute séance vélo) : la note ne garde que ce qui est vrai dans tous les
+        // cas — la fonction de la séance, pas une cause devinée.
+        sess.note = "Cette sortie garantit qu'il reste au moins une séance de vélo dans la semaine. Un plan dont le vélo est une discipline ne passe pas une semaine sans vélo : ce ne serait pas un plan allégé, ce serait le plan d'un autre sport.";
         renderSess(sess, refs, hz, r.baseRefs);
         if (tooHeavy(sess)) { pool.unshift(donor); continue; } // le donneur reste disponible pour la discipline suivante
         donor.sessions = [sess];
@@ -13108,8 +13133,12 @@ function generatePlan(profile                , opts                             
           sx.long = false;
           sx.brick = false;
           sx.name = k === 1 ? "Déverrouillage (veille de course)" : "Endurance allégée (avant course)";
+          // Relecture REEL (19/08/2026) — la NOTE avait le défaut que R13.4 a corrigé pour la
+          // ZONE trois lignes plus haut : « on réveille les jambes … on range les chaussures »
+          // livré sur une VEILLE EN NATATION (allures en /100 m). La chute suit la discipline.
           sx.note = k === 1
-            ? "Veille de course : on réveille les jambes, on ne les fatigue pas. Échauffement doux, trois accélérations franches — puis on range les chaussures."
+            ? "Veille de course : on réveille le corps, on ne le fatigue pas. Échauffement doux, trois accélérations franches — puis "
+              + (sx.d === "sw" ? "on sort de l'eau" : sx.d === "bk" ? "on range le vélo" : "on range les chaussures") + "."
             : "La course approche : le volume descend, l'intensité aussi. Ce que tu gagnes maintenant, c'est de la fraîcheur, pas de la forme.";
           renderSess(sx, refs, r.hz, r.baseRefs);
         }

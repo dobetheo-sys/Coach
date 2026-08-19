@@ -1,0 +1,765 @@
+
+===== SEMAINE 1 — base — déclaré 7.9h — livré 7.8h (10 séances : nage 165' vélo 186' course 120') =====
+  J1 [sw 48'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 1075m @ 2'02/100m, fractionné en séries régulières si besoin · 738m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J1 [bk 92'] Sweetspot vélo
+      Échauffement 15min montée progressive · 4×13min @ 208-222W (récup 5min souple entre les blocs) · Retour au calme 10min décrassage · ⏱ dont ~15min de récup entre les blocs — 💡 Cadence 85-95 rpm, soutenu mais maîtrisé.
+  J2 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J3 [sw 16'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 400m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J3 [bk 94'] Force basse cadence
+      Échauffement 15min + montée en intensité · 8×6min @ 184-203W à 50-60 rpm (récup 3min souple entre les blocs) · Retour au calme 10min moulinage · ⏱ dont ~21min de récup entre les blocs — 💡 Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.
+  J4 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J5 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J6 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J7 [sw 41'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 1550m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J7 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+
+===== SEMAINE 2 — base — déclaré 7.8h — livré 7.8h (8 séances : nage 167' vélo 186' course 112') =====
+  J8 [sw 43'] Nage récup courte
+      1875m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J9 [rn 82'] Sortie longue CAP
+      82min @ 5'27-5'55/km — 💡 Endurance fondamentale, allure facile et conversationnelle.
+  J10 — OFF
+  J1 [sw 48'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 1100m @ 2'02/100m, fractionné en séries régulières si besoin · 738m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J1 [bk 92'] Sweetspot vélo
+      Échauffement 15min montée progressive · 4×13min @ 208-222W (récup 5min souple entre les blocs) · Retour au calme 10min décrassage · ⏱ dont ~15min de récup entre les blocs — 💡 Cadence 85-95 rpm, soutenu mais maîtrisé.
+  J2 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J3 [sw 16'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 400m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J3 [bk 94'] Force basse cadence
+      Échauffement 15min + montée en intensité · 8×6min @ 184-203W à 50-60 rpm (récup 3min souple entre les blocs) · Retour au calme 10min moulinage · ⏱ dont ~21min de récup entre les blocs — 💡 Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.
+  J4 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+
+===== SEMAINE 3 — base — déclaré 8.2h — livré 8.2h (8 séances : nage 165' vélo 186' course 142') =====
+  J5 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J6 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J7 [sw 56'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 2250m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J7 [bk 94'] Force basse cadence
+      Échauffement 15min + montée en intensité · 8×6min @ 184-203W à 50-60 rpm (récup 3min souple entre les blocs) · Retour au calme 10min moulinage · ⏱ dont ~21min de récup entre les blocs — 💡 Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.
+  J8 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J9 [rn 82'] Sortie longue CAP
+      82min @ 5'27-5'55/km — 💡 Endurance fondamentale, allure facile et conversationnelle.
+  J10 — OFF
+  J1 [sw 49'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 1125m @ 2'02/100m, fractionné en séries régulières si besoin · 738m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J1 [bk 92'] Sweetspot vélo
+      Échauffement 15min montée progressive · 4×13min @ 208-222W (récup 5min souple entre les blocs) · Retour au calme 10min décrassage · ⏱ dont ~15min de récup entre les blocs — 💡 Cadence 85-95 rpm, soutenu mais maîtrisé.
+
+===== SEMAINE 4 — base — déclaré 5.8h — livré 5.8h (9 séances : nage 166' vélo 94' course 90') =====
+  J2 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J3 [sw 16'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 400m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J3 [bk 94'] Force basse cadence
+      Échauffement 15min + montée en intensité · 8×6min @ 184-203W à 50-60 rpm (récup 3min souple entre les blocs) · Retour au calme 10min moulinage · ⏱ dont ~21min de récup entre les blocs — 💡 Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.
+  J4 [sw 25'] Nage récup courte
+      1100m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J5 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J6 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J7 [sw 16'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 400m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J7 [sw 49'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 1125m @ 2'02/100m, fractionné en séries régulières si besoin · 738m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J8 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+
+===== SEMAINE 5 — base (récup) — déclaré 5.8h — livré 5.8h (5 séances : nage 96' vélo 156' course 96') =====
+  J9 [rn 70'] Sortie longue CAP
+      70min @ 5'27-5'55/km — 💡 Endurance fondamentale, allure facile et conversationnelle.
+  J10 — OFF
+  J1 [bk 156'] Endurance vélo (couverture discipline)
+      156min @ 132-177W — 💡 Cette sortie garantit qu'il reste au moins une séance de vélo dans la semaine. Un plan dont le vélo est une discipline ne passe pas une semaine sans vélo : ce ne serait pas un plan allégé, ce serait le plan d'un autre sport.
+  J2 [sw 48'] Nage récup courte
+      2125m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J3 — OFF
+  J4 [rn 26'] Footing facile
+      26min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J5 [sw 48'] Nage récup courte
+      2125m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+
+===== SEMAINE 6 — base (récup) — déclaré 4.9h — livré 4.9h (6 séances : nage 110' vélo 96' course 90') =====
+  J6 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J7 — OFF
+  J8 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J9 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J10 — OFF
+  J1 [sw 50'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 1175m @ 2'02/100m, fractionné en séries régulières si besoin · 738m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J1 [bk 96'] Sweetspot vélo
+      Échauffement 15min montée progressive · 4×14min @ 208-222W (récup 5min souple entre les blocs) · Retour au calme 10min décrassage · ⏱ dont ~15min de récup entre les blocs — 💡 Cadence 85-95 rpm, soutenu mais maîtrisé.
+  J2 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+
+===== SEMAINE 7 — base — déclaré 6.7h — livré 6.4h (9 séances : nage 158' vélo 94' course 132') =====
+  J3 [sw 16'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 400m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J3 [bk 94'] Force basse cadence
+      Échauffement 15min + montée en intensité · 8×6min @ 184-203W à 50-60 rpm (récup 3min souple entre les blocs) · Retour au calme 10min moulinage · ⏱ dont ~21min de récup entre les blocs — 💡 Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.
+  J4 [sw 22'] Nage récup courte
+      950m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J5 [rn 28'] Footing facile
+      28min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J6 [rn 28'] Footing facile
+      28min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J7 [sw 16'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 400m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J7 [sw 48'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 1125m @ 2'02/100m, fractionné en séries régulières si besoin · 675m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J8 [sw 56'] Nage récup courte
+      2450m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J9 [rn 76'] Sortie longue CAP
+      76min @ 5'27-5'55/km — 💡 Endurance fondamentale, allure facile et conversationnelle.
+
+===== SEMAINE 8 — base — déclaré 7h — livré 7.0h (8 séances : nage 197' vélo 153' course 72') =====
+  J10 — OFF
+  J1 [sw 42'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 925m @ 2'02/100m, fractionné en séries régulières si besoin · 600m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J1 [bk 77'] Sweetspot vélo
+      Échauffement 15min montée progressive · 3×14min @ 208-222W (récup 5min souple entre les blocs) · Retour au calme 10min décrassage · ⏱ dont ~10min de récup entre les blocs — 💡 Cadence 85-95 rpm, soutenu mais maîtrisé.
+  J2 [rn 24'] Footing facile
+      24min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J3 [sw 108'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 4700m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J3 [bk 76'] Force basse cadence
+      Échauffement 15min + montée en intensité · 6×6min @ 184-203W à 50-60 rpm (récup 3min souple entre les blocs) · Retour au calme 10min moulinage · ⏱ dont ~15min de récup entre les blocs — 💡 Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.
+  J4 [sw 47'] Nage récup courte
+      2075m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J5 [rn 24'] Footing facile
+      24min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J6 [rn 24'] Footing facile
+      24min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+
+===== SEMAINE 9 — base — déclaré 7.8h — livré 7.8h (9 séances : nage 204' vélo 153' course 108') =====
+  J7 [sw 48'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 1900m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J7 [bk 76'] Force basse cadence
+      Échauffement 15min + montée en intensité · 6×6min @ 184-203W à 50-60 rpm (récup 3min souple entre les blocs) · Retour au calme 10min moulinage · ⏱ dont ~15min de récup entre les blocs — 💡 Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.
+  J8 [sw 46'] Nage récup courte
+      2000m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J9 [rn 62'] Sortie longue CAP
+      62min @ 5'27-5'55/km — 💡 Endurance fondamentale, allure facile et conversationnelle.
+  J10 — OFF
+  J1 [sw 41'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 925m @ 2'02/100m, fractionné en séries régulières si besoin · 575m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J1 [bk 77'] Sweetspot vélo
+      Échauffement 15min montée progressive · 3×14min @ 208-222W (récup 5min souple entre les blocs) · Retour au calme 10min décrassage · ⏱ dont ~10min de récup entre les blocs — 💡 Cadence 85-95 rpm, soutenu mais maîtrisé.
+  J2 [rn 23'] Footing facile
+      23min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J3 [sw 69'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 2850m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J3 [rn 23'] Footing facile
+      23min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+
+===== SEMAINE 10 — base — déclaré 8.1h — livré 8.1h (7 séances : nage 252' vélo 94' course 142') =====
+  J4 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J5 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J6 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J7 [sw 132'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 5775m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J7 [bk 94'] Force basse cadence
+      Échauffement 15min + montée en intensité · 8×6min @ 184-203W à 50-60 rpm (récup 3min souple entre les blocs) · Retour au calme 10min moulinage · ⏱ dont ~21min de récup entre les blocs — 💡 Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.
+  J8 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J9 [rn 82'] Sortie longue CAP
+      82min @ 5'27-5'55/km — 💡 Endurance fondamentale, allure facile et conversationnelle.
+  J10 — OFF
+
+===== SEMAINE 11 — base (récup) — déclaré 3.5h — livré 3.5h (5 séances : nage 120' vélo 0' course 90') =====
+  J1 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J2 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J3 — OFF
+  J4 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J5 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J6 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J7 — OFF
+
+===== SEMAINE 12 — base — déclaré 8.3h — livré 8.3h (8 séances : nage 250' vélo 190' course 60') =====
+  J8 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J9 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J10 — OFF
+  J1 [sw 52'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 1275m @ 2'02/100m, fractionné en séries régulières si besoin · 738m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J1 [bk 96'] Sweetspot vélo
+      Échauffement 15min montée progressive · 4×14min @ 208-222W (récup 5min souple entre les blocs) · Retour au calme 10min décrassage · ⏱ dont ~15min de récup entre les blocs — 💡 Cadence 85-95 rpm, soutenu mais maîtrisé.
+  J2 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J3 [sw 78'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 3275m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J3 [bk 94'] Force basse cadence
+      Échauffement 15min + montée en intensité · 8×6min @ 184-203W à 50-60 rpm (récup 3min souple entre les blocs) · Retour au calme 10min moulinage · ⏱ dont ~21min de récup entre les blocs — 💡 Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.
+  J4 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+
+===== SEMAINE 13 — base — déclaré 9.5h — livré 9.2h (8 séances : nage 224' vélo 190' course 136') =====
+  J5 [rn 29'] Footing facile
+      29min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J6 [rn 29'] Footing facile
+      29min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J7 [sw 118'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 5150m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J7 [bk 94'] Force basse cadence
+      Échauffement 15min + montée en intensité · 8×6min @ 184-203W à 50-60 rpm (récup 3min souple entre les blocs) · Retour au calme 10min moulinage · ⏱ dont ~21min de récup entre les blocs — 💡 Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.
+  J8 [sw 56'] Nage récup courte
+      2475m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J9 [rn 78'] Sortie longue CAP
+      78min @ 5'27-5'55/km — 💡 Endurance fondamentale, allure facile et conversationnelle.
+  J10 — OFF
+  J1 [sw 50'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 1225m @ 2'02/100m, fractionné en séries régulières si besoin · 700m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J1 [bk 96'] Sweetspot vélo
+      Échauffement 15min montée progressive · 4×14min @ 208-222W (récup 5min souple entre les blocs) · Retour au calme 10min décrassage · ⏱ dont ~15min de récup entre les blocs — 💡 Cadence 85-95 rpm, soutenu mais maîtrisé.
+
+===== SEMAINE 14 — dev — déclaré 7.2h — livré 7.2h (9 séances : nage 250' vélo 94' course 90') =====
+  J2 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J3 [sw 16'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 400m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J3 [bk 94'] Force basse cadence
+      Échauffement 15min + montée en intensité · 8×6min @ 184-203W à 50-60 rpm (récup 3min souple entre les blocs) · Retour au calme 10min moulinage · ⏱ dont ~21min de récup entre les blocs — 💡 Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.
+  J4 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J5 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J6 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J7 [sw 61'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 2500m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J7 [sw 53'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 1300m @ 2'02/100m, fractionné en séries régulières si besoin · 738m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J8 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+
+===== SEMAINE 15 — dev — déclaré 7.9h — livré 7.9h (8 séances : nage 209' vélo 147' course 120') =====
+  J9 [rn 68'] Sortie longue CAP
+      68min @ 5'27-5'55/km — 💡 Endurance fondamentale, allure facile et conversationnelle.
+  J10 — OFF
+  J1 [sw 46'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 1100m @ 2'02/100m, fractionné en séries régulières si besoin · 625m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J1 [bk 62'] VO2max vélo
+      Échauffement 16min progressif + 3 sprints · 5×4min @ 250-278W (récup 4min récup entre les blocs) · Retour au calme 10min souple · ⏱ dont ~16min de récup entre les blocs — 💡 Intensité max tenable 4min, récup quasi complète entre.
+  J2 [rn 26'] Footing facile
+      26min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J3 [sw 113'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 4900m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J3 [bk 85'] Force basse cadence
+      Échauffement 15min + montée en intensité · 7×6min @ 184-203W à 50-60 rpm (récup 3min souple entre les blocs) · Retour au calme 10min moulinage · ⏱ dont ~18min de récup entre les blocs — 💡 Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.
+  J4 [sw 50'] Nage récup courte
+      2200m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J5 [rn 26'] Footing facile
+      26min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+
+===== SEMAINE 16 — dev — déclaré 8h — livré 8.0h (7 séances : nage 246' vélo 94' course 142') =====
+  J6 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J7 [sw 126'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 5525m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J7 [bk 94'] Force basse cadence
+      Échauffement 15min + montée en intensité · 8×6min @ 184-203W à 50-60 rpm (récup 3min souple entre les blocs) · Retour au calme 10min moulinage · ⏱ dont ~21min de récup entre les blocs — 💡 Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.
+  J8 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J9 [rn 82'] Sortie longue CAP
+      82min @ 5'27-5'55/km — 💡 Endurance fondamentale, allure facile et conversationnelle.
+  J10 — OFF
+  J1 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J2 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+
+===== SEMAINE 17 — dev (récup) — déclaré 3.5h — livré 3.5h (5 séances : nage 120' vélo 0' course 90') =====
+  J3 — OFF
+  J4 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J5 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J6 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J7 — OFF
+  J8 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J9 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+
+===== SEMAINE 18 — dev — déclaré 8.4h — livré 8.4h (8 séances : nage 247' vélo 164' course 93') =====
+  J10 — OFF
+  J1 [sw 55'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 1400m @ 2'02/100m, fractionné en séries régulières si besoin · 738m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J1 [bk 70'] VO2max vélo
+      Échauffement 16min progressif + 3 sprints · 6×4min @ 250-278W (récup 4min récup entre les blocs) · Retour au calme 10min souple · ⏱ dont ~20min de récup entre les blocs — 💡 Intensité max tenable 4min, récup quasi complète entre.
+  J2 [rn 31'] Footing facile
+      31min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J3 [sw 132'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 5775m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J3 [bk 94'] Force basse cadence
+      Échauffement 15min + montée en intensité · 8×6min @ 184-203W à 50-60 rpm (récup 3min souple entre les blocs) · Retour au calme 10min moulinage · ⏱ dont ~21min de récup entre les blocs — 💡 Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.
+  J4 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J5 [rn 31'] Footing facile
+      31min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J6 [rn 31'] Footing facile
+      31min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+
+===== SEMAINE 19 — dev — déclaré 9.1h — livré 9.1h (9 séances : nage 245' vélo 164' course 137') =====
+  J7 [sw 51'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 2025m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J7 [bk 94'] Force basse cadence
+      Échauffement 15min + montée en intensité · 8×6min @ 184-203W à 50-60 rpm (récup 3min souple entre les blocs) · Retour au calme 10min moulinage · ⏱ dont ~21min de récup entre les blocs — 💡 Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.
+  J8 [sw 56'] Nage récup courte
+      2475m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J9 [rn 77'] Sortie longue CAP
+      77min @ 5'27-5'55/km — 💡 Endurance fondamentale, allure facile et conversationnelle.
+  J10 — OFF
+  J1 [sw 52'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 1325m @ 2'02/100m, fractionné en séries régulières si besoin · 700m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J1 [bk 70'] VO2max vélo
+      Échauffement 16min progressif + 3 sprints · 6×4min @ 250-278W (récup 4min récup entre les blocs) · Retour au calme 10min souple · ⏱ dont ~20min de récup entre les blocs — 💡 Intensité max tenable 4min, récup quasi complète entre.
+  J2 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J3 [sw 86'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 3675m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J3 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+
+===== SEMAINE 20 — dev — déclaré 8h — livré 8.0h (7 séances : nage 242' vélo 94' course 144') =====
+  J4 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J5 [rn 31'] Footing facile
+      31min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J6 [rn 31'] Footing facile
+      31min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J7 [sw 122'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 5350m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J7 [bk 94'] Force basse cadence
+      Échauffement 15min + montée en intensité · 8×6min @ 184-203W à 50-60 rpm (récup 3min souple entre les blocs) · Retour au calme 10min moulinage · ⏱ dont ~21min de récup entre les blocs — 💡 Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.
+  J8 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J9 [rn 82'] Sortie longue CAP
+      82min @ 5'27-5'55/km — 💡 Endurance fondamentale, allure facile et conversationnelle.
+  J10 — OFF
+
+===== SEMAINE 21 — dev — déclaré 8.4h — livré 8.4h (10 séances : nage 246' vélo 147' course 112') =====
+  J1 [sw 51'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 1300m @ 2'02/100m, fractionné en séries régulières si besoin · 650m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J1 [bk 62'] VO2max vélo
+      Échauffement 16min progressif + 3 sprints · 5×4min @ 250-278W (récup 4min récup entre les blocs) · Retour au calme 10min souple · ⏱ dont ~16min de récup entre les blocs — 💡 Intensité max tenable 4min, récup quasi complète entre.
+  J2 [rn 28'] Footing facile
+      28min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J3 [sw 59'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 2425m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J3 [bk 85'] Force basse cadence
+      Échauffement 15min + montée en intensité · 7×6min @ 184-203W à 50-60 rpm (récup 3min souple entre les blocs) · Retour au calme 10min moulinage · ⏱ dont ~18min de récup entre les blocs — 💡 Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.
+  J4 [sw 52'] Nage récup courte
+      2275m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J5 [rn 28'] Footing facile
+      28min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J6 [rn 28'] Footing facile
+      28min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J7 [sw 84'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 3550m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J7 [rn 28'] Footing facile
+      28min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+
+===== SEMAINE 22 — dev (récup) — déclaré 7h — livré 6.8h (5 séances : nage 60' vélo 200' course 145') =====
+  J8 [bk 200'] Endurance vélo (couverture discipline)
+      200min @ 132-177W — 💡 Cette sortie garantit qu'il reste au moins une séance de vélo dans la semaine. Un plan dont le vélo est une discipline ne passe pas une semaine sans vélo : ce ne serait pas un plan allégé, ce serait le plan d'un autre sport.
+  J9 [rn 85'] Sortie longue CAP
+      85min @ 5'27-5'55/km — 💡 Endurance fondamentale, allure facile et conversationnelle.
+  J10 — OFF
+  J1 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J2 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J3 — OFF
+  J4 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+
+===== SEMAINE 23 — dev (récup) — déclaré 5.1h — livré 5.1h (6 séances : nage 178' vélo 70' course 60') =====
+  J5 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J6 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J7 — OFF
+  J8 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J9 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J10 — OFF
+  J1 [sw 58'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 1500m @ 2'02/100m, fractionné en séries régulières si besoin · 788m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J1 [bk 70'] VO2max vélo
+      Échauffement 16min progressif + 3 sprints · 6×4min @ 250-278W (récup 4min récup entre les blocs) · Retour au calme 10min souple · ⏱ dont ~20min de récup entre les blocs — 💡 Intensité max tenable 4min, récup quasi complète entre.
+
+===== SEMAINE 24 — dev — déclaré 7.5h — livré 7.5h (9 séances : nage 250' vélo 94' course 108') =====
+  J2 [rn 36'] Footing facile
+      36min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J3 [sw 16'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 400m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J3 [bk 94'] Force basse cadence
+      Échauffement 15min + montée en intensité · 8×6min @ 184-203W à 50-60 rpm (récup 3min souple entre les blocs) · Retour au calme 10min moulinage · ⏱ dont ~21min de récup entre les blocs — 💡 Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.
+  J4 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J5 [rn 36'] Footing facile
+      36min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J6 [rn 36'] Footing facile
+      36min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J7 [sw 55'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 2200m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J7 [sw 59'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 1525m @ 2'02/100m, fractionné en séries régulières si besoin · 814m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J8 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+
+===== SEMAINE 25 — spec — déclaré 8.3h — livré 8.3h (8 séances : nage 209' vélo 62' course 121') =====
+  J9 [br 106'] Brick vélo+CAP
+      60min vélo @ 132-177W, puis 30min vélo @ 177-194W à l'allure de ton jour J, échauffement progressif inclus, puis transition rapide + 16min CAP @ allure cible — 💡 Le brick simule la course : sortie longue à vélo en endurance, DERNIER TIERS à l'allure exacte de ton jour J (c'est là qu'on apprend le chiffre à tenir), puis enchaînement rapide vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP. C'est la transition qu'on entraîne ici — la séance la plus spécifique de ta semaine.
+  J10 — OFF
+  J1 [sw 51'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 1275m @ 2'02/100m, fractionné en séries régulières si besoin · 700m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J1 [bk 62'] VO2max vélo
+      Échauffement 16min progressif + 3 sprints · 5×4min @ 250-278W (récup 4min récup entre les blocs) · Retour au calme 10min souple · ⏱ dont ~16min de récup entre les blocs — 💡 Puissance aérobie maximale, maintenue jusqu'au pic — pas abandonnée en spécifique (la race-pace vélo est travaillée dans le brick).
+  J2 [rn 32'] Footing facile
+      32min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J3 [sw 124'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 5400m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J3 [rn 57'] Allure course (tri)
+      Échauffement 15min footing progressif · 34min @ 5'19-5'34/km · Retour au calme 8min retour au calme — 💡 L'allure de course du jour J : mémorise la sensation, jambes déjà entamées par le vélo.
+  J4 [sw 34'] Nage continue en eau libre — 1250 m d'affilée
+      Échauffement 200m souple, montée progressive · 1250m @ 2'09/100m, SANS ARRÊT · Retour au calme 150m relâché — 💡 En conditions RÉELLES si tu le peux : eau libre, et en combinaison si ta course l'est. Sans arrêt, sans mur, allure régulière que tu tiendrais une heure. Ce n'est pas une séance de volume : c'est la continuité qu'on construit, et elle ne s'obtient pas en additionnant des séries. Lève la tête tous les 6 à 10 cycles pour te repérer — ça casse la position, ça s'apprend en le faisant.
+  J5 [rn 32'] Footing facile
+      32min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+
+===== SEMAINE 26 — spec — déclaré 9.5h — livré 9.1h (8 séances : nage 232' vélo 70' course 134') =====
+  J6 [rn 36'] Footing facile
+      36min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J7 [sw 119'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 5200m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J7 [rn 62'] Allure course (tri)
+      Échauffement 15min footing progressif · 39min @ 5'19-5'34/km · Retour au calme 8min retour au calme — 💡 L'allure de course du jour J : mémorise la sensation, jambes déjà entamées par le vélo.
+  J8 [sw 56'] Nage récup courte
+      2475m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J9 [br 111'] Brick vélo+CAP
+      63min vélo @ 132-177W, puis 31min vélo @ 177-194W à l'allure de ton jour J, échauffement progressif inclus, puis transition rapide + 17min CAP @ allure cible — 💡 Le brick simule la course : sortie longue à vélo en endurance, DERNIER TIERS à l'allure exacte de ton jour J (c'est là qu'on apprend le chiffre à tenir), puis enchaînement rapide vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP. C'est la transition qu'on entraîne ici — la séance la plus spécifique de ta semaine.
+  J10 — OFF
+  J1 [sw 57'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 1450m @ 2'02/100m, fractionné en séries régulières si besoin · 800m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J1 [bk 70'] VO2max vélo
+      Échauffement 16min progressif + 3 sprints · 6×4min @ 250-278W (récup 4min récup entre les blocs) · Retour au calme 10min souple · ⏱ dont ~20min de récup entre les blocs — 💡 Puissance aérobie maximale, maintenue jusqu'au pic — pas abandonnée en spécifique (la race-pace vélo est travaillée dans le brick).
+  J2 [rn 36'] Footing facile
+      36min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+
+===== SEMAINE 27 — spec — déclaré 8.5h — livré 8.5h (9 séances : nage 249' vélo 0' course 143') =====
+  J3 [sw 16'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 400m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J3 [rn 65'] Allure course (tri)
+      Échauffement 15min footing progressif · 42min @ 5'19-5'34/km · Retour au calme 8min retour au calme — 💡 L'allure de course du jour J : mémorise la sensation, jambes déjà entamées par le vélo.
+  J4 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J5 [rn 39'] Footing facile
+      39min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J6 [rn 39'] Footing facile
+      39min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J7 [sw 53'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 2125m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J7 [sw 60'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 1575m @ 2'02/100m, fractionné en séries régulières si besoin · 847m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J8 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J9 [br 116'] Brick vélo+CAP
+      66min vélo @ 132-177W, puis 33min vélo @ 177-194W à l'allure de ton jour J, échauffement progressif inclus, puis transition rapide + 17min CAP @ allure cible — 💡 Le brick simule la course : sortie longue à vélo en endurance, DERNIER TIERS à l'allure exacte de ton jour J (c'est là qu'on apprend le chiffre à tenir), puis enchaînement rapide vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP. C'est la transition qu'on entraîne ici — la séance la plus spécifique de ta semaine.
+
+===== SEMAINE 28 — spec (récup) — déclaré 6.8h — livré 6.8h (5 séances : nage 120' vélo 225' course 60') =====
+  J10 — OFF
+  J1 [bk 225'] Endurance vélo (couverture discipline)
+      225min @ 132-177W — 💡 Cette sortie garantit qu'il reste au moins une séance de vélo dans la semaine. Un plan dont le vélo est une discipline ne passe pas une semaine sans vélo : ce ne serait pas un plan allégé, ce serait le plan d'un autre sport.
+  J2 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J3 — OFF
+  J4 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J5 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J6 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+
+===== SEMAINE 29 — spec (récup) — déclaré 7.3h — livré 6.7h (7 séances : nage 196' vélo 70' course 137') =====
+  J7 — OFF
+  J8 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J9 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J10 — OFF
+  J1 [sw 62'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 1625m @ 2'02/100m, fractionné en séries régulières si besoin · 859m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J1 [bk 70'] VO2max vélo
+      Échauffement 16min progressif + 3 sprints · 6×4min @ 250-278W (récup 4min récup entre les blocs) · Retour au calme 10min souple · ⏱ dont ~20min de récup entre les blocs — 💡 Puissance aérobie maximale, maintenue jusqu'au pic — pas abandonnée en spécifique (la race-pace vélo est travaillée dans le brick).
+  J2 [rn 41'] Footing facile
+      41min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J3 [sw 74'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 3125m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J3 [rn 66'] Allure course (tri)
+      Échauffement 15min footing progressif · 43min @ 5'19-5'34/km · Retour au calme 8min retour au calme — 💡 L'allure de course du jour J : mémorise la sensation, jambes déjà entamées par le vélo.
+
+===== SEMAINE 30 — spec — déclaré 8.9h — livré 8.9h (7 séances : nage 252' vélo 0' course 150') =====
+  J4 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J5 [rn 42'] Footing facile
+      42min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J6 [rn 42'] Footing facile
+      42min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J7 [sw 132'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 5800m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J7 [rn 66'] Allure course (tri)
+      Échauffement 15min footing progressif · 43min @ 5'19-5'34/km · Retour au calme 8min retour au calme — 💡 L'allure de course du jour J : mémorise la sensation, jambes déjà entamées par le vélo.
+  J8 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J9 [br 132'] Brick vélo+CAP
+      75min vélo @ 132-177W, puis 37min vélo @ 177-194W à l'allure de ton jour J, échauffement progressif inclus, puis transition rapide + 20min CAP @ allure cible — 💡 Le brick simule la course : sortie longue à vélo en endurance, DERNIER TIERS à l'allure exacte de ton jour J (c'est là qu'on apprend le chiffre à tenir), puis enchaînement rapide vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP. C'est la transition qu'on entraîne ici — la séance la plus spécifique de ta semaine.
+  J10 — OFF
+
+===== SEMAINE 31 — spec — déclaré 8.2h — livré 8.2h (10 séances : nage 243' vélo 62' course 189') =====
+  J1 [sw 51'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 1300m @ 2'02/100m, fractionné en séries régulières si besoin · 675m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J1 [bk 62'] VO2max vélo
+      Échauffement 16min progressif + 3 sprints · 5×4min @ 250-278W (récup 4min récup entre les blocs) · Retour au calme 10min souple · ⏱ dont ~16min de récup entre les blocs — 💡 Puissance aérobie maximale, maintenue jusqu'au pic — pas abandonnée en spécifique (la race-pace vélo est travaillée dans le brick).
+  J2 [rn 33'] Footing facile
+      33min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J3 [sw 27'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 900m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J3 [rn 57'] Allure course (tri)
+      Échauffement 15min footing progressif · 34min @ 5'19-5'34/km · Retour au calme 8min retour au calme — 💡 L'allure de course du jour J : mémorise la sensation, jambes déjà entamées par le vélo.
+  J4 [sw 41'] Nage continue — 1550 m d'affilée
+      Échauffement 200m souple, montée progressive · 1550m @ 2'09/100m, SANS ARRÊT · Retour au calme 150m relâché — 💡 Sans arrêt, sans mur, allure régulière que tu tiendrais une heure. Ce n'est pas une séance de volume : c'est la continuité qu'on construit, et elle ne s'obtient pas en additionnant des séries. Lève la tête tous les 6 à 10 cycles pour te repérer — ça casse la position, ça s'apprend en le faisant.
+  J5 [rn 33'] Footing facile
+      33min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J6 [rn 33'] Footing facile
+      33min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J7 [sw 124'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 5425m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J7 [rn 33'] Footing facile
+      33min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+
+===== SEMAINE 32 — spec — déclaré 9.6h — livré 9.0h (8 séances : nage 225' vélo 70' course 102') =====
+  J8 [sw 54'] Nage récup courte
+      2375m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J9 [br 145'] Brick vélo+CAP
+      82min vélo @ 132-177W, puis 41min vélo @ 177-194W à l'allure de ton jour J, échauffement progressif inclus, puis transition rapide + 22min CAP @ allure cible — 💡 Le brick simule la course : sortie longue à vélo en endurance, DERNIER TIERS à l'allure exacte de ton jour J (c'est là qu'on apprend le chiffre à tenir), puis enchaînement rapide vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP. C'est la transition qu'on entraîne ici — la séance la plus spécifique de ta semaine.
+  J10 — OFF
+  J1 [sw 58'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 1525m @ 2'02/100m, fractionné en séries régulières si besoin · 800m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J1 [bk 70'] VO2max vélo
+      Échauffement 16min progressif + 3 sprints · 6×4min @ 250-278W (récup 4min récup entre les blocs) · Retour au calme 10min souple · ⏱ dont ~20min de récup entre les blocs — 💡 Puissance aérobie maximale, maintenue jusqu'au pic — pas abandonnée en spécifique (la race-pace vélo est travaillée dans le brick).
+  J2 [rn 39'] Footing facile
+      39min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J3 [sw 59'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 2425m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J3 [rn 63'] Allure course (tri)
+      Échauffement 15min footing progressif · 40min @ 5'19-5'34/km · Retour au calme 8min retour au calme — 💡 L'allure de course du jour J : mémorise la sensation, jambes déjà entamées par le vélo.
+  J4 [sw 54'] Nage récup courte
+      2375m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+
+===== SEMAINE 33 — spec — déclaré 9.6h — livré 9.0h (6 séances : nage 241' vélo 0' course 149') =====
+  J5 [rn 42'] Footing facile
+      42min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J6 [rn 42'] Footing facile
+      42min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J7 [sw 181'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 8075m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J7 [rn 65'] Allure course (tri)
+      Échauffement 15min footing progressif · 42min @ 5'19-5'34/km · Retour au calme 8min retour au calme — 💡 L'allure de course du jour J : mémorise la sensation, jambes déjà entamées par le vélo.
+  J8 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J9 [br 152'] Brick vélo+CAP
+      86min vélo @ 132-177W, puis 43min vélo @ 177-194W à l'allure de ton jour J, échauffement progressif inclus, puis transition rapide + 23min CAP @ allure cible — 💡 Le brick simule la course : sortie longue à vélo en endurance, DERNIER TIERS à l'allure exacte de ton jour J (c'est là qu'on apprend le chiffre à tenir), puis enchaînement rapide vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP. C'est la transition qu'on entraîne ici — la séance la plus spécifique de ta semaine.
+  J10 — OFF
+  J1 — OFF
+
+===== SEMAINE 34 — spec (récup) — déclaré 4h — livré 4.0h (5 séances : nage 180' vélo 0' course 60') =====
+  J2 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J3 — OFF
+  J4 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J5 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J6 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J7 — OFF
+  J8 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+
+===== SEMAINE 35 — spec — déclaré 8.4h — livré 8.4h (8 séances : nage 246' vélo 70' course 190') =====
+  J9 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J10 — OFF
+  J1 [sw 66'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 1800m @ 2'02/100m, fractionné en séries régulières si besoin · 894m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J1 [bk 70'] VO2max vélo
+      Échauffement 16min progressif + 3 sprints · 6×4min @ 250-278W (récup 4min récup entre les blocs) · Retour au calme 10min souple · ⏱ dont ~20min de récup entre les blocs — 💡 Puissance aérobie maximale, maintenue jusqu'au pic — pas abandonnée en spécifique (la race-pace vélo est travaillée dans le brick).
+  J2 [rn 46'] Footing facile
+      46min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J3 [sw 120'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 5225m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J3 [rn 68'] Allure course (tri)
+      Échauffement 15min footing progressif · 45min @ 5'19-5'34/km · Retour au calme 8min retour au calme — 💡 L'allure de course du jour J : mémorise la sensation, jambes déjà entamées par le vélo.
+  J4 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J5 [rn 46'] Footing facile
+      46min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+
+===== SEMAINE 36 — spec — déclaré 9.3h — livré 9.3h (8 séances : nage 211' vélo 49' course 124') =====
+  J6 [rn 34'] Footing facile
+      34min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J7 [sw 111'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 4825m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J7 [rn 56'] Allure course (tri)
+      Échauffement 15min footing progressif · 33min @ 5'19-5'34/km · Retour au calme 8min retour au calme — 💡 L'allure de course du jour J : mémorise la sensation, jambes déjà entamées par le vélo.
+  J8 [sw 48'] Nage continue — 1900 m d'affilée
+      Échauffement 200m souple, montée progressive · 1900m @ 2'09/100m, SANS ARRÊT · Retour au calme 150m relâché — 💡 Sans arrêt, sans mur, allure régulière que tu tiendrais une heure. Ce n'est pas une séance de volume : c'est la continuité qu'on construit, et elle ne s'obtient pas en additionnant des séries. Lève la tête tous les 6 à 10 cycles pour te repérer — ça casse la position, ça s'apprend en le faisant.
+  J9 [br 173'] Brick vélo+CAP
+      98min vélo @ 132-177W, puis 49min vélo @ 177-194W à l'allure de ton jour J, échauffement progressif inclus, puis transition rapide + 26min CAP @ allure cible — 💡 Le brick simule la course : sortie longue à vélo en endurance, DERNIER TIERS à l'allure exacte de ton jour J (c'est là qu'on apprend le chiffre à tenir), puis enchaînement rapide vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP. C'est la transition qu'on entraîne ici — la séance la plus spécifique de ta semaine.
+  J10 — OFF
+  J1 [sw 52'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 1325m @ 2'02/100m, fractionné en séries régulières si besoin · 675m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J1 [bk 49'] VO2max vélo
+      Échauffement 13min progressif + 3 sprints · 4×4min @ 250-278W (récup 4min récup entre les blocs) · Retour au calme 8min souple · ⏱ dont ~12min de récup entre les blocs — 💡 Puissance aérobie maximale, maintenue jusqu'au pic — pas abandonnée en spécifique (la race-pace vélo est travaillée dans le brick).
+  J2 [rn 34'] Footing facile
+      34min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+
+===== SEMAINE 37 — peak — déclaré 9.2h — livré 9.2h (9 séances : nage 249' vélo 0' course 128') =====
+  J3 [sw 16'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 400m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J3 [rn 68'] Allure course (tri)
+      Échauffement 15min footing progressif · 45min @ 5'19-5'34/km · Retour au calme 8min retour au calme — 💡 L'allure de course du jour J : mémorise la sensation, jambes déjà entamées par le vélo.
+  J4 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J5 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J6 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J7 [sw 46'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 1825m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J7 [sw 67'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 1825m @ 2'02/100m, fractionné en séries régulières si besoin · 900m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J8 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J9 [br 173'] Brick vélo+CAP
+      98min vélo @ 132-177W, puis 49min vélo @ 177-194W à l'allure de ton jour J, échauffement progressif inclus, puis transition rapide + 26min CAP @ allure cible — 💡 Le brick simule la course : sortie longue à vélo en endurance, DERNIER TIERS à l'allure exacte de ton jour J (c'est là qu'on apprend le chiffre à tenir), puis enchaînement rapide vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP. C'est la transition qu'on entraîne ici — la séance la plus spécifique de ta semaine.
+
+===== SEMAINE 38 — peak — déclaré 8h — livré 8.0h (7 séances : nage 128' vélo 70' course 98') =====
+  J10 — OFF
+  J1 [sw 68'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 1875m @ 2'02/100m, fractionné en séries régulières si besoin · 900m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J1 [bk 70'] VO2max vélo
+      Échauffement 16min progressif + 3 sprints · 6×4min @ 250-278W (récup 4min récup entre les blocs) · Retour au calme 10min souple · ⏱ dont ~20min de récup entre les blocs — 💡 Puissance aérobie maximale, maintenue jusqu'au pic — pas abandonnée en spécifique (la race-pace vélo est travaillée dans le brick).
+  J2 [rn 38'] Allure course (tri)
+      Échauffement 10min footing progressif + gammes · 2×9min @ 5'19-5'34/km (récup 2min trot entre les blocs) · Retour au calme 8min footing très facile — 💡 L'allure du jour J, jambes fraîches cette fois : mémorise la sensation, elle doit devenir automatique.
+  J3 [br 181'] Brick vélo+CAP
+      103min vélo @ 132-177W, puis 51min vélo @ 177-194W à l'allure de ton jour J, échauffement progressif inclus, puis transition rapide + 27min CAP @ allure cible — 💡 Le brick simule la course : sortie longue à vélo en endurance, DERNIER TIERS à l'allure exacte de ton jour J (c'est là qu'on apprend le chiffre à tenir), puis enchaînement rapide vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP. C'est la transition qu'on entraîne ici — la séance la plus spécifique de ta semaine.
+  J4 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J5 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J6 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+
+===== SEMAINE 39 — peak — déclaré 8.8h — livré 8.7h (9 séances : nage 175' vélo 49' course 109') =====
+  J7 [sw 45'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 1775m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J7 [rn 52'] Allure course (tri)
+      Échauffement 15min footing progressif · 29min @ 5'19-5'34/km · Retour au calme 8min retour au calme — 💡 L'allure de course du jour J : mémorise la sensation, jambes déjà entamées par le vélo.
+  J8 [sw 38'] Nage récup courte
+      1650m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J9 [br 191'] Brick vélo+CAP
+      108min vélo @ 132-177W, puis 54min vélo @ 177-194W à l'allure de ton jour J, échauffement progressif inclus, puis transition rapide + 29min CAP @ allure cible — 💡 Le brick simule la course : sortie longue à vélo en endurance, DERNIER TIERS à l'allure exacte de ton jour J (c'est là qu'on apprend le chiffre à tenir), puis enchaînement rapide vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP. C'est la transition qu'on entraîne ici — la séance la plus spécifique de ta semaine.
+  J10 — OFF
+  J1 [sw 47'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 1225m @ 2'02/100m, fractionné en séries régulières si besoin · 575m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J1 [bk 49'] VO2max vélo
+      Échauffement 13min progressif + 3 sprints · 4×4min @ 250-278W (récup 4min récup entre les blocs) · Retour au calme 8min souple · ⏱ dont ~12min de récup entre les blocs — 💡 Puissance aérobie maximale, maintenue jusqu'au pic — pas abandonnée en spécifique (la race-pace vélo est travaillée dans le brick).
+  J2 [rn 19'] Footing facile
+      19min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J3 [sw 45'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 1775m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J3 [rn 38'] Allure course (tri)
+      Échauffement 10min footing progressif + gammes · 2×9min @ 5'19-5'34/km (récup 2min trot entre les blocs) · Retour au calme 8min footing très facile — 💡 L'allure du jour J, jambes fraîches cette fois : mémorise la sensation, elle doit devenir automatique.
+
+===== SEMAINE 40 — peak — déclaré 9.4h — livré 9.4h (7 séances : nage 237' vélo 0' course 128') =====
+  J4 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J5 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J6 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J7 [sw 117'] Nage aérobie + accélérations
+      Échauffement 200m + 4×25m accélérations progressives · 5100m @ 2'09/100m, en 50m accéléré / 50m souple au début du bloc — 10 accélérations au plus, puis aérobie continu · Retour au calme 150m souple — 💡 Le gros du volume est aérobie, avec des accélérations de 50m pour tenir la fréquence : c'est du volume nagé propre, pas une séance de vitesse. Place les accélérations tôt dans le bloc, geste frais — une accélération faite sur un geste dégradé enseigne le geste dégradé.
+  J7 [rn 68'] Allure course (tri)
+      Échauffement 15min footing progressif · 45min @ 5'19-5'34/km · Retour au calme 8min retour au calme — 💡 L'allure de course du jour J : mémorise la sensation, jambes déjà entamées par le vélo.
+  J8 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J9 [br 201'] Brick vélo+CAP
+      114min vélo @ 132-177W, puis 57min vélo @ 177-194W à l'allure de ton jour J, échauffement progressif inclus, puis transition rapide + 30min CAP @ allure cible — 💡 Le brick simule la course : sortie longue à vélo en endurance, DERNIER TIERS à l'allure exacte de ton jour J (c'est là qu'on apprend le chiffre à tenir), puis enchaînement rapide vélo→course pour habituer tes jambes à la sensation «de coton» du début de CAP. C'est la transition qu'on entraîne ici — la séance la plus spécifique de ta semaine.
+  J10 — OFF
+
+===== SEMAINE 41 — peak (récup) — déclaré 3.5h — livré 3.5h (5 séances : nage 120' vélo 0' course 90') =====
+  J1 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J2 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J3 — OFF
+  J4 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J5 [sw 60'] Nage récup courte
+      2625m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J6 [rn 30'] Footing facile
+      30min @ 5'27-5'55/km — 💡 Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.
+  J7 — OFF
+
+===== SEMAINE 42 — taper — déclaré 4.9h — livré 4.9h (7 séances : nage 186' vélo 52' course 57') =====
+  J8 [sw 55'] Nage récup courte
+      2425m @ 2'17/100m souple, en blocs de 50m, respiration 3 temps · relâchement total — 💡 Récupération dans l'eau : relâchement total, respiration ample — le corps absorbe le travail de la semaine.
+  J9 [rn 23'] Entretien (affûtage)
+      23min @ 5'27-5'55/km — 💡 Affûtage : le volume descend, la fréquence reste. Une sortie courte et strictement facile entretient le geste et la circulation — ce qu'on gagne maintenant, c'est de la fraîcheur, pas de la forme.
+  J10 — OFF
+  J1 [sw 56'] Nage seuil (+dist) (matin)
+      Échauffement 300m + 4×50m éducatifs · 1550m @ 2'02/100m, fractionné en séries régulières si besoin · 650m @ 2'09/100m souple, technique relâchée entre les séries · Retour au calme 200m souple — 💡 Distance cible atteinte, allure régulière. Fractionné = réponse à intensité.
+  J1 [bk 52'] Rappel race-pace
+      Échauffement 10min progressif · 4×7min @ 177-194W (récup 3min souple entre les blocs) · Retour au calme 5min décrassage · ⏱ dont ~9min de récup entre les blocs — 💡 Affûtage : on réveille l'allure course sans générer de fatigue. Court et précis.
+  J2 — OFF
+  J3 [sw 58'] Endurance allégée (avant course)
+      58min @ 2'17/100m — 💡 La course approche : le volume descend, l'intensité aussi. Ce que tu gagnes maintenant, c'est de la fraîcheur, pas de la forme.
+  J3 [rn 34'] Rappel allure course CAP
+      Échauffement 10min footing progressif · 2×8min @ 5'19-5'34/km (récup 3min trot entre les blocs) · Retour au calme 5min footing souple · ⏱ dont ~3min de récup entre les blocs — 💡 Affûtage : on réveille l'allure du jour J sans générer de fatigue. Deux blocs courts, précis, puis on range les chaussures.
+  J4 [sw 17'] Déverrouillage (veille de course)
+      Échauffement 6min très progressif · 3×2min @ 2'17/100m (récup 1min très souple entre les blocs) · Retour au calme 3min souple — 💡 Veille de course : on réveille le corps, on ne le fatigue pas. Échauffement doux, trois accélérations franches — puis on sort de l'eau.
+
+===== SEMAINE 43 — taper — déclaré 0h — livré 0.0h (1 séances : nage 0' vélo 0' course 0') =====
+  J5 [rn COURSE 0'] 🏁 Course A
+      LE JOUR J. Départ contrôlé à ton allure cible, la première moitié doit te sembler facile — c'est le seul pacing qui tient. — 💡 Tout ce qui devait être construit l'est : aujourd'hui, tu exécutes. — ⏱ Prévu : Natation 1900m 39'43–42'11 · Vélo — intensité 177–194W · Vélo 90km 2h54–3h13 · CAP semi 1h50–2h00 · 🏁 Total estimé 5h33–6h04

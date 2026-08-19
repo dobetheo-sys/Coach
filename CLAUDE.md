@@ -580,6 +580,49 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**RELECTURE COMPLÈTE DU PLAN REEL livrée + O-88 FERMÉ — le compte d'accélérations est borné en
+absolu, et la relecture a trouvé ce que personne n'avait nommé** (O88_ET_RELECTURE, 19/08/2026 —
+voir `RAPPORT_RELECTURE_REEL.md`, annexes `relecture/REEL-plan.{json,rendu.txt}`, gardes **T-55**,
+tickets **O-89 à O-92**) : le plan des 43 semaines lu INTÉGRALEMENT (4 lecteurs par quadrant +
+contre-vérification de chaque constat sur le livré — 1 constat d'agent REJETÉ, 2 rectifiés).
+**O-88** : « la moitié en accélérations de 50 m » donnait 4 à **81** accélérations selon le bloc
+(pire que les 32 du constat) — `O88_NB_ACCELERATIONS = 10` (fourchette 8-12 du fondateur, ordre
+de grandeur révocable), texte « en 50 m accéléré / 50 m souple au début du bloc — 10 au plus,
+puis aérobie continu », **T-55 contre-prouvée deux fois** (fraction → rouge, constante 60 →
+rouge), balayage famille fait (le « dont ~N % plaquettes » swimrun est BORNÉ par repCap 11 —
+vérifié ; le reste est O-78). **B-17 sur REEL : 3 paliers annoncés · 3 livrés** (1250 eau libre
+en PREMIÈRE semaine de spec → 1550 → 1900), REEL hors des 29 d'O-84. **Ce que la relecture
+nomme** : la nage ASSISE sur sa borne O-85 27 semaines sur 43 (et **O-89** : la borne lit une
+PROJECTION C22^k qui atteint ×6 dès S8 quand les paliers du même plan posent la première
+continue en S25 — deux courbes pour la même grandeur, décision fondateur) ; **O-90** : 6
+semaines de charge à 237-252 min de nage SANS un mètre au seuil + les décharges portent des
+doses plus grosses que les charges (VO2 6×4 en récup vs 5×4 en charge, seuil nage max 1625 m en
+récup) ; **O-91** : la sortie longue CAP s'ARRÊTE en S22 — 20 semaines sans course > 68 min
+avant un semi ; **O-92** : 9 semaines de charge sans jour OFF, la REPRISE comprise, et 3 jours
+durs consécutifs en pic. Répartition livrée (legs de brick attribués) : **nage 44,3 % · vélo
+28,6 % · course 27,1 %** pour une épreuve à ~12/52/36 — l'inversion de la dernière lecture est
+intacte. **Trois textes faux corrigés en chemin (famille U9)** : O-88, la note de couverture
+vélo qui disait « duathlon » sur le plan de tri du fondateur, la veille de course qui parlait de
+CHAUSSURES sur une veille en NATATION (le défaut que R13.4 avait corrigé pour la ZONE, jamais
+rejoué sur la NOTE — la chute suit désormais la discipline). **Et les deux exports du fondateur
+divergent par UNE réponse** : `history` confirme → plafond 13 h · ancien → 15 h (mesuré au
+dixième près sur les deux exports) — c'est le budget de l'allocation, **troisième clé à RELEVER**
+avec `longest_swim_m` et `milieu` (§4 du ticket : la fixture reste reconstituée). **Et la batterie complète a trouvé DEUX GATES ROUGES depuis ee40395** (les fermetures O-85/O-87
+n'avaient pas rejoué les bancs R14.x ni `golden:verify` — la CI de main était rouge deux
+commits, et mon premier batch de vérification l'a masqué une fois de plus : commandes au `;`,
+code de sortie du dernier — famille O-9, publié) : l'épingle POPULATION du golden restée à 989
+pour 990 profils (montée avec sa raison — le gate faisait exactement son travail), et
+**R14.1-G**, attribué par bisection de moteur à O-85 : la borne d'épaule retire au plan
+« montée » la nage-déversoir qui absorbait `vol_max`, le livré ne monte plus que de +6 % (contre
++22 %), et la projection qui ne récompense plus un volume non livré est HONNÊTE (P8) — critère
+rectifié sur le LIVRÉ, deux branches (livre plus → projette plus · refuse → projection collée),
+**prouvé vert par sa branche 1 contre le moteur d'avant O-85 et par sa branche 2 contre
+l'actuel**. Leçon : les bancs R14.x lisent le plan livré à travers la projection — tout lot qui
+change le livré les concerne. **`audit:v1` 459 à 0, invariants 22×54, v6 74 · 0 régression, v7
+budgets tenus, r13/r14/r18 verts, `lotPhysio` 28 verts · 23 rouges attendus · 0 régression,
+golden 990 recapturé (203 empreintes : tri = texte O-88, passes datées = veille), golden:verify
+990/990 · 0 écart, golden:bundle 990 · 0 écart, E2E 25/25.**
+
 **O-87 FERMÉ — la carte « Pourquoi ce plan » portait deux comptes de séances sans étiquette, sur
 la grandeur qui BORNE le plan** (constat du fondateur sur son profil réel, build déployée,
 19/08/2026 — voir `BUGS_OUVERTS.md` « O-87 », garde **T-54**) : « 11 séances par semaine »

@@ -9141,3 +9141,163 @@ quoi: la décision budget porte-t-elle son compte livré, égal au nSess du mess
 attendu: /val=11 · livre=10/
 cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');for(const{key,sport,a}of profiles()){if(!key.startsWith('REEL'))continue;const p=globalThis.EBV2.buildPlan(sport,a);const d=(p._v2?.decisions??[]).find(x=>x.id==='budget');console.log('val='+d?.val+' · livre='+d?.livre);break;}"
 ```
+
+## O-88 · Le nombre d'accélérations était DÉRIVÉ de la longueur du bloc — le plus grand nombre de répétitions techniques au moment où le geste est le moins bon · ✅ **FERMÉ (constat du fondateur sur son plan réel, 19/08/2026)**
+
+*« bloc plus long → plus d'accélérations — c'est l'inverse de ce qu'il faut. Une accélération
+faite avec un geste dégradé enseigne le geste dégradé. »*
+
+« Nage aérobie + accélérations » promettait « dont la moitié en accélérations de 50 m » — un
+compte-FRACTION. Le constat portait 32 accélérations (3 200 m) ; **la relecture complète du
+même plan a trouvé 81** (8 075 m, S33). Même famille que `PT(lo, hi)` d'O-78 : une grandeur de
+COMPTAGE calculée par un facteur de TAILLE (règle 14).
+
+**Correctif** : `O88_NB_ACCELERATIONS = 10` (`constraintMatrix.ts`, fourchette 8-12 du
+fondateur posée comme ORDRE DE GRANDEUR, révocable sans re-mesure), texte « en 50 m accéléré /
+50 m souple au début du bloc — 10 accélérations au plus, puis aérobie continu ». Le « début de
+bloc » encode la raison physiologique de l'arbitrage (geste frais) ; le « au plus » garde la
+phrase cohérente sur un bloc livré de 400 m comme de 8 000. **Garde T-55** (banc `lotPhysio`) :
+aucune fraction, tout compte ≤ 12, population épinglée (4 449 porteuses / 986 plans, blocs
+100-8 075 m — la borne est prouvée EXERCÉE là où le défaut vivait, pas vraie par absence).
+**Contre-prouvée : fraction réintroduite → rouge · constante à 60 → rouge.**
+
+**Balayage famille (demandé par le ticket)** : `swimrun` « dont ~N % avec plaquettes » porte la
+même forme textuelle mais son bloc est répété `repCap: 11` — vérifié BORNÉ, pas un défaut ; les
+membres restants sont les sites `P`/`PT` d'O-78 nés sans `repCap` (duathlon l.41/l.44, trail
+« Descente en charge ») — lot « bornes de séance », après le plafond structurel, ordre inchangé.
+
+```verify
+id: O-88
+quoi: le compte d'accélérations promis sur le livré est-il absolu (≤ 12) et sans fraction ?
+attendu: /compte max 10 · fractions 0/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');for(const{key,sport,a}of profiles()){if(!key.startsWith('REEL'))continue;const p=globalThis.EBV2.buildPlan(sport,a);let mx=0,fr=0;for(const w of p.weeks)for(const d of w.days)for(const s of d.sessions){const t=String(s.det||'');if(!/accélérations/.test(t))continue;if(/(moitié|tiers|quart)[^·]{0,40}accélérations/.test(t))fr++;for(const m of t.matchAll(/(\d+)\s*(?:×\s*\d+\s*m\s*)?accélérations/g))mx=Math.max(mx,+m[1]);}console.log('compte max '+mx+' · fractions '+fr);break;}"
+```
+
+## O-89 · La borne d'épaule O-85 lit une PROJECTION de continuité que le MÊME plan contredit · 🔴 **OUVERT — décision de valeurs, fondateur**
+
+Trouvé par la relecture complète (RAPPORT_RELECTURE_REEL.md §3.F). Le multiplicateur
+d'expérience de `swimWeeklyLoadCapM` se lève avec `C22^semaine` : la continuité PROJETÉE d'un
+athlète à 1 000 m déclarés atteint 1 900 m dès la semaine 6, donc la bande passe de ×4
+(7 600 m/sem) à ×6 (11 400) dès S8 — pendant que **les paliers B-17 du même plan prescrivent la
+première continue (1 250 m) en S25**, et que le cliquet O-56 (le plus haut palier VALIDÉ) est
+la version MESURÉE de la même idée. Deux courbes pour la même grandeur (R11.1), et la borne lit
+la plus optimiste — une grandeur PRESCRITE, pas démontrée (nuance de la règle 12).
+
+Conséquences mesurées sur REEL : **27 semaines sur 43 assises exactement sur la borne**, plateau
+à 11,4 km/sem dès S8 — à 6 % des 12,1 km que l'arbitrage O-85 jugeait « au-dessus de la bande
+large » pour ce même athlète. Et la projection saturant à `ratio = 1,0` pour TOUT departM <
+courseM, **tous les triathlètes rejoignent la bande ×6 en 5-11 semaines** : la différenciation
+par l'expérience ne vit que sur la rampe de départ. T-53 reste vert (sa sensibilité mord sur
+les premières semaines) — c'est la moitié DOMAINE du jumeau qui s'est rétrécie en silence.
+
+Issue candidate (à arbitrer, pas à écrire d'office) : indexer le ratio sur la trajectoire des
+PALIERS B-17 (la grandeur que le plan demande réellement de valider) au lieu de `C22^k`. Chiffré :
+la borne resterait à ×4 = 7,6 km jusqu'à la phase spécifique — ~3,8 km/sem de moins sur 17
+semaines de base/dev. C'est l'inverse exact du lot progression sur cette discipline : dire
+lequel des deux protège l'athlète réel est une décision d'entraîneur.
+
+```verify
+id: O-89
+quoi: la borne passe-t-elle à ×6 avant la première continue prescrite ?
+attendu: /borne S8 11400 · première continue S25/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');const {swimWeeklyLoadCapM}=await import('./src/engine/swimContinuity.ts');for(const{key,sport,a}of profiles()){if(!key.startsWith('REEL'))continue;const p=globalThis.EBV2.buildPlan(sport,a);let s1=null;for(const w of p.weeks){for(const d of w.days)for(const s of d.sessions)if(/continue/i.test(s.name)&&s1==null)s1=w.num;}console.log('borne S8 '+swimWeeklyLoadCapM({departM:1000,courseM:1900,source:'mesure'},8)+' · première continue S'+s1);break;}"
+```
+
+## O-90 · La qualité COULE là où le volume SATURE, et les décharges portent des doses plus grosses que les charges · 🔴 **OUVERT — mécanisme à attribuer par expérience contrôlée, périmètre du lot progression**
+
+Relecture REEL (RAPPORT_RELECTURE_REEL.md §3.A-B). Deux faces du même mécanisme présumé (les
+semaines de charge sont comprimées par budget + déversoir, les décharges non) :
+
+- **6 semaines de CHARGE sans aucune nage au seuil** (S10, S16, S20, S30, S33, S40 — dont les
+  deux dernières grosses semaines avant l'affûtage) pendant que la nage y est à sa borne
+  (250-252 min). O-74 mesuré chez `reprise`, présent ici chez `confirme`.
+- **Inversions récup/charge** : VO2max vélo 6×4 en récup (S23, S29) contre 5×4 en charge (S25,
+  S31) · nage seuil max du plan (1 625 m) en récup S29 · sweetspot 4×14 en récup S6 contre
+  4×13 en charge · sortie longue max (85') en récup S22.
+
+⚠ Le mécanisme est une HYPOTHÈSE : l'attribuer demande une expérience à facteur unique
+(corollaire règle 15), pas un diff de lot.
+
+```verify
+id: O-90
+quoi: combien de semaines de charge nagent ≥ 200 min sans une séance au seuil ? (les six mesurées nagent 237-252 min — le seuil de sonde est SOUS la bande pour ne pas rejouer l'exclusion d'un cheveu qui a fait rater S40 à 237 min lors de l'écriture)
+attendu: /6 semaines : 10 16 20 30 33 40/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');for(const{key,sport,a}of profiles()){if(!key.startsWith('REEL'))continue;const p=globalThis.EBV2.buildPlan(sport,a);const l=[];for(const w of p.weeks){if(w.isRecup||w.phase.id==='taper')continue;let sw=0,cs=0;for(const d of w.days)for(const s of d.sessions){if(s.d!=='sw')continue;sw+=s.min||0;if(/seuil/i.test(s.name))cs++;}if(sw>=200&&!cs)l.push(w.num);}console.log(l.length+' semaines : '+l.join(' '));break;}"
+```
+
+## O-91 · La course à pied longue s'ARRÊTE à la semaine 22 — 20 semaines sans sortie longue avant un semi · 🔴 **OUVERT — le leg course du tri n'a pas de C30**
+
+Relecture REEL (RAPPORT_RELECTURE_REEL.md §3.D). La dernière « Sortie longue CAP » est en S22
+(85 min) ; sur les 20 dernières semaines, aucune course ne dépasse 68 min hors les 23-30 min de
+CAP en fin de brick — pour une épreuve qui FINIT par un semi-marathon. En base elle plafonne à
+82-85' sans progression et manque de 4 semaines de charge (S1, S4, S7… vérifié S1/S4/S6/S8).
+C30/C30b (le plancher de spécificité de la longue) ne couvrent que la course SÈCHE — le leg
+course du tri n'a aucun équivalent, et le brick a absorbé le créneau long en spec/pic sans
+reprendre la promesse « courir longtemps ». S'ajoute un footing de **19 min** livré en S39
+(pic), SOUS le plancher de dignité de 30 — quelque chose coupe après `blockBounds`.
+Périmètre : lot progression (sortie longue = pièce nommée) + allocation.
+
+```verify
+id: O-91
+quoi: dernière sortie longue CAP et plus longue course ensuite (hors brick)
+attendu: /dernière S22 · max ensuite 68/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');for(const{key,sport,a}of profiles()){if(!key.startsWith('REEL'))continue;const p=globalThis.EBV2.buildPlan(sport,a);let last=0,mx=0;for(const w of p.weeks)for(const d of w.days)for(const s of d.sessions){if(/Sortie longue CAP/.test(s.name))last=Math.max(last,w.num);}for(const w of p.weeks){if(w.num<=last)continue;for(const d of w.days)for(const s of d.sessions)if(s.d==='rn'&&!s.race)mx=Math.max(mx,s.min||0);}console.log('dernière S'+last+' · max ensuite '+mx);break;}"
+```
+
+## O-92 · Neuf semaines de charge sans JOUR OFF — la reprise comprise — et des jours durs en rafale · 🔴 **OUVERT — placement, à regarder avec le routage des doubles**
+
+Relecture REEL (RAPPORT_RELECTURE_REEL.md §3.E). Neuf semaines de charge livrent 0 jour de
+repos (S1 — la semaine de REPRISE de la rampe O-69, 10 séances —, S4, S7, S14, S21, S24, S27,
+S31, S37) ; S38 (pic) enchaîne trois jours durs consécutifs (seuil+VO2 · allure course · brick
+181') ; S33 concentre 9 h en 6 séances dont un jour à 4 h 06 (nage 181' + allure course 65').
+Le garde-fou « jours durs consécutifs » existe pour les ÉCHANGES (⇄) — la GÉNÉRATION n'a pas
+d'équivalent. Et la question C28b : à J-2, 92 min en deux séances (le plafond d'approche compte
+par séance — doit-il compter par jour sous `doubles` ?).
+
+```verify
+id: O-92
+quoi: combien de semaines de charge n'ont aucun jour OFF ?
+attendu: /9 semaines : 1 4 7 14 21 24 27 31 37/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');for(const{key,sport,a}of profiles()){if(!key.startsWith('REEL'))continue;const p=globalThis.EBV2.buildPlan(sport,a);const l=[];for(const w of p.weeks){if(w.isRecup||w.phase.id==='taper')continue;const off=w.days.filter(d=>!d.sessions.some(s=>s.d!=='rs')).length;if(off===0)l.push(w.num);}console.log(l.length+' semaines : '+l.join(' '));break;}"
+```
+
+## O-85 §3 — DEUX GATES ÉTAIENT ROUGES DEPUIS LA FERMETURE D'O-85, ET PERSONNE NE LES AVAIT RELUS · ✅ **RÉPARÉS (19/08/2026, en fermant le lot O-88)**
+
+Trouvés en passant la batterie COMPLÈTE avant le push du lot relecture — les fermetures O-85 et
+O-87 n'avaient rejoué que `audit:v1 · invariants · v6 · lotPhysio · golden:capture`, pas les
+bancs R14.x ni `golden:verify`. **La CI de main était rouge sur deux gates depuis ee40395** (deux
+commits), et mon premier lot de vérification les a MASQUÉS une fois de plus : commandes chaînées
+au `;`, le code de sortie était celui de la dernière (famille O-9, dans mon propre batch —
+publié).
+
+**(a) `golden:verify` / `golden:bundle` : POPULATION épinglée à 989 pour 990 profils réels.**
+La fixture REEL (O-85 §2) a monté le corpus sans monter les deux épingles — l'oubli exact que la
+règle « un zéro a besoin de sa population » existe pour attraper, et le gate a rougi comme prévu.
+Épingles à 990 avec la raison, dans ce commit (la forme que le message du gate exige).
+
+**(b) `R14.1-G` rouge — et ce n'est PAS un défaut de la projection : le banc a détecté un vrai
+changement de produit.** Attribution par bisection de MOTEUR (bench rejoué sur les bundles
+committés) : vert ×1,15 à `ec56e95` et `0b354de`, rouge ×1,00 à `ee40395` (l'implémentation
+O-85) et depuis. Mécanisme mesuré : sur la fixture du banc (tri 70.3, CSS 2'15, doubles), la
+hausse `vol_max` 9 → 13 était absorbée par la nage-déversoir ; la borne d'épaule la retire, et le
+volume LIVRÉ moyen (dev+spec+peak) ne monte plus que de **8,17 → 8,67 h (+6 %)** contre 8,17 →
+9,95 (+22 %) avant — les deux ratios de P10 tombent sous la première ancre, même facteur, gain
+identique. **Une projection qui récompenserait un volume que le plan ne livre plus mentirait
+(P8).** Le critère est rectifié sur le LIVRÉ (règle 15), deux branches : le plan livre ≥ +15 % →
+le gain suit (≥ ×1,10) ; le plan REFUSE le volume → la projection reste collée (0,95-1,10, où
+l'insensibilité EST la propriété — domaine du jumeau de sensibilité, arbitrage du 17/08).
+**Prouvé vert par sa branche 1 contre le moteur d'AVANT O-85 (×1,22 livré → ×1,15 gain) et par
+sa branche 2 contre l'actuel — aucune barre desserrée, le domaine rendu explicite.** Limite
+publiée : la contre-preuve « rouge sur inversion » n'a pas d'état de moteur connu qui la
+produise ; la branche 2 la refuse par construction (`r ≥ 0,95`).
+
+Leçon pour la liste de fermeture d'un lot : **les bancs R14.x lisent le PLAN LIVRÉ à travers la
+projection — tout lot qui change ce que le plan livre les concerne**, pas seulement les lots qui
+touchent `projection.ts`.
+
+```verify
+id: O-85-3
+quoi: R14.1-G passe-t-il par sa branche « refuse → projection collée » sur le moteur actuel ?
+attendu: /branche refuse → projection collée|branche livre plus → projette plus/
+cmd: node bench_r14_1.cjs endurabuild/js/engine.js 2>&1 | grep "R14.1-G"
+```

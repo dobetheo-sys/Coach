@@ -2194,6 +2194,54 @@ T("T-54", "vert", "la carte « Pourquoi ce plan » : maillon chiffré, secours n
   return { ok: pb.length === 0, detail: pb.length ? pb.join(" · ") : `R20.2 « ${String(dR.val).slice(0, 60)} » · secours ✓ · limite dite ✓ · budget ${dB.val} prescrites / ${dB.livre} livrées ✓` };
 });
 
+/**
+ * T-55 (O-88) — LE COMPTE D'ACCÉLÉRATIONS PROMIS EST BORNÉ EN ABSOLU, ET INDÉPENDANT DE LA
+ * TAILLE DU BLOC QUI LE PORTE.
+ *
+ * Le défaut : « dont la moitié en accélérations de 50m » — un compte-FRACTION, donc un bloc plus
+ * long promet PLUS de répétitions techniques exactement quand le geste est le moins bon (8 075 m
+ * livrés → 81 accélérations sur le profil réel). Le critère lit le TEXTE LIVRÉ (règle 15 : c'est
+ * la promesse que l'athlète reçoit), jamais la table :
+ *
+ *   (1) aucune promesse d'accélérations par FRACTION du bloc (moitié/tiers/quart) ;
+ *   (2) tout compte explicite d'accélérations ≤ 12 (fourchette du fondateur, ordre de grandeur) ;
+ *   (3) POPULATION + INDÉPENDANCE : le correctif le moins cher qui passerait (1) et (2) est de
+ *       SUPPRIMER la promesse (règle 19) — le compte de séances porteuses est donc épinglé, et
+ *       les blocs porteurs doivent s'étaler sur ≥ ×4 de taille pendant que le compte reste fixe :
+ *       la borne est PROUVÉE exercée là où le défaut vivait (les gros blocs), pas seulement
+ *       vraie par absence.
+ */
+T("T-55", "vert", "le compte d'accélérations est borné en absolu, jamais une fraction du bloc (O-88)", () => {
+  const pb = [];
+  let porteuses = 0, fractions = 0, pireCompte = 0, mLo = Infinity, mHi = 0;
+  for (const { plan } of goldenAvecMoteur()) {
+    for (const w of plan.weeks ?? []) for (const d of w.days ?? []) for (const sx of d.sessions ?? []) {
+      const det = String(sx.det ?? "");
+      if (!/accélérations/.test(det)) continue;
+      if (/(moitié|tiers|quart)[^·]{0,40}accélérations|accélérations[^·]{0,40}(moitié|tiers|quart)/.test(det)) fractions++;
+      const corps = (sx.steps ?? []).filter((st) => st.role === "body")
+        .reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
+      let compte = 0;
+      for (const m of det.matchAll(/(\d+)\s*(?:×\s*\d+\s*m\s*)?accélérations/g)) compte = Math.max(compte, +m[1]);
+      if (!compte) continue;
+      porteuses++;
+      pireCompte = Math.max(pireCompte, compte);
+      if (corps > 0) { mLo = Math.min(mLo, corps); mHi = Math.max(mHi, corps); }
+    }
+  }
+  if (fractions) pb.push(`(1) ${fractions} séance(s) promettent des accélérations par FRACTION du bloc`);
+  if (pireCompte > 12) pb.push(`(2) un compte promis atteint ${pireCompte} accélérations (borne : 12)`);
+  // (3) épinglé sur la mesure du 19/08 : 4 449 porteuses sur 986 plans, blocs de 100 à 8 075 m
+  // (×80,8). Le plancher laisse de la marge au corpus, pas à la disparition.
+  if (porteuses < 2000) pb.push(`(3) POPULATION : ${porteuses} séance(s) porteuses — la promesse a disparu du corpus (ou le critère ne la trouve plus : règle 17, vérifier à la main)`);
+  if (mHi < mLo * 4) pb.push(`(3) INDÉPENDANCE : blocs porteurs de ${mLo} à ${mHi} m — l'étalement qui prouvait la borne exercée a disparu`);
+  return {
+    ok: pb.length === 0,
+    detail: pb.length ? pb.join(" · ")
+      : `${porteuses} séances porteuses · compte max ${pireCompte} ≤ 12 · 0 fraction · blocs ${mLo}-${mHi} m (×${(mHi / mLo).toFixed(1)})`,
+  };
+});
+
 const ROUGES_ATTENDUS = {
   "T-06": "O-84 — le plan ANNONCE N paliers de continuité et en livre N−1 : **29 profils tri sur 187**, mesuré IDENTIQUE avant et après O-82 (c'est ce qui prouve que ce lot n'en est pas la cause). Le palier est élu victime par une coupe qui ne passe pas par `prioriteFinancement` — cinquième mécanisme de la prédiction « la nage est la victime par défaut ». Une promesse affichée n'est pas un créneau comme un autre.",
   "T-44": "O-66 — la coupe classe en MINUTES une contrainte qui compte des SÉANCES : arbitrage rendu le 17/08, à faire APRÈS le merge et en premier",

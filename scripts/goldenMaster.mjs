@@ -432,8 +432,11 @@ function canon(v) {
 }
 
 /** La taille du corpus, ÉPINGLÉE. Elle ne se déduit pas de `hashes.json` : une photo tronquée
- *  et un balayage tronqué se valideraient mutuellement. */
-const POPULATION = 989;
+ *  et un balayage tronqué se valideraient mutuellement.
+ *  990 depuis la fixture `REEL/tri/70.3/nage-limitante` (O-85 §2, 19/08/2026). L'épingle aurait
+ *  dû monter DANS le commit de la fixture — elle est restée à 989 deux commits, et le gate a
+ *  rougi comme prévu : c'est exactement le travail de « un zéro a besoin de sa population ». */
+const POPULATION = 990;
 
 function snapshot() {
   const snap = {};
