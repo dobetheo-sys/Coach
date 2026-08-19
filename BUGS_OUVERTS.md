@@ -7723,6 +7723,71 @@ attendu: /C26c — plafond de temps dur\s+1[0-9][0-9] \/ 98[0-9]/
 cmd: npm run --silent mesure:morsure
 ```
 
+## LOT VÉLO (2ᵉ passe) · L'ordre du fondateur suivi : 2+3 d'abord, sans réveiller la boucle · 🔴 **UN SEUL ROUGE RESTANT, sa cause nommée**
+
+Le §5 d'« O-43 BLOQUE LE LOT VÉLO » prescrit l'ordre le moins cher : *« essayer d'abord ce qui ne
+réveille pas la boucle »* — le créneau long vélo (2) et le routage `doubles` (3), **sans borner la
+nage**, et mesurer si ça suffit. **Fait, et la prédiction est vérifiée.**
+
+```
+                        nage    vélo   course   volume      MAX du plan
+avant                    49 %    29 %    23 %    9,0 h/sem   S19 (dev)
+pièces 2+3 seules        29 %    47 %    23 %    8,7 h/sem   S37 (PIC)
+```
+
+**Le vélo passe de 29 à 47 % — dans la fourchette visée (45-50 %) — le volume est PRÉSERVÉ, et le
+maximum du plan atteint la phase de pic.** La sonde de capacité n'est jamais sollicitée : O-43
+peut rester ouvert, exactement comme le fondateur l'avait posé en condition.
+
+Un réglage a compté et il est mesuré : les deux pièces tombaient d'abord la MÊME semaine (paires).
+Décalées (long vélo en paires, routage `doubles` en impaires), la nage passe de 37 à **29 %** et
+le vélo de 43 à **47 %** — la charge vélo se répartit au lieu de s'empiler.
+
+### Trois alignements, tous sur des règles EXISTANTES — et l'un d'eux AMÉLIORE le moteur
+
+Ce ne sont pas des exclusions de périmètre ad hoc, et la distinction compte après l'arrêt d'hier :
+
+```
+sous blessure / drapeau médical   B1 du banc v6 : « déclarer une blessure ne doit JAMAIS
+                                  augmenter la charge ». Mesuré rouge : tri/S/inter course
+                                  +6 %, épaule +10 %, vélo +6 % — le module remplace déjà la
+                                  discipline touchée par du vélo, la pièce s'empilait dessus.
+                                  Règle de SÉCURITÉ, priorité 2 : exclusion non négociable.
+
+plans < 12 semaines               C22 : sur un tri/S de 8 semaines, ajouter un type long fait
+                                  passer un saut de charge à +11 %. Une progression demande de
+                                  la durée pour s'exprimer sans à-coup.
+
+marqueur `long: true` retiré      I14 : une séance marquée `long` doit être la plus longue de
+                                  sa discipline dans sa semaine. Sans le marqueur, le sceau S4
+                                  passe de 349 à **342 — SEPT violations de MOINS qu'avant le
+                                  lot**. L'alignement améliore le moteur au lieu de le contraindre.
+```
+
+### Le rouge restant : T-16c, et sa cause est la famille du point fixe
+
+Sur le format **M** uniquement : la bande « allure du jour J » PRESCRITE (275-288 s/km) ne
+recouvre plus la bande PRÉDITE (247-262). Les deux pièces retirées SÉPARÉMENT le réparent (effet
+combiné, témoin vérifié à 1 — la sonde voit bien le défaut).
+
+**La cause n'est pas dans les pièces, elle est dans le moment où chaque bande se calcule.** T-16c
+compare une bande lue dans le plan ÉMIS à une bande rendue par `predict()` sur le plan LIVRÉ ;
+le lot change la part de course ENTRE les deux. C'est la quatorzième occurrence de la famille
+fermée treize fois dans ce dépôt — « une garantie vérifiée au milieu du pipeline ne vérifie que
+l'avant-dernier état ». La traiter demande de rejouer la prescription d'allure après le point
+fixe : un chantier à part entière, pas une quatrième exclusion.
+
+**Rien n'est donc livré côté moteur** (`src/` byte-identique à HEAD), et le code des deux pièces
+est intégralement décrit ci-dessus pour être rejoué. L'ordre du fondateur reste bon : ce qui
+manque n'est plus O-43 — c'est la cohérence de la bande d'allure au point fixe.
+
+### §4 — les deux mécanismes à ne pas perdre, confirmés
+
+*« Le doublage devrait ajouter dans la discipline qui en a besoin, pas toujours dans la même »* et
+*« le créneau long est monopolisé par la course pendant les deux tiers du plan »* : les deux sont
+mesurés, et ce sont eux qui portent l'essentiel du gain (47 % de vélo à eux seuls, sans toucher à
+la nage). Ils restent la bonne cible.
+
 ## LOT VÉLO · La part et la progression — **B-10 LIVRÉ, le reste MESURÉ et REFUSÉ EN L'ÉTAT** (arbitrage « LE LOT VÉLO », 18/08/2026)
 
 ### Le préalable du §1, tranché : l'allocation n'est NI en parts NI en heures — elle est IMPLICITE
