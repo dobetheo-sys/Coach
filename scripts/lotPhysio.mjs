@@ -1006,7 +1006,11 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 // O-85 §2 (19/08/2026) — S5 511 → **512**, et la cause est la FIXTURE, pas la borne : le corpus
 // gagne le profil `REEL/tri/70.3/nage-limitante` (l'athlète réel du produit, absent des 989).
 // Vérifié par expérience contrôlée — fixture SANS la borne d'épaule : S5 vaut déjà 512.
-const SCEAU_ATTENDU = { S1: 4, S4: 356, S5: 512 };
+// S5 512 → 496 (19/08/2026, O-94) : la re-sonde structurelle compte désormais la borne d'épaule
+// (et le témoin livré la borne par en bas) — `min(plafonds)` RETROUVE le pic livré sur 16 profils
+// de plus. Le cliquet descend parce que l'identité T-25 devient vraie, pas parce qu'on mesure
+// moins (même mouvement que 502 → « la cible déclarée retrouve le pic livré », plus haut).
+const SCEAU_ATTENDU = { S1: 4, S4: 356, S5: 496 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;
@@ -2342,6 +2346,53 @@ T("T-56", "vert", "aucune récup ne dépasse ses charges adjacentes, par type ni
   if (violType) pb.push(`${violType} inversion(s) de TYPE · pire ${pireT.key} S${pireT.w} « ${pireT.nom} » : ${pireT.val} pour ${pireT.ref}`);
   const horsChamp = ` · hors champ : ${exemptes} récup(s) de pic (référence de dominance) + ${epinglees} séance(s) épinglée(s) B-17`;
   return { ok: pb.length === 0, detail: (pb.length ? pb.join(" · ") : `${recups} récups encadrées · 0 inversion de discipline · 0 inversion de type`) + horsChamp };
+});
+
+/**
+ * T-57 (le manque déclaré + O-94, ordre du fondateur 19/08/2026) — LE MANQUE LIT LA CIBLE DE
+ * BOUCLE, JAMAIS LA COURBE RABATTUE ; ET LE « STRUCTUREL » DE LA CARTE NE PROMET PLUS CE QU'UNE
+ * PROTECTION INTERDIT.
+ *
+ * Le rabattement de `vol_declared` sur le livré efface sa propre trace : mesuré, l'écart lu sur
+ * la courbe rabattue valait 0,6 h là où la cible de boucle en manque 3,4 (REEL, pic visé 13,0 ·
+ * livré 9,6). Et la re-sonde structurelle saturait un clone SANS la borne d'épaule : 12,4 h
+ * annoncées dont ~1,7 non livrables sous aucune configuration (O-94). Trois moitiés :
+ *
+ *   (1) REEL : la décision « manque » existe, son pic visé est la CIBLE (12,5-13,5 h — la
+ *       courbe rabattue dirait 9,6) et son écart ≥ 3 h/sem ;
+ *   (2) REEL : le maillon « structurel » compte la borne O-85 — sous 11 h (l'ancien 12,4
+ *       rougit ; valeur épinglée avec sa raison, révocable si la borne change) et jamais sous
+ *       le pic livré (le livré est un témoin, règle 15) ;
+ *   (3) POPULATION, les deux branches : des plans DÉCLARENT (≥ 50 — mesuré 99/986) et des
+ *       plans n'ont RIEN à déclarer (≥ 500 — mesuré 887) : un critère que « toujours déclarer »
+ *       ou « ne jamais déclarer » satisferait ne garde rien (règle 19).
+ */
+T("T-57", "vert", "le manque déclaré lit la cible de boucle, et le structurel compte la borne d'épaule (O-94)", () => {
+  const pb = [];
+  const reel = goldenAvecMoteur().find((x) => x.key.startsWith("REEL"));
+  if (!reel) return { ok: false, detail: "fixture REEL absente" };
+  const dM = (reel.plan._v2?.decisions ?? []).find((x) => x.id === "manque");
+  if (!dM) pb.push("(1) la décision « manque » a disparu de REEL");
+  else {
+    const vise = parseFloat(String(dM.val).match(/pic visé ([\d,]+)/)?.[1]?.replace(",", ".") ?? "0");
+    const ecart = parseFloat(String(dM.val).match(/écart ([\d,]+)/)?.[1]?.replace(",", ".") ?? "0");
+    if (!(vise >= 12.5 && vise <= 13.5)) pb.push(`(1) le pic visé (${vise}) n'est pas la cible de boucle (12,5-13,5) — il lit la courbe rabattue ?`);
+    if (!(ecart >= 3)) pb.push(`(1) l'écart déclaré (${ecart}) est celui de la courbe rabattue, pas de la cible`);
+  }
+  const st = (reel.plan._r202?.plafonds ?? []).find((x) => x.id === "structurel");
+  const pic = reel.plan.volPeak || 0;
+  if (!st) pb.push("(2) maillon structurel absent");
+  else {
+    if (+st.brut >= 11) pb.push(`(2) structurel ${(+st.brut).toFixed(1)} h — la borne d'épaule n'est plus comptée (O-94)`);
+    if (+st.brut < pic - 0.1) pb.push(`(2) structurel ${(+st.brut).toFixed(1)} h SOUS le pic livré ${pic} — une capacité que le livré réfute`);
+  }
+  let avec = 0, sans = 0;
+  for (const { plan } of goldenAvecMoteur()) {
+    if ((plan._v2?.decisions ?? []).some((x) => x.id === "manque")) avec++; else sans++;
+  }
+  if (avec < 50) pb.push(`(3) ${avec} plan(s) déclarent un manque — la déclaration a disparu du corpus`);
+  if (sans < 500) pb.push(`(3) ${sans} plan(s) sans manque — la décision est devenue inconditionnelle`);
+  return { ok: pb.length === 0, detail: pb.length ? pb.join(" · ") : `REEL « ${dM.val} » · structurel ${(+st.brut).toFixed(1)} h · corpus ${avec} déclarent / ${sans} rien à déclarer` };
 });
 
 const ROUGES_ATTENDUS = {

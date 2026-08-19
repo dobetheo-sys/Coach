@@ -580,6 +580,25 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**LE MANQUE DÉCLARÉ livré + O-94 FERMÉ — l'écart se lit sur la CIBLE DE BOUCLE, et la carte ne
+promet plus une heure qu'une protection interdit** (ordre du fondateur, 19/08/2026 — voir
+`BUGS_OUVERTS.md` « LE MANQUE DÉCLARÉ + O-94 », garde **T-57**) : la cible de boucle est archivée
+à la construction (avant le rabattement de `vol_declared`, qui RESTE — la courbe affichée décrit
+le plan) et une décision `manque` se pose au gabarit O-87 quand l'écart au pic ≥ 0,5 h/sem :
+sur REEL **« pic visé 13 h/sem — livré 9,6 (écart 3,4 h/sem, 101,9 h sur la préparation) »** —
+la courbe rabattue disait 0,6. Population : **99/986 déclarent · 887 rien à déclarer** (les deux
+branches vivent). **O-94** : la re-sonde écrête la nage du clone saturé à la borne O-85
+(excédent converti à l'allure du clone — règle 14) ET le livré borne la correction par en bas
+(ma première écriture rendait 9,1 h sous un pic livré à 9,6 — une capacité que le livré réfute) :
+**structurel 12,4 → 9,6**, la carte dit « ce qui borne, c'est le nombre de séances (−10,4 h/sem) »
+avec le secours 13 h. V2.1 (qui pilote `peakH`) garde sa mesure — l'y appliquer changerait la
+construction, décision à part. Sceau : **S5 512 → 496, ré-épinglé avec sa cause** (l'identité
+T-25 « min(plafonds) = pic livré » DEVIENT vraie sur 16 profils). **T-57 contre-prouvé deux
+fois** (manque branché sur le rabattu → rouge · correction O-94 retirée → rouge). File à venir :
+re-vérification B-17 (O-84 en tête) → lot progression (footing repris · sortie longue AVEC
+présence · récup) → les deux pièces sur le socle O-85/O-89 → l'allocation, critère de sortie :
+~0 semaine assise sur la borne.
+
 **O-89 + O-93 FERMÉS — la borne d'épaule CLIQUETTE sur le LIVRÉ, et l'inversion des décharges
 tombe de 4 320 à 0** (arbitrage O89_ET_INVERSION_DECHARGES, 19/08/2026 — voir `BUGS_OUVERTS.md`
 « O-89 FERMETURE », « O-93 », « O-91 §3 », « R20.2/REEL », « O-94 », gardes **T-53 réécrit** et

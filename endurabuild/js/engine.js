@@ -12100,6 +12100,9 @@ function generatePlan(profile                , opts                             
   // moment où elle se produit, jamais reconstruite après coup.
   let _cibleMax                                                                          = null;
   const wl           = [];
+  // R20.2/REEL — la cible de BOUCLE par semaine (targetH au moment de la construction), pour le
+  // manque déclaré. `charge` = semaine pleine hors récup/affûtage : le manque ne se compte que là.
+  const _ciblesBoucle                                   = [];
   let _maxChargeMin = 0;
   let _prevLw = 0;
   // D3/D4/D10 (audit v6) — la courbe se lisse sur les minutes LIVRÉES, pas seulement sur
@@ -12573,6 +12576,11 @@ function generatePlan(profile                , opts                             
     _lastWeekMin = weekMin(wd);
     if (!isRW && ph.id !== "taper") _prevChargeMin = _lastWeekMin;
     
+    // R20.2/REEL — LA CIBLE DE BOUCLE EST ARCHIVÉE ICI, AVANT TOUT RABATTEMENT. `vol_declared`
+    // sera rabattu sur le livré plus loin (et il doit l'être : la courbe affichée suit le plan) ;
+    // le manque déclaré, lui, se lit sur CETTE valeur — mesurer l'écart sur la courbe rabattue
+    // annonçait 0,6 h là où il en manque 3,6 à 5,0 (le rabattement effaçait sa propre trace).
+    _ciblesBoucle.push({ h: targetH, charge: !isRW && ph.id !== "taper" && wd.length >= 7 });
     wl.push({ num: w + 1, phase: ph, vol: volReal, vol_declared: Math.round(targetH * 10) / 10, vol_real: volReal, days: wd, isRecup: isRW });
   }
 
@@ -13553,6 +13561,40 @@ function generatePlan(profile                , opts                             
     }
   }
 
+  // ---- LE MANQUE DÉCLARÉ (O-43 §2, forme arbitrée le 19/08/2026) ------------------------------
+  //
+  // IL LIT LA CIBLE DE BOUCLE, JAMAIS LA COURBE RABATTUE. `vol_declared` est rabattu sur le
+  // livré (et il doit l'être — la courbe affichée décrit le plan), mais mesurer le manque dessus
+  // annonçait 0,6 h là où il en manque 3,6 à 5,0 : le rabattement efface sa propre trace. La
+  // cible archivée à la construction (`_ciblesBoucle`) est la seule qui dise ce que la boucle
+  // VISAIT. Le rabattement reste ; l'écart s'AFFICHE, gabarit O-87 (« un compte se publie avec
+  // ce qu'il compte ») : la cible ET le livré, étiquetés, une fois par plan avec son ampleur
+  // totale (arbitrage O-43 §2 : 58 % des plans laissent > 0,5 h — le manque est la règle, pas
+  // l'exception, donc il se dit en une décision, jamais en 40 alertes hebdomadaires).
+  // Seuil de matérialité : écart au pic ≥ 0,5 h/sem (la ligne de la mesure d'origine).
+  {
+    const chargesL                                     = [];
+    for (let i = 0; i < wl.length && i < _ciblesBoucle.length; i++) {
+      if (!_ciblesBoucle[i].charge || wl[i].isRecup) continue;
+      const livre = (wl[i].days            ).reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.race ? 0 : s.min || 0), 0), 0) / 60;
+      chargesL.push({ cible: _ciblesBoucle[i].h, livre });
+    }
+    if (chargesL.length) {
+      const picCible = Math.max(...chargesL.map((x) => x.cible));
+      const picLivre = Math.max(...chargesL.map((x) => x.livre));
+      const ecartPic = picCible - picLivre;
+      const totalH = chargesL.reduce((t, x) => t + Math.max(0, x.cible - x.livre), 0);
+      if (ecartPic >= 0.5) {
+        const h1 = (v        ) => (Math.round(v * 10) / 10).toLocaleString("fr-FR");
+        r.decisions.push({
+          id: "manque", what: "Volume visé non plaçable",
+          val: "pic visé " + h1(picCible) + " h/sem — livré " + h1(picLivre) + " (écart " + h1(ecartPic) + " h/sem, " + h1(totalH) + " h sur la préparation)",
+          why: "Ta courbe de charge vise plus que ce que les bornes de séance, les protections (plafonds de séance, borne d'épaule) et ton budget de séances laissent PLACER dans une semaine. Le plan livre tout ce qui se place sans casser un plancher de sécurité ; ce chiffre est l'écart, dit une fois pour toute la préparation. Les leviers qui le réduisent sont ceux de la carte « ce qui borne ».",
+        });
+      }
+    }
+  }
+
   // ---- R20.2 — LE VOLUME MAX DIT CE QUI LE BLOQUE, ET CE QUI LE DÉBLOQUERAIT ----
   //
   // Constat de test du fondateur : « volume max à 12 h au lieu de 14 ». La mesure (O-10) a
@@ -13725,7 +13767,35 @@ function generatePlan(profile                , opts                             
           }
           clampWeekBody(clone);
           renderWeek(clone);
-          const rendu = weekMin(clone) / 60;
+          let rendu = weekMin(clone) / 60;
+          // O-94 (19/08/2026) — LA SATURATION APPLIQUE LA BORNE D'ÉPAULE. Le clone sature chaque
+          // séance à son plafond de SÉANCE, mais rien ne lui appliquait la borne HEBDO de nage
+          // (O-85/O-89) : le « structurel » comptait des mètres qu'une protection interdit —
+          // mesuré sur le profil réel, 12,4 h annoncées dont 1,7 h non livrables sous aucune
+          // configuration, sur la carte même qui nomme « ce qui borne ». L'excédent de nage du
+          // clone est retranché à l'allure de nage du clone lui-même (ses minutes ÷ ses mètres —
+          // règle 14, pas de table parallèle). Diagnostic seul : le plan ne bouge pas.
+          {
+            const gate94 = sportModule(a.sport          ).disciplines.length > 1 ? (r.b17Gate ?? null) : null;
+            if (gate94) {
+              const swM = (days          ) => days.reduce((t, d) => t + d.sessions.reduce((u, s) =>
+                u + (s.d === "sw" ? (s.steps || []).reduce((v, st) => v + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0) : 0), 0), 0);
+              let livreMaxM = 0;
+              for (const w of wl) livreMaxM = Math.max(livreMaxM, swM(w.days            ));
+              const cap94 = swimWeeklyLoadCapM(gate94, livreMaxM);
+              const cloneM = swM(clone);
+              if (cap94 && cloneM > cap94) {
+                const cloneSwMin = clone.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.d === "sw" ? (s.min || 0) : 0), 0), 0);
+                rendu -= ((cloneSwMin / Math.max(1, cloneM)) * (cloneM - cap94)) / 60;
+                // …et le LIVRÉ est un témoin (règle 15) : le plan délivre déjà `volPeak` sous la
+                // même borne, donc une « capacité » plus basse est réfutée par l'observation —
+                // la conversion à l'allure moyenne du clone (plus rapide que celle du livré,
+                // la saturation grossit les blocs au seuil) pouvait rendre 9,1 h pour un pic
+                // livré à 9,6. Une capacité ne descend jamais sous ce qui a été fait.
+                rendu = Math.max(rendu, volPeak);
+              }
+            }
+          }
           // la re-sonde ne peut que DESCENDRE le plafond structurel : si la semaine livrée porte
           // plus que ce que la première sonde annonçait, c'est la première qui sous-estimait, et
           // l'écart relève du même ticket — on ne remonte pas un plafond avec une mesure aval.

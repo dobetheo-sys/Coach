@@ -9341,7 +9341,7 @@ sa cible (bornes de séance, O-43 §2/O-78) + (b) O-85, postérieure à la mesur
 protection et non une fuite + (c) le résidu interactionnel du point fixe. **Aucune fuite de
 volume non nommée.** La fuite NOMMABLE est diagnostique → O-94.
 
-## O-94 · Les sondes structurelles (V2.1 + re-sonde) saturent un clone SANS la borne O-85 — le « structurel 12,4 » de la carte ignore une borne que le plan applique · 🔴 **OUVERT — court, diagnostic seul**
+## O-94 · Les sondes structurelles saturaient un clone SANS la borne O-85 — la carte promettait 1,7 h qu'une protection interdit · ✅ **FERMÉ (ordre du fondateur, 19/08/2026) — voir la FERMETURE plus bas**
 
 La re-sonde (planGenerator ~4294) sature chaque séance du clone à son plafond de SÉANCE, mais
 n'applique pas `swimWeeklyLoadCapM` : elle compte des mètres de nage que la borne d'épaule
@@ -9456,3 +9456,40 @@ l'enchaînement), délibéré et jamais écrit. **La décision est maintenant é
 (commentaire O-91) ; sa CONSÉQUENCE — aucune course sèche > 68 min sur les 20 dernières semaines
 d'une prépa qui finit par un semi — reste l'objet de la pièce « sortie longue » du lot
 progression, qui devra inclure la PRÉSENCE, pas seulement la taille.
+
+## LE MANQUE DÉCLARÉ (O-43 §2, moitié « déclarer ») + O-94 — FERMETURE (ordre du fondateur, 19/08/2026)
+
+*« Le manque déclaré lit la CIBLE DE BOUCLE, jamais la courbe rabattue — sinon il annoncera
+0,6 h là où il en manque 3,6 à 5,0. Et le rabattement reste : afficher le livré ET l'écart
+(gabarit O-87). »*
+
+**Le manque déclaré.** La cible de boucle (`targetH` de chaque semaine) est ARCHIVÉE à la
+construction (`_ciblesBoucle`), avant tout rabattement ; après le point fixe, une décision
+`manque` se pose quand l'écart au pic ≥ 0,5 h/sem (la ligne de matérialité de la mesure O-43
+§2), une fois par plan avec son ampleur totale — gabarit O-87 : la cible ET le livré, étiquetés.
+Sur REEL : **« pic visé 13 h/sem — livré 9,6 (écart 3,4 h/sem, 101,9 h sur la préparation) »**
+— là où la courbe rabattue disait 0,6. Le rabattement de `vol_declared` reste (la courbe
+affichée décrit le plan). Population : **99 plans sur 986 déclarent, 887 n'ont rien à déclarer**
+— les deux branches vivent, un critère que « toujours » ou « jamais » satisferait ne garde rien.
+
+**O-94.** La re-sonde écrête désormais la nage du clone saturé à `swimWeeklyLoadCapM` (l'excédent
+converti à l'allure du clone lui-même — règle 14, pas de table parallèle), ET le livré borne la
+correction par en bas : ma première écriture rendait un « structurel » à 9,1 h sous un pic livré
+à 9,6 — une capacité que le livré réfute (l'allure moyenne du clone saturé est plus rapide que
+celle du livré, la saturation grossit les blocs au seuil). Sur REEL : **structurel 12,4 → 9,6**,
+et la carte dit désormais « pic à 9,6 — ce qui borne, c'est le nombre de séances (−10,4 h/sem) »
+avec le secours à 13 h — plus une heure promise qu'une protection interdit. V2.1 (qui PILOTE
+`peakH`) garde sa mesure sans la borne : l'y appliquer changerait la construction, décision à
+part. **Effet sur le sceau, publié** : S5 (identité T-25 « min(plafonds) = pic livré ») descend
+512 → 496 — l'identité DEVIENT vraie sur 16 profils, le cliquet ré-épinglé avec sa cause.
+
+**Garde T-57**, trois moitiés (cible ≠ rabattu sur REEL · structurel < 11 ET ≥ pic livré ·
+population des deux branches épinglée) — **contre-prouvée : manque branché sur la courbe
+rabattue → rouge · correction O-94 retirée → rouge.**
+
+```verify
+id: MANQUE-DECLARE
+quoi: la décision manque de REEL lit-elle la cible de boucle, et le structurel compte-t-il la borne ?
+attendu: /pic visé 13 h.*écart 3,4.*structurel 9\.6/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');for(const{key,sport,a}of profiles()){if(!key.startsWith('REEL'))continue;const p=globalThis.EBV2.buildPlan(sport,a);const d=(p._v2?.decisions||[]).find(x=>x.id==='manque');const st=(p._r202?.plafonds||[]).find(x=>x.id==='structurel');console.log((d?d.val:'absente')+' · structurel '+(+st.brut).toFixed(1));break;}"
+```
