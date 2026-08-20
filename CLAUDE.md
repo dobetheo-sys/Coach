@@ -580,6 +580,28 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**LE LEVIER EST LE TYPE DU CRÉNEAU — la carte est mesurée, et le créneau typé est `facile2`**
+(mesure préalable du lot « type du créneau », 20/08/2026 — voir `BUGS_OUVERTS.md` « QU'EST-CE QUI
+ATTRIBUE UNE DISCIPLINE À UN CRÉNEAU ? », aucun correctif, `src/` inchangé hors commentaire) :
+**(1) le schéma de semaine est AGNOSTIQUE de la discipline** — il ne pose qu'une CHARGE et un NOM
+de créneau (c'est écrit dans le code depuis R10, et vérifié) ; le nombre de créneaux est donc fixé
+par le CALENDRIER, et le doublage est le seul moyen d'en ajouter. **(2) C'est le module du sport
+qui attribue**, et la carte du livré (188 profils tri) le montre : `facile2` **nage 100 %**,
+`dur1` vélo 99 %, `facileR` course 88 %, `dur2` vélo 54/course 46 (bascule NETTE par phase : vélo
+en base/dev → course en spec/pic), `durLong` brick 100 % en spec/pic. Sur le profil réel (qui
+double) : `facile2` reste à **98 % de nage** — **c'est LE créneau typé, et c'est exactement la
+cible du §3 : convertir un créneau nage en vélo, c'est convertir un `facile2`, et c'est UNE
+branche.** **(3) Le critère n'est PAS paramétrable** : 29 sites `S2.push` dans le module tri,
+chacun avec sa discipline en littéral (`bk` ×10 · `sw` ×8 · `rn` ×7 · `br` ×2), choisis par une
+cascade lisant 13 conditions (`phase` 38 lectures, `slot` 9, `runInj` 8, `medHold` 8…) — aucune
+table ne relie un créneau à une discipline. Le lot suivant a donc deux formes à arbitrer AVANT
+d'écrire : une table `créneau × phase → discipline` (chantier) ou une règle d'ALTERNANCE comme
+B1/B2 (ticket). **Deux acquis actés au registre** : la cible de 20 % de nage **ne tient qu'à
+partir de ~13 h** (à 11,2 h elle force 3 séances de 45 min ou 4 de 33 — la fréquence ou le palier
+B-17, aucun des deux ne se sacrifie bien), réserve écrite À CÔTÉ de la constante ; et l'objet des
+pièces restantes est révisé (faire APPARAÎTRE ou CHANGER un type, jamais allonger — et seulement
+sur des types présents AU PIC), **A3 retirée de la file** (les récups scalent déjà).
+
 **LA CONTRADICTION « 1,8 h manquantes / 2,6 h de marge » EST LEVÉE — la marge n'existait pas, et
 l'hypothèse O-85 est réfutée dans sa forme forte** (mesure du 20/08/2026, aucun correctif — voir
 `BUGS_OUVERTS.md` « LES 1,8 H MANQUANTES ET LES 2,6 H DE MARGE » et **O-97**) : la semaine de pic

@@ -9874,6 +9874,131 @@ la sortie longue vélo ne PROGRESSE pas                 saturée à 201' (plafon
 5 tri/Full à budget serré sans longue CAP en spec      arbitrage de priorité, T-59
 ```
 
+## QU'EST-CE QUI ATTRIBUE UNE DISCIPLINE À UN CRÉNEAU ? — la mesure préalable du lot « type du créneau » (20/08/2026)
+
+**Aucun correctif.** Les trois questions du §5, répondues sur le code ET sur le livré.
+
+### (1) Le schéma de semaine est AGNOSTIQUE de la discipline — c'est écrit, et c'est vrai
+
+`schema()` (`weekBuilder`) ne pose que deux choses par jour : une CHARGE (`dur` / `facile` /
+`recup` / `off`) et un NOM DE CRÉNEAU. Son commentaire le dit depuis R10 (« il est agnostique de
+la discipline, et c'est très bien ainsi »), et la lecture le confirme — aucune discipline n'y
+apparaît. Quatre formes :
+
+```
+le sport a son propre schéma      `mod.weekSchema` — le TRAIL en déclare un (la longue est le
+                                  pivot du week-end, le lundi porte le renfo excentrique)
+semaine de récup                  facileR · facile2 · off · facileR · facile2 · facileR · off
+semaine de charge, 7 jours        recup · dur1 · facileR · dur2 · facile2 · durLong · facileR
+semaine de charge, cycle de 10 j  dur1 · facileR · dur2 · facile2 · facileR · facileR · dur2 ·
+                                  facile2 · durLong · recup
+```
+
+**Conséquence directe : le nombre de créneaux d'une semaine est fixé par le CALENDRIER** (7 jours,
+ou 10 pour un cycle), et la seule façon d'en ajouter est le DOUBLAGE — ce que la mesure O-97
+avait déjà établi par le dehors.
+
+### (2) C'est le MODULE DU SPORT qui attribue, et la mesure du livré donne la carte
+
+188 profils tri, toutes semaines confondues :
+
+```
+créneau     total    disciplines livrées
+facileR     10 997   course 88 % · nage 12 %
+facile2      5 302   nage 100 %                        ← MONO-DISCIPLINE
+durLong      3 859   brick 43 % · course 37 % · vélo 21 %
+dur1         3 818   vélo 99 % · nage 1 %
+dur2         3 753   vélo 54 % · course 46 %
+```
+
+**Par PHASE, deux créneaux basculent franchement et deux ne bougent jamais :**
+
+```
+dur2      base vélo 100  ·  dev vélo 99  ·  spec course 99  ·  peak course 99  ·  taper course 100
+durLong   base course 73/vélo 27  ·  dev course 55/vélo 45  ·  spec+peak brick 100
+facileR   course 92-99 % partout, sauf spec/peak où la nage prend 21-27 %
+dur1      vélo 98-99 % dans TOUTES les phases
+facile2   nage 100 % dans TOUTES les phases
+```
+
+⚠ **Cette carte décrit le routage NON DOUBLÉ** : seuls 2 des 188 profils tri du corpus portent
+`doubles: "oui"` (neuvième A-2). Sur le profil réel, qui double, elle devient :
+
+```
+dur1     nage 55 % · vélo 45 %        (le doublage y pose la nage de qualité)
+dur2     vélo 53 % · nage 25 % · course 22 %   (l'alternance B2 s'y voit)
+facile2  nage 98 %                    ← MONO-DISCIPLINE, même en doublant
+facileR  course 93 % · vélo 7 %
+durLong  brick 48 % · course 35 % · vélo 17 %
+```
+
+> **Le créneau typé, c'est `facile2` : nage à 98-100 % dans les deux corpus, toutes phases
+> confondues.** C'est exactement la cible du §3 du document — convertir un créneau nage en
+> créneau vélo, c'est convertir un `facile2`, et c'est UNE branche.
+
+### (3) Le critère est-il paramétrable ? **NON — il est en dur, dans 29 branches**
+
+Le module tri porte **29 sites `S2.push`**, chacun écrivant sa discipline en LITTÉRAL :
+
+```
+d: "bk" × 10   ·   d: "sw" × 8   ·   d: "rn" × 7   ·   d: "br" × 2   ·   d: "rs" × 2
+```
+
+Ils sont choisis par une cascade de `if / else if` lisant **treize conditions distinctes** —
+`phase` (38 lectures), `slot` (9), `runInj` (8), `medHold` (8), `weekNum` (7), `dbl` (7),
+`beginner` (7), `slotIdx` (5), `isRecup` (5), `lvl` (4), `finisher` (4), `noVo2` (3),
+`semaineRecup` (2). **Aucune table ne relie un créneau à une discipline** : `disciplines:
+["sw","bk","rn"]` du registre déclare seulement ce que le SPORT contient, jamais qui occupe quoi.
+
+**Ce que ça implique pour le lot suivant** : « changer le type d'un créneau » n'est pas un
+paramètre à poser, c'est une branche à écrire — et le point unique n'existe pas encore. Deux
+formes possibles, à arbitrer AVANT d'écrire : soit une table `créneau × phase → discipline` que
+le module lit (le schéma cesse d'être agnostique, mais la carte ci-dessus montre qu'il l'est déjà
+de fait, à la branche près), soit une règle d'ALTERNANCE comme B1/B2, qui ne touche qu'un créneau
+et garde le reste. La première est un chantier, la seconde un ticket.
+
+**Ce que la mesure ne dit PAS** : elle ne dit pas si les 88/12 de `facileR` ou les 54/46 de `dur2`
+sont des choix ou des sédiments. Elle donne la carte, pas l'intention — et l'intention de chaque
+branche est dans son commentaire, qu'il faudra relire une par une avant de toucher au routage.
+
+```verify
+id: CRENEAU-TYPE
+quoi: le créneau facile2 est-il toujours mono-discipline (nage) sur le corpus tri ?
+attendu: /facile2 : nage 9[89]|facile2 : nage 100/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const{profiles}=await import('./scripts/goldenMaster.mjs');const o={};for(const{sport,a}of profiles()){if(sport!=='tri')continue;let p;try{p=globalThis.EBV2.buildPlan(sport,a)}catch{continue}for(const w of p.weeks)for(const d of w.days){if(d.slot!=='facile2')continue;for(const s of d.sessions){if(s.race||s.d==='rs')continue;o[s.d]=(o[s.d]||0)+1;}}}const t=Object.values(o).reduce((a,b)=>a+b,0);console.log('facile2 : '+Object.entries(o).sort((a,b)=>b[1]-a[1]).map(([k,v])=>(k==='sw'?'nage':k==='bk'?'vélo':k)+' '+Math.round(100*v/t)).join(' · '));"
+```
+
+## L'ALLOCATION — la cible à 20 % de nage ne tient qu'à partir de 13 h (§3, acté au registre)
+
+Ajouté à `ALLOC_CIBLE` comme réserve écrite, parce que c'est la TROISIÈME fois que le volume et la
+répartition se révèlent inséparables :
+
+```
+à 11,2 h   nage 20 % = 2,2 h   →  3 séances de 45 min  (la fréquence tombe sous ce que la
+                                    technique demande)
+                              ou  4 séances de 33 min  (le palier B-17 en demande ~41)
+à 13 h     nage 20 % = 2,6 h   →  4 séances de 39 min  ✓
+```
+
+**En dessous de 13 h, la cible force un arbitrage entre la FRÉQUENCE et la LONGUEUR** — et pour
+un nageur limité par la technique, aucun des deux ne se sacrifie bien. La cible reste donc
+publiée telle quelle (elle décrit l'objectif), et l'écart qu'elle affiche à 11,2 h est en partie
+une conséquence du volume, pas seulement du routage.
+
+## LES PIÈCES RESTANTES DU LOT PROGRESSION — objet RÉVISÉ (§4, acté)
+
+```
+✗  allonger un type                →  semaine plus lourde, pas plus spécifique   (MESURE 4)
+✓  faire APPARAÎTRE un type        →  là où il manque (A2 : la longue après S22)
+✓  changer le TYPE d'un créneau    →  le levier établi deux fois
++  et seulement sur des types PRÉSENTS AU PIC — un plafond relevé sur un type absent du pic
+   ne change pas le pic (mesuré : le pic est la somme des plafonds de SES 9 séances)
+```
+
+**A3 (semaines de récup) est RETIRÉE de la file** : la mesure a montré qu'elles scalent déjà
+(médiane 59 % de la charge, cohérent avec `RECUP_WEEK_FACTOR`), et sa prémisse — « 3,5 h pour
+10 h de charge » — venait d'un point, pas d'une population.
+
 ## LES 1,8 H MANQUANTES ET LES 2,6 H DE MARGE — **la contradiction est levée : la marge n'existait pas** (mesure du 20/08/2026)
 
 *« Il y a plus de marge disponible que de volume manquant. Pourquoi le placement n'utilise-t-il
