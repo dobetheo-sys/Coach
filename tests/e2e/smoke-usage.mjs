@@ -858,6 +858,29 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   ok(surPlan.conseils, "R23.10 — …et ils sont bien ARRIVÉS dans 🗓 Plan (déplacés, pas supprimés)");
   ok(surPlan.edit && surPlan.reset,
     "R23.12b — modifier et changer de sport restent atteignables, à un seul endroit (🗓 Plan)");
+
+  // O-96 — LES DEUX RENDUS DU COMPTE DE SÉANCES DISENT LE LIVRÉ (constat du fondateur,
+  // 20/08/2026 : « Pourquoi ce plan » disait « 12 prescrites — en livre 9 » pendant que
+  // « Les décisions du moteur » rendait « 12 » brut face à un « ce qui borne » à 9). Le
+  // critère appelle les DEUX fonctions de rendu sur une décision FABRIQUÉE où prescrit ≠
+  // livré (le profil du parcours peut avoir les deux égaux — un critère assis dessus serait
+  // vacueux, « un zéro a besoin de sa population ») et vérifie la phrase dans chacune ; le
+  // témoin (livre === val) vérifie que la phrase n'apparaît QUE quand elle a un objet.
+  {
+    const o96 = await page.evaluate(async () => {
+      const mod = await import("./js/ui/plan-view.js");
+      const fab = (livre) => ({ _v2: { score: 100, hardViolations: [], warnings: [], repairs: [],
+        decisions: [{ id: "budget", what: "Séances par semaine", val: "12", why: "budget déclaré", livre }] } });
+      const RX = /prescrites — ta semaine la plus fournie en livre/;
+      const pourquoi = mod.whyPlanCardHTML(fab(9)), liste = mod.decisionsCardHTML(fab(9));
+      const temoinP = mod.whyPlanCardHTML(fab(12)), temoinL = mod.decisionsCardHTML(fab(12));
+      return { pourquoi: RX.test(pourquoi) && /1?2.*9/.test(pourquoi), liste: RX.test(liste) && /12.*9/.test(liste),
+        temoin: !RX.test(temoinP) && !RX.test(temoinL) };
+    });
+    ok(o96.pourquoi, "O-96 — « Pourquoi ce plan » étiquette le prescrit ET le livré (O-87)");
+    ok(o96.liste, "O-96 — « Les décisions du moteur » porte la MÊME phrase — le second rendu ne rend plus le val brut");
+    ok(o96.temoin, "O-96 — témoin : quand livré = prescrit, aucune étiquette (la phrase n'apparaît que quand elle a un objet)");
+  }
   await ctx.close();
 }
 

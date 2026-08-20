@@ -452,6 +452,18 @@ function sessDetailsHTML(s,style,open){
  * préparation tronquée (R22, une condition de sécurité et non une option de confort) reste
  * toujours visible, hors du repli.
  */
+// O-96 (constat du fondateur, 20/08/2026 — « la carte se contredit À NOUVEAU sur le nombre de
+// séances », 12 contre 9) — UNE DÉCISION QUI PORTE UN PENDANT LIVRÉ S'AFFICHE PARTOUT AVEC LUI.
+// O-87 avait posé la dérivation unique côté MOTEUR (le champ `livre`, même `nSess` que « une
+// semaine ne contient que N séances ») et corrigé UN des deux rendus : « Pourquoi ce plan »
+// disait « 12 prescrites — en livre 9 » pendant que « Les décisions du moteur », trois
+// centimètres plus bas, rendait `d.val` BRUT — « 12 » sans étiquette, face à un « ce qui
+// borne » qui dit 9. Un correctif appliqué à un rendu sur deux est un correctif qu'on croit
+// avoir (R18.1) : la phrase vit désormais ICI, en un point, et les deux rendus l'appellent.
+function suffixeLivre(d,bold){
+  if(!d||d.livre==null||d.livre===+d.val)return "";
+  return " prescrites — ta semaine la plus fournie en livre "+(bold?"<b>"+d.livre+"</b>":d.livre);
+}
 function whyPlanCardHTML(plan){
   const v2=plan&&plan._v2;
   if(!v2||!v2.decisions||!v2.decisions.length)return "";
@@ -476,7 +488,7 @@ function whyPlanCardHTML(plan){
   // fixe, la même dérivation que « une semaine ne contient que N séances » trois blocs plus
   // haut). Quand les deux diffèrent, les deux se disent — sinon la carte porte deux vérités
   // sans étiquette, et c'est sur la grandeur qui BORNE le plan.
-  if(D.budget){const _liv=D.budget.livre;add("<b>"+D.budget.val+"</b> séances par semaine"+(_liv!=null&&_liv!==+D.budget.val?" prescrites — ta semaine la plus fournie en livre <b>"+_liv+"</b>":"")+(D["R10-depart"]?"" : "")+(D.recup?", avec une semaine allégée "+D.recup.val:"")+".","budget");}
+  if(D.budget)add("<b>"+D.budget.val+"</b> séances par semaine"+suffixeLivre(D.budget,true)+(D["R10-depart"]?"" : "")+(D.recup?", avec une semaine allégée "+D.recup.val:"")+".","budget");
   if(D["R10-depart"])add("Le départ est calé sur ton volume RÉEL des derniers mois, pas sur ta cible : <b>"+D["R10-depart"].val+"</b>. C'est la marche la plus souvent trop haute.","reprise");
   if(D.impact)add("Pas plus de <b>"+D.impact.val+"</b> jours d'appui : c'est l'impact qui blesse, pas le volume.","impact");
   // R22 — LE BANDEAU DE PRÉPARATION TRONQUÉE, EN TÊTE ET HORS DU REPLIABLE.
@@ -530,7 +542,9 @@ function decisionsCardHTML(plan){
     }
     // U16 — trois niveaux : l'intitulé s'efface, la VALEUR est ce qu'on vient chercher, la
     // justification descend en gris aéré. Aucun mot retiré.
-    v2.decisions.forEach(d=>{h+='<li class="exp-row"><div class="exp-lbl">'+d.what+'</div><div class="exp-val">'+d.val+'</div><div class="exp-why">'+d.why+'</div></li>';});
+    // O-96 — le pendant LIVRÉ suit la décision ICI AUSSI : ce rendu affichait « 12 » brut
+    // pendant que « ce qui borne » disait 9, trois blocs plus haut (voir `suffixeLivre`).
+    v2.decisions.forEach(d=>{h+='<li class="exp-row"><div class="exp-lbl">'+d.what+'</div><div class="exp-val">'+d.val+suffixeLivre(d,false)+'</div><div class="exp-why">'+d.why+'</div></li>';});
     if(v2.warnings.length)h+='<li class="exp-row"><div class="exp-lbl">Limites connues de ce plan</div><div class="exp-why">'+v2.warnings.join(" ")+'</div></li>';
     if(v2.repairs&&v2.repairs.length){
       h+='<li class="exp-row"><details style="cursor:pointer"><summary>Réparations tentées par le moteur ('+v2.repairs.length+')</summary><div style="color:#555;margin-top:4px">'+v2.repairs.map(x=>'· '+x).join('<br>')+'</div></details></li>';

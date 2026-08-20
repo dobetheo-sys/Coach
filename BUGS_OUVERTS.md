@@ -9725,3 +9725,42 @@ quoi: le bloc final de REEL est-il un plateau (charges après le max ≥ 90 % du
 attendu: /S38.*12 ?%|VIOLÉ par S38/
 cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const{profiles}=await import('./scripts/goldenMaster.mjs');for(const{key,sport,a}of profiles()){if(!key.startsWith('REEL'))continue;const p=globalThis.EBV2.buildPlan(sport,a);const wk=p.weeks.map(w=>({n:w.num,r:!!w.isRecup,ph:w.phase?.id,h:Math.round(w.days.reduce((t,d)=>t+d.sessions.reduce((u,s)=>u+(s.race?0:(s.min||0)),0),0)/6)/10}));const ch=wk.filter(w=>!w.r&&w.ph!=='taper'&&w.ph!=='race'&&w.h>0);const mx=ch.reduce((x,y)=>y.h>=x.h?y:x);const v=ch.filter(w=>w.n>mx.n&&w.h<mx.h*0.9);console.log(v.length?'VIOLÉ par '+v.map(w=>'S'+w.n+' ('+w.h+' h, '+Math.round((1-w.h/mx.h)*100)+'% sous)').join(' · '):'plateau tenu');break;}"
 ```
+
+## O-96 · La carte se contredit À NOUVEAU sur le nombre de séances (12 vs 9) · ✅ **FERMÉ le 20/08 (doc CARTE_CONTRADICTION_SEANCES) — un DEUXIÈME RENDU, pas un troisième calcul**
+
+**Les trois questions du §1, mesurées avant de corriger** (fixture REEL + la manipulation
+déclarée du fondateur : `history: ancien` · `vol_max: 20` · `sessions_max: 12`) :
+
+1. **Oui** — le 12 est le PRESCRIT du raisonnement (`min(12 déclarées, 14,0 h ÷ 1,2 h/séance)`,
+   le « 14,0 » étant le plafond d'AVANT la sonde V2.1) et le 9 le maximum LIVRÉ.
+2. **O-87 tient côté moteur** : `budget.livre` et le « une semaine ne contient que N séances »
+   du maillon structurel sortent du MÊME `nSess` — vérifié, une seule décision R20.2 et les deux
+   comptes égaux (10/10 sur la fixture ; le 9/−10,3 du fondateur contre mon 10/−10,5 est l'écart
+   connu de la fixture RECONSTITUÉE — les trois clés à relever — pas une divergence de comptes).
+3. **Ce n'est PAS un troisième site de CALCUL : c'est un deuxième site d'AFFICHAGE.** La carte
+   « Pourquoi ce plan » disait bien « 12 prescrites — ta semaine la plus fournie en livre 9 »
+   (le rendu qu'O-87 a corrigé) ; la liste « **Les décisions du moteur** », trois centimètres
+   plus bas, rendait `d.val` BRUT — « 12 » sans étiquette, face à un « ce qui borne » qui dit 9.
+   La réponse à la question posée (« point unique trop étroit, ou site non routé ? ») est donc :
+   **site non routé** — et de la famille R18.1 (« un correctif appliqué à un rendu sur deux est
+   un correctif qu'on croit avoir »), la même forme que T-46/O-84c le matin même, côté écran.
+
+**Fermeture.** La phrase vit en UN point (`suffixeLivre`, `plan-view.js`) et les deux rendus
+l'appellent — toute décision portant un pendant `livre` l'affiche désormais partout. Garde :
+**3 assertions O-96 dans `smoke-usage`** sur une décision FABRIQUÉE où prescrit ≠ livré (le
+profil du parcours peut avoir les deux égaux — un critère assis dessus serait vacueux) + un
+témoin (livré = prescrit → aucune étiquette). **Contre-prouvée** : second rendu dé-routé → la
+seule assertion visée rougit (1 échec / 83).
+
+**§2-§3 du document, actés sans action** : la manipulation du fondateur confirme que ni
+`history` ni `vol_max` ne bornent plus (pic inchangé sous +7 h de déclaration — le maillon nommé
+est le nombre de séances), et que `DÉPART ANCRÉ` (O-69) et `VOLUME NON PLAÇABLE` (manque déclaré)
+fonctionnent et pointent le même endroit : **les bornes de séance — le lot progression est le
+seul levier restant**, et les « 3,5 h absorbées en semaine 1 » sont sa mesure d'entrée.
+
+```verify
+id: O-96
+quoi: les deux rendus de la décision budget portent la même phrase prescrit/livré ?
+attendu: /les deux rendus : 2/
+cmd: node --input-type=module -e "import('node:fs').then(({readFileSync})=>{const s=readFileSync('endurabuild/js/ui/plan-view.js','utf8');const n=(s.match(/suffixeLivre\(/g)||[]).length-1;console.log('les deux rendus : '+n);})"
+```

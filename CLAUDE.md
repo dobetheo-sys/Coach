@@ -580,6 +580,20 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**O-96 FERMÉ (doc CARTE_CONTRADICTION_SEANCES) — la contradiction 12/9 était un DEUXIÈME RENDU,
+pas un troisième calcul** (constat du fondateur sur son profil réel après montée à
+`ancien`/20 h/12 séances, 20/08/2026 — voir `BUGS_OUVERTS.md` « O-96 », 3 assertions dans
+`smoke-usage`) : mesuré d'abord (les trois questions du §1) — le 12 est le PRESCRIT
+(`min(12, 14,0 h ÷ 1,2)`, plafond d'avant-sonde), le 9 le max LIVRÉ ; **O-87 tient côté
+moteur** (`budget.livre` = le `nSess` du maillon structurel, une seule décision, comptes égaux
+sur la fixture) ; le fautif est la liste « Les décisions du moteur » qui rendait `d.val` BRUT
+pendant que « Pourquoi ce plan » affichait le couple étiqueté — **site d'affichage non routé**,
+famille R18.1, la même forme que T-46/O-84c le matin même, côté écran. La phrase vit en un point
+(`suffixeLivre`) et les deux rendus l'appellent ; contre-prouvé (dé-routage → 1 échec / 83).
+**§2-§3 actés** : la manipulation du fondateur confirme que le lot progression est le seul
+levier restant (pic inchangé sous +7 h de déclaration ; « 3,5 h absorbées en semaine 1 » est sa
+mesure d'entrée). Moteur INTACT (`src/` byte-identique, golden inchangé).
+
 **O-84 + O-95 FERMÉS (doc O72_O84_O95) — l'annonce B-17 se redérive du livré, le repli de
 « dev ≤ pic » ne mange plus le palier, et l'eau libre tombe TÔT** (20/08/2026 — voir
 `BUGS_OUVERTS.md` « O-84 FERMÉ », « O-95 FERMÉ », « O-72 RÉVISÉ », gardes **T-06 passé VERT**
