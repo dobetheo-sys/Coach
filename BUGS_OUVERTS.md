@@ -9479,17 +9479,84 @@ correction par en bas : ma première écriture rendait un « structurel » à 9,
 celle du livré, la saturation grossit les blocs au seuil). Sur REEL : **structurel 12,4 → 9,6**,
 et la carte dit désormais « pic à 9,6 — ce qui borne, c'est le nombre de séances (−10,4 h/sem) »
 avec le secours à 13 h — plus une heure promise qu'une protection interdit. V2.1 (qui PILOTE
-`peakH`) garde sa mesure sans la borne : l'y appliquer changerait la construction, décision à
-part. **Effet sur le sceau, publié** : S5 (identité T-25 « min(plafonds) = pic livré ») descend
-512 → 496 — l'identité DEVIENT vraie sur 16 profils, le cliquet ré-épinglé avec sa cause.
+`peakH`) gardait sa mesure sans la borne : décision à part, **rendue le jour même** — voir
+« V2.1 REÇOIT LA BORNE » ci-dessous : la construction compte désormais la borne, et sur REEL le
+manque N'EXISTE PLUS (il déclarait 3,4 h/sem tant que la boucle visait 13 h ; c'est cette
+déclaration qui a permis l'arbitrage). **Effet sur le sceau, publié** : S5 (identité T-25
+« min(plafonds) = pic livré ») descend 512 → 496 — l'identité DEVIENT vraie sur 16 profils, le
+cliquet ré-épinglé avec sa cause.
 
-**Garde T-57**, trois moitiés (cible ≠ rabattu sur REEL · structurel < 11 ET ≥ pic livré ·
-population des deux branches épinglée) — **contre-prouvée : manque branché sur la courbe
-rabattue → rouge · correction O-94 retirée → rouge.**
+**Garde T-57**, trois moitiés à l'époque (cible ≠ rabattu sur REEL · structurel < 11 ET ≥ pic
+livré · population des deux branches épinglée) — **contre-prouvée : manque branché sur la courbe
+rabattue → rouge · correction O-94 retirée → rouge.** Réécrite le jour même pour l'état
+post-V2.1 (voir la fermeture suivante) ; le bloc `verify` ci-dessous porte l'état ACTUEL —
+règle 17, un attendu périmé se réécrit sur la propriété, il ne se laisse pas basculer en
+« ne reproduit plus ».
 
 ```verify
 id: MANQUE-DECLARE
-quoi: la décision manque de REEL lit-elle la cible de boucle, et le structurel compte-t-il la borne ?
-attendu: /pic visé 13 h.*écart 3,4.*structurel 9\.6/
+quoi: sur REEL le manque n'existe plus (V2.1 compte la borne), et le structurel reste collé au pic livré ?
+attendu: /absente · structurel 9\.4/
 cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');for(const{key,sport,a}of profiles()){if(!key.startsWith('REEL'))continue;const p=globalThis.EBV2.buildPlan(sport,a);const d=(p._v2?.decisions||[]).find(x=>x.id==='manque');const st=(p._r202?.plafonds||[]).find(x=>x.id==='structurel');console.log((d?d.val:'absente')+' · structurel '+(+st.brut).toFixed(1));break;}"
+```
+
+## « V2.1 REÇOIT LA BORNE » — FERMETURE (arbitrage du fondateur, 19/08/2026)
+
+*« Construire une cible qu'une protection interdit d'atteindre est ce qui produit les 3,4 h de
+manque. Après : la cible descend à ~10 · le manque n'est pas masqué, il n'existe plus — le plan
+cesse de promettre ce qu'il ne peut pas placer. »* Le motif n'est PAS celui d'O-94 (un
+diagnostic) : ici c'est la **construction**.
+
+**La forme.** La sonde V2.1 applique `swimWeeklyLoadCapM(gate, MAX_SAFE_INTEGER)` — le **plafond
+de cliquet** (la bande que l'athlète peut GAGNER en livrant, O-89), pas le départ : au pic, le
+cliquet aura eu le plan entier pour monter — aux DEUX clones de saturation (pic et spécifique,
+R13.5). L'excédent de nage du clone se retranche à l'allure du clone lui-même (règle 14, pas de
+table parallèle). Pas de circularité O-43 : la borne dérive de la continuité DÉCLARÉE et ne lit
+jamais la semaine en cours (lecture arrière, comme la rampe C22). Domaine dérivé
+(`disciplines.length > 1`), jamais une liste de sports.
+
+**Sur REEL** : cible **13,0 → 9,7 h** (décision V2.1 « 9.7h (au lieu de 13.0h) », le why nomme
+la borne) · la décision `manque` **N'EXISTE PLUS** (elle déclarait 3,4 h/sem · 101,9 h) ·
+R20.2 : « pic à 9,4 h — ce qui borne, c'est le nombre de séances (−10,6 h/sem) », le secours à
+13 h intact · structurel **12,4 → 9,4 = le pic livré** (le témoin O-94 borne par en bas). Le
+diagnostic devient monocausal : ce que le manque déclarera ailleurs est désormais imputable aux
+seules bornes de séance.
+
+**§2 — la vérification qui pouvait inverser la décision, MESURÉE (rapportée, pas ajustée) :**
+
+- **Le plan ne s'aplatit PAS** (le piège O-69) : volBase 7,8 → volPeak 9,4, semaines de charge
+  de 6,2 à 9,1 h, amplitude 2,9 h ; la décision `O69-plat` est ABSENTE de REEL.
+- **La rampe C22 mord encore** : départ 7,8 h (le volume récent) puis 7,8 → 8,3 → 9,0 sur le
+  premier bloc — la montée existe toujours, elle vise simplement une cible honnête.
+- **Les plafonds de charge mordent encore** : semaines assises sur la borne d'épaule **16 → 4**
+  (sur 43). C'est la direction du critère de sortie de l'allocation (« ~0 semaine assise ») —
+  la protection cesse de travailler en permanence, sans qu'on ait touché à l'allocation.
+- **⚠ Le maximum n'est PLUS en dernière semaine de charge**, et c'est ce lot qui l'a déplacé —
+  mesuré par expérience contrôlée (borne neutralisée dans la seule sonde) : AVANT, max = S40 =
+  dernière charge (9,4 h) ; APRÈS, max en **S37 (9,1 h)**, S38 8,0 · S39 8,8 · S40 8,7. L'écart
+  est de 0,4 h et la fin de plan reste dans la bande haute, mais la propriété « le pic est la
+  dernière charge » ne tient plus au chiffre près sur REEL. **Rapporté tel quel** — le document
+  demande de mesurer, pas d'ajuster ; à peser au lot progression (qui possède la forme du pic).
+- **Répartition livrée** : nage **42,4 %** · vélo 28,6 % · course 29,0 % (total 300 h) — la
+  nage redescend de 45,5 % (post-O-89) vers la cible d'allocation, là encore sans toucher une
+  règle d'allocation.
+
+**Cliquets, ré-épinglés avec leur cause et attribution par expérience contrôlée** (borne
+neutralisée dans la seule sonde → les trois reviennent exactement) : S4 356 → **357**, S5
+496 → **504** (la cible plus basse déplace ce que le point fixe retire — la moitié ouverte
+d'O-35, huit profils où l'identité T-25 rebascule), T-48 VO2 8 676 → **8 704 min** · nage seuil
+431 633 → **429 703 m** (la cible baisse, les mètres du pic suivent).
+
+**Garde T-57 réécrite** pour l'état arbitré, quatre moitiés : V2.1 présente sur REEL avec cible
+< 11 h ET avant-borne 12,5-13,5 (c'est la borne qui fait la descente) · manque ABSENT de REEL
+(≥ 1 h/sem = la construction a re-perdu la borne) · structurel < 11 et ≥ pic livré · population
+des deux branches (**90 déclarent / 896 rien à déclarer**, écart max ≥ 2 h/sem — un manque qui
+lirait la courbe rabattue s'effondrerait vers son quantum de 0,5). **Contre-prouvée : borne
+neutralisée → rouge sur (1) ET (2)** (« la décision V2.1 a disparu · REEL redéclare 3,4 h/sem »).
+
+```verify
+id: V21-BORNE
+quoi: la sonde V2.1 compte la borne d'épaule dans la construction — cible REEL sous 11 h, manque absent ?
+attendu: /V2\.1 9\.7h \(au lieu de 13\.0h\) · manque absente/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');for(const{key,sport,a}of profiles()){if(!key.startsWith('REEL'))continue;const p=globalThis.EBV2.buildPlan(sport,a);const dv=(p._v2?.decisions||[]).find(x=>x.id==='V2.1');const d=(p._v2?.decisions||[]).find(x=>x.id==='manque');console.log('V2.1 '+(dv?dv.val:'absente')+' · manque '+(d?d.val:'absente'));break;}"
 ```

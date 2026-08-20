@@ -10,6 +10,15 @@
 > récup 225' → 112' · sortie longue de récup 85' → 66'. Les §3.B (inversions récup/charge) sont
 > FERMÉS par O-93 ; le §3.F est FERMÉ par O-89. Détail : `BUGS_OUVERTS.md`.
 
+> **P.S. n°2 (même jour, « V2.1 reçoit la borne »)** — la sonde de construction compte désormais
+> la borne d'épaule : la cible de boucle descend de 13,0 à 9,7 h et le manque de 3,4 h/sem que ce
+> rapport documentait N'EXISTE PLUS (il a servi : c'est sa déclaration qui a permis l'arbitrage).
+> Les annexes `relecture/` sont régénérées sur le moteur courant : total 310,7 → **300,0 h** ·
+> volPeak 9,6 → **9,4** · répartition nage 45,5 → **42,4 %** · vélo **28,6 %** · course
+> **29,0 %** · semaines assises sur la borne 16 → **4**. Un fait nouveau, rapporté sans ajustement
+> (§2 de l'arbitrage) : le max de charge quitte la dernière semaine (S40 9,4 → S37 9,1 h).
+> Détail : `BUGS_OUVERTS.md` « V2.1 REÇOIT LA BORNE ».
+
 Le plan complet est en annexe, dans les deux formes demandées :
 
 ```

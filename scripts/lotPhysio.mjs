@@ -1010,7 +1010,14 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 // (et le témoin livré la borne par en bas) — `min(plafonds)` RETROUVE le pic livré sur 16 profils
 // de plus. Le cliquet descend parce que l'identité T-25 devient vraie, pas parce qu'on mesure
 // moins (même mouvement que 502 → « la cible déclarée retrouve le pic livré », plus haut).
-const SCEAU_ATTENDU = { S1: 4, S4: 356, S5: 496 };
+// « V2.1 REÇOIT LA BORNE » (19/08/2026) — S4 356 → **357**, S5 496 → **504** : la SONDE V2.1
+// compte la borne d'épaule dans la CONSTRUCTION (cible 13,0 → 9,7 sur REEL). Les plans
+// nage-limités changent de cible, donc de forme : 1 dépassement I14 de plus (S4), et 8 profils
+// où l'identité `min(plafonds) = pic livré` REBASCULE — la cible plus basse déplace ce que le
+// point fixe retire, la moitié ouverte d'O-35. Attribué par EXPÉRIENCE CONTRÔLÉE : borne
+// neutralisée dans la seule sonde (contre-preuve T-57), S4/S5 reviennent à 356/496 et T-48
+// revient vert — un seul facteur, deux mesures.
+const SCEAU_ATTENDU = { S1: 4, S4: 357, S5: 504 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;
@@ -1859,7 +1866,13 @@ T("T-50", "vert", "PROPRIÉTÉ — la bande d'allure affichée se redérive du p
 // borne, les trois chiffres sont déjà ceux-là. C'est cohérent avec la politique de la passe —
 // elle prend dans les déversoirs (`sw.aero`, `sw.easy`) et ne touche la QUALITÉ qu'en dernier,
 // donc les mètres de nage seuil du pic ne bougent pas.
-const PIC_ATTENDU = { vo2Min: 8676, seuilM: 431633, profils: 188 };
+// « V2.1 REÇOIT LA BORNE » (19/08/2026) — VO2 8 676 → **8 704 min** (+0,3 %), nage seuil
+// 431 633 → **429 703 m** (−0,45 %). La sonde V2.1 compte la borne d'épaule : les cibles des
+// plans nage-limités descendent, donc moins de mètres au pic — et la nage seuil, dernier type
+// à céder (C26c), rend cette fois sa part parce que c'est la CIBLE qui baisse, pas une coupe.
+// Attribué par la contre-preuve T-57 (borne neutralisée dans la seule sonde → les deux chiffres
+// reviennent exactement à 8 676 / 431 633).
+const PIC_ATTENDU = { vo2Min: 8704, seuilM: 429703, profils: 188 };
 T("T-48", "vert", "la composition du PIC en tri est épinglée : le VO2 a cédé, la nage seuil a gagné (C26c)", () => {
   let vo2 = 0, seuil = 0, profils = 0;
   for (const { key, plan } of goldenAvecMoteur()) {
@@ -2349,50 +2362,64 @@ T("T-56", "vert", "aucune récup ne dépasse ses charges adjacentes, par type ni
 });
 
 /**
- * T-57 (le manque déclaré + O-94, ordre du fondateur 19/08/2026) — LE MANQUE LIT LA CIBLE DE
- * BOUCLE, JAMAIS LA COURBE RABATTUE ; ET LE « STRUCTUREL » DE LA CARTE NE PROMET PLUS CE QU'UNE
- * PROTECTION INTERDIT.
+ * T-57 (le manque déclaré + O-94 + « V2.1 reçoit la borne », ordres du fondateur 19/08/2026) —
+ * LE MANQUE LIT LA CIBLE DE BOUCLE, LA CONSTRUCTION COMPTE LA BORNE D'ÉPAULE, ET LE
+ * « STRUCTUREL » NE PROMET PLUS CE QU'UNE PROTECTION INTERDIT.
  *
- * Le rabattement de `vol_declared` sur le livré efface sa propre trace : mesuré, l'écart lu sur
- * la courbe rabattue valait 0,6 h là où la cible de boucle en manque 3,4 (REEL, pic visé 13,0 ·
- * livré 9,6). Et la re-sonde structurelle saturait un clone SANS la borne d'épaule : 12,4 h
- * annoncées dont ~1,7 non livrables sous aucune configuration (O-94). Trois moitiés :
+ * Trois états successifs, chacun payé : (a) le rabattement de `vol_declared` effaçait sa propre
+ * trace (écart lu 0,6 h là où la cible de boucle en manquait 3,4) ; (b) la re-sonde saturait un
+ * clone SANS la borne d'épaule (12,4 h annoncées, ~1,7 non livrables — O-94) ; (c) la SONDE
+ * V2.1 elle-même construisait une cible que la borne interdit d'atteindre — c'est ce qui
+ * PRODUISAIT le manque de REEL. Arbitrage « V2.1 reçoit la borne » : la cible descend
+ * (13,0 → 9,7) et sur REEL le manque n'est pas masqué, il N'EXISTE PLUS. Quatre moitiés :
  *
- *   (1) REEL : la décision « manque » existe, son pic visé est la CIBLE (12,5-13,5 h — la
- *       courbe rabattue dirait 9,6) et son écart ≥ 3 h/sem ;
- *   (2) REEL : le maillon « structurel » compte la borne O-85 — sous 11 h (l'ancien 12,4
- *       rougit ; valeur épinglée avec sa raison, révocable si la borne change) et jamais sous
- *       le pic livré (le livré est un témoin, règle 15) ;
- *   (3) POPULATION, les deux branches : des plans DÉCLARENT (≥ 50 — mesuré 99/986) et des
- *       plans n'ont RIEN à déclarer (≥ 500 — mesuré 887) : un critère que « toujours déclarer »
- *       ou « ne jamais déclarer » satisferait ne garde rien (règle 19).
+ *   (1) REEL : la décision V2.1 existe, sa cible comptée est SOUS 11 h (l'ancienne cible à
+ *       13,0 — borne non comptée — rougit) et son avant-borne reste 12,5-13,5 h (c'est bien la
+ *       borne qui fait la descente, pas un changement de courbe) ;
+ *   (2) REEL : la décision « manque » a DISPARU — le plan cesse de promettre ce qu'il ne peut
+ *       pas placer ; si elle revient avec ≥ 1 h/sem, la construction a re-perdu la borne ;
+ *   (3) REEL : le maillon « structurel » reste sous 11 h et jamais sous le pic livré (le livré
+ *       est un témoin, règle 15) ;
+ *   (4) POPULATION, les deux branches : des plans DÉCLARENT encore (≥ 50 — mesuré 90/986 après
+ *       V2.1) et des plans n'ont RIEN à déclarer (≥ 500 — mesuré 896) ; et l'écart max déclaré
+ *       reste ≥ 2 h/sem (mesuré 3,1) — un manque qui lirait la courbe RABATTUE s'effondrerait
+ *       vers son quantum de 0,5, et ce plancher est ce qui garde « lit la cible » maintenant
+ *       que REEL ne déclare plus (règle 19).
  */
-T("T-57", "vert", "le manque déclaré lit la cible de boucle, et le structurel compte la borne d'épaule (O-94)", () => {
+T("T-57", "vert", "V2.1 compte la borne d'épaule ; le manque de REEL n'existe plus, et les deux branches vivent", () => {
   const pb = [];
   const reel = goldenAvecMoteur().find((x) => x.key.startsWith("REEL"));
   if (!reel) return { ok: false, detail: "fixture REEL absente" };
-  const dM = (reel.plan._v2?.decisions ?? []).find((x) => x.id === "manque");
-  if (!dM) pb.push("(1) la décision « manque » a disparu de REEL");
+  const dV = (reel.plan._v2?.decisions ?? []).find((x) => x.id === "V2.1");
+  if (!dV) pb.push("(1) la décision V2.1 a disparu de REEL — la sonde ne borne plus rien");
   else {
-    const vise = parseFloat(String(dM.val).match(/pic visé ([\d,]+)/)?.[1]?.replace(",", ".") ?? "0");
+    const m = String(dV.val).match(/([\d.]+)h \(au lieu de ([\d.]+)h\)/);
+    const cible = parseFloat(m?.[1] ?? "0"), avant = parseFloat(m?.[2] ?? "0");
+    if (!(cible > 0 && cible < 11)) pb.push(`(1) cible V2.1 ${cible} h — la borne d'épaule n'est plus comptée dans la CONSTRUCTION`);
+    if (!(avant >= 12.5 && avant <= 13.5)) pb.push(`(1) l'avant-borne (${avant}) n'est plus la cible de boucle 12,5-13,5 — la descente vient d'ailleurs que de la borne`);
+  }
+  const dM = (reel.plan._v2?.decisions ?? []).find((x) => x.id === "manque");
+  if (dM) {
     const ecart = parseFloat(String(dM.val).match(/écart ([\d,]+)/)?.[1]?.replace(",", ".") ?? "0");
-    if (!(vise >= 12.5 && vise <= 13.5)) pb.push(`(1) le pic visé (${vise}) n'est pas la cible de boucle (12,5-13,5) — il lit la courbe rabattue ?`);
-    if (!(ecart >= 3)) pb.push(`(1) l'écart déclaré (${ecart}) est celui de la courbe rabattue, pas de la cible`);
+    if (ecart >= 1) pb.push(`(2) REEL redéclare un manque de ${ecart} h/sem — la construction a re-perdu la borne`);
   }
   const st = (reel.plan._r202?.plafonds ?? []).find((x) => x.id === "structurel");
   const pic = reel.plan.volPeak || 0;
-  if (!st) pb.push("(2) maillon structurel absent");
+  if (!st) pb.push("(3) maillon structurel absent");
   else {
-    if (+st.brut >= 11) pb.push(`(2) structurel ${(+st.brut).toFixed(1)} h — la borne d'épaule n'est plus comptée (O-94)`);
-    if (+st.brut < pic - 0.1) pb.push(`(2) structurel ${(+st.brut).toFixed(1)} h SOUS le pic livré ${pic} — une capacité que le livré réfute`);
+    if (+st.brut >= 11) pb.push(`(3) structurel ${(+st.brut).toFixed(1)} h — la borne d'épaule n'est plus comptée (O-94)`);
+    if (+st.brut < pic - 0.1) pb.push(`(3) structurel ${(+st.brut).toFixed(1)} h SOUS le pic livré ${pic} — une capacité que le livré réfute`);
   }
-  let avec = 0, sans = 0;
+  let avec = 0, sans = 0, ecartMax = 0;
   for (const { plan } of goldenAvecMoteur()) {
-    if ((plan._v2?.decisions ?? []).some((x) => x.id === "manque")) avec++; else sans++;
+    const d = (plan._v2?.decisions ?? []).find((x) => x.id === "manque");
+    if (d) { avec++; ecartMax = Math.max(ecartMax, parseFloat(String(d.val).match(/écart ([\d,]+)/)?.[1]?.replace(",", ".") ?? "0")); }
+    else sans++;
   }
-  if (avec < 50) pb.push(`(3) ${avec} plan(s) déclarent un manque — la déclaration a disparu du corpus`);
-  if (sans < 500) pb.push(`(3) ${sans} plan(s) sans manque — la décision est devenue inconditionnelle`);
-  return { ok: pb.length === 0, detail: pb.length ? pb.join(" · ") : `REEL « ${dM.val} » · structurel ${(+st.brut).toFixed(1)} h · corpus ${avec} déclarent / ${sans} rien à déclarer` };
+  if (avec < 50) pb.push(`(4) ${avec} plan(s) déclarent un manque — la déclaration a disparu du corpus`);
+  if (sans < 500) pb.push(`(4) ${sans} plan(s) sans manque — la décision est devenue inconditionnelle`);
+  if (ecartMax < 2) pb.push(`(4) écart max déclaré ${ecartMax.toFixed(1)} h/sem — un manque qui lit la courbe rabattue s'effondre vers son quantum`);
+  return { ok: pb.length === 0, detail: pb.length ? pb.join(" · ") : `REEL V2.1 « ${dV.val} » · manque absent · structurel ${(+st.brut).toFixed(1)} h · corpus ${avec} déclarent (écart max ${ecartMax.toFixed(1)}) / ${sans} rien à déclarer` };
 });
 
 const ROUGES_ATTENDUS = {

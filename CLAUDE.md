@@ -580,6 +580,27 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**« V2.1 REÇOIT LA BORNE » livré — la construction cesse de viser ce qu'une protection interdit,
+et sur REEL le manque N'EXISTE PLUS** (arbitrage du fondateur, 19/08/2026 — voir `BUGS_OUVERTS.md`
+« V2.1 REÇOIT LA BORNE », garde **T-57 réécrite**) : *« construire une cible qu'une protection
+interdit d'atteindre est ce qui produit les 3,4 h de manque »*. La sonde V2.1 applique le plafond
+de CLIQUET d'épaule (la bande que l'athlète peut GAGNER en livrant, O-89 — pas le départ) aux deux
+clones de saturation, excédent retranché à l'allure du clone (règle 14), zéro circularité O-43
+(borne dérivée de la continuité DÉCLARÉE, lecture arrière). Sur REEL : **cible 13,0 → 9,7 h ·
+manque absent (déclarait 3,4 h/sem, 101,9 h) · structurel 12,4 → 9,4 = pic livré · R20.2 « pic à
+9,4 — le nombre de séances (−10,6 h/sem) », secours 13 h intact**. **§2 mesuré, rapporté sans
+ajuster** : le plan ne s'aplatit PAS (charges 6,2-9,1 h, amplitude 2,9, `O69-plat` absente), la
+rampe mord encore (7,8 → 8,3 → 9,0), semaines assises sur la borne **16 → 4** (la direction du
+critère de sortie de l'allocation), répartition nage **42,4 %** (de 45,5) — et **⚠ le max quitte
+la dernière semaine de charge** (S40 9,4 → S37 9,1, S40 8,7 ; prouvé par expérience contrôlée,
+à peser au lot progression). Rayon golden : **75 profils, tous en tri** (duathlon sans nage,
+swimrun sous son plafond). Cliquets ré-épinglés avec cause + attribution un-facteur (borne
+neutralisée → tout revient) : S4 357 · S5 504 · T-48 8 704 min / 429 703 m. **T-57 quatre
+moitiés, contre-prouvée** (neutralisation → rouge sur V2.1-disparue ET manque-redéclaré) ;
+population 90 déclarent / 896 rien, écart max ≥ 2 h/sem (un manque qui lirait le rabattu
+s'effondrerait vers son quantum). File : re-vérification B-17 (O-84 en tête) → lot progression →
+les deux pièces → l'allocation (~0 semaine assise).
+
 **LE MANQUE DÉCLARÉ livré + O-94 FERMÉ — l'écart se lit sur la CIBLE DE BOUCLE, et la carte ne
 promet plus une heure qu'une protection interdit** (ordre du fondateur, 19/08/2026 — voir
 `BUGS_OUVERTS.md` « LE MANQUE DÉCLARÉ + O-94 », garde **T-57**) : la cible de boucle est archivée

@@ -11959,6 +11959,25 @@ function generatePlan(profile                , opts                             
   let _sondeCapH = 0;
   // ---- V2.1 — sonde de capacité : que permettent réellement les plafonds au pic ? ----
   {
+    // V2.1 LIT LA BORNE D'ÉPAULE (arbitrage du fondateur, 19/08/2026 — « V2.1 reçoit la
+    // borne ») : *« construire une cible qu'une protection interdit d'atteindre est ce qui
+    // produit les 3,4 h de manque. Après : la cible descend, le manque n'est pas masqué — il
+    // n'existe plus, le plan cesse de promettre ce qu'il ne peut pas placer. »* Le motif n'est
+    // PAS celui d'O-94 (un diagnostic) : ici c'est la CONSTRUCTION. La borne appliquée au clone
+    // saturé est le PLAFOND DE CLIQUET (la bande que l'athlète peut GAGNER en livrant, O-89) —
+    // pas le départ : au pic, le cliquet aura eu le plan entier pour monter. L'excédent de nage
+    // se retranche à l'allure du clone lui-même (règle 14, pas de table parallèle). Pas de
+    // circularité O-43 : le plafond dérive de la continuité DÉCLARÉE, jamais du plan.
+    const gateV21 = sportModule(a.sport          ).disciplines.length > 1 ? (r.b17Gate ?? null) : null;
+    const plafondEpauleM = gateV21 ? swimWeeklyLoadCapM(gateV21, Number.MAX_SAFE_INTEGER) : null;
+    const sousBorneEpaule = (dc          , h        )         => {
+      if (!plafondEpauleM) return h;
+      const m = dc.reduce((t, d) => t + d.sessions.reduce((u, s) =>
+        u + (s.d === "sw" ? (s.steps || []).reduce((v, st) => v + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0) : 0), 0), 0);
+      if (m <= plafondEpauleM) return h;
+      const swMin = dc.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.d === "sw" ? (s.min || 0) : 0), 0), 0);
+      return h - ((swMin / Math.max(1, m)) * (m - plafondEpauleM)) / 60;
+    };
     const chargePeakWeeks = [...new Set(days.filter((d) => d.phaseId === "peak").map((d) => d.week))]
       .filter((wn) => days.filter((d) => d.week === wn && d.isR).length < 4);
     const probeWeek = chargePeakWeeks[chargePeakWeeks.length - 1];
@@ -11974,7 +11993,7 @@ function generatePlan(profile                , opts                             
       }
       clampWeekBody(clone);
       renderWeek(clone);
-      let capacityH = weekMin(clone) / 60;
+      let capacityH = sousBorneEpaule(clone, weekMin(clone) / 60);
       // R13.5 — LA SONDE MESURE AUSSI LE CHEMIN, PAS SEULEMENT LE SOMMET. Elle sondait la
       // semaine de PIC seule : avec une épaule déclarée, les séances de substitution des
       // phases base/dev/spec plafonnent ~40 % plus bas que celles du pic, et la progression
@@ -11999,7 +12018,7 @@ function generatePlan(profile                , opts                             
           }
           clampWeekBody(clone2);
           renderWeek(clone2);
-          const specCapH = weekMin(clone2) / 60;
+          const specCapH = sousBorneEpaule(clone2, weekMin(clone2) / 60);
           if (specCapH > 0) capacityH = Math.min(capacityH, specCapH * 1.15);
           _capScale = 1;
         }
@@ -12008,7 +12027,7 @@ function generatePlan(profile                , opts                             
       if (capacityH > 0 && capacityH < peakH * 0.95) {
         r.decisions.push({
           id: "V2.1", what: "Promesse calibrée par sonde de capacité", val: capacityH.toFixed(1) + "h (au lieu de " + peakH.toFixed(1) + "h)",
-          why: "Les plafonds de séance (formats, C15/C21/C24" + (r.inj.count > 0 ? ", et surtout tes séances aménagées pour ta zone fragile" : "") + ") ne permettent pas plus : promettre davantage serait mentir",
+          why: "Les plafonds de séance (formats, C15/C21/C24" + (r.inj.count > 0 ? ", et surtout tes séances aménagées pour ta zone fragile" : "") + (plafondEpauleM ? ", et la borne de charge d'épaule" : "") + ") ne permettent pas plus : promettre davantage serait mentir",
         });
         peakH = capacityH;
       }
