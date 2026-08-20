@@ -580,6 +580,28 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**RE-VÉRIFICATION B-17 livrée — les 7 critères rejoués, le diagnostic d'O-84 était FAUX pour 22
+de ses 29 profils, et le site de la perte réelle est IDENTIFIÉ** (V21_ET_REVERIF_B17 §3,
+20/08/2026 — voir `BUGS_OUVERTS.md` « RE-VÉRIFICATION B-17 », O-84 réécrit, **O-95** ouvert,
+addendum O-54) : balayage des 188 profils tri à décision `B17-paliers`, AUCUN correctif moteur
+(la passe rejoue, elle n'écrit pas). **O-84 décomposé** : (a) **22/29 ne perdent RIEN** —
+l'annonce compte le TEST comme un palier (D3 dit lui-même « la première séance est un test, pas
+un palier ») : c'est pourquoi le correctif `canauxProteges` avait été mesuré INERTE, il protégeait
+une occurrence que personne ne supprimait ; (b) **1/29** : l'annonce ignore l'exemption épaule
+(3 annoncés, 0 posés — la pose est délibérée, la décision ne le sait pas) ; (c) **6/29, perte
+réelle, site identifié avec preuve** : le repli FRÉQUENCE de « dev ≤ pic » élit par minimum de
+minutes SANS passer par `prioriteFinancement` — le palier épinglé est intouchable en TAILLE donc
+son JOUR saute (« OFF (la semaine de pic reste la plus grosse) » sur le jour du palier de la
+DISTANCE DE COURSE, PW/tri/S : 550 m max pour 750). Les autres critères : épinglés tenus par les
+passes surveillées MAIS le budget clampe sous l'épingle (`vol-min` : 2 275 · 3 050 · **2 150** m
+pour une épingle à 3 800 — suite NON monotone, 0 avertissement → addendum O-54, avec la branche
+« rabattu au plancher S non atteignable, 0 avertissement ») · **O-95** : 8 profils courts
+reçoivent l'eau libre à 100 % de la spec (test en k0 + positions [0, len−1]) · gate 188/188,
+test « je ne sais pas » 28/28, débutants couverts (56). **Deux fautes de mon instrument
+publiées** : jugé contre le format DEMANDÉ (la faute T-50 exacte, dans la sonde qui vérifie
+B-17) puis « test prescrit, hypothèse 290 m » avalé comme un format. File : correctifs O-84
+(a/b/c) à arbitrer avec le lot progression (c possède la forme du pic).
+
 **« V2.1 REÇOIT LA BORNE » livré — la construction cesse de viser ce qu'une protection interdit,
 et sur REEL le manque N'EXISTE PLUS** (arbitrage du fondateur, 19/08/2026 — voir `BUGS_OUVERTS.md`
 « V2.1 REÇOIT LA BORNE », garde **T-57 réécrite**) : *« construire une cible qu'une protection

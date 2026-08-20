@@ -6087,6 +6087,17 @@ gardé par    `T-39` (lotPhysio) épingle le compte à 57 : aucun AUTRE mécanis
              s'y ajouter en silence.
 ```
 
+**Addendum re-vérification B-17 (20/08/2026) — deux mesures nouvelles pour l'arbitrage, mêmes
+moitiés.** (1) La moitié « livrabilité » ne touche pas que le débutant : sur `G/tri/Full/vol-min`
+(source MESURE, 2 000 m déclarés, gate franchissable), le budget de séance clampe les continues à
+**2 275 · 3 050 · 2 150 m** pour une épingle finale à 3 800 — la suite est NON MONOTONE (le
+dernier palier, celui de la distance de course, est le plus PETIT), le titre est honnête (sync
+O-54) et **0 avertissement**. (2) La branche « rabattement au PLANCHER » est muette : 2 profils
+`debutant/basse-100m` sont rabattus sur S (le format le plus court du sport) alors que le gate
+lui-même rend `atteignableM` 354-472 m pour 750 — le format plancher n'est PAS atteignable, le
+plan livre 500 max, et **rien ne le dit** (la moitié « informer » de R11.2 manque sur cette
+branche ; c'est l'issue (ii)/(iii) du tableau ci-dessus, jamais départagée).
+
 ```verify
 id: O-54
 quoi: des blocs epingles sont rabotes par C15 pendant que le titre annonce l'epingle
@@ -8901,24 +8912,40 @@ coûteux qui satisfait `plancher > plafond` EST `min(dignité, plafond)`, c'est-
 
 ---
 
-## O-84 · Le plan ANNONCE N paliers de continuité et en livre N−1 · 🔴 **OUVERT — préexistant, mesuré, et c'est une PROMESSE**
+## O-84 · Le plan ANNONCE N paliers de continuité et en livre N−1 · 🔴 **OUVERT — décomposé le 20/08 : trois mécanismes, le site de la perte réelle IDENTIFIÉ, et le diagnostic d'origine était faux pour 22 des 29**
 
-Trouvé en livrant O-82, **et mesuré identique des deux côtés** — c'est ce qui prouve que ce lot
-n'en est pas la cause : **29 profils tri sur 187 (15,5 %) avant, 29 après.** La décision
-`B17-paliers` annonce « 3 paliers en phase spécifique » et le plan en livre 2.
+Trouvé en livrant O-82, mesuré identique des deux côtés, **re-mesuré identique après
+O-85/O-89/O-93/V2.1 : 29 profils sur 188.** La re-vérification B-17 (20/08/2026) a décomposé les
+29, et **le diagnostic enregistré ici — « le palier est élu victime par une coupe » — était faux
+pour 22 d'entre eux.** C'est ce qui explique le correctif « évident » mesuré INERTE : il
+protégeait une occurrence que personne ne supprimait.
 
-Le mécanisme est le cinquième de la prédiction du 19/08 (« tout mécanisme qui sélectionne par
-POSITION, TAILLE ou ORDRE frappe la natation par défaut ») : le palier est élu victime par une
-coupe **qui ne passe pas par `prioriteFinancement`**. Vérifié en écrivant le correctif évident et
-en le mesurant INERTE : déclarer le canal `occurrence` sur les continuités dans `canauxProteges`
-**ne change rien** — donc le site fautif est l'un des trois qui choisissent sans elle, et il reste
-à identifier. Le correctif a été RETIRÉ plutôt que livré : une modification inerte ne part pas.
+**(a) 22/29 — rien n'est perdu : l'ANNONCE compte le TEST comme un palier.** Quand la source
+n'est pas mesurée, le premier « palier » est délibérément un « Test de continuité » (arbitrage
+D3 : *« la première séance est un TEST, pas un palier »* — écrit dans le code de pose). La
+décision `B17-paliers` annonce « 4 palier(s) » et le plan livre 1 test + 3 continues : tout est
+là, à sa position, et le titre de la DÉCISION ment d'un. Famille U9/T-40, côté annonce. Correctif
+candidat : l'annonce dit « 1 test + 3 paliers » quand la source n'est pas mesurée.
+
+**(b) 1/29 — l'annonce ignore l'exemption ÉPAULE.** `G/tri/Full/injury-epaule` : 3 annoncés,
+**0 posés** — le site de pose porte `!inj.shoulder` (délibéré : la nage est aménagée), la
+décision émise dans `reasoningEngine` ne le sait pas. Une carte qui annonce trois nages continues
+à un athlète dont le plan les a suspendues pour protéger son épaule.
+
+**(c) 6/29 — la perte RÉELLE, site identifié avec preuve** (`PW/tri/{S,M}/{plat,vallonne,
+montagne}`) : le repli FRÉQUENCE de la garantie « dev ≤ pic » (`planGenerator.ts`, bloc A2/I1 —
+quand la réduction des corps ne suffit plus, « la plus petite séance non longue cède ») élit sa
+victime par **minimum de minutes du jour, sans passer par `prioriteFinancement`**, et le jour le
+plus court de la semaine est le palier épinglé (~30-40 min). Preuve : `PW/tri/S/plat` S69, le
+jour `facile2` porte « OFF (la semaine de pic reste la plus grosse) » à la place du palier — et
+c'est le palier de la **DISTANCE DE COURSE** (max livré 550 m pour un sprint à 750). La
+prédiction du 19/08 mot pour mot : le bloc est épinglé donc intouchable en TAILLE, alors son JOUR
+saute — *« protéger la taille seule → le type perd ses occurrences »*. Le correctif passe par le
+point unique (`jourIntouchable` doit couvrir le jour porteur d'un bloc épinglé) — à arbitrer avec
+le lot progression, qui possède la forme du pic.
 
 Ce qui rend ce ticket différent d'un simple créneau perdu : **le plan a AFFICHÉ la promesse**.
-Supprimer le palier ne rend pas le plan plus léger, il le rend MENTEUR — et `canauxProteges`
-porte déjà la règle qui décide (*« protéger un seul canal ne protège pas un type : ça choisit
-seulement de quelle façon il meurt »*), appliquée à moitié ici : la TAILLE d'une continuité est
-protégée, son OCCURRENCE non.
+Supprimer le palier ne rend pas le plan plus léger, il le rend MENTEUR.
 
 ```verify
 id: O-84
@@ -9559,4 +9586,89 @@ id: V21-BORNE
 quoi: la sonde V2.1 compte la borne d'épaule dans la construction — cible REEL sous 11 h, manque absent ?
 attendu: /V2\.1 9\.7h \(au lieu de 13\.0h\) · manque absente/
 cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');for(const{key,sport,a}of profiles()){if(!key.startsWith('REEL'))continue;const p=globalThis.EBV2.buildPlan(sport,a);const dv=(p._v2?.decisions||[]).find(x=>x.id==='V2.1');const d=(p._v2?.decisions||[]).find(x=>x.id==='manque');console.log('V2.1 '+(dv?dv.val:'absente')+' · manque '+(d?d.val:'absente'));break;}"
+```
+
+## RE-VÉRIFICATION B-17 — les 7 critères d'acceptation rejoués sur le moteur actuel (V21_ET_REVERIF_B17 §3, 20/08/2026)
+
+*« Rejouer les critères d'acceptation de B-17, pas écrire un lot. Si trois défauts sont apparus
+sans qu'on les cherche, il y en a probablement d'autres. »* Balayage : les 188 profils tri du
+golden à décision `B17-paliers`. **Il y en avait d'autres — et le diagnostic enregistré d'O-84
+était FAUX pour 22 de ses 29 profils** (détail dans l'entrée O-84, réécrite).
+
+**[✗] 1. paliers annoncés = livrés (O-84).** 29/188 au compte de l'instrument, INCHANGÉ par
+O-85/O-89/O-93/V2.1 — mais la décomposition renverse le ticket : **22** ne perdent RIEN (l'annonce
+compte le TEST comme un palier, voir O-84 réécrit) · **1** est l'exemption épaule que l'annonce
+ignore (3 annoncés, 0 posés — la pose est délibérée, `!inj.shoulder`, l'annonce ne le sait pas) ·
+**6** perdent réellement un palier, et le site est IDENTIFIÉ avec preuve (le repli FRÉQUENCE de
+« dev ≤ pic » — voir O-84).
+
+**[~] 2. aucun épinglé raboté par une passe aval (O-53).** Les passes surveillées tiennent :
+titre = corps sur 100 % des continues livrées, T-39/T-53/T-56 verts, O-85 et O-93 épargnent les
+épinglés (compté). MAIS le corps lui-même est clampé SOUS l'épingle par le budget de
+séance/semaine — la moitié OUVERTE d'O-54, re-mesurée ici sur `G/tri/Full/vol-min` : épingle
+3 800 m, corps livré **2 150 m**, suite livrée **2 275 · 3 050 · 2 150** (NON MONOTONE : le
+dernier palier, celui de la distance de course, est le plus PETIT), **0 avertissement**. Reporté
+dans O-54.
+
+**[✗] 3. la continue en eau libre existe et tombe TÔT en spécifique.** 180/188 oui. **8 profils
+(S et M, source non mesurée) la reçoivent à 100 % de la spec** — dernière semaine. Mécanisme :
+avec 2 paliers posables, le TEST prend la position 0 (arbitrage D3, correct) et la consigne eau
+libre « se décale au palier suivant » — qui est la DERNIÈRE semaine (`positions = [0, len−1]`).
+Découvrir l'eau libre à la dernière continue avant l'affûtage, c'est le contraire de « tôt ».
+Ouvert : **O-95**.
+
+**[✓] 4. la progression atteint la distance de course** — jugée contre le format LIVRÉ (B-17
+rabat) : **173 conformes · 11 hypothèse déclarée** (source non mesurée : la note du test dit
+elle-même que le plan avance sur une hypothèse) · **3 KO, tous sur des tickets connus** :
+`vol-min` (O-54, budget < épingle, ci-dessus) et 2 × `debutant/basse-100m` (rabattu au PLANCHER
+S, atteignable 354-472 m < 750, livré 500, **0 avertissement** — le format le plus court du sport
+ne suffit pas et rien ne le dit : la moitié « informer » de R11.2 manque sur cette branche,
+reporté dans O-54 §rabattement-plancher). **Deux fautes de MON instrument, publiées** : la
+première passe jugeait contre le format DEMANDÉ — la faute T-50 exacte, refaite dans la sonde qui
+vérifie B-17 — et déclarait 23 KO ; la seconde avalait « test prescrit, hypothèse 290 m » comme
+un format (cible 0, tout passait « conforme »).
+
+**[✓] 5. le gate se déclenche sur les bonnes populations.** 188/188 tri portent la décision,
+0 profil à gate muet : mesure-suffisante 88 · mesure-basse 72 · non-mesurée 28. À noter (pas un
+défaut, une imprécision d'annonce) : la branche « mesure suffisante » reçoit les mêmes
+« paliers » que la construction — un RAPPEL n'est pas une CONSTRUCTION, l'annonce ne distingue
+pas.
+
+**[✓] 6. « je ne sais pas » déclenche toujours le test.** 28/28 non-mesurées ont leur « Test de
+continuité », 0 manquant. Remarque au passage : chez l'inconnu DÉBUTANT la progression est PLATE
+(500 · 500 · 500 — plafonnée par C15 tant que le test n'est pas rapporté). Défendable (sécurité,
+et le cliquet O-56 lève le plafond dès que l'athlète rapporte), mais l'annonce dit « 4 paliers »
+au-dessus d'une suite constante.
+
+**[✓] 7. le corpus échantillonne des débutants nageurs sur chacun de ces points.** 56 profils
+débutants à gate actif ; couverture par point : eau libre 52 · atteinte de la distance 42 ·
+test 8 · O-84 (les B17/*/debutant sont dans les 29).
+
+```verify
+id: REVERIF-B17-4
+quoi: la progression atteint le format LIVRÉ (rabattu compris) — combien de KO hors hypothèse déclarée ?
+attendu: /· 3 KO/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const{profiles}=await import('./scripts/goldenMaster.mjs');const{continuityGate}=await import('./src/engine/swimContinuity.ts');const T={S:750,M:1500,'70.3':1900,Full:3800};let ok=0,hy=0,ko=0;for(const{sport,a}of profiles()){if(sport!=='tri')continue;let p;try{p=globalThis.EBV2.buildPlan(sport,a)}catch{continue}const c=p.weeks.flatMap(w=>w.days.flatMap(x=>x.sessions)).filter(s=>/^Nage continue/.test(s.name)).map(s=>+(s.name.match(/(\\d+) m/)?.[1]??0));if(!c.length)continue;const r=(p._v2?.decisions??[]).find(x=>x.id==='B17-continuite');const m=r?String(r.val).match(/^(S|M|70\\.3|Full) /):null;const f=m?m[1]:String(a.format);const g=continuityGate(a,p.weeks.length);const mx=Math.max(...c);if(mx>=(T[f]??0))ok++;else if(g&&g.source!=='mesure')hy++;else ko++;}console.log(ok+' conformes · '+hy+' hypothèse · '+ko+' KO');"
+```
+
+## O-95 · La continue en EAU LIBRE tombe à la DERNIÈRE semaine de spécifique sur les formats courts · 🔴 **OUVERT**
+
+Trouvé par la re-vérification B-17 (critère 3). **8 profils** (`B17/tri/{S,M}/{inter,debutant}/
+{inconnue,absente}`) reçoivent leur première — et unique — continue en eau libre à **100 % de la
+phase spécifique**, la dernière semaine avant le pic. Mécanisme, trois règles justes qui se
+composent mal : (1) avec un écart petit (format court), `palierPosables` rend 2 ; (2) source non
+mesurée → le palier 0 est le TEST, en bassin, et la consigne eau libre « se décale au palier
+suivant » (arbitrage D3, correct — un test de continuité chez un inconnu ne se fait pas en eau
+libre) ; (3) `positions = [0, len−1]` → le palier suivant est la DERNIÈRE semaine. Découvrir
+l'eau libre à la dernière continue avant l'affûtage est le contraire du « tôt » que B-17 promet —
+et c'est la population qui en a le plus besoin (continuité inconnue). Pistes à arbitrer : décaler
+la position du 2ᵉ palier vers le milieu de la travée quand n = 2, ou porter n à 3 dès que la spec
+a ≥ 3 semaines. Domaine : formats courts × source non mesurée uniquement (les 180 autres profils
+sont conformes).
+
+```verify
+id: O-95
+quoi: combien de profils reçoivent leur première continue eau libre dans la dernière moitié de la spec ?
+attendu: /tardive : 8/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const{profiles}=await import('./scripts/goldenMaster.mjs');let n=0;for(const{sport,a}of profiles()){if(sport!=='tri')continue;let p;try{p=globalThis.EBV2.buildPlan(sport,a)}catch{continue}const spec=p.weeks.filter(w=>w.phase?.id==='spec').map(w=>w.num);const ow=[];for(const w of p.weeks)for(const d of w.days)for(const s of d.sessions)if(/^Nage continue en eau libre/.test(s.name))ow.push(w.num);if(!ow.length||spec.length<2)continue;if((ow[0]-spec[0])/(spec.length-1)>0.5)n++;}console.log('tardive : '+n);"
 ```
