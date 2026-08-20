@@ -580,6 +580,49 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**ALTERNANCE `facile2` — la pièce ÉCRITE, MESURÉE, RETIRÉE le même jour : l'alternance qu'elle
+devait poser EXISTE DÉJÀ, et l'y ajouter EST la conversion totale que le fondateur réservait**
+(ALTERNANCE_FACILE2.md, 20/08/2026 — voir `BUGS_OUVERTS.md` « ALTERNANCE `facile2` », patch
+conservé dans `c3-alternance-facile2.patch`, moteur RETIRÉ, `src/` byte-identique) : la
+vérification demandée AVANT d'écrire (§3) a bien tranché — `facile2` porte **92 % de « Nage récup
+courte »** sur le profil qui double (mais nage seuil 30 % sur le corpus sans doubles), donc C3 a
+été bornée à la seule branche de récup, `b17Pose` prioritaire, **aucun palier annoncé n'est
+converti**. **Puis la mesure a réfuté la prémisse de la pièce** : avant C3, les semaines PAIRES
+portent **3,50 nages** et les IMPAIRES **2,13** — le plan alterne DÉJÀ, parce que `B2` (lot
+précédent) convertit un double de nage les semaines impaires. C3 convertissait les paires : les
+deux pièces ne s'empilent pas, elles **pavent les deux parités**, et ensemble elles retirent une
+nage à TOUTES les semaines de charge. Le §4 avertissait du décalage de phase — **son signe était
+inverse** : le risque n'était pas l'empilement sur une parité (une semaine sur deux serait
+épargnée), c'est qu'aucune ne le soit. **Trois états à facteur unique** : sans C3 pic 11,2 h ·
+nage 28,0 / vélo 39,9 · **13/31 semaines sous 3 nages** ; C3 en paires pic **11,5 h** · 25,0 /
+45,2 · **21/31** · manque 1,5 h/sem redéclaré ; C3 en impaires 23,2 / 46,0 mais **une semaine de
+charge à ZÉRO nage**. **Le plancher « trois nages » du fondateur est DÉJÀ franchi sans C3, et
+11 des 13 semaines fautives sont celles que B2 convertit** — il n'existe nulle part dans le
+moteur. **Une erreur à moi publiée** : j'avais annoncé la variante même-parité « parts
+~inchangées » sur une supposition ; mesurée, elle va PLUS loin vers la cible (23,2 %), et reste
+la pire pour une raison qui n'est pas un arbitrage. **Et C3 a révélé pourquoi `T-57` tenait** :
+la borne d'épaule n'est pas perdue (comptée sur **217 plans, dont 54 en tri**), elle **cesse de
+mordre sur REEL** dès qu'on retire de la nage — donc le « manque absent » du lot précédent venait
+d'une PROTECTION qui abaissait la cible jusqu'au livré, pas d'un plan qui plaçait tout ; `T-57`
+branche (2) épingle un ÉTAT là où la propriété est « l'écart se lit sur la cible de BOUCLE »
+(règle 19), à réécrire quand la pièce sera arbitrée. **Trouvé en passant les gates : `check:sw` était ROUGE sur `main` depuis `b86df3a`** — ce commit
+ajoutait 12 lignes de COMMENTAIRE à `src/engine/constraintMatrix.ts`, donc bundlées dans
+`engine.js`, un fichier SERVI, sans reconstruire `sw.js` : les navigateurs ayant déjà ouvert
+l'app servaient l'ancienne version. Troisième habillage d'O-24, et le gate a fait son travail —
+**un changement de commentaire dans `src/` change le contenu servi**, `build:sw` suit donc TOUTE
+modification de `src/` et pas seulement celles qui changent un comportement (VERSION
+`eb-pwa-330a8da64d24`, 63 assets). **Règle 17 appliquée** : `O-94`, `MANQUE-DECLARE` et
+`V21-BORNE` basculaient en « ne reproduit plus » parce que leur `attendu` citait la valeur du
+jour de leur fermeture, que deux lots ont déplacée — réancrés sur la PROPRIÉTÉ, ils publient
+désormais ce qu'ils trouvent (`218 plans dont tri 55 · BORNE-DANS-LA-CONSTRUCTION`), et
+`V21-BORNE` se mesure sur la POPULATION précisément parce que la borne cesse de mordre sur REEL
+dès qu'une pièce retire de la nage. **Une faute de mon écriture publiée** : l'annotation posée
+sur la ligne `attendu:` a fabriqué un faux positif de règle 17 dans le correctif de règle 17.
+**Recommandation au fondateur : poser le
+plancher de fréquence de nage AVANT de reprendre la pièce** — il se pose de toute façon, et posé
+d'abord il borne la pièce au lieu d'être franchi par elle. Banc `lotPhysio` **31 verts · 24
+rouges attendus · 0 régression**, `audit:v1` 459 à 0.
+
 **LE LEVIER EST LE TYPE DU CRÉNEAU — la carte est mesurée, et le créneau typé est `facile2`**
 (mesure préalable du lot « type du créneau », 20/08/2026 — voir `BUGS_OUVERTS.md` « QU'EST-CE QUI
 ATTRIBUE UNE DISCIPLINE À UN CRÉNEAU ? », aucun correctif, `src/` inchangé hors commentaire) :

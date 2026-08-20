@@ -36,6 +36,201 @@ assumés entre deux règles, les chantiers humains, et les entrées de registre 
 
 ## §1 — Défauts ouverts, par gravité
 
+### ALTERNANCE `facile2` — la pièce ÉCRITE, MESURÉE, RETIRÉE : l'alternance qu'elle devait poser EXISTE DÉJÀ, et l'ajouter est la conversion totale · ⛔ **ARBITRAGE FONDATEUR**
+
+**Arbitrage d'entrée (ALTERNANCE_FACILE2.md, 20/08/2026)** : *« ✗ table créneau × phase →
+discipline · ✓ règle d'alternance sur `facile2` »*, avec la consigne de fin : *« Commencer par
+l'alternance, mesurer, et décider ensuite si la conversion totale se justifie »*, et le plancher
+nommé : *« pour un nageur limité par la technique, trois est le plancher »*.
+
+La pièce **C3** est écrite (conversion du `facile2` en « Endurance vélo » les semaines PAIRES,
+sur la seule branche de nage de récupération, `b17Pose` prioritaire), mesurée sur trois états à
+facteur unique, puis **RETIRÉE** — `src/` est byte-identique. Le diff complet est conservé dans
+`c3-alternance-facile2.patch`.
+
+#### §1 — La vérification demandée avant d'écrire (§3 du document) : la conversion est bon marché, mais seulement sur une branche
+
+`facile2` ne contient pas la même chose selon que le profil double ou non :
+
+| population | contenu de `facile2` |
+|---|---|
+| profil réel (`doubles: oui`) | **92 % « Nage récup courte »** |
+| corpus tri (sans doubles) | nage aérobie 35 % · **nage seuil 30 %** · éducatifs 18 % |
+
+Le §3 tranchait : *« si c'est une Nage récup courte → excellent échange ; si c'est une séance de
+qualité ou un porteur de palier B-17 → ne pas y toucher »*. C3 a donc été bornée à la branche
+`dbl` (la récup) avec `b17Pose` prioritaire — **aucun palier annoncé n'est jamais converti**.
+
+#### §2 — L'alternance existe déjà, et elle est portée par B2
+
+C'est la mesure qui décide, et elle réfute la prémisse de la pièce. **Avant C3**, sur les
+31 semaines de charge du profil réel :
+
+```
+semaines PAIRES    3,50 nages/sem   (1 seule sous 3)
+semaines IMPAIRES  2,13 nages/sem   (11 des 15 sous 3)
+```
+
+Le plan **alterne déjà**, parce que `B2` (livré au lot volume+répartition) convertit un double de
+nage en vélo les semaines **IMPAIRES**. C3 convertissait les **PAIRES** : les deux pièces ne se
+superposent pas, elles **se complètent en ANTI-PHASE** — et ensemble elles retirent une nage à
+**toutes** les semaines de charge. C'est-à-dire exactement la conversion totale que le §4 du
+document réservait à une décision ultérieure.
+
+⚠ **Le §4 avertissait du décalage de phase — dans l'autre sens.** *« si une autre pièce ajoute
+de la charge en semaines paires, les deux s'empileront »*. Ce qui arrive n'est pas un empilement
+sur la même parité (une semaine sur deux serait épargnée) : c'est un pavage des deux parités, où
+**aucune semaine n'est épargnée**. L'avertissement était juste, son signe était inverse.
+
+#### §3 — Les trois états, mesurés à facteur unique
+
+Fixture `REEL/tri/70.3/nage-limitante`, `history: confirme` (la valeur réelle), 31 semaines de
+charge, legs de brick attribués :
+
+| état | pic | total | nage | vélo | course | nages/sem | min | < 3 nages | V2.1 | manque |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **sans C3** (B2 seule, impaires) | 11,2 h | 360,3 h | 28,0 % | 39,9 % | 32,1 % | 2,84 | 1 | **13/31** | présente | absent |
+| **C3 en PAIRES** (anti-phase, écrite) | **11,5 h** | 373,5 h | 25,0 % | 45,2 % | 29,9 % | 2,35 | 1 | **21/31** | absente | **1,5 h/sem** |
+| **C3 en IMPAIRES** (même parité que B2) | 11,1 h | 362,8 h | **23,2 %** | **46,0 %** | 30,8 % | 2,42 | **0** | 16/31 | présente | absent |
+
+**Ce que le document prédisait, et ce que la mesure donne** :
+
+```
+prédit    alternance   nage ~24 %  vélo ~45 %      mesuré  25,0 / 45,2   ✓
+prédit    conversion   nage ~21 %  vélo ~50 %      non mesuré (non écrite)
+prédit    séances de nage  4/sem → 4 puis 3
+mesuré    séances de nage  3,50 / 2,13  →  2,56 / 2,13
+```
+
+**L'estimation des parts est bonne à un point près ; celle de la FRÉQUENCE est décalée d'une
+séance.** Le plan n'a jamais porté 4 nages par semaine en moyenne, et la conversation sur le
+plancher doit repartir de la ligne mesurée, pas de la ligne estimée.
+
+#### §4 — Le plancher de trois nages est DÉJÀ franchi, et il l'est par B2
+
+C'est le fait qui décide, et il ne concerne pas C3 :
+
+```
+sans C3   13 semaines sur 31 sous 3 nages   —  et 11 des 13 sont des semaines IMPAIRES,
+                                               c'est-à-dire celles que B2 convertit déjà
+```
+
+**Le plancher que le fondateur nomme n'existe nulle part dans le moteur**, ni avant ni après la
+pièce. B2 l'a franchi le premier, sur la moitié impaire ; C3 l'étendait à la moitié paire. Une
+correction du plancher est donc un ticket à part entière — et « poser un plancher est un acte de
+priorisation GLOBALE » (arbitrage du 18/08) : qui a un plancher ne paie pas, qui n'en a pas paie
+tout.
+
+⚠ **Une erreur de ma part, publiée** : j'avais annoncé la variante « même parité » comme
+*« parts ~inchangées »* — c'était une supposition, pas une mesure. Mesurée, elle va **plus loin**
+vers la cible que l'anti-phase (nage 23,2 % contre 25,0). Elle reste néanmoins la pire des
+trois, pour une raison qui n'est pas un arbitrage : elle produit **une semaine de charge à ZÉRO
+nage** sur un plan de triathlon. Une discipline qui disparaît d'une semaine n'est pas une part
+qui baisse.
+
+#### §5 — Pourquoi la pièce est RETIRÉE plutôt que livrée
+
+Trois raisons, dans l'ordre :
+
+1. **elle dégrade le plancher que le fondateur a nommé** (13/31 → 21/31 semaines sous 3 nages) ;
+2. **son effet n'est pas « l'alternance » mais la conversion totale** — le §4 la réservait
+   explicitement à une décision ultérieure, et la livrer serait substituer mon jugement à une
+   décision réservée ;
+3. **elle fait rougir `T-57` sur ses deux branches REEL**, et la cause est instructive (§6).
+
+Ce qu'elle achète est réel et reste sur la table : **+0,3 h de pic** (11,2 → 11,5, la seule
+chose du chantier qui ait fait monter le pic depuis le lot volume) et **+5,3 points de vélo**.
+
+#### §6 — Ce que C3 a révélé sur `T-57` : la borne d'épaule ne mordait que parce que la semaine était pleine de nage
+
+Attribué par expérience à facteur unique (neutraliser C3 seule) :
+
+```
+avec C3     V2.1 ABSENTE   ·  cible de boucle 13 h  ·  livré 11,5  ·  manque 1,5 h/sem DÉCLARÉ
+sans C3     V2.1 11,2 h (au lieu de 13,0)  ·  livré 11,2  ·  manque absent
+```
+
+**La borne d'épaule n'a pas été perdue** — elle est comptée dans la construction sur **217 plans
+du corpus, dont 54 en tri**. Elle **cesse de mordre sur REEL** parce que C3 retire de la nage :
+le clone saturé n'atteint plus le plafond d'épaule, la sonde ne rabat plus, la cible reste à 13,
+et l'écart au livré redevient visible.
+
+**Le « manque absent » du lot précédent était donc obtenu parce qu'une PROTECTION avait abaissé
+la cible jusqu'au livré, pas parce que le plan plaçait tout.** Les deux lectures sont honnêtes,
+et ce sont deux questions différentes (« un compte a besoin de son moment ») — mais `T-57`
+branche (2) épinglait un ÉTAT (« le manque de REEL a disparu ») là où la propriété est
+« l'écart se lit sur la cible de BOUCLE, jamais sur la courbe rabattue ». Le correctif le moins
+coûteux qui garde cet état est d'abaisser la cible : c'est-à-dire précisément le défaut que la
+décision `manque` existe pour exposer (règle 19). **À réécrire quand la pièce sera arbitrée** ;
+en l'état C3 est retirée, `T-57` est vert et sa formulation reste celle du lot précédent.
+
+#### §7 — Ce qui est demandé au fondateur
+
+```
+(a) garder l'état actuel (B2 seule)          nage 28,0 %  vélo 39,9 %  pic 11,2  ·  13/31 sous 3
+(b) livrer C3 en anti-phase                  nage 25,0 %  vélo 45,2 %  pic 11,5  ·  21/31 sous 3
+(c) poser d'abord un plancher de fréquence de nage, puis reprendre la pièce sous ce plancher
+```
+
+**(c) est ce que je recommande** : le plancher est déjà franchi sans C3, donc il se pose de toute
+façon ; et posé d'abord, il borne la pièce au lieu d'être franchi par elle. Il faut alors décider
+ce qui paie à sa place — c'est l'inventaire des planchers, pas un réglage local.
+
+#### §8 — Trouvé en passant les gates : `check:sw` était ROUGE sur `main` depuis `b86df3a`
+
+Le lot ne touche aucun fichier servi (`src/` et les deux bundles sont byte-identiques à `HEAD`),
+et `npm run check:sw` sortait pourtant en échec — donc il l'était **déjà**, et la démonstration
+est exactement celle-là : un gate qui rougit sur un arbre de travail dont la partie servie est
+identique à `HEAD` accuse `HEAD`, pas le lot.
+
+```
+b86df3a   +12 lignes de COMMENTAIRE dans src/engine/constraintMatrix.ts
+          → bundlées dans endurabuild/js/engine.js (fichier SERVI)
+          → sw.js non reconstruit  →  VERSION inchangée  →  cache-first sert l'ancien
+```
+
+**La leçon est plus étroite que « penser à `build:sw` » : un changement de COMMENTAIRE dans
+`src/` change le contenu SERVI.** Le commit se croyait sans effet produit — il l'était pour le
+plan (golden 990/990, 0 écart) et ne l'était pas pour ce que le navigateur télécharge. `build:sw`
+suit donc toute modification de `src/`, pas seulement celles qui changent un comportement.
+C'est le troisième habillage d'O-24, et le mécanisme a fait son travail : il n'y a rien à
+corriger dans le gate. `sw.js` est reconstruit dans ce commit — **VERSION `eb-pwa-330a8da64d24`,
+63 assets**.
+
+#### §9 — Règle 17 appliquée : trois blocs `verify` réancrés sur la PROPRIÉTÉ
+
+`registry:check` rangeait `O-94`, `MANQUE-DECLARE` et `V21-BORNE` en « ne reproduit plus ». Les
+trois sont des entrées FERMÉES dont l'`attendu` citait la valeur du jour de leur fermeture — et
+deux lots ultérieurs l'ont légitimement déplacée (`V2.1` 9,7 → 11,2 h, `structurel` 9,4 → 11,2).
+**Un `attendu` chiffré bascule donc en « défaut réparé » sur un PROGRÈS**, ce qui est le mode de
+défaillance silencieux que la règle 17 nomme. Les trois portent désormais sur la propriété et
+PUBLIENT ce qu'ils trouvent :
+
+```
+O-94             structurel 11,2 · pic livré 11,2 · écart 0,1 h · BORNE-COMPTEE
+MANQUE-DECLARE   115 déclarent · 871 rien à déclarer · écart max 3,4 h/sem · DEUX-BRANCHES
+V21-BORNE        V2.1 comptée sur 218 plans (dont tri 55) · 0 sans descente · BORNE-DANS-LA-CONSTRUCTION
+```
+
+`V21-BORNE` est celui qui comptait : mesuré sur C3, **la borne cesse de mordre sur REEL dès
+qu'une pièce retire de la nage**, et l'ancien bloc aurait alors annoncé « défaut réparé » pour une
+borne intacte. Il se mesure donc sur la POPULATION (« un zéro a besoin de sa population »).
+
+⚠ **Une faute de mon écriture, publiée** : j'avais d'abord posé l'annotation de la règle 17 sur la
+ligne `attendu:` elle-même. Le parseur coupe chaque ligne au premier `:` — le motif est devenu
+l'annotation entière, et `V21-BORNE` est ressorti « ne reproduit plus » alors que sa commande
+imprimait `BORNE-DANS-LA-CONSTRUCTION`. **Un faux positif de règle 17 fabriqué dans le correctif
+de règle 17.** Annotations remontées hors du champ, les trois rejoués par le runner (`--seul`) :
+3 reproduisent.
+
+```verify
+id: alternance-facile2
+quoi: la pièce C3 est retirée du moteur et le patch est conservé
+attendu: aucune branche « Endurance vélo » sur le créneau facile2 ; le patch existe
+cmd: test -f c3-alternance-facile2.patch && ! grep -q 'slotIdx === 0 && !inj.count && !medHold && r.weeks >= 12 && weekNum % 2 === 0' src/sports/tri/index.ts && echo OK
+```
+
+
 ### O-1 · Le banc v7 mesurait sous le seuil de ses propres défauts · ✅ **FERMÉ (R15.1)**
 
 Les trois gestes demandés sont faits, **et c'est le troisième qui a tout trouvé.**
@@ -9398,8 +9593,12 @@ construction, aucune séance ne bouge.
 ```verify
 id: O-94
 quoi: le maillon structurel dépasse-t-il encore ce que la borne O-85 laisse livrer ? (écart sonde − pic livré, REEL)
-attendu: /structurel 12\.4 · pic livré 9\.[0-9]/
-cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');for(const{key,sport,a}of profiles()){if(!key.startsWith('REEL'))continue;const p=globalThis.EBV2.buildPlan(sport,a);const st=(p._r202?.plafonds||[]).find(x=>x.id==='structurel');let pic=0;for(const w of p.weeks){if(w.isRecup||w.phase.id==='taper')continue;let l=0;for(const d of w.days)for(const s of d.sessions)if(s.d!=='rs'&&!s.race)l+=s.min||0;pic=Math.max(pic,l/60);}console.log('structurel '+(+st.brut).toFixed(1)+' · pic livré '+pic.toFixed(1));break;}"
+attendu: /BORNE-COMPTEE/
+# règle 17, 20/08 : l'`attendu` NE cite plus « 12,4 · 9,x » — ces
+#   valeurs étaient l'état du jour de la fermeture, et le lot volume+répartition les a
+#   légitimement déplacées à 11,2 · 11,2. Un `attendu` chiffré aurait basculé en « ne reproduit
+#   plus » sur un PROGRÈS. La propriété gardée est l'écart, et la commande PUBLIE ce qu'elle trouve.
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');for(const{key,sport,a}of profiles()){if(!key.startsWith('REEL'))continue;const p=globalThis.EBV2.buildPlan(sport,a);const st=(p._r202?.plafonds||[]).find(x=>x.id==='structurel');let pic=0;for(const w of p.weeks){if(w.isRecup||w.phase.id==='taper')continue;let l=0;for(const d of w.days)for(const s of d.sessions)if(s.d!=='rs'&&!s.race)l+=s.min||0;pic=Math.max(pic,l/60);}const e=(+st.brut)-pic;console.log('structurel '+(+st.brut).toFixed(1)+' · pic livré '+pic.toFixed(1)+' · écart '+e.toFixed(1)+' h · '+(e<=0.6?'BORNE-COMPTEE':'BORNE-PERDUE'));break;}"
 ```
 
 ## O-89 — FERMETURE (arbitrage « O-89 ARBITRÉ », 19/08/2026) : la borne d'épaule CLIQUETTE sur le LIVRÉ
@@ -9538,9 +9737,14 @@ règle 17, un attendu périmé se réécrit sur la propriété, il ne se laisse 
 
 ```verify
 id: MANQUE-DECLARE
-quoi: sur REEL le manque n'existe plus (V2.1 compte la borne), et le structurel reste collé au pic livré ?
-attendu: /absente · structurel 9\.4/
-cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');for(const{key,sport,a}of profiles()){if(!key.startsWith('REEL'))continue;const p=globalThis.EBV2.buildPlan(sport,a);const d=(p._v2?.decisions||[]).find(x=>x.id==='manque');const st=(p._r202?.plafonds||[]).find(x=>x.id==='structurel');console.log((d?d.val:'absente')+' · structurel '+(+st.brut).toFixed(1));break;}"
+quoi: le manque lit la cible de BOUCLE et pas la courbe rabattue — les DEUX branches vivent-elles sur le corpus ?
+attendu: /DEUX-BRANCHES/
+# règle 17, 20/08 : l'`attendu` ne cite plus « absente · structurel 9,4 »
+#   — l'état de REEL est une CONSÉQUENCE, et il se déplace dès qu'une pièce retire de la nage
+#   (mesuré : la pièce C3 fait réapparaître le manque sans qu'aucune borne soit perdue). La
+#   propriété est que la déclaration reste branchée sur la cible de boucle : un manque qui lirait
+#   la courbe RABATTUE s'effondrerait vers son quantum de 0,5 h.
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');let avec=0,sans=0,mx=0,reel='';for(const{key,sport,a}of profiles()){let p;try{p=globalThis.EBV2.buildPlan(sport,a)}catch{continue}const d=(p._v2?.decisions||[]).find(x=>x.id==='manque');if(d){avec++;mx=Math.max(mx,parseFloat(String(d.val).match(/écart ([\d,]+)/)?.[1]?.replace(',','.')||0))}else sans++;if(key.startsWith('REEL'))reel=d?d.val:'absente';}console.log(avec+' déclarent · '+sans+' rien à déclarer · écart max '+mx.toFixed(1)+' h/sem · REEL : '+reel+' · '+(avec>=50&&sans>=500&&mx>=2?'DEUX-BRANCHES':'BRANCHE-MORTE'));"
 ```
 
 ## « V2.1 REÇOIT LA BORNE » — FERMETURE (arbitrage du fondateur, 19/08/2026)
@@ -9599,9 +9803,15 @@ neutralisée → rouge sur (1) ET (2)** (« la décision V2.1 a disparu · REEL 
 
 ```verify
 id: V21-BORNE
-quoi: la sonde V2.1 compte la borne d'épaule dans la construction — cible REEL sous 11 h, manque absent ?
-attendu: /V2\.1 9\.7h \(au lieu de 13\.0h\) · manque absente/
-cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');for(const{key,sport,a}of profiles()){if(!key.startsWith('REEL'))continue;const p=globalThis.EBV2.buildPlan(sport,a);const dv=(p._v2?.decisions||[]).find(x=>x.id==='V2.1');const d=(p._v2?.decisions||[]).find(x=>x.id==='manque');console.log('V2.1 '+(dv?dv.val:'absente')+' · manque '+(d?d.val:'absente'));break;}"
+quoi: la sonde V2.1 compte-t-elle la borne dans la CONSTRUCTION — et sur combien de plans ?
+attendu: /BORNE-DANS-LA-CONSTRUCTION/
+# règle 17, 20/08 : l'`attendu` ne cite plus « 9,7h au lieu
+#   de 13,0h » — cette valeur est celle de REEL au jour de la fermeture, et deux lots l'ont depuis
+#   déplacée à 11,2h. Pire, la borne CESSE de mordre sur REEL dès qu'une pièce retire de la nage
+#   (mesuré sur C3), et le bloc aurait alors annoncé « défaut réparé » pour une borne intacte.
+#   La propriété se mesure donc sur la POPULATION — « un zéro a besoin de sa population » — et la
+#   commande publie le compte trouvé.
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');let n=0,tri=0,ko=0,reel='';for(const{key,sport,a}of profiles()){let p;try{p=globalThis.EBV2.buildPlan(sport,a)}catch{continue}const dv=(p._v2?.decisions||[]).find(x=>x.id==='V2.1');if(key.startsWith('REEL'))reel=dv?dv.val:'absente';if(!dv)continue;n++;if(sport==='tri')tri++;const m=String(dv.val).match(/([\d.]+)h \(au lieu de ([\d.]+)h\)/);if(!(m&&parseFloat(m[1])<parseFloat(m[2])))ko++;}console.log('V2.1 comptée sur '+n+' plans (dont tri '+tri+') · '+ko+' sans descente · REEL : '+reel+' · '+(n>=50&&tri>=20&&ko===0?'BORNE-DANS-LA-CONSTRUCTION':'BORNE-ABSENTE'));"
 ```
 
 ## RE-VÉRIFICATION B-17 — les 7 critères d'acceptation rejoués sur le moteur actuel (V21_ET_REVERIF_B17 §3, 20/08/2026)

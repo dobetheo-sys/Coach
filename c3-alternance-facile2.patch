@@ -1,0 +1,48 @@
+diff --git a/src/sports/tri/index.ts b/src/sports/tri/index.ts
+index 1965323..dfba691 100644
+--- a/src/sports/tri/index.ts
++++ b/src/sports/tri/index.ts
+@@ -544,7 +544,43 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
+     // nage principale et la technique vivent déjà sur dur1/dur2 — la récup courte reste.
+     // D3-b — la nage continue passe DEVANT le routage par phase et par intention : c'est elle qui
+     // porte le prérequis de sécurité, et le routage l'envoyait sur « Nage vitesse ».
++    //
++    // C3 (arbitrage « LA RÈGLE D'ALTERNANCE, PAS LA TABLE », 20/08/2026) — LE SEUL CRÉNEAU QUI
++    // NE VARIE JAMAIS PAR PHASE ALTERNE ENFIN SA DISCIPLINE.
++    //
++    // La carte du livré (188 profils tri) dit où vit la rigidité de l'allocation : `dur2` bascule
++    // vélo → course avec la phase, `durLong` course → brick, mais `dur1` (vélo 99 %) et `facile2`
++    // (nage 100 %) ne bougent JAMAIS. `facile2` est celui qui porte la discipline en EXCÈS —
++    // d'où l'alternance ici, et nulle part ailleurs.
++    //
++    // ⚠ ELLE NE TOUCHE QU'UNE BRANCHE, ET LA MESURE A DÉCIDÉ LAQUELLE. Ce que `facile2` contient
++    // n'est pas le même selon que l'athlète double ou non :
++    //
++    //     profil qui DOUBLE     92 % « Nage récup courte » (51' en moyenne)
++    //     corpus non doublé     35 % nage aérobie · 30 % nage seuil · 18 % éducatifs
++    //
++    // Sans doublage, ce créneau porte la QUALITÉ de nage (R13.3 : c'est la seule nage de la
++    // semaine) — y toucher retirerait au triathlète sa seule séance de nage construite. Avec
++    // doublage, la qualité vit déjà sur `dur1`/`dur2` et `facile2` ne porte qu'une récup : c'est
++    // l'échange le moins cher du plan. La condition est donc DÉRIVÉE de ce que le créneau
++    // CONTIENT (la branche `dbl`), jamais d'une liste de profils.
++    //
++    // Et le palier B-17 passe AVANT (`b17Pose`) : une continuité annoncée n'est jamais convertie.
++    // Mêmes exclusions que B1/B2, mêmes raisons (blessure, drapeau médical, prépa < 12 semaines).
++    //
++    // PARITÉ : vélo en semaines PAIRES. Le décalage a été MESURÉ contre l'autre parité (le §4 du
++    // fondateur — « deux pièces qui ajoutent de la charge déclarent leur phase, pas seulement
++    // leur fréquence ») ; le résultat est publié au registre.
+     if (b17Pose) S2.push({ d: "sw", name: swMain.name, note: swMain.note, det: "", steps: swMain.steps });
++    // ⚠ UN SEUL CRÉNEAU PAR SEMAINE (`slotIdx === 0`), ET LA MESURE A TRANCHÉ. Le créneau
++    // `facile2` apparaît DEUX fois dans la semaine livrée d'un athlète qui double : convertir les
++    // deux n'est plus une alternance, c'est la conversion totale — mesuré, nage 20,0 % / vélo
++    // 51,1 % contre 24,8 / 45,7 en n'en convertissant qu'un. Le second chiffre est celui que
++    // l'arbitrage appelle « l'alternance », et il préserve la fréquence de nage (2,4 séances par
++    // semaine de charge contre 2,0). La conversion totale reste une DÉCISION à prendre, pas un
++    // réglage à glisser — elle atteint la cible d'allocation et coûte 0,4 séance de nage.
++    else if (dbl && slotIdx === 0 && !inj.count && !medHold && r.weeks >= 12 && weekNum % 2 === 0 && phase !== "taper")
++      S2.push({ d: "bk", name: "Endurance vélo", note: "Endurance pure sur le vélo, à la place d'une nage de récupération : le vélo pèse la moitié de ta course et se construit avec le moins de casse. Ta nage garde ses séances construites — celle-ci n'échange qu'une récupération contre du foncier.", det: "", steps: [W(10, "montée progressive"), Object.assign(B(1, PT(40, 75), "bk.z2", "", " · cadence libre, souple"), { bnd: { floor: 30, cap: 90 } }), C(10, "décrassage")] });
+     else if (dbl) S2.push({ d: "sw", recovery: true, name: swShort.name + " courte", note: swShort.note, det: "", steps: swShort.steps, ...( { plainBody: true } as object) });
+     else if (phase === "taper") S2.push({ d: "sw", name: "Rappel nage course", note: "Affûtage : on entretient les sensations d'eau sans fatigue — elles se perdent en 10 à 14 jours, et le jour J commence par la natation. Court, précis, à l'allure de course.", det: "", steps: [
+       Wm(300, "souple"), Object.assign(Bd(beginner ? 4 : 6, 100, "sw.css", "20-30s", ", à l'allure de course, technique impeccable", false, "sw"), { repCap: 6 }), Cm(100, "souple")] });
