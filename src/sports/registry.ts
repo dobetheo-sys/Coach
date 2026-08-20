@@ -109,6 +109,12 @@ export interface SessionKit {
    *  jours `facile2`. Une règle « une fois par semaine » se départage par ce rang, jamais par
    *  l'ordre d'itération d'une liste. Voir `buildSessions`. */
   slotIdx: number;
+  /** B1 (20/08/2026) — la SEMAINE est-elle une décharge ? À distinguer d'`isRecup`, qui est le
+   *  drapeau du JOUR : une semaine de décharge garde des jours de charge (R18.5, la cadence de
+   *  l'athlète l'emporte sur le placement), et le générateur la déclare récup dès 4 jours sur 7.
+   *  Un module qui pose une séance FONCIÈRE doit lire celui-ci — mesuré, la sortie longue vélo
+   *  se posait dans une décharge, sur son unique jour resté `dur`. */
+  semaineRecup: boolean;
   /** O-70 — le jour appartient-il à une semaine de RÉCUPÉRATION ? Les branches lisaient la
    *  PHASE et jamais la CHARGE : le créneau `facileR` d'une semaine de décharge du pic
    *  construisait un « VO2max course » — la séance la plus intense de la semaine posée dans

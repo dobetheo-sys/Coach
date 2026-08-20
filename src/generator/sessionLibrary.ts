@@ -39,7 +39,13 @@ export interface SessionCtx {
  * construction (`d.date = start + i × 1 j`), l'ordre ne dépend d'aucune liste intermédiaire. Il
  * vaut 0 par défaut, ce qui laisse les chemins de reconstruction se comporter comme avant.
  */
-export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: number, weekNum = 1, slotIdx = 0, isRecup = false): V1Session[] {
+// B1 (20/08/2026) — `semaineRecup` EST UN HUITIÈME PARAMÈTRE, ET IL NE DOUBLE PAS `isRecup`.
+// `isRecup` est le drapeau du JOUR ; une semaine de décharge garde des jours de CHARGE (R18.5 :
+// la cadence de l'athlète l'emporte sur le placement), et `isRW` au générateur vaut « au moins
+// 4 jours de récup ». Un module qui veut savoir « suis-je dans une semaine allégée ? » ne peut
+// donc pas le déduire du jour : mesuré, la sortie longue vélo de B1 se posait dans S22, une
+// décharge, sur son unique jour resté `dur`.
+export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: number, weekNum = 1, slotIdx = 0, isRecup = false, semaineRecup = false): V1Session[] {
   const r = ctx.r;
   const a = r.profile;
   const sp = a.sport, fmt = a.format;
@@ -99,7 +105,7 @@ export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: 
   // d'être dupliquée par sport. Un sport inconnu lève (`UnknownSportError`) au lieu de
   // retourner un tableau vide, qui produisait des jours muets sans que personne le voie.
   const kit: SessionKit = {
-    r, a, sp: sp as string, fmt, slot, phase, prog, weekNum, slotIdx, isRecup,
+    r, a, sp: sp as string, fmt, slot, phase, prog, weekNum, slotIdx, isRecup, semaineRecup,
     lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, G, swimDrillGlossary,
     S2, P, W, Wm, C, Cm, B, Bd,
   };

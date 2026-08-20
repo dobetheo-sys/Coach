@@ -297,6 +297,17 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
   // B-17 — LE RANG DU JOUR DANS SON CRÉNEAU, calculé ici parce que c'est le seul endroit où la
   // semaine ENTIÈRE est visible en ordre calendaire. `days` est daté par son propre index, donc
   // ce rang ne dépend d'aucun tri intermédiaire : c'est l'index STABLE que le départage demande.
+  // B1 — LA RÉCUP DE LA SEMAINE, calculée avec le MÊME critère que le générateur (`isRW` :
+  // au moins 4 jours de récup sur 7). Le drapeau du JOUR ne suffit pas : une semaine de décharge
+  // garde des jours de charge (R18.5), et c'est exactement sur l'un d'eux que la sortie longue
+  // vélo de B1 se posait. Deux définitions de « semaine allégée » qui divergent, c'est ce que
+  // R11.1 interdit : celle-ci cite le seuil du générateur au lieu d'en inventer un second.
+  const recupParSemaine = new Map<number, boolean>();
+  {
+    const parSem = new Map<number, GenDay[]>();
+    for (const d of days) { const l = parSem.get(d.week) || []; l.push(d); parSem.set(d.week, l); }
+    for (const [w, l] of parSem) recupParSemaine.set(w, l.filter((d) => d.isR).length >= 4);
+  }
   const rangDansCreneau = new Map<GenDay, number>();
   {
     const vus = new Map<string, number>();
@@ -312,7 +323,7 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
     const prog = ph.weeks > 1 ? (d.week - 1 - ph.start) / (ph.weeks - 1) : 0.5;
     d.prog = Math.max(0, Math.min(1, prog));
     d.date = iso(start + i * MS);
-    d.sessions = buildSessions(ctx, d.slot as Parameters<typeof buildSessions>[1], d.phaseId, d.prog, d.week, rangDansCreneau.get(d) || 0, !!d.isR);
+    d.sessions = buildSessions(ctx, d.slot as Parameters<typeof buildSessions>[1], d.phaseId, d.prog, d.week, rangDansCreneau.get(d) || 0, !!d.isR, (recupParSemaine.get(d.week) || false));
     for (const s of d.sessions) {
       if (s.steps && s.steps.length) renderSess(s, refs, hz, r.baseRefs);
       else if (s.min == null) s.min = 0;
@@ -326,7 +337,14 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
       const vo2Days = days.filter((d) => d.week === w && d.sessions.some((x) => x.name === "VO2max course"));
       for (let i = 1; i < vo2Days.length; i++) {
         const d = vo2Days[i];
-        d.sessions = buildSessions(ctx, "facileR", "spec", d.prog || 0);
+        // A2 (20/08/2026) — LA RECONSTRUCTION PRÉSERVE L'IDENTITÉ DU JOUR. Ces deux passes
+        // rappelaient `buildSessions` sans `weekNum`, sans `slotIdx` et sans `isRecup` : les
+        // valeurs par défaut (semaine 1, premier créneau, semaine de charge) faisaient
+        // reconstruire une AUTRE variante que celle du jour traité — silencieusement, puisque le
+        // résultat reste une séance plausible. C'est ce qui privait les semaines de PIC de la
+        // sortie longue à pied d'A2 (elle vit sur le second créneau, `slotIdx === 1`, et la
+        // reconstruction repassait 0). Ce qu'on rebâtit, c'est la PHASE — pas la position.
+        d.sessions = buildSessions(ctx, "facileR", "spec", d.prog || 0, d.week, rangDansCreneau.get(d) || 0, !!d.isR);
         for (const x of d.sessions) if (x.steps && x.steps.length) renderSess(x, refs, hz, r.baseRefs);
       }
     }
@@ -347,7 +365,7 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
       const autres = wd.filter((d) => d.slot !== "facileR" && d.sessions.some((x) => /Allure course \(tri/.test(x.name)));
       const excedent = autres.length ? rappelC18 : rappelC18.slice(1);
       for (const d of excedent) {
-        d.sessions = buildSessions(ctx, "facileR", "spec", d.prog || 0);
+        d.sessions = buildSessions(ctx, "facileR", "spec", d.prog || 0, d.week, rangDansCreneau.get(d) || 0, !!d.isR);
         for (const x of d.sessions) if (x.steps && x.steps.length) renderSess(x, refs, hz, r.baseRefs);
       }
     }

@@ -16,7 +16,7 @@ import {
   C24_MIN_SWIM_SESSION_M,
   BRICK_BIKE_BOUNDS, DOSE_CAP_MIN, CAP_BRICK_RUN, CAP_LONG, CAP_SWIM, R313_TAPER_MAX_VS_PEAK, RECUP_WEEK_FACTOR, O69_DEPART_PLANCHER,
   C13d_QUALITY_MIN_BODY_MIN, C25_RECOVERY_SESSION_CAP_MIN, RACE_EVE_CAP_MIN,
-  hardTimeCapMin, weightedHardMin, C26c_HARD_TIME_TOLERANCE, MIN_WEEKS,
+  hardTimeCapMin, weightedHardMin, C26c_HARD_TIME_TOLERANCE, MIN_WEEKS, ALLOC_CIBLE,
 } from "../engine/constraintMatrix.ts";
 import { TrainingReasoningEngine } from "../engine/reasoningEngine.ts";
 import { renderSess, stepMeters, stepWorkMin, zoneSpeedRatio, type PaceRefs, type Refs } from "./renderer.ts";
@@ -4639,6 +4639,45 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
             if (rampP) v = Math.min(v, rampP.livre / (lf || 1)); // la rampe borne avant blessure/âge dans la chaîne réelle
           }
           if (x.f > 0 && x.f < 1) { queue /= x.f; x.retire = v * (1 - x.f) * queue; v *= x.f; }
+        }
+      }
+
+      // C1 (LOT VOLUME + RÉPARTITION, 20/08/2026) — LA RÉPARTITION SE PUBLIE : CIBLE ET LIVRÉ,
+      // ÉTIQUETÉS (gabarit O-87). Elle est calculée APRÈS le point fixe, sur le plan LIVRÉ, parce
+      // que c'est un DESCRIPTEUR — le mettre dans la boucle le ferait participer à ce qu'il
+      // décrit (T-16c). Les legs de brick sont attribués à leur discipline : sans ça, la séance
+      // la plus spécifique du tri disparaît des trois parts qu'elle est censée équilibrer.
+      // Émise seulement là où une cible EXISTE (tri) et seulement quand l'écart est matériel
+      // (≥ 5 points sur une discipline) : une carte qui commente une répartition conforme est du
+      // bruit, et le canal `warnings` de R11.2 dit d'informer, pas de bavarder.
+      {
+        const cible = ALLOC_CIBLE[a.sport as string];
+        if (cible) {
+          const part: Record<string, number> = { sw: 0, bk: 0, rn: 0 };
+          for (const w of plan.weeks) for (const d of w.days) for (const sx of d.sessions) {
+            if (sx.d === "rs" || sx.race) continue;
+            if (sx.d === "br") {
+              for (const st of sx.steps || []) {
+                const m = (st.reps || 1) * (st.durationMin || 0);
+                const k = st.leg === "bike" ? "bk" : st.leg === "run" ? "rn" : st.leg === "swim" ? "sw" : null;
+                if (k) part[k] += m;
+              }
+            } else if (part[sx.d as string] != null) part[sx.d as string] += sx.min || 0;
+          }
+          const tot = part.sw + part.bk + part.rn;
+          if (tot > 0) {
+            const NOM: Record<string, string> = { bk: "vélo", rn: "course", sw: "natation" };
+            const ordre = ["bk", "rn", "sw"];
+            const ecartMax = Math.max(...ordre.map((k) => Math.abs(part[k] / tot - (cible[k] ?? 0))));
+            if (ecartMax >= 0.05) {
+              r.decisions.push({
+                id: "allocation",
+                what: "Répartition entre les trois disciplines",
+                val: ordre.map((k) => NOM[k] + " " + Math.round(100 * part[k] / tot) + " % (visé " + Math.round(100 * (cible[k] ?? 0)) + ")").join(" · "),
+                why: "La cible vient du partage du temps de ta COURSE, corrigé pour la natation — la technique se perd par la fréquence, pas par le volume, donc on nage plus que sa part de chrono. Ce que tu lis est ce que ton plan livre : l'écart vient de la structure de ta semaine (combien de créneaux portent quelle discipline), pas d'un réglage — le forcer reviendrait à prendre des minutes sous des planchers de séance qui existent pour te protéger.",
+              });
+            }
+          }
         }
       }
 

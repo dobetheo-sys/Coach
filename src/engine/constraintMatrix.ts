@@ -366,6 +366,34 @@ export const PROG_DOSE_DEPART = rule("lot-progression", "fraction de la dose de 
  * La valeur porte sur le PIC : c'est la borne haute de la trajectoire, pas la dose de départ.
  */
 export const O81_FOOTING_CIBLE_PIC_MIN = rule("O-81", "plafond du footing au pic quand la table du format le laisse au ras du plancher de dignité : la sortie facile de référence d'une préparation à leg course long", 50);
+
+/**
+ * C1 (LOT VOLUME + RÉPARTITION, décision du fondateur, 20/08/2026) — LA RÉPARTITION DEVIENT UNE
+ * CIBLE NOMMÉE, PLUS UNE ÉMERGENCE.
+ *
+ * *« Aujourd'hui elle n'est ni en parts ni en heures : elle est le produit "nombre de créneaux ×
+ * taille du type", et rien ne la vise. »* La cible ci-dessous est celle du fondateur pour le
+ * TRIATHLON, et elle est cohérente avec l'épreuve : sur un 70.3, le vélo pèse ~52 % du temps de
+ * course, la course ~36 %, la nage ~12 %. Elle s'en écarte délibérément sur la nage (20 % au lieu
+ * de 12) — la technique se perd par la FRÉQUENCE, pas par le volume, et une nage sous-entraînée
+ * coûte plus qu'un vélo légèrement sur-entraîné.
+ *
+ * ⚠ ELLE NE VAUT QUE POUR LE TRIATHLON, et c'est délibéré : aucun autre sport n'a reçu
+ * d'arbitrage de répartition, et en inventer une par symétrie serait exactement ce que la règle
+ * de fixture interdit (on ne remplit pas un champ vide, on le demande). Les autres sports n'ont
+ * donc PAS de cible — la décision ne s'émet pas pour eux.
+ *
+ * CE QUE CETTE CIBLE FAIT AUJOURD'HUI : elle est PUBLIÉE (décision `allocation`, gabarit O-87 —
+ * la cible ET le livré, étiquetés). Aucune passe ne la force : la répartition se déplace par la
+ * STRUCTURE (quel créneau porte quelle discipline — pièces B1/B2), jamais par un rééquilibrage
+ * qui prendrait des minutes contre les planchers de séance. Trois essais l'ont déjà montré
+ * (« borner la nage → le sweetspot grossit ; geler un bloc → la nage grossit ; tout borner → le
+ * brick passe SOUS son plancher audité ») : *un manque ne se prend jamais sur un plancher de
+ * sécurité, il se DÉCLARE.*
+ */
+export const ALLOC_CIBLE: Record<string, Record<string, number> | undefined> = {
+  tri: rule("C1", "répartition visée du temps d'entraînement en triathlon (décision du fondateur, cohérente avec le partage du temps de course)", { bk: 0.50, rn: 0.30, sw: 0.20 }),
+};
 /**
  * O-88 (constat du fondateur sur son plan réel, 19/08/2026) — LE NOMBRE D'ACCÉLÉRATIONS EST
  * BORNÉ EN ABSOLU, JAMAIS DÉRIVÉ DE LA LONGUEUR DU BLOC.

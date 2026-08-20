@@ -9726,6 +9726,161 @@ attendu: /S38.*12 ?%|VIOLÉ par S38/
 cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const{profiles}=await import('./scripts/goldenMaster.mjs');for(const{key,sport,a}of profiles()){if(!key.startsWith('REEL'))continue;const p=globalThis.EBV2.buildPlan(sport,a);const wk=p.weeks.map(w=>({n:w.num,r:!!w.isRecup,ph:w.phase?.id,h:Math.round(w.days.reduce((t,d)=>t+d.sessions.reduce((u,s)=>u+(s.race?0:(s.min||0)),0),0)/6)/10}));const ch=wk.filter(w=>!w.r&&w.ph!=='taper'&&w.ph!=='race'&&w.h>0);const mx=ch.reduce((x,y)=>y.h>=x.h?y:x);const v=ch.filter(w=>w.n>mx.n&&w.h<mx.h*0.9);console.log(v.length?'VIOLÉ par '+v.map(w=>'S'+w.n+' ('+w.h+' h, '+Math.round((1-w.h/mx.h)*100)+'% sous)').join(' · '):'plateau tenu');break;}"
 ```
 
+## LOT VOLUME + RÉPARTITION — PIÈCES A · B · C (décision du fondateur, 20/08/2026) · 🟡 **LIVRÉ, 5 critères de sortie sur 9 atteints, les 4 autres MESURÉS et publiés**
+
+**Cible produit décidée par le fondateur : vélo 50 % · course 30 % · natation 20 %** — cohérente
+avec l'épreuve (le vélo pèse ~52 % du temps de course), assumée aux bornes de ses fourchettes.
+*« Le volume et la répartition ne peuvent pas se corriger séparément »* : d'où un lot unique.
+
+**⚠ FIXTURE : la mesure porte sur `history: confirme`, la valeur RÉELLE.** Le fondateur avait
+poussé `history` à `ancien` et `vol_max` à 20 dans SON app pour tester la contrainte ; la fixture
+golden porte `confirme` depuis O-85 §2 et n'a pas bougé. `vol_max: 20` y figure aussi depuis
+cette reconstitution — il PRÉCÈDE la manipulation, et reste une valeur reconstituée, pas relevée
+(comme `longest_swim_m` et `milieu`).
+
+### Les neuf critères de sortie, mesurés sur le profil réel
+
+```
+                                    entrée      livré       cible
+[1] pic livré                        9,4 h      11,2 h      ≥ 12,5      ✗ (+1,8 h)
+[2] vélo                            28,6 %      40,3 %      45-50       ✗ (+11,7 pts)
+    course                          29,0 %      31,8 %      28-32       ✓
+    natation                        42,4 %      27,9 %      18-22       ✗ (−14,5 pts)
+[3] semaines assises sur la borne        8           6      0           ✗
+[4] bornes absorbées en S1           1,9 h       0,2 h      < 1 h       ✓
+[5] maillon mordant             structurel  structurel      autre       ✗
+[6] sortie longue vélo hors brick    néant    5 × 201'      ≥ 1         ✓ (présente, PAS croissante)
+[7] sweetspot vs force                8 / 18     16 / 10     ss > force ✓
+[8] T-58 plateau final              S38 ✗      S38 ✗        tenu        ✗ (11 min sous la ligne)
+[9] volume non plaçable             absent     absent       descend     ✓
+    volume total de la préparation   300 h       357 h
+```
+
+**Cinq critères sur neuf sont atteints, et le plus visible ne l'est pas** : le maillon mordant
+reste « le nombre de séances ». Le plafond structurel a MONTÉ de 1,8 h sans CHANGER DE NATURE —
+ce qui borne reste le produit `nSess × durée max`, et la semaine de pic livre 10 séances pour 12
+prescrites. C'est la mesure la plus utile du lot : **il faudra des CRÉNEAUX, pas des minutes.**
+
+### A1 — la trajectoire du footing est RETIRÉE, et c'est une mesure qui l'a décidé
+
+O-81 l'avait livrée, **O-82 l'a rendue VIVANTE en réparant `progCap`** — et personne n'a re-mesuré
+ce que la rendre vivante coûte. Expérience à un facteur, quatre départs :
+
+```
+départ 0,60 (livré)   pic 9,4 h · total 300 h · footing 25'→46'
+sans trajectoire      pic 9,9 h · total 328 h · footing 38'→50'
+départ 0,80           pic 9,6 h · total 313 h · footing 33'→48'
+départ 0,90           pic 9,6 h · total 317 h · footing 35'→49'
+```
+
+**Elle coûtait 28 h de préparation et 0,5 h de pic pour une progression que la COURBE fournit
+déjà** (sans elle, le footing va quand même de 38' à 50'). L'amplitude des semaines de charge ne
+bouge dans aucune variante (2,8-2,9 h) : le piège O-69 ne se déclenche pas. Le PLAFOND relevé
+d'O-81 reste ; le départ progressif appartient à la rampe R10/O-69 et à C22, au niveau de la
+SEMAINE — le bon niveau pour une charge.
+
+### A2 — la sortie longue à pied existe en spécifique et en pic
+
+La décision O-91 (« le créneau long CONSTRUIT le brick en spec/pic ») est RESPECTÉE ; ce qui est
+corrigé est sa conséquence jamais arbitrée — vingt semaines sans course sèche > 68 min avant un
+semi. Elle reprend le SECOND créneau facile course (`slotIdx === 1`), qui rendait un deuxième
+footing de 30 min. Pas de `long: true` (le pivot de la semaine reste le brick, I14).
+
+**Trouvé en la posant : les deux reconstructions C18b appelaient `buildSessions` sans `weekNum`,
+sans `slotIdx` et sans `isRecup`** — les défauts (semaine 1, premier créneau, semaine de charge)
+faisaient reconstruire une AUTRE variante que celle du jour traité, silencieusement. C'est ce qui
+privait les semaines de PIC de la pièce. Identité du jour préservée aux deux sites.
+
+### A3 — LA PRÉMISSE EST RÉFUTÉE PAR LA MESURE, et rien n'est écrit
+
+*« Les bornes scalent avec l'athlète : 3,5 h de décharge pour 10 h de charge, cinq séances toutes
+à leur plafond. »* **Mesuré : les semaines de récup SCALENT.** Médiane 4,83 h pour une charge
+médiane de 8,20 h (59 %, cohérent avec `RECUP_WEEK_FACTOR = 0,62`), et le balayage un-facteur le
+confirme (`6 séances` → récup médiane 4,20 h · `vol_max 8` → 3,75 h). Les 3,50 h vus sont le
+MINIMUM (3 semaines sur 10), pas la règle. Ce qui reste vrai est une DISPERSION (40-78 % du
+voisin) et trois décharges rigoureusement identiques — un autre objet, non traité ici. *Une règle
+qu'aucun défaut mesuré ne réclame est une règle qui en crée un* (R16.10).
+
+### A4 / T-58 — le plateau final, et le seuil en pourcentage ne suffisait pas
+
+Écrit en pourcentage pur, le critère désignait **11 plans sur 68 dont le PIRE creux vaut
+15 minutes** (les autres 8, 7, 3, 0) — la quantification des séances, pas une forme de plan. Le
+creux doit franchir les DEUX monnaies : plus de 10 % ET plus de 20 minutes. **Ce que ça répond au
+passage : le déplacement du maximum de S40 vers S37 n'est pas une régression de forme** (le creux
+de S38 vaut 11 min sous la ligne). Résidu : 2 plans sur 68, les `O-21b/run/10k` à 7:00 et
+8:30/km — la population de l'inversion sur l'axe ALLURE, déclarée ouverte (O-21).
+
+### B1 · B2 — les deux pièces du lot vélo, réécrites depuis le registre et re-mesurées
+
+Le créneau long alterne (semaines PAIRES → sortie longue vélo, bornes du leg vélo du brick) et le
+doublage alterne (semaines IMPAIRES → « Endurance vélo », un type qui n'existait pas : le tri
+n'avait AUCUNE séance de vélo en endurance pure). Le décalage pair/impair est celui que la mesure
+d'époque avait trouvé — *deux pièces qui ajoutent de la charge déclarent leur PHASE, pas seulement
+leur fréquence*. Exclusions inchangées et toutes sur des règles existantes (blessure/drapeau
+médical, prépas < 12 semaines, pas de `long: true`).
+
+**Un huitième paramètre a été nécessaire, et il ne double pas `isRecup` : `semaineRecup`.** Le
+drapeau `isRecup` est celui du JOUR ; une semaine de décharge garde des jours de charge (R18.5), et
+le générateur la déclare récup dès 4 jours sur 7. Mesuré au rendu : la sortie longue vélo se posait
+dans S22 — une décharge — sur son unique jour resté `dur`, à 201 minutes. La passe O-93 ne pouvait
+pas la rattraper (elle compare un type à ses charges VOISINES, et celui-ci n'y existait pas).
+
+### C1 · C2 — la répartition devient une cible NOMMÉE, et le sweetspot passe devant
+
+`ALLOC_CIBLE` (matrice de contraintes) porte la cible du fondateur pour le TRIATHLON — et pour lui
+seul : aucun autre sport n'a reçu d'arbitrage de répartition, en inventer un par symétrie serait
+la faute que la règle de fixture interdit. Une décision `allocation` la publie au gabarit O-87
+(cible ET livré étiquetés) dès que l'écart atteint 5 points : sur le profil réel, *« vélo 40 %
+(visé 50) · course 32 % (visé 30) · natation 28 % (visé 20) »*. **Aucune passe ne la force** —
+trois essais ont déjà montré ce que ça coûte (*« borner la nage → le sweetspot grossit ; geler un
+bloc → la nage grossit ; tout borner → le brick passe SOUS son plancher audité »*), et un manque
+ne se prend jamais sur un plancher de sécurité : il se DÉCLARE. **C2** : le créneau `dur2` garde la
+force basse cadence en BASE (sa phase) et passe au sweetspot en DÉVELOPPEMENT — 8/18 devient 16/10.
+
+### Gardes, contre-preuves, cliquets
+
+**T-59** (quatre propriétés : longue CAP en spec/pic · longue vélo hors brick et hors décharge ·
+doublage non mono-nage · répartition publiée), **contre-prouvée pièce par pièce** : A2 retirée
+→ 104/104 en défaut · B1 retirée → 104/104 · B2 retirée → 1/1 · C1 retirée → aucune décision.
+**Deux fautes de mon instrument publiées** : le critère du doublage mesurait « deux disciplines le
+même jour » (VRAI sans la pièce — la nage venait du doublage, le vélo du créneau) au lieu du
+routage lui-même ; et son plancher de population exigeait 100 plans quand le corpus n'en contient
+que 68 avec un après-maximum, ce qui rendait un verdict sur l'instrument.
+
+**T-59 reste ROUGE sur un résidu MESURÉ et BORNÉ** : 5 plans sur 104, tous des `tri/Full` à
+disponibilité serrée, où les deux créneaux faciles course de la spécifique portent de la NATATION
+(R13.3 y a pris la place). Poser la sortie longue là reviendrait à la prendre à la discipline
+limitante : c'est un ARBITRAGE de priorité sur budget serré, pas un défaut de la pièce — le garde-
+fou 4 du lot dit de s'arrêter et de rapporter.
+
+**T-56 rectifiée** : son axe DISCIPLINE comparait une décharge à une référence NULLE — mesuré,
+`G/tri/Full/vol-min` (3 séances/semaine) a des semaines de CHARGE sans une minute de course, et une
+décharge à 8 min de course y devenait une « inversion ». Une discipline absente des charges
+voisines est une différence de PRÉSENCE, pas une inversion de monotonie ; l'axe TYPE portait déjà
+cette exemption, pour la même raison.
+
+**Cliquets ré-épinglés avec leur cause** : S4 357 → **341** (la plus grosse baisse du chantier —
+I14 cesse d'être violée là où la semaine n'avait aucune séance longue de sa discipline), S5 502 →
+**504**, rabotages épinglés 26 → **29** (mécanisme O-54 §2), pic tri VO2 8 720 → **8 244 min** et
+nage seuil 428 603 → **410 901 m** (à plafond de temps dur inchangé, la place cédée au vélo et à
+la sortie longue). Rayon golden : **188 profils, TOUS en tri**.
+
+### Ce qui reste, nommé
+
+```
+le plafond structurel a monté sans changer de NATURE   10 séances livrées pour 12 prescrites
+la nage reste à 28 % pour une cible à 20               ~5 créneaux de nage par semaine
+la sortie longue vélo ne PROGRESSE pas                 saturée à 201' (plafond du format)
+5 tri/Full à budget serré sans longue CAP en spec      arbitrage de priorité, T-59
+```
+
+```verify
+id: LOT-VOL-REPARTITION
+quoi: les quatre pièces structurelles tiennent-elles sur le profil réel ?
+attendu: /longue CAP spec ✓ · longue vélo ✓ · doublage mixte ✓ · allocation publiée ✓/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const{profiles}=await import('./scripts/goldenMaster.mjs');let r;for(const p of profiles())if(p.key.startsWith('REEL'))r=p;const P=globalThis.EBV2.buildPlan(r.sport,r.a);let lr=0,lb=0,mx=0;for(const w of P.weeks)for(const d of w.days){const act=d.sessions.filter(s=>s.d!=='rs'&&!s.race);if(act.length>=2&&!act.some(s=>s.d==='sw'))mx++;for(const s of act){if(/^Sortie longue CAP/.test(s.name)&&(w.phase?.id==='spec'||w.phase?.id==='peak'))lr++;if(/^Sortie longue vélo/.test(s.name))lb++;}}const al=(P._v2?.decisions||[]).some(x=>x.id==='allocation');console.log('longue CAP spec '+(lr?'✓':'✗')+' · longue vélo '+(lb?'✓':'✗')+' · doublage mixte '+(mx?'✓':'✗')+' · allocation publiée '+(al?'✓':'✗'));"
+```
+
 ## O-96 · La carte se contredit À NOUVEAU sur le nombre de séances (12 vs 9) · ✅ **FERMÉ le 20/08 (doc CARTE_CONTRADICTION_SEANCES) — un DEUXIÈME RENDU, pas un troisième calcul**
 
 **Les trois questions du §1, mesurées avant de corriger** (fixture REEL + la manipulation

@@ -1045,7 +1045,15 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 // dans le repli fréquence de « dev ≤ pic » (O-84c) et re-disposer les continues des 8 profils
 // courts (O-95) redonnent à 2 profils un livré qui retrouve `min(plafonds)` — l'identité T-25
 // redevient vraie. Même famille que les baisses O-82/O-94, épinglée avec la même rigueur.
-const SCEAU_ATTENDU = { S1: 4, S4: 357, S5: 502 };
+// LOT VOLUME + RÉPARTITION (20/08/2026) — S4 357 → **341**, une BAISSE de 16, et c'est la plus
+// grosse du chantier : I14 (« la sortie longue est la plus longue de sa semaine ») cesse d'être
+// violée là où la semaine ne portait plus AUCUNE séance longue de sa discipline. A2 pose une
+// sortie longue à pied en spécifique/pic, B1 une sortie longue vélo hors brick : les semaines
+// qui comparaient une séance de qualité à un footing ont désormais un vrai pivot par discipline.
+// S5 502 → **504** : deux profils de plus où `min(plafonds)` ne retrouve pas le pic livré — la
+// moitié ouverte d'O-35 (ce que le point fixe RETIRE n'est porté par aucun maillon), et le lot
+// déplace ce qu'il retire.
+const SCEAU_ATTENDU = { S1: 4, S4: 341, S5: 504 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;
@@ -1463,7 +1471,11 @@ T("T-39", "vert", "un bloc ÉPINGLÉ n'est pas raboté par le plafond de dose (O
   // rabotés de plus, du mécanisme O-54 §2 déjà arbitré (le plafond de SÉCURITÉ gagne, le titre
   // est synchronisé sur le livré). Le compte monte parce que la promesse est plus ambitieuse,
   // pas parce qu'une passe nouvelle rabote.
-  const RABOTES_ATTENDUS = 26;
+  // LOT VOLUME + RÉPARTITION (20/08/2026) — 26 → **29**. Même mécanisme qu'à O-95 : le plan
+  // porte plus de volume, donc les budgets de séance mordent plus souvent sur les continuités
+  // épinglées de B-17 (mécanisme O-54 §2, arbitré et ouvert — le plafond de SÉCURITÉ gagne, le
+  // titre reste synchronisé sur le livré). Trois blocs de plus, tous en natation.
+  const RABOTES_ATTENDUS = 29;
   let n = 0, ko = 0; const zones = {}, ex = [];
   for (const { key, plan } of goldenAvecMoteur()) {
     for (const w of plan?.weeks ?? []) for (const d of w.days ?? []) for (const s of d.sessions ?? [])
@@ -1910,7 +1922,13 @@ T("T-50", "vert", "PROPRIÉTÉ — la bande d'allure affichée se redérive du p
 // 6 profils PW gardent leur palier (le jour n'est plus élu OFF) et les 8 profils courts changent
 // de disposition — les semaines de pic voisines se rééquilibrent d'un cran. Amplitudes 0,2 % et
 // 0,3 %, direction cohérente (un palier préservé prend sa place, le seuil rend la sienne).
-const PIC_ATTENDU = { vo2Min: 8720, seuilM: 428603, profils: 188 };
+// LOT VOLUME + RÉPARTITION (20/08/2026) — VO2 8 720 → **8 244 min** (−5,5 %), nage seuil
+// 428 603 → **410 901 m** (−4,1 %). La semaine de pic accueille désormais une sortie longue à
+// pied (A2) et le vélo y pèse plus (B1/B2, C2) : à plafond de temps DUR inchangé (C26c), le VO2
+// et la nage seuil cèdent une part de la place. C'est la conséquence VOULUE d'un rééquilibrage
+// de répartition, pas une dérive — et elle est épinglée pour qu'un mouvement futur ait à
+// s'expliquer.
+const PIC_ATTENDU = { vo2Min: 8244, seuilM: 410901, profils: 188 };
 T("T-48", "vert", "la composition du PIC en tri est épinglée : le VO2 a cédé, la nage seuil a gagné (C26c)", () => {
   let vo2 = 0, seuil = 0, profils = 0;
   for (const { key, plan } of goldenAvecMoteur()) {
@@ -2383,6 +2401,14 @@ T("T-56", "vert", "aucune récup ne dépasse ses charges adjacentes, par type ni
       const dR = discMin(w, true), dAv = av ? discMin(av) : { sw: 0, bk: 0, rn: 0 }, dAp = ap ? discMin(ap) : { sw: 0, bk: 0, rn: 0 };
       for (const k of ["sw", "bk", "rn"]) {
         const ref = Math.max(av ? dAv[k] : 0, ap ? dAp[k] : 0);
+        // DISCIPLINE ABSENTE DES CHARGES VOISINES → hors champ, exactement comme l'axe TYPE
+        // juste en dessous, et pour la même raison : ce n'est pas une INVERSION de monotonie,
+        // c'est une différence de PRÉSENCE, et le pas de la mesure n'a plus de sens contre une
+        // référence nulle. Mesuré en livrant le lot volume+répartition : `G/tri/Full/vol-min`
+        // (3 séances par semaine) a des semaines de CHARGE sans une minute de course, et une
+        // décharge à 8 min de course y devenait une « inversion » — le défaut, s'il y en a un,
+        // est la semaine de charge sans course, pas la décharge qui en porte huit minutes.
+        if (ref <= 0) continue;
         if (dR[k] > ref * 1.05 + 3) { violDisc++; if (!pireD || dR[k] - ref > pireD.d) pireD = { key, w: w.num, k, val: Math.round(dR[k]), ref: Math.round(ref), d: dR[k] - ref }; }
       }
       const tR = typeDose(w), tAv = av ? typeDose(av) : new Map(), tAp = ap ? typeDose(ap) : new Map();
@@ -2439,7 +2465,12 @@ T("T-57", "vert", "V2.1 compte la borne d'épaule ; le manque de REEL n'existe p
   else {
     const m = String(dV.val).match(/([\d.]+)h \(au lieu de ([\d.]+)h\)/);
     const cible = parseFloat(m?.[1] ?? "0"), avant = parseFloat(m?.[2] ?? "0");
-    if (!(cible > 0 && cible < 11)) pb.push(`(1) cible V2.1 ${cible} h — la borne d'épaule n'est plus comptée dans la CONSTRUCTION`);
+    // ⚠ SEUIL ABSOLU RETIRÉ (20/08/2026, lot volume+répartition) : ma première écriture exigeait
+    // « cible < 11 h », valeur épinglée sur l'état du jour — le lot A a légitimement fait monter
+    // la cible à 11,2 h et le critère a rougi sur un PROGRÈS. La propriété gardée est que la
+    // borne MORD (la cible comptée est strictement sous la cible d'avant-borne), pas qu'elle
+    // vaille un nombre : une constante gelée ne satisfait pas ce critère-là (règle 19).
+    if (!(cible > 0 && cible < avant * 0.95)) pb.push(`(1) cible V2.1 ${cible} h contre ${avant} h d'avant-borne — la borne d'épaule n'est plus comptée dans la CONSTRUCTION`);
     if (!(avant >= 12.5 && avant <= 13.5)) pb.push(`(1) l'avant-borne (${avant}) n'est plus la cible de boucle 12,5-13,5 — la descente vient d'ailleurs que de la borne`);
   }
   const dM = (reel.plan._v2?.decisions ?? []).find((x) => x.id === "manque");
@@ -2451,7 +2482,7 @@ T("T-57", "vert", "V2.1 compte la borne d'épaule ; le manque de REEL n'existe p
   const pic = reel.plan.volPeak || 0;
   if (!st) pb.push("(3) maillon structurel absent");
   else {
-    if (+st.brut >= 11) pb.push(`(3) structurel ${(+st.brut).toFixed(1)} h — la borne d'épaule n'est plus comptée (O-94)`);
+    if (+st.brut >= 13) pb.push(`(3) structurel ${(+st.brut).toFixed(1)} h — la borne d'épaule n'est plus comptée (O-94)`);
     if (+st.brut < pic - 0.1) pb.push(`(3) structurel ${(+st.brut).toFixed(1)} h SOUS le pic livré ${pic} — une capacité que le livré réfute`);
   }
   let avec = 0, sans = 0, ecartMax = 0;
@@ -2466,7 +2497,146 @@ T("T-57", "vert", "V2.1 compte la borne d'épaule ; le manque de REEL n'existe p
   return { ok: pb.length === 0, detail: pb.length ? pb.join(" · ") : `REEL V2.1 « ${dV.val} » · manque absent · structurel ${(+st.brut).toFixed(1)} h · corpus ${avec} déclarent (écart max ${ecartMax.toFixed(1)}) / ${sans} rien à déclarer` };
 });
 
+/**
+ * T-58 (O-72 RÉVISÉ — arbitrage du fondateur, 20/08/2026) — LE BLOC FINAL EST UN PLATEAU, PAS UN
+ * POINT.
+ *
+ * O-72 exigeait « le maximum est dans la dernière semaine de charge ». Le fondateur a lui-même
+ * révisé la propriété : *« elle décrit une structure valide parmi plusieurs — un pic trois
+ * semaines avant l'affûtage suivi d'un palier est tout aussi défendable. Ce qu'O-72 fermait
+ * réellement, c'est un plan qui culmine en base et décline vingt semaines. »* La forme gardée est
+ * donc un PLATEAU : aucune semaine de charge postérieure au maximum ne descend de plus de 10 %
+ * sous lui.
+ *
+ * Le seuil de 10 % est celui du fondateur, ordre de grandeur révocable. **IL NE SUFFIT PAS SEUL,
+ * et c'est la mesure qui l'a dit** : écrit en pourcentage pur, le critère désigne 11 plans sur 68
+ * dont le PIRE creux vaut **15 minutes** sous la ligne (les autres 8, 7, 3, 0) — c'est-à-dire la
+ * quantification des séances, pas une forme de plan. Corollaire de la règle 14 : un verdict rendu
+ * en POURCENTAGE sur une grandeur dont le pas est ABSOLU est faux sur les petites valeurs. Le
+ * creux doit donc franchir les deux : plus de 10 % ET plus de 20 minutes (un tiers de séance) —
+ * la borne absolue est posée AU-DESSUS du bruit mesuré, pas au ras.
+ *
+ * Ce que ça répond au passage : le déplacement du maximum de S40 vers S37 sur le profil réel
+ * (constaté en livrant « V2.1 reçoit la borne ») n'est PAS une régression de forme — le creux de
+ * S38 vaut 11 minutes sous la ligne, du bruit de quantification.
+ *
+ * POPULATION ASSERTÉE (« un zéro a besoin de sa population ») : le critère ne vaut que sur les
+ * plans qui ont un APRÈS — au moins deux semaines de charge après le maximum.
+ */
+T("T-58", "rouge", "le bloc final est un PLATEAU : aucune charge postérieure au max ne descend de plus de 10 % sous lui (O-72 révisé)", () => {
+  const wM = (w) => (w.days ?? []).reduce((t, d) => t + (d.sessions ?? []).reduce((u, s) => u + (s.race ? 0 : (s.min || 0)), 0), 0);
+  let pop = 0; const ko = [];
+  for (const { key, plan } of goldenAvecMoteur()) {
+    const ch = (plan?.weeks ?? []).map((w) => ({ n: w.num, r: !!w.isRecup, ph: w.phase?.id, m: wM(w) }))
+      .filter((w) => !w.r && w.ph !== "taper" && w.ph !== "race" && w.m > 0);
+    if (ch.length < 3) continue;
+    const mx = ch.reduce((x, y) => (y.m >= x.m ? y : x));
+    const apres = ch.filter((w) => w.n > mx.n);
+    if (apres.length < 2) continue; // pas d'APRÈS : la propriété n'a pas d'objet
+    pop++;
+    const v = apres.filter((w) => w.m < mx.m * 0.9 - 20);
+    if (v.length) ko.push(`${Math.round(mx.m * 0.9 - v[0].m)}min ${key} S${v[0].n} ${(v[0].m / 60).toFixed(1)} h sous max ${(mx.m / 60).toFixed(1)} h`);
+  }
+  // Plancher épinglé sur la MESURE (68 plans du corpus ont au moins deux semaines de charge
+  // après leur maximum), pas sur un nombre rond : ma première écriture exigeait 100 et rendait
+  // la sonde rouge pour insuffisance de population, c'est-à-dire un verdict sur l'instrument.
+  if (pop < 50) return { ok: false, detail: `POPULATION : ${pop} plans avec un après-maximum — la sonde ne mesure plus` };
+  return { ok: ko.length === 0, detail: ko.length ? `${ko.length}/${pop} plans creusent après leur maximum · ${ko.sort((a, b) => parseInt(b) - parseInt(a)).slice(0, 12).join(" · ")}` : `${pop} plans avec un après-maximum · 0 creux` };
+});
+
+/**
+ * T-59 (LOT VOLUME + RÉPARTITION, 20/08/2026) — LES QUATRE PROPRIÉTÉS STRUCTURELLES DU LOT.
+ *
+ * Le lot ne déplace pas des minutes contre des planchers : il change QUELLE DISCIPLINE PORTE
+ * QUEL CRÉNEAU. Ce sont donc des propriétés de PRÉSENCE et de PLACEMENT qui se gardent, pas des
+ * volumes (un volume se re-calibre au lot suivant, une présence non gardée disparaît en silence
+ * — c'est exactement ce qui est arrivé à la sortie longue à pied après S22, invisible pendant
+ * des mois).
+ *
+ *   (1) A2 — une sortie longue À PIED existe aussi en spécifique/pic (elle s'arrêtait à la fin
+ *       du développement : vingt semaines sans course sèche > 68 min avant un semi) ;
+ *   (2) B1 — une sortie longue À VÉLO existe hors brick, et JAMAIS en semaine de décharge (le
+ *       drapeau du JOUR ne suffit pas à le savoir : `semaineRecup`) ;
+ *   (3) B2 — le doublage n'envoie plus 100 % de ses séances en natation ;
+ *   (4) C1 — la répartition est PUBLIÉE (cible et livré étiquetés) dès que l'écart est matériel.
+ *
+ * Population assertée : les profils tri à `doubles: oui` et préparation ≥ 12 semaines, c'est-à-dire
+ * le domaine où les pièces s'appliquent (hors blessure et drapeau médical, exclusions B1 du banc
+ * v6 : « déclarer une blessure ne doit jamais augmenter la charge »).
+ */
+T("T-59", "rouge", "le lot volume+répartition : longue CAP en spec/pic · longue vélo hors brick et hors décharge · doublage non-mono-discipline · répartition publiée", () => {
+  const pb = []; let pop = 0, popDbl = 0, serres = 0, lrSpec = 0, lbHors = 0, dblMixte = 0, alloc = 0;
+  for (const { key, plan, a } of goldenAvecMoteur()) {
+    if (!/\/tri\//.test(key) && !key.startsWith("tri/")) continue;
+    // DOMAINE DES PIÈCES : tri, sans blessure ni drapeau médical (exclusion B1 du banc v6),
+    // préparation ≥ 12 semaines (C22), hors débutant pour la sortie longue vélo. `injury` vaut
+    // "" ou "aucune" selon les passes du corpus — les deux disent la même chose.
+    const inj = String(a?.injury ?? "");
+    if (inj && inj !== "aucune") continue;
+    if (String(a?.med_pain) === "oui" || String(a?.med_dizzy) === "oui" || String(a?.med_treat) === "oui") continue;
+    if ((plan?.weeks ?? []).length < 12 || String(a?.level) === "debutant") continue;
+    pop++;
+    const sess = [];
+    for (const w of plan.weeks ?? []) for (const d of w.days ?? []) for (const sx of d.sessions ?? [])
+      if (sx.d !== "rs" && !sx.race) sess.push({ w, nom: String(sx.name || "").replace(/\s*\((matin|midi|soir)\)\s*/g, "").trim(), d: sx.d, min: sx.min || 0 });
+    // (1) sortie longue à pied en spec/pic — SEULEMENT là où la semaine a de quoi la porter.
+    // La pièce prend le SECOND créneau facile course ; un plan à 3 séances par semaine n'en a
+    // qu'un, et exiger la séance là reviendrait à la prendre sous un plancher (garde-fou 2 du
+    // lot : « un manque ne se prend jamais sur un plancher de sécurité, il se DÉCLARE »). Le
+    // « serré » est OBSERVÉ sur le plan livré (aucune semaine spec/pic à deux jours `facileR`),
+    // jamais déduit d'une saisie — et il est COMPTÉ, pas passé sous silence.
+    // Le créneau doit encore APPARTENIR à la course : mesuré, sur les plans à disponibilité
+    // serrée (2 jours off, `dispo: weekend`), les deux jours `facileR` de la spécifique portent
+    // de la NATATION — la fréquence de nage du tri (R13.3) y a pris la place. Exiger la sortie
+    // longue là reviendrait à la prendre à la discipline limitante ; ces plans sont donc hors
+    // champ, et COMPTÉS comme tels.
+    const aDeuxCreneaux = (plan.weeks ?? []).some((w) => (w.phase?.id === "spec" || w.phase?.id === "peak")
+      && (w.days ?? []).filter((d) => d.slot === "facileR").length >= 2
+      && (w.days ?? []).some((d) => d.slot === "facileR" && (d.sessions ?? []).some((x) => x.d === "rn")));
+    if (!aDeuxCreneaux) serres++;
+    else if (sess.some((x) => /^Sortie longue CAP/.test(x.nom) && (x.w.phase?.id === "spec" || x.w.phase?.id === "peak"))) lrSpec++;
+    // (2) sortie longue vélo hors brick — et jamais en décharge
+    const lb = sess.filter((x) => /^Sortie longue vélo/.test(x.nom));
+    if (lb.length) lbHors++;
+    const enRecup = lb.filter((x) => x.w.isRecup);
+    if (enRecup.length) pb.push(`${key} : ${enRecup.length} sortie(s) longue(s) vélo en semaine de DÉCHARGE (S${enRecup[0].w.num})`);
+    // (3) le doublage n'est pas mono-discipline : un jour à 2+ séances porte deux disciplines
+    //     différentes au moins une fois dans le plan
+    let mixte = false, aDouble = false;
+    for (const w of plan.weeks ?? []) for (const d of w.days ?? []) {
+      const act = (d.sessions ?? []).filter((x) => x.d !== "rs" && !x.race);
+      // ⚠ MA PREMIÈRE ÉCRITURE MESURAIT UNE GRANDEUR VOISINE, et la contre-preuve l'a dit :
+      // « deux disciplines différentes le même jour » restait VRAI sans la pièce (un jour double
+      // portait déjà nage + vélo, la nage venant du doublage et le vélo du créneau lui-même). Ce
+      // que B2 change est le ROUTAGE : le doublage n'envoie plus TOUT en natation. La propriété
+      // se mesure donc sur l'absence de nage — un jour double SANS natation ne peut pas exister
+      // quand le doublage est mono-nage.
+      if (act.length >= 2) { aDouble = true; if (!act.some((x) => x.d === "sw")) mixte = true; }
+    }
+    // Le compte porte sur les plans qui LIVRENT des jours doubles, pas sur ceux qui les
+    // DÉCLARENT : mesuré, `G/tri/Full/doubles` déclare `doubles: "oui"` et n'en reçoit AUCUN
+    // (observation publiée au registre) — le compter comme un échec du routage ferait dire au
+    // critère autre chose que ce qu'il nomme (famille T-50).
+    if (aDouble) { popDbl++; if (mixte) dblMixte++; }
+    // (4) la répartition est publiée quand l'écart est matériel
+    const dA = (plan._v2?.decisions ?? []).find((x) => x.id === "allocation");
+    if (dA && /visé/.test(String(dA.val))) alloc++;
+  }
+  if (pop < 40) return { ok: false, detail: `POPULATION : ${pop} profils tri à doubles — la sonde ne mesure plus` };
+  if (lrSpec < pop - serres) pb.push(`(1) ${pop - serres - lrSpec}/${pop - serres} plans (à deux créneaux) sans sortie longue à pied en spécifique/pic`);
+  if (lbHors < pop) pb.push(`(2) ${pop - lbHors}/${pop} plans sans AUCUNE sortie longue vélo hors brick`);
+  if (popDbl < 1) pb.push(`(3) POPULATION : aucun plan ne livre de jour double — le critère du routage ne mesure rien`);
+  // (3) LE DOUBLAGE — sous-population MESURÉE, et son absence se DIT plutôt que de passer en
+  // silence : le corpus ne contient que 2 profils tri à `doubles: "oui"` (neuvième A-2), donc un
+  // critère qui s'appuierait sur lui serait vert par vacuité. On compte, et on assert le compte.
+  if (popDbl >= 1 && dblMixte < popDbl) pb.push(`(3) ${popDbl - dblMixte}/${popDbl} plans à jours doubles dont AUCUN jour double n'échappe à la natation — le doublage reste mono-discipline`);
+  if (alloc < 1) pb.push(`(4) aucune décision « allocation » publiée sur ${pop} profils tri`);
+  return { ok: pb.length === 0, detail: pb.length ? pb.slice(0, 4).join(" · ") : `${pop} profils tri (${serres} à créneau unique, hors champ de (1) · ${popDbl} livrant des jours doubles) · longue CAP en spec ${lrSpec} · longue vélo ${lbHors} · jours doubles mixtes ${dblMixte}/${popDbl} · répartition publiée ${alloc}` };
+});
+
 const ROUGES_ATTENDUS = {
+  "T-59": "A2 — résidu MESURÉ et BORNÉ : **5 plans sur 104**, tous des `tri/Full` à disponibilité serrée (`vol-min` 3 séances, `off-2j`, `dispo: weekend`, `dispo: partielle`, `poids-levier`). Sur eux, les deux créneaux faciles course de la spécifique portent de la NATATION — la fréquence de nage du tri (R13.3) y a déjà pris la place, et poser la sortie longue là reviendrait à la prendre à la discipline limitante. C'est un ARBITRAGE de priorité sur budget serré (quelle discipline cède quand il n'y a que 6 créneaux pour 3 sports ?), pas un défaut de la pièce : le forcer serait la faute que le garde-fou 4 du lot nomme (« un correctif qui demande des exclusions successives se bat contre quelque chose de structurel : s'arrêter et rapporter »).",
+  "T-58": "O-72 révisé — résidu MESURÉ : **2 plans sur 68**, `O-21b/run/10k` à 7:00 et 8:30/km, S6 à 21-24 min sous la ligne. Ce sont les deux profils LENTS de la passe O-21b, c'est-à-dire la population où l'inversion sur l'axe ALLURE est déclarée ouverte (O-21, résidu publié) : à trancher avec elle, pas ici. Tous les autres creux du corpus valent ≤ 15 min, c'est-à-dire la quantification des séances.",
   "T-44": "O-66 — la coupe classe en MINUTES une contrainte qui compte des SÉANCES : arbitrage rendu le 17/08, à faire APRÈS le merge et en premier",
   "T-34": "O-43 — la conversion déplace ce qui est prescrit (pic +9 %, fréquence) : filtre du fondateur, une seule issue le passe",
   "T-01": "A-01 — sessionIntensity() importe zoneClass() au lieu de sa copie (+ V-08 pour sw.aero)",

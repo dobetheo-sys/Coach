@@ -19,6 +19,15 @@
 > (§2 de l'arbitrage) : le max de charge quitte la dernière semaine (S40 9,4 → S37 9,1 h).
 > Détail : `BUGS_OUVERTS.md` « V2.1 REÇOIT LA BORNE ».
 
+> **P.S. n°3 (20/08/2026, LOT VOLUME + RÉPARTITION)** — le lot A·B·C a changé la FORME du plan que
+> ce rapport décrit, et les annexes `relecture/` sont régénérées dessus. Ce qui bouge : total
+> **300 → 357 h** · pic **9,4 → 11,2 h** · répartition **vélo 28,6 → 40,3 % · course 29,0 → 31,8 %
+> · nage 42,4 → 27,9 %** · une **sortie longue vélo** existe enfin hors brick (5 × 201', §3 de ce
+> rapport) · la **sortie longue à pied** ne s'arrête plus à S22 (O-91, la conséquence est fermée) ·
+> le sweetspot passe devant la force basse cadence (16 contre 10). Ce qui NE bouge pas : le maillon
+> qui borne reste « le nombre de séances ». Détail et critères de sortie :
+> `BUGS_OUVERTS.md` « LOT VOLUME + RÉPARTITION ».
+
 Le plan complet est en annexe, dans les deux formes demandées :
 
 ```

@@ -580,6 +580,33 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**LOT VOLUME + RÉPARTITION livré (A · B · C) — le plafond structurel monte de 1,8 h sans CHANGER
+DE NATURE, et c'est la mesure la plus utile du lot** (décision du fondateur, 20/08/2026 — voir
+`BUGS_OUVERTS.md` « LOT VOLUME + RÉPARTITION », gardes **T-59** et **T-58**, T-56 rectifiée) :
+cible vélo 50 / course 30 / nage 20. **5 critères de sortie sur 9 atteints**, mesurés sur la
+fixture à `history: confirme` (la valeur RÉELLE — la manipulation `ancien`/20 h vit dans l'app du
+fondateur, pas ici) : pic **9,4 → 11,2 h** · vélo **28,6 → 40,3 %** · course **29,0 → 31,8 %** ✓ ·
+nage **42,4 → 27,9 %** · bornes absorbées en S1 **1,9 → 0,2 h** ✓ · sortie longue vélo **néant →
+5 × 201'** ✓ · sweetspot/force **8/18 → 16/10** ✓ · total **300 → 357 h**. **Ce qui n'est pas
+atteint est nommé** : le maillon mordant reste « le nombre de séances » (10 livrées pour 12
+prescrites) — *il faudra des CRÉNEAUX, pas des minutes*. **A1 : la trajectoire du footing est
+RETIRÉE sur mesure** — O-82 l'avait rendue vivante sans qu'on re-mesure, elle coûtait **28 h de
+préparation et 0,5 h de pic** pour une progression que la courbe fournit déjà (quatre départs
+mesurés). **A2** : la sortie longue à pied existe en spec/pic (second créneau facile course) — et
+en la posant, **les deux reconstructions C18b appelaient `buildSessions` sans `weekNum`, `slotIdx`
+ni `isRecup`**, reconstruisant silencieusement une autre variante que celle du jour. **A3 :
+prémisse RÉFUTÉE, rien écrit** — les récups scalent (médiane 59 % de la charge, cohérent avec
+`RECUP_WEEK_FACTOR`) ; les 3,5 h vus sont le minimum, pas la règle. **B1/B2** réécrites depuis le
+registre avec leur décalage pair/impair, plus un huitième paramètre **`semaineRecup`** (le drapeau
+du JOUR ne dit pas si la SEMAINE est une décharge : la longue vélo s'y posait à 201 min). **C1** :
+`ALLOC_CIBLE` nomme la cible (tri seulement) et une décision `allocation` la publie au gabarit
+O-87 ; aucune passe ne la force. **T-58** : le seuil en % seul désignait 11 plans dont le pire
+creux vaut **15 minutes** — deux monnaies (10 % ET 20 min), et le déplacement du max S40 → S37
+n'est PAS une régression de forme. **Deux fautes de mon instrument publiées** (le critère du
+doublage mesurait une grandeur voisine ; un plancher de population inventé à 100 pour un corpus
+qui en compte 68). Cliquets ré-épinglés avec cause : S4 357 → **341** · S5 504 · rabotages 29 ·
+pic tri 8 244 min / 410 901 m. Rayon golden **188 profils, tous en tri** · batterie 11/11.
+
 **O-96 FERMÉ (doc CARTE_CONTRADICTION_SEANCES) — la contradiction 12/9 était un DEUXIÈME RENDU,
 pas un troisième calcul** (constat du fondateur sur son profil réel après montée à
 `ancien`/20 h/12 séances, 20/08/2026 — voir `BUGS_OUVERTS.md` « O-96 », 3 assertions dans

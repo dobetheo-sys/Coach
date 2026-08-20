@@ -4,14 +4,14 @@
  * lissage sur métrique nage) : elles sont désormais des garde-fous DÉCLARÉS.
  */
 import type { V1Session, V1Step } from "../../engine/types.ts";
-import { C21_REPRISE_BRICK_FACTOR, BRICK_TAPER_BIKE_BOUNDS, C22_MAX_WEEKLY_GROWTH, O81_FOOTING_CIBLE_PIC_MIN, O88_NB_ACCELERATIONS, PROG_DOSE_DEPART } from "../../engine/constraintMatrix.ts";
+import { C21_REPRISE_BRICK_FACTOR, BRICK_TAPER_BIKE_BOUNDS, O81_FOOTING_CIBLE_PIC_MIN, O88_NB_ACCELERATIONS, PROG_DOSE_DEPART } from "../../engine/constraintMatrix.ts";
 import { intOf } from "../../generator/renderer.ts";
 import { registerSport, type SessionKit, type PredictKit } from "../registry.ts";
 import { TRI_SWIM, TRI_BIKE, TRI_RUN, TRI_BIKE_KM, TRI_TRANSITION } from "../../engine/predictor.ts";
 import { continuityGate, palierLayout, palierDistanceM, B17_ECHAUF_M, B17_RETOUR_M } from "../../engine/swimContinuity.ts";
 
 export function buildTriSessions(kit: SessionKit): V1Session[] {
-  const { r, a, fmt, slot, phase, prog, weekNum, slotIdx, lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, swimDrillGlossary, S2, W, Wm, C, Cm, B, Bd } = kit;
+  const { r, a, fmt, slot, phase, prog, weekNum, slotIdx, lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, swimDrillGlossary, semaineRecup, S2, W, Wm, C, Cm, B, Bd } = kit;
   const runInj = inj.list.includes("course");
   const PB = ({ base: [0.35, 0.55], dev: [0.55, 0.75], spec: [0.75, 0.9], peak: [0.9, 1], taper: [0.35, 0.45] } as Record<string, [number, number]>)[phase] || [0.5, 0.8];
   const PT = (lo: number, hi: number) => Math.max(1, Math.round((lo + (hi - lo) * (PB[0] + (PB[1] - PB[0]) * prog)) * sessionScale));
@@ -235,7 +235,31 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
     else if (!noVo2) S2.push({ d: "bk", name: "VO2max vélo", note: "Intensité max tenable 4min, récup quasi complète entre.", det: "", steps: [W(20, "progressif + 3 sprints"), Object.assign(B(PT(4, 6), 4, "bk.vo2", "4min récup"), { repCap: 8 }), C(10, "souple")] });
     else S2.push({ d: "bk", name: "Tempo vélo", note: "Confortablement soutenu, jamais dans le rouge — la VO2max attendra la majorité (R6.3).", det: "", steps: [W(15, "souple"), Object.assign(B(PT(2, 3), PT(8, 15), "bk.ss", "4min souple"), { repCap: 4 }), C(10, "décrassage")] });
   } else if (slot === "dur2") {
-    if (dbl) S2.push({ d: "sw", name: swTech.name, note: swTech.note, det: "", steps: swTech.steps });
+    // B2 (LOT VOLUME + RÉPARTITION, 20/08/2026) — LE DOUBLAGE ALTERNE SA DISCIPLINE.
+    //
+    // *« Le doublage devrait ajouter dans la discipline qui en a besoin, pas toujours dans la
+    // même »* (fondateur). Mesuré : `doubles: oui` ajoutait deux séances par semaine, **toutes
+    // les deux en natation**, sur une épreuve dont la nage fait 12 % du temps de course — c'est
+    // la quatrième occurrence de la prédiction « tout mécanisme qui sélectionne par POSITION,
+    // TAILLE ou ORDRE frappe la natation par défaut », ici dans l'autre sens (elle en reçoit
+    // trop). Le créneau `dur1` garde son doublage nage : c'est la séance de qualité de la
+    // discipline limitante. Celui-ci ALTERNE — semaines impaires en vélo.
+    //
+    // ⚠ LA PHASE COMPTE AUTANT QUE LA FRÉQUENCE (§4 du fondateur, mesuré au lot vélo) : cette
+    // pièce et le créneau long vélo (B1) tombaient d'abord la MÊME semaine et EMPILAIENT la
+    // charge (nage 37 %, vélo 43 %) ; décalées — long vélo en semaines PAIRES, doublage vélo en
+    // semaines IMPAIRES — la charge se répartit (nage 29 %, vélo 47 %). Personne n'aurait prédit
+    // cette interaction calendaire ; c'est la mesure qui l'a montrée.
+    //
+    // ⚠ EXCLUSIONS, TOUTES SUR DES RÈGLES EXISTANTES (jamais un périmètre ad hoc) :
+    //   · blessure ou drapeau médical → jamais (B1 du banc v6 : « déclarer une blessure ne doit
+    //     JAMAIS augmenter la charge » ; le module remplace déjà la discipline touchée par du
+    //     vélo, et la pièce s'empilait dessus — mesuré +6 à +10 %) ;
+    //   · préparations de moins de 12 semaines → jamais (C22 : ajouter un type sur un tri/S de
+    //     8 semaines faisait passer un saut de charge à +11 %).
+    const _alterneOK = dbl && !inj.count && !medHold && r.weeks >= 12;
+    if (dbl && _alterneOK && weekNum % 2 === 1 && phase !== "taper") S2.push({ d: "bk", name: "Endurance vélo", note: "Endurance pure sur le vélo : la discipline qui pèse la moitié de ta course, et celle qui se construit avec le moins de casse. Cadence libre, aucune intensité — c'est du foncier, pas une séance de plus à réussir.", det: "", steps: [W(10, "montée progressive"), Object.assign(B(1, PT(40, 75), "bk.z2", "", " · cadence libre, souple"), { bnd: { floor: 30, cap: 90 } }), C(10, "décrassage")] });
+    else if (dbl) S2.push({ d: "sw", name: swTech.name, note: swTech.note, det: "", steps: swTech.steps });
     if (phase === "spec" || phase === "peak") S2.push({ d: "rn", name: "Allure course (tri)", note: "L'allure de course du jour J : mémorise la sensation, jambes déjà entamées par le vélo.", det: "", steps: [W(15, "footing progressif"), Object.assign(B(1, PT(20, 40), "rn.mara"), { bnd: { floor: 20, cap: 45 } }), C(8, "retour au calme")] });
     // R13.4 — L'AFFÛTAGE EST BRANCHÉ EXPLICITEMENT, plus jamais par un `else` attrape-tout.
     // Le fall-through envoyait la FORCE basse cadence (bk.frc) en plein affûtage : 6 blocs de
@@ -244,6 +268,21 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
     // interdit l'une, l'autre y était par accident de branchement. À la place : un rappel
     // d'allure course à pied, court et précis, le miroir exact du « Rappel race-pace » vélo.
     else if (phase === "taper") S2.push({ d: "rn", name: "Rappel allure course CAP", note: "Affûtage : on réveille l'allure du jour J sans générer de fatigue. Deux blocs courts, précis, puis on range les chaussures.", det: "", steps: [W(10, "footing progressif"), Object.assign(B(2, 8, "rn.mara", "3min trot"), { repCap: 2, bnd: { floor: 6, cap: 8, hard: true } }), C(5, "footing souple")] });
+    // C2 / B-10 (LOT VOLUME + RÉPARTITION, 20/08/2026) — QUAND ON DOUBLE LES HEURES DE VÉLO, CE
+    // QU'ON Y MET DEVIENT LA QUESTION PRINCIPALE.
+    //
+    // Mesuré sur le profil réel : **18 « Force basse cadence » contre 8 « Sweetspot vélo »** —
+    // le rapport est inversé pour l'épreuve visée. Le sweetspot (88-94 % de la FTP à
+    // l'entraînement) est la séance qui construit l'allure d'un 70.3, dont le jour J se roule à
+    // 76-83 % ; la force basse cadence est un travail de force-endurance, utile pour POSER le
+    // foncier musculaire, pas pour construire la durabilité à l'allure de course.
+    //
+    // Le créneau garde donc la force en phase de BASE — c'est sa phase — et passe au sweetspot
+    // en DÉVELOPPEMENT, où `dur1` porte déjà la VO2max : la semaine de dev devient VO2max +
+    // sweetspot, ce qu'un entraîneur prescrit pour cette épreuve. Aucune séance n'est supprimée,
+    // c'est une question de PHASE — la même forme que R13.4 (« l'affûtage est branché
+    // explicitement, plus jamais par un `else` attrape-tout »).
+    else if (phase === "dev") S2.push({ d: "bk", name: "Sweetspot vélo", note: "L'allure qui construit un long : soutenu mais tenable, cadence 85-95 rpm. C'est le cœur de la préparation vélo d'un triathlon longue distance — le jour J se roule plus bas, mais c'est ici que le plafond se construit.", det: "", steps: [W(15, "montée progressive"), Object.assign(B(PT(2, 3), PT(12, 20), "bk.ss", "5min souple"), { repCap: 4 }), C(10, "décrassage")] });
     else S2.push({ d: "bk", name: "Force basse cadence", note: "Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.", det: "", steps: [W(15, "+ montée en intensité"), Object.assign(B(PT(4, 6), ({ S: 5, M: 5, "70.3": 6, Full: 7 } as Record<string, number>)[fmt] || 5, "bk.frc", "3min souple", " à 50-60 rpm"), { repCap: 8 }), C(10, "moulinage")] });
   } else if (slot === "durLong") {
     // O-91 (relecture REEL, 19/08/2026) — LA DÉCISION QUE PERSONNE N'AVAIT ÉCRITE : en spécifique
@@ -369,7 +408,31 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
       ], ...( { runInj } as object) });
     } else {
       const longRunCaps = ({ S: { lo: 30, hi: 60 }, M: { lo: 40, hi: 75 }, "70.3": { lo: 50, hi: 100 }, Full: { lo: 60, hi: 140 } } as Record<string, { lo: number; hi: number }>)[fmt] || { lo: 50, hi: 100 };
-      S2.push({ d: "rn", long: true, name: "Sortie longue CAP", note: "Endurance fondamentale, allure facile et conversationnelle.", det: "", steps: [Object.assign(B(1, PT(longRunCaps.lo, longRunCaps.hi), "rn.easy", "", runInj ? " sur surface souple" : ""), { bnd: { floor: longRunCaps.lo, cap: longRunCaps.hi } })], ...( { plainBody: true } as object) });
+      // B1 (LOT VOLUME + RÉPARTITION, 20/08/2026) — LE CRÉNEAU LONG N'APPARTIENT PLUS À LA SEULE
+      // COURSE HORS SPÉCIFIQUE.
+      //
+      // *« Le créneau long est monopolisé par la course pendant les deux tiers du plan »*
+      // (fondateur). Mesuré sur le profil réel : **aucune sortie longue à vélo n'existe en base
+      // ni en développement** — le seul vélo long du plan est le leg du brick, qui n'apparaît
+      // qu'en spécifique. Sur une épreuve dont le vélo fait 52 % du temps de course, les vingt
+      // premières semaines n'en construisent pas le foncier.
+      //
+      // Le créneau ALTERNE donc, en semaines PAIRES (le décalage avec B2 est mesuré, voir sa
+      // note). Les bornes sont celles du leg vélo du brick pour le même format — une seule
+      // table pour « ce que dure un long vélo sur cette épreuve », jamais une seconde (R11.1).
+      //
+      // ⚠ PAS DE MARQUEUR `long: true`, et c'est une mesure qui l'a décidé : I14 demande qu'une
+      // séance marquée `long` soit la plus longue de sa DISCIPLINE dans sa semaine ; sans le
+      // marqueur, le sceau S4 descend de 349 à 342 — sept violations de MOINS qu'avant la pièce.
+      // Mêmes exclusions que B2, mêmes raisons (blessure/drapeau médical, prépas < 12 semaines).
+      // ⚠ JAMAIS EN SEMAINE DE RÉCUP — trouvé au rendu, pas à la relecture : sans cette garde,
+      // S22 (une décharge) portait une sortie longue vélo de 201 min. La passe O-93 ne pouvait
+      // pas la rattraper, faute de charge VOISINE portant le même type (elle compare un type à
+      // ses semaines de charge adjacentes, et celui-ci n'y existe pas encore).
+      const _lbOK = !inj.count && !medHold && !kit.isRecup && !semaineRecup && r.weeks >= 12 && lvl !== "debutant";
+      const lbCaps = ({ S: { lo: 45, hi: 90 }, M: { lo: 60, hi: 120 }, "70.3": { lo: 90, hi: 180 }, Full: { lo: 150, hi: 300 } } as Record<string, { lo: number; hi: number }>)[fmt] || { lo: 60, hi: 180 };
+      if (_lbOK && weekNum % 2 === 0) S2.push({ d: "bk", name: "Sortie longue vélo", note: "La sortie foncière du vélo : longue, régulière, en endurance. C'est la discipline qui pèse le plus lourd le jour J et celle qui se construit avec le moins de casse — le foncier vélo se pose en base, il ne se rattrape pas en spécifique. Ravitaille-toi comme le jour J, c'est aussi une séance de nutrition.", det: "", steps: [W(15, "montée progressive"), Object.assign(B(1, PT(lbCaps.lo, lbCaps.hi), "bk.z2", "", " · cadence libre, ravitaillement toutes les 30 min"), { bnd: { floor: lbCaps.lo, cap: lbCaps.hi } }), C(10, "décrassage")] });
+      else S2.push({ d: "rn", long: true, name: "Sortie longue CAP", note: "Endurance fondamentale, allure facile et conversationnelle.", det: "", steps: [Object.assign(B(1, PT(longRunCaps.lo, longRunCaps.hi), "rn.easy", "", runInj ? " sur surface souple" : ""), { bnd: { floor: longRunCaps.lo, cap: longRunCaps.hi } })], ...( { plainBody: true } as object) });
     }
   } else if (slot === "facileR") {
     const ftCaps = ({ S: { lo: 25, hi: 45 }, M: { lo: 15, hi: 26 }, "70.3": { lo: 14, hi: 22 }, Full: { lo: 50, hi: 100 } } as Record<string, { lo: number; hi: number }>)[fmt] || { lo: 25, hi: 45 };
@@ -394,6 +457,28 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
     // bornes ; `hard` interdit à la sonde de capacité de l'élargir.
     if (phase === "peak" && !kit.isRecup && !runInj && !medHold && lvl !== "debutant" && !finisher) S2.push({ d: "rn", name: "Allure course (tri)", note: "L'allure du jour J, jambes fraîches cette fois : mémorise la sensation, elle doit devenir automatique.", det: "", steps: [W(10, "footing progressif + gammes"), Object.assign(B(2, PT(7, 10), "rn.mara", "2min trot"), { repCap: 2, bnd: { floor: 6, cap: 10, hard: true } }), C(8, "footing très facile")] });
     else if (phase === "peak" && !kit.isRecup && runInj && !medHold) S2.push({ d: "rn", name: "Allure course (tri, surface souple)", note: "Course blessé : allure cible en contrôle, sur surface souple, jamais dans la douleur.", det: "", steps: [W(12, "footing progressif"), B(1, PT(18, 28), "rn.mara", "", ", sur surface souple"), C(8, "footing très facile")] });
+    // A2 / O-91 (LOT VOLUME + RÉPARTITION, 20/08/2026) — LA SORTIE LONGUE À PIED EXISTE AUSSI EN
+    // SPÉCIFIQUE ET EN PIC. La décision O-91 (« le créneau long CONSTRUIT le brick en spec/pic »)
+    // est RESPECTÉE — le brick garde `durLong` et reste le pivot de sa semaine. Ce qui n'avait
+    // jamais été arbitré est sa CONSÉQUENCE, mesurée à la relecture du plan réel : la « Sortie
+    // longue CAP » s'arrêtait à la fin du développement (S22), soit **vingt semaines sans une
+    // seule course sèche de plus de 68 min avant un semi-marathon d'enchaînement**, la CAP longue
+    // ne survivant que dans les 26-49 min de fin de brick.
+    //
+    // Elle reprend donc le SECOND créneau facile course de la semaine (`slotIdx === 1`) — celui
+    // qui rendait un deuxième footing de 30 min, la séance la moins spécifique de la semaine la
+    // plus spécifique du plan. Le premier créneau garde le footing (et, en pic, le rappel
+    // d'allure course) : on remplace une redondance, on ne retire aucun type.
+    //
+    // ⚠ ELLE NE PORTE PAS `long: true`, DÉLIBÉRÉMENT : ce drapeau désigne le PIVOT de la semaine
+    // (I14 : « la sortie longue est la plus longue de sa semaine »), et en spec/pic le pivot est
+    // le brick. Deux pivots dans une semaine, ce serait demander à I14 de trancher entre deux
+    // séances qui ne se comparent pas. Le type garde son NOM (une seule ligne dans les mesures
+    // par type, comparable d'un bout à l'autre du plan) et ses bornes de format.
+    else if ((phase === "spec" || phase === "peak") && slotIdx === 1 && !kit.isRecup && !medHold) {
+      const lrc = ({ S: { lo: 30, hi: 60 }, M: { lo: 40, hi: 75 }, "70.3": { lo: 50, hi: 100 }, Full: { lo: 60, hi: 140 } } as Record<string, { lo: number; hi: number }>)[fmt] || { lo: 50, hi: 100 };
+      S2.push({ d: "rn", name: "Sortie longue CAP", note: "Endurance fondamentale à pied, allure facile et conversationnelle. Le brick t'apprend à courir SUR des jambes fatiguées ; celle-ci construit la distance elle-même — les deux ne se remplacent pas, et c'est la seconde qui décide de tes derniers kilomètres le jour J.", det: "", steps: [Object.assign(B(1, PT(lrc.lo, lrc.hi), "rn.easy", "", runInj ? " sur surface souple" : ""), { bnd: { floor: lrc.lo, cap: lrc.hi } })], ...( { plainBody: true } as object) });
+    }
     // R13 — le footing porte ses BORNES (`ftCaps` existait, jamais posé en bnd) : c'était le
     // seul bloc sans plafond de la semaine, donc le déversoir de toutes les passes de
     // remplissage — mesuré : « Footing facile 213 min » en semaine de peak (D7, banc v6).
@@ -422,13 +507,31 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
     else {
       const _capFtR13 = Math.round(ftCaps.hi * 1.3);          // R13 — le déversoir reste fermé
       const _capFtPic = Math.max(_capFtR13, O81_FOOTING_CIBLE_PIC_MIN);
-      const _wTotFt = Math.max(2, _wTot);
-      // La trajectoire part du plancher de dignité — en dessous, elle serait sans effet.
-      const _departFt = Math.max(30 / _capFtPic, Math.pow(C22_MAX_WEEKLY_GROWTH, -(_wTotFt - 1)));
-      const _tFt = kit.isRecup || phase === "taper" || _iPh < 0 ? 0
-        : Math.max(0, Math.min(1, (weekNum - 1) / (_wTotFt - 1)));
-      const _progFt = _capFtPic > _capFtR13 ? Math.pow(_departFt, 1 - _tFt) : 1;
-      S2.push({ d: "rn", name: "Footing facile", note: "Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.", det: "", steps: [Object.assign(B(1, PT(ftCaps.lo, ftCaps.hi), "rn.easy", "", runInj ? " · surface souple" : ""), { bnd: { floor: ftCaps.lo, cap: _capFtPic }, progCap: _progFt })], ...( { plainBody: true } as object) });
+      // A1 (LOT VOLUME + RÉPARTITION, 20/08/2026) — LA TRAJECTOIRE DU FOOTING EST RETIRÉE, ET
+      // C'EST UNE MESURE QUI L'A DÉCIDÉ, PAS UN CHANGEMENT D'AVIS.
+      //
+      // O-81 l'a livrée (interpolation géométrique du plancher de dignité à la cible), O-82 l'a
+      // rendue VIVANTE en réparant `progCap` sur la branche C8/C16 — et personne n'a re-mesuré ce
+      // que la rendre vivante COÛTE. Expérience à un facteur sur le profil réel, quatre départs :
+      //
+      //     départ 0,60 (livré)  pic 9,4 h · total 300 h · footing 25'→46'
+      //     sans trajectoire     pic 9,9 h · total 328 h · footing 38'→50'
+      //     départ 0,80          pic 9,6 h · total 313 h · footing 33'→48'
+      //     départ 0,90          pic 9,6 h · total 317 h · footing 35'→49'
+      //
+      // **La trajectoire coûte 28 h de préparation et 0,5 h de pic pour une progression que la
+      // COURBE fournit déjà** : sans elle, le footing va quand même de 38' à 50' — c'est le
+      // volume hebdomadaire qui monte, pas une borne qui s'ouvre. Un plafond qui commence bas
+      // sur un plan déjà borné par ses plafonds ne fabrique pas de progression, il retire du
+      // volume ; et le lot dont c'est l'objet est précisément celui qui cherche à en rendre.
+      // L'amplitude des semaines de charge ne bouge dans AUCUNE variante (2,8-2,9 h) : le piège
+      // O-69 (« relever un plancher aplatit le plan ») ne se déclenche pas ici.
+      //
+      // Ce qui RESTE est la moitié qui avait été mesurée utile : le PLAFOND relevé d'O-81
+      // (`O81_FOOTING_CIBLE_PIC_MIN`), là où la table du format laissait le type au ras de son
+      // plancher de dignité. Le départ progressif du VOLUME, lui, appartient à la rampe R10/O-69
+      // et à C22 — au niveau de la SEMAINE, qui est le bon niveau pour une charge.
+      S2.push({ d: "rn", name: "Footing facile", note: "Course facile : les jambes apprennent à courir « propre » sans fatigue ajoutée.", det: "", steps: [Object.assign(B(1, PT(ftCaps.lo, ftCaps.hi), "rn.easy", "", runInj ? " · surface souple" : ""), { bnd: { floor: ftCaps.lo, cap: _capFtPic } })], ...( { plainBody: true } as object) });
     }
   } else if (slot === "facile2") {
     // R13.3 — EN MONO-SÉANCE, LA NAGE DU TRI EXISTE. `swMain` et `swTech` n'étaient poussées
