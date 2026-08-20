@@ -580,6 +580,24 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**LA CONTRADICTION « 1,8 h manquantes / 2,6 h de marge » EST LEVÉE — la marge n'existait pas, et
+l'hypothèse O-85 est réfutée dans sa forme forte** (mesure du 20/08/2026, aucun correctif — voir
+`BUGS_OUVERTS.md` « LES 1,8 H MANQUANTES ET LES 2,6 H DE MARGE » et **O-97**) : la semaine de pic
+**ATTEINT sa cible à 0,2 % près** (livré 11,18 h · cible déclarée 11,2 · clone saturé V2.1 11,2) —
+il n'y a aucun volume non placé, et la décision `manque` est absente ; les 1,8 h sont l'écart au
+CRITÈRE de sortie, pas un raté de placement. **Les 2,6 h de « marge » étaient un artefact de mon
+indicateur** : il comparait chaque séance au maximum que son type atteint AILLEURS, dans des
+semaines à composition différente — non simultanément atteignables, et le clone saturé le prouve
+(il rendrait 13,8 h, il rend 11,2). La limite que j'avais publiée avec la mesure (« un PROXY du
+plafond ») est confirmée. **O-85 neutralisée, trois états mesurés sur le moteur COURANT** (le
+« −1,7 h » datait d'avant V2.1-reçoit-la-borne et d'avant A·B·C) : le pic ne monte pas (0,00 h
+passe seule · +0,34 h borne retirée partout) — la coïncidence 1,7/1,8 se dissout. **Mais le
+volume libéré revient bien dans la NAGE** (+16 h) pendant que le vélo PERD 1 h et la course 5 :
+le créneau est TYPÉ, et retirer la protection ÉLOIGNE de la cible (nage 27,9 → 31,4 %). **O-97
+ouvert** : le budget de séances ANNONCÉ (11) n'est pas borné par le calendrier (10 maximum) —
+mesuré inerte sur REEL, non corrigé (`budgetPerWeek` alimente des passes, et la capacité de
+doublage vit dans le schéma hebdomadaire, pas dans le moteur qui émet l'annonce).
+
 **LOT MESURE livré — « la semaine est-elle un nombre de créneaux ou un volume à répartir ? »
 Quatre mesures, AUCUN correctif, et le maillon affiché est réfuté au pic** (périmètre gelé par le
 fondateur, 20/08/2026 — voir `BUGS_OUVERTS.md` « LOT MESURE — LA SEMAINE EST-ELLE UN NOMBRE DE

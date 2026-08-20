@@ -9874,6 +9874,95 @@ la sortie longue vélo ne PROGRESSE pas                 saturée à 201' (plafon
 5 tri/Full à budget serré sans longue CAP en spec      arbitrage de priorité, T-59
 ```
 
+## LES 1,8 H MANQUANTES ET LES 2,6 H DE MARGE — **la contradiction est levée : la marge n'existait pas** (mesure du 20/08/2026)
+
+*« Il y a plus de marge disponible que de volume manquant. Pourquoi le placement n'utilise-t-il
+pas la marge dont il dispose ? »* **Mesuré : la question n'a pas d'objet — le placement utilise
+tout ce dont il dispose, et « la marge » était un artefact de mon indicateur.**
+
+### La semaine de pic ATTEINT sa cible, à 0,2 % près
+
+```
+cible déclarée de la semaine de pic     11,2 h
+livré                                   11,18 h        ← 99,8 %
+sonde V2.1 (clone SATURÉ de la semaine) 11,2 h
+```
+
+**Il n'y a AUCUN volume non placé au pic.** Les 1,8 h manquantes sont l'écart au CRITÈRE DE
+SORTIE (12,5 h), pas un volume que le moteur viserait sans y arriver — la décision `manque` est
+d'ailleurs absente de ce plan.
+
+**Et les 2,6 h de marge n'en étaient pas.** Mon indicateur de MESURE 2 comparait chaque séance au
+maximum que son type atteint AILLEURS dans le plan — or ces maxima sont atteints dans des semaines
+à composition DIFFÉRENTE (« Nage récup courte » vaut 60 min dans une décharge où elle est presque
+seule). Ils ne sont pas simultanément atteignables dans la semaine de pic, et la preuve est le
+clone saturé : si la marge était réelle, il rendrait 13,8 h — il rend 11,2. **La limite que
+j'avais publiée avec la mesure (« le maximum ailleurs est un PROXY du plafond ») est confirmée :
+le proxy surestimait.**
+
+### L'hypothèse d'O-85 : réfutée dans sa forme forte, CONFIRMÉE dans sa forme typée
+
+Trois états, un facteur à la fois, sur le moteur COURANT (le « −1,7 h » du diagnostic R20.2/REEL
+datait d'avant « V2.1 reçoit la borne » et d'avant le lot A·B·C — un compte se publie avec son
+moment) :
+
+```
+état                                    pic       total    nage    vélo    course
+(a) livré                              11,18 h    357 h   27,9 %  40,3 %  31,8 %
+(b) passe O-85 neutralisée             11,18 h    372 h   29,4 %  39,3 %  31,3 %
+(c) borne d'épaule neutralisée PARTOUT 11,52 h    367 h   31,4 %  39,0 %  29,6 %
+
+(a) → (b)   nage +10 h · vélo +2 h · course +4 h     pic +0,00 h
+(a) → (c)   nage +16 h · vélo −1 h · course −5 h     pic +0,34 h
+```
+
+**Le pic ne monte PAS de 1,7 h** — il ne monte pas du tout quand la passe est neutralisée, et de
+0,34 h quand la borne disparaît partout. La coïncidence « 1,7 h retirés / 1,8 h manquants » se
+dissout : les deux chiffres appartiennent à deux états du moteur différents.
+
+**Mais le volume libéré revient bien dans la NAGE**, et au-delà : à l'état (c), le vélo PERD 1 h
+et la course 5 h pendant que la nage en gagne 16. Le créneau est typé — ce qu'une protection de
+nage relâche ne devient jamais du vélo. **Corollaire qui décide** : retirer la protection
+ÉLOIGNE de la cible d'allocation (nage 27,9 → 31,4 %, vélo 40,3 → 39,0 %). La borne d'épaule est
+aujourd'hui le mécanisme qui rapproche le plus le plan de sa cible, et elle le fait par accident.
+
+### Ce que ça laisse ouvert
+
+Ce qui borne la semaine de pic est donc **la somme des plafonds des 9 séances qui la composent**
+(le clone saturé), pas un maillon nommé. Pour monter, il faut donc soit plus de créneaux, soit des
+plafonds plus hauts **sur les types PRÉSENTS AU PIC** — ce qui rejoint le §5 du document : le
+levier est *quels types apparaissent quand*, et un plafond relevé sur un type absent du pic ne
+change rien à ce chiffre.
+
+```verify
+id: MARGE-PIC
+quoi: la semaine de pic atteint-elle sa cible déclarée, et la sonde saturée dit-elle la même chose ?
+attendu: /pic 11\.1[0-9] h · cible 11\.2 · sonde 11\.2/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const{profiles}=await import('./scripts/goldenMaster.mjs');let r;for(const p of profiles())if(p.key.startsWith('REEL'))r=p;const P=globalThis.EBV2.buildPlan(r.sport,r.a);const wM=w=>w.days.reduce((t,d)=>t+d.sessions.reduce((u,s)=>u+(s.race?0:(s.min||0)),0),0);const ch=P.weeks.filter(w=>!w.isRecup&&w.phase?.id!=='taper'&&w.phase?.id!=='race');const pic=ch.reduce((a,b)=>wM(b)>=wM(a)?b:a);const v=(P._v2?.decisions||[]).find(x=>x.id==='V2.1');console.log('pic '+(wM(pic)/60).toFixed(2)+' h · cible '+pic.vol_declared+' · sonde '+String(v?.val||'').replace(/h.*/,''));"
+```
+
+## O-97 · Le budget de séances ANNONCÉ n'est pas borné par le calendrier · 🔴 **OUVERT — mesuré, non corrigé**
+
+§4 du document (20/08/2026). La carte annonce « 11 séances par semaine prescrites » (`min(12
+déclarées, 13,5 h ÷ 1,2)`) alors que **la structure de la semaine en interdit plus de 10** :
+7 jours disponibles, dont au plus 3 doublés (mesuré au lot précédent — `sessions_max` 10, 12 et 14
+rendent le même plan). Le nombre prescrit est donc inatteignable par construction.
+
+**Ce n'est PAS un mensonge de la carte au sens d'O-87/O-96** : depuis O-87 elle affiche le couple
+étiqueté (« 11 prescrites — ta semaine la plus fournie en livre 10 »), donc l'athlète voit le
+livré. Le défaut est un cran plus haut : le nombre PRESCRIT lui-même devrait être borné par ce que
+la disponibilité déclarée permet de placer.
+
+**Pourquoi ce n'est pas corrigé ici** : `budgetPerWeek` n'est pas qu'un affichage — il alimente
+`applySessionBudget` et plusieurs passes. Le borner au calendrier le ferait mordre plus tôt sur
+d'autres profils (il mord déjà sur 70 des 986), et la capacité de doublage vit dans le SCHÉMA
+HEBDOMADAIRE (`weekBuilder`), pas dans le moteur de raisonnement qui émet l'annonce — la lui
+faire connaître est un couplage à décider, pas à improviser. **Mesure d'entrée** : sur REEL,
+borne calendaire 10 contre 11 annoncés ; la passe ne mordrait toujours pas (10 ≤ 10), donc le
+correctif serait INERTE sur le plan et ne changerait que l'annonce. C'est le genre de correctif
+qu'on croit inerte jusqu'à ce qu'il ne le soit pas ailleurs : à mesurer sur les 986 avant d'être
+posé.
+
 ## LOT MESURE — LA SEMAINE EST-ELLE UN NOMBRE DE CRÉNEAUX OU UN VOLUME À RÉPARTIR ? (20/08/2026)
 
 **Aucun correctif. Périmètre gelé : que des mesures publiées**, sur le profil réel et sur le
