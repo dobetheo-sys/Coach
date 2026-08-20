@@ -9874,6 +9874,172 @@ la sortie longue vélo ne PROGRESSE pas                 saturée à 201' (plafon
 5 tri/Full à budget serré sans longue CAP en spec      arbitrage de priorité, T-59
 ```
 
+## LOT MESURE — LA SEMAINE EST-ELLE UN NOMBRE DE CRÉNEAUX OU UN VOLUME À RÉPARTIR ? (20/08/2026)
+
+**Aucun correctif. Périmètre gelé : que des mesures publiées**, sur le profil réel et sur le
+corpus. Quatre mesures, et pour chacune ce qu'elle ne dit PAS.
+
+### MESURE 1 — la longue s'ajoute-t-elle ou remplace-t-elle ? **Ni l'un ni l'autre : elle prend un CRÉNEAU**
+
+31 semaines de charge du profil réel, coupées en deux populations (une séance ≥ 150 min, ou non) :
+
+```
+                          AVEC longue   SANS longue    écart
+volume total de la semaine    10,1 h        9,3 h      +8 %
+nombre des AUTRES séances       6,6          8,6       −23 %
+durée moyenne des AUTRES       64,0'        65,8'      −3 %
+```
+
+**Contrôlé PAR PHASE** — les semaines à longue ne sont pas tirées au hasard (le brick vit en
+spec/pic, la sortie longue vélo en semaines paires) :
+
+```
+base   10,0 h · 6,5 × 62'   contre  8,9 h · 8,6 × 62'    (n = 2/8)
+dev     9,9 h · 6,0 × 66'   contre  9,3 h · 8,8 × 64'    (n = 2/6)
+spec   10,1 h · 6,5 × 68'   contre  9,8 h · 8,3 × 71'    (n = 2/7)
+```
+
+**Les autres séances gardent EXACTEMENT leur taille** (62 contre 62, 66 contre 64, 68 contre 71 —
+l'écart est du bruit) **et il y en a DEUX DE MOINS**. La longue porte 187 min en moyenne, soit
+31 % de sa semaine : elle déplace ~130 min de créneaux et en ajoute ~57 nets.
+
+> **C'est une TROISIÈME issue, absente des deux que le document proposait.** L'asymétrie existe
+> bien dans le livré — mais le canal de compensation est le NOMBRE de créneaux, jamais la TAILLE
+> des autres séances. Le moteur se comporte donc comme « un nombre de créneaux à remplir », et
+> l'hypothèse de conception est confirmée dans sa forme, pas dans sa conséquence : la longue ne
+> sature pas la semaine, elle en occupe la place de deux séances.
+
+**Ce que la mesure ne dit PAS** : elle ne dit pas si le déplacement est VOULU (une longue occupe
+un jour, donc mécaniquement un créneau) ou SUBI (une passe qui retire des séances pour tenir le
+volume). Les deux produisent le même livré. Elle ne dit rien non plus des autres sports : elle
+porte sur un seul profil, avec 2 semaines « avec longue » par phase — un n minuscule, dont seule
+la CONSTANCE du résultat (les trois phases disent la même chose) fait la valeur.
+
+### MESURE 2 — les types au plafond, et la passe qui retire deux séances : **il n'y en a AUCUNE**
+
+Semaine de pic (S37, 11,18 h, 9 séances). Pour chaque séance, sa durée comparée au MAXIMUM que le
+même type atteint ailleurs dans le plan :
+
+```
+Brick vélo+CAP        173'   (201' ailleurs, +28)
+Endurance vélo         99'   (109' ailleurs, +10)   × 2
+Sortie longue CAP      97'   (100' ailleurs,  +3)
+Allure course (tri)    65'   ( 68' ailleurs,  +3)
+Nage seuil (+dist)     51'   ( 68' ailleurs, +17)
+Footing facile         33'   ( 50' ailleurs, +17)
+Nage récup courte      27'   ( 60' ailleurs, +33)   × 2
+```
+
+**AUCUN type n'est à son maximum dans la semaine de pic** — la marge cumulée vaut **154 minutes
+(2,6 h)**. Et pourtant la semaine ne les prend pas : neutraliser la sonde V2.1 (§2 du lot
+précédent) n'achète que **+0,34 h**. Les deux moitiés de `structurel = nSess × durée max` sont
+donc FAUSSES au pic : ni le compte ni les durées ne sont saturés, et ce qui borne est ailleurs —
+dans la composition des contraintes de SEMAINE.
+
+**La passe qui retire deux séances n'existe pas.** `applySessionBudget` neutralisée, le plan de
+REEL est IDENTIQUE (318 séances, 21 395 min, max 10/semaine dans les deux états). Le « 10 pour
+12 » n'est pas un retrait : c'est ce que la structure produit — 7 jours, dont au plus 3 doublés.
+
+**Ce que la mesure ne dit PAS** : « le maximum ailleurs » est un PROXY du plafond, pas le plafond.
+Un type peut n'être nulle part à sa borne, auquel cas la marge réelle est plus grande encore. Et
+elle ne nomme pas la contrainte qui borne à ~11,5 h — elle établit seulement que ce n'est ni la
+sonde, ni les plafonds de séance, ni le budget de séances.
+
+### MESURE 3 — le budget de séances mord sur **70 profils sur 986 (7,1 %)**, et pas sur le profil réel
+
+Mesuré AU DÉCLENCHEMENT (`applySessionBudget` neutralisée, plans comparés — un correcteur qui
+réussit efface sa trace) :
+
+```
+                          budget MORD    budget INERTE
+profils                        70             916
+durée moyenne de séance      39,7'           53,7'
+volume total du plan          26 h           116 h
+séances retirées (total)      864
+REEL                         inerte — plan identique au bit près
+```
+
+**La comparaison brute est CONFONDUE par le format** : les 70 profils mordus font 26 h de plan
+contre 116, ce sont des petits formats (`run/5k/reprise`, `tri/S`). Apparié par sport ET format,
+là où les volumes sont réellement comparables :
+
+```
+run/10k | ancien     mord 6 × 43' (28 h)   ·   inerte 3 × 42' (32 h)
+tri/S   | confirme   mord 6 × 38' (24 h)   ·   inerte 3 × 39' (28 h)
+```
+
+**À volume comparable, les séances ne sont PAS plus courtes** (43 contre 42, 38 contre 39). Le
+biais soupçonné — un budget serré qui produit des séances moyennes au lieu d'une longue et de
+courtes — **n'est pas visible sur les seules paires appariables**. Ce n'aurait donc pas été la
+cinquième occurrence de la famille.
+
+**Ce que la mesure ne dit PAS** : seules **12 paires** sont réellement appariables (6 + 6) ; les
+autres familles opposent un profil `vol-min` à des profils trois fois plus gros, et leur écart
+(41' contre 52') mesure le volume, pas le budget. Une conclusion solide demanderait un corpus
+qui fasse varier `sessions_max` À VOLUME CONSTANT — il n'existe pas (neuvième A-2).
+
+### MESURE 4 — le lot a rendu la semaine PLUS GROSSE, pas plus asymétrique
+
+Comparaison avec les annexes du commit d36d0b6 (le plan d'AVANT le lot A·B·C) :
+
+```
+                                   AVANT            APRÈS
+semaine 1                       7,8 h · σ 26'    10,8 h · σ 30'
+semaine de pic                  9,1 h · σ 42'    11,2 h · σ 45'
+σ moyen (semaines de charge)       27,7'            31,3'
+coefficient de variation           45 %             44 %
+```
+
+**L'écart-type absolu monte de 13 %, le coefficient de variation ne bouge pas (45 → 44 %).** Le
+critère du fondateur — *« la forme juste n'est pas "toutes les séances grandissent" mais "une ou
+deux grandissent beaucoup, les autres pas" »* — **n'est pas atteint** : les durées ont grandi
+ensemble, la dispersion RELATIVE est identique.
+
+Et la croissance par type, S1 → pic, dit pourquoi : **elle n'est presque pas une croissance,
+c'est un changement de distribution.**
+
+```
+présents dans les DEUX semaines      Nage seuil    50' →  51'   (+2 %)
+                                     Endurance vélo 216' → 198'  (−8 %)
+                                     Nage récup      40' →  54'  (+35 %)
+                                     Footing facile 156' →  33'  (−79 %)
+absents en S1, présents au pic       Brick 173' · Sortie longue CAP 97' · Allure course 65'
+présents en S1, absents au pic       Sweetspot 92' · Force basse cadence 94'
+```
+
+**Aucun type présent des deux côtés ne grandit vraiment** ; la semaine de pic est plus grosse
+parce qu'elle contient un brick et une sortie longue que la semaine 1 n'a pas. **La spécificité
+vient de la SUBSTITUTION des types, pas de l'allongement des séances** — ce qui est une bonne
+nouvelle sur le fond (c'est ce qu'un entraîneur fait) et une mauvaise pour le levier cherché :
+allonger les plafonds ne rendra pas la semaine plus spécifique, il la rendra plus lourde.
+
+**Ce que la mesure ne dit PAS** : σ et CV ne distinguent pas « une longue et six moyennes » de
+« trois grosses et trois petites » — deux formes très différentes peuvent partager le même CV.
+Et la comparaison AVANT/APRÈS porte sur un seul profil : elle décrit ce lot sur ce plan, pas une
+propriété du moteur.
+
+### Ce que les quatre mesures disent ENSEMBLE
+
+```
+la longue prend un CRÉNEAU, jamais des minutes aux autres          (M1)
+ni le compte ni les durées ne saturent la semaine de pic           (M2)
+aucune passe ne retire de séances sur ce profil                    (M2)
+le budget de séances ne mord que sur 7 % des profils, pas ici      (M3)
+le lot a allongé uniformément, la dispersion relative est stable   (M4)
+```
+
+**Le maillon affiché (« le nombre de séances ») est un MODÈLE, et les deux mesures qui le testent
+le réfutent au pic** : ni `nSess` ni `durée max` ne sont saturés. Ce qui borne la semaine à
+~11,5 h n'est identifié par aucune de ces quatre mesures — c'est la question ouverte que ce lot
+laisse, et la seule qui vaille avant tout correctif.
+
+```verify
+id: LOT-MESURE-FORME
+quoi: la longue déplace-t-elle des créneaux sans réduire la taille des autres séances ?
+attendu: /autres avec [0-9.]+ × 6[0-9]' · sans [0-9.]+ × 6[0-9]'/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const{profiles}=await import('./scripts/goldenMaster.mjs');let r;for(const p of profiles())if(p.key.startsWith('REEL'))r=p;const P=globalThis.EBV2.buildPlan(r.sport,r.a);const A=[],S=[];for(const w of P.weeks){if(w.isRecup||w.phase?.id==='taper'||w.phase?.id==='race')continue;const act=[];for(const d of w.days)for(const s of d.sessions)if(s.d!=='rs'&&!s.race)act.push(s.min||0);if(!act.length)continue;const au=act.filter(m=>m<150);(act.some(m=>m>=150)?A:S).push({n:au.length,m:au.reduce((a,b)=>a+b,0)/Math.max(1,au.length)});}const f=l=>[(l.reduce((t,x)=>t+x.n,0)/l.length).toFixed(1),(l.reduce((t,x)=>t+x.m,0)/l.length).toFixed(0)];console.log('autres avec '+f(A)[0]+' × '+f(A)[1]+\"' · sans \"+f(S)[0]+' × '+f(S)[1]+\"'\");"
+```
+
 ### §2 — QUELLE MOITIÉ SATURE ? La mesure demandée avant toute écriture (20/08/2026)
 
 *« `structurel = nSess × durée max`. La semaine de pic livre 10 séances pour 12 prescrites — ça ne

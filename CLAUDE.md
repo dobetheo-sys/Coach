@@ -580,6 +580,27 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**LOT MESURE livré — « la semaine est-elle un nombre de créneaux ou un volume à répartir ? »
+Quatre mesures, AUCUN correctif, et le maillon affiché est réfuté au pic** (périmètre gelé par le
+fondateur, 20/08/2026 — voir `BUGS_OUVERTS.md` « LOT MESURE — LA SEMAINE EST-ELLE UN NOMBRE DE
+CRÉNEAUX ») : **M1** — la longue ne s'ajoute pas et ne rétrécit pas les autres, **elle prend un
+CRÉNEAU** : contrôlé PAR PHASE, les autres séances gardent exactement leur taille (62 vs 62 · 66
+vs 64 · 68 vs 71) et il y en a DEUX DE MOINS (6,0-6,5 contre 8,3-8,8). Troisième issue, absente
+des deux proposées. **M2** — dans la semaine de pic, **AUCUN type n'est à son maximum** (marge
+cumulée **154 min**), et pourtant la semaine ne les prend pas (neutraliser V2.1 : +0,34 h) : les
+DEUX moitiés de `structurel = nSess × durée max` sont fausses au pic. Et **aucune passe ne retire
+de séances** — `applySessionBudget` neutralisée rend le plan de REEL identique au bit près ; le
+« 10 pour 12 » est ce que la structure produit (7 jours, ≤ 3 doublés). **M3** — le budget de
+séances mord sur **70 profils sur 986 (7,1 %)**, jamais sur REEL ; et à volume comparable les
+séances ne sont **pas** plus courtes (43' vs 42' · 38' vs 39') — le biais soupçonné n'est pas
+visible, sur 12 paires appariables seulement. **M4** — le lot A·B·C a rendu la semaine plus
+GROSSE sans la rendre plus asymétrique : σ 27,7 → 31,3' mais **coefficient de variation 45 →
+44 %**, et aucun type présent en S1 ET au pic ne grandit vraiment (le footing perd 79 %) — la
+spécificité vient de la SUBSTITUTION des types (brick, sortie longue), pas de l'allongement.
+**Ce qui borne la semaine à ~11,5 h n'est identifié par aucune des quatre** : c'est la question
+que le lot laisse ouverte, et la seule qui vaille avant un correctif. Moteur INTACT (`src/`
+byte-identique).
+
 **LOT VOLUME + RÉPARTITION livré (A · B · C) — le plafond structurel monte de 1,8 h sans CHANGER
 DE NATURE, et c'est la mesure la plus utile du lot** (décision du fondateur, 20/08/2026 — voir
 `BUGS_OUVERTS.md` « LOT VOLUME + RÉPARTITION », gardes **T-59** et **T-58**, T-56 rectifiée) :
