@@ -580,6 +580,26 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**O-84 + O-95 FERMÉS (doc O72_O84_O95) — l'annonce B-17 se redérive du livré, le repli de
+« dev ≤ pic » ne mange plus le palier, et l'eau libre tombe TÔT** (20/08/2026 — voir
+`BUGS_OUVERTS.md` « O-84 FERMÉ », « O-95 FERMÉ », « O-72 RÉVISÉ », gardes **T-06 passé VERT**
+(attendu basculé dans le commit, cliquet §6.3) et **T-46 élargi**) : **O-84a** — l'annonce dit
+« 1 test + N−1 palier(s) » (D3 : le test MESURE, le palier CONSTRUIT) via **`palierLayout`**,
+point unique lu par l'annonce ET la pose ; **O-84b** — sous épaule/drapeau médical l'annonce dit
+« suspendues », mêmes conditions que la pose ; **O-84c** — le repli fréquence de « dev ≤ pic »
+passe par `jourIntouchable` et ÉPARGNE le jour d'un bloc épinglé tant qu'une autre victime existe
+(forme T-45). **La réponse à la question T-46 : LES DEUX** — motif syntaxique (`dayMin(` ratait
+`dayMinOf`, règle 15) élargi, ET site routé. **O-95** — les 8 profils avaient TOUS une spec de
+2 semaines (les deux pistes du ticket étaient vides) : le TEST glisse en fin de dev, la spec
+garde 2 vrais paliers — eau libre en PREMIÈRE semaine, distance de course en dernière, et les
+S/M « inconnus » ATTEIGNENT leur distance (750/1500 au lieu de 500-600). Re-mesuré : **O-84
+29 → 0 sur 187 · tests annonce=livré 188/188 · eau libre tardive 8 → 0.** **T-58 (O-72 révisé)
+mesuré sur REEL, rapporté sans ajuster** : plateau tenu par S39/S40, **rouge d'une semaine**
+(S38 à 12 % sous le max, 11 min sous la ligne) — la garde s'écrit au lot progression. Cliquets
+ré-épinglés avec cause : S5 502 (baisse — l'identité T-25 redevient vraie sur 2 profils) ·
+T-39 26 (les nouvelles cibles des débutants clampées par C15, mécanisme O-54 §2) · T-48
+8 720 / 428 603. Banc 31 verts · 22 rouges attendus · 0 régression.
+
 **RE-VÉRIFICATION B-17 livrée — les 7 critères rejoués, le diagnostic d'O-84 était FAUX pour 22
 de ses 29 profils, et le site de la perte réelle est IDENTIFIÉ** (V21_ET_REVERIF_B17 §3,
 20/08/2026 — voir `BUGS_OUVERTS.md` « RE-VÉRIFICATION B-17 », O-84 réécrit, **O-95** ouvert,

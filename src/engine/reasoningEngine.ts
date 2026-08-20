@@ -17,7 +17,7 @@ import {
 } from "./constraintMatrix.ts";
 import { guard, knownSports, sportModule } from "../sports/registry.ts";
 import { swimrunPrereqBlock } from "../sports/swimrun/index.ts";
-import { continuityGate, palierPosables, poolOnlyNotice, swimSessionCapM } from "./swimContinuity.ts";
+import { continuityGate, palierLayout, poolOnlyNotice, swimSessionCapM } from "./swimContinuity.ts";
 import { T1_DPLUS_CAPS, T4_LONG_RUN_VS_RACE, T6_MIN_WEEKS, TRAIL_HISTORY_CAPS, TRAIL_UTIL, trailObjective, trailWeeklyVertical } from "./trailModel.ts";
 
 /** « 560 » → « 9h20 » — les durées de trail se lisent en heures, pas en minutes. */
@@ -476,8 +476,27 @@ export class TrainingReasoningEngine {
             "Tu es débutant en triathlon, pas en natation : tu as déclaré nager " + Math.round(gp!.departM) + " m d'affilée. Le plafond de séance suit ce que tu sais faire et la progression que ton plan peut construire, plus ton échauffement — pas une case cochée au questionnaire");
       }
       const spc = phases.find((ph) => ph.id === "spec");
-      if (gp && spc) D("B17-paliers", "Nages continues prescrites", palierPosables(gp, spc.weeks) + " palier(s) en phase spécifique",
-        "La continuité se construit par une MONTÉE, jamais par un test unique à la fin : découvrir la distance trois semaines avant l'épreuve laisse le temps de s'inquiéter, pas celui de s'adapter — et le nombre est borné par la place réellement disponible");
+      // O-84 (a/b) — L'ANNONCE SE REDÉRIVE DES CONDITIONS DE POSE, PAS D'UN COMPTE ABSTRAIT.
+      // Mesuré (re-vérification B-17, 20/08/2026) : 22 profils annonçaient « N paliers » quand le
+      // plan livre 1 test + N−1 continues — l'arbitrage D3 dit lui-même que le test MESURE et que
+      // le palier CONSTRUIT, l'annonce les confondait ; et 1 profil épaule annonçait 3 paliers que
+      // le site de pose suspend délibérément (`!inj.shoulder && !medHold`, src/sports/tri). Les
+      // trois branches ci-dessous lisent les MÊMES conditions que la pose (T-06 les compare au
+      // plan livré profil par profil — c'est lui qui tient les deux sites ensemble).
+      if (gp && spc) {
+        const lay = palierLayout(gp, spc.weeks, phases.find((ph) => ph.id === "dev")?.weeks ?? 0);
+        const nP = lay.nProgression - lay.nTest;
+        const val = inj.shoulder || medHold
+          ? "suspendues — " + (medHold ? "drapeau médical" : "nage aménagée pour ton épaule")
+          : lay.nTest
+            ? (nP < 1 ? "1 test de continuité en phase spécifique"
+              : "1 test" + (lay.testEnDev ? " (fin de développement)" : "") + " + " + nP + " palier(s) en phase spécifique")
+            : nP + " palier(s) en phase spécifique";
+        D("B17-paliers", "Nages continues prescrites", val,
+          inj.shoulder || medHold
+            ? "La progression de continuité attendra que la nage redevienne complète : la poser sur une nage aménagée mesurerait autre chose que ta continuité"
+            : "La continuité se construit par une MONTÉE, jamais par un test unique à la fin : découvrir la distance trois semaines avant l'épreuve laisse le temps de s'inquiéter, pas celui de s'adapter — et le nombre est borné par la place réellement disponible");
+      }
     }
     D("courbe", "Courbe de charge", "base " + BANDS.base[0] + "→peak 1.0→affûtage " + BANDS.taper[1], "Bandes normalisées × pic, récup ×" + RECUP_WEEK_FACTOR + ", lissage C22 ≤+" + Math.round((C22_MAX_WEEKLY_GROWTH - 1) * 100) + "%/sem");
 

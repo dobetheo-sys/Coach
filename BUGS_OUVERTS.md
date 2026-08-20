@@ -8912,7 +8912,23 @@ coûteux qui satisfait `plancher > plafond` EST `min(dignité, plafond)`, c'est-
 
 ---
 
-## O-84 · Le plan ANNONCE N paliers de continuité et en livre N−1 · 🔴 **OUVERT — décomposé le 20/08 : trois mécanismes, le site de la perte réelle IDENTIFIÉ, et le diagnostic d'origine était faux pour 22 des 29**
+## O-84 · Le plan ANNONCE N paliers de continuité et en livre N−1 · ✅ **FERMÉ le 20/08 (doc O72_O84_O95) — trois correctifs, un par mécanisme : 29 → 0**
+
+**Fermeture.** (a) L'annonce se redérive de la DISPOSITION réelle via `palierLayout` (point
+unique, la pose lit la même fonction) : « 1 test + N−1 palier(s) » quand la source n'est pas
+mesurée — le test MESURE, le palier CONSTRUIT (D3). (b) L'annonce lit les MÊMES conditions que la
+pose (`inj.shoulder`/`medHold`) : « suspendues — nage aménagée pour ton épaule » au lieu de trois
+paliers fantômes. (c) Le repli fréquence de « dev ≤ pic » passe par le point unique
+(`jourIntouchable` au filtre) et ÉPARGNE le jour porteur d'un bloc épinglé tant qu'une autre
+victime existe (forme T-45) ; s'il est le seul candidat, la passe s'arrête — une promesse
+affichée ne paie pas. **La réponse à la question T-46 du fondateur : LES DEUX.** Le motif du
+balayage était syntaxique (`dayMin(` — le helper du site s'appelle `dayMinOf`, règle 15) → motif
+élargi à `dayMin\w*` ; ET c'était un site de plus → routé. **Re-mesuré : 0 profil sur 187 avec
+livré ≠ annoncé (29 avant) · tests annonce = livré 188/188 · T-06 passe VERT** (son `attendu`
+bascule dans le même commit, cliquet §6.3). Le diagnostic ci-dessous (20/08, matin) est conservé
+tel quel — c'est lui qui a décidé la forme des trois correctifs.
+
+### Le diagnostic (20/08, re-vérification B-17) — trois mécanismes, le site identifié, et le diagnostic d'origine était faux pour 22 des 29
 
 Trouvé en livrant O-82, mesuré identique des deux côtés, **re-mesuré identique après
 O-85/O-89/O-93/V2.1 : 29 profils sur 188.** La re-vérification B-17 (20/08/2026) a décomposé les
@@ -8950,7 +8966,7 @@ Supprimer le palier ne rend pas le plan plus léger, il le rend MENTEUR.
 ```verify
 id: O-84
 quoi: combien de profils tri livrent un nombre de paliers de continuité différent de celui annoncé ?
-attendu: /: 2[0-9]$/
+attendu: /: 0$/
 cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');let tot=0,ko=0;for(const{sport,a}of profiles()){if(sport!=='tri')continue;let p;try{p=globalThis.EBV2.buildPlan(sport,a)}catch{continue}const d=(p._v2?.decisions??[]).find(x=>x.id==='B17-paliers');const n=+(String(d?.val??'').match(/(\\d+)\\s*palier/)?.[1]??0);if(!n)continue;tot++;const liv=(p.weeks??[]).flatMap(w=>(w.days??[]).flatMap(x=>x.sessions??[])).filter(s=>s.d==='sw'&&/^Nage continue/.test(String(s.name??''))).length;if(liv!==n)ko++;}console.log('sur '+tot+' profils, livré != annoncé : '+ko);"
 ```
 
@@ -9651,7 +9667,22 @@ attendu: /· 3 KO/
 cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const{profiles}=await import('./scripts/goldenMaster.mjs');const{continuityGate}=await import('./src/engine/swimContinuity.ts');const T={S:750,M:1500,'70.3':1900,Full:3800};let ok=0,hy=0,ko=0;for(const{sport,a}of profiles()){if(sport!=='tri')continue;let p;try{p=globalThis.EBV2.buildPlan(sport,a)}catch{continue}const c=p.weeks.flatMap(w=>w.days.flatMap(x=>x.sessions)).filter(s=>/^Nage continue/.test(s.name)).map(s=>+(s.name.match(/(\\d+) m/)?.[1]??0));if(!c.length)continue;const r=(p._v2?.decisions??[]).find(x=>x.id==='B17-continuite');const m=r?String(r.val).match(/^(S|M|70\\.3|Full) /):null;const f=m?m[1]:String(a.format);const g=continuityGate(a,p.weeks.length);const mx=Math.max(...c);if(mx>=(T[f]??0))ok++;else if(g&&g.source!=='mesure')hy++;else ko++;}console.log(ok+' conformes · '+hy+' hypothèse · '+ko+' KO');"
 ```
 
-## O-95 · La continue en EAU LIBRE tombe à la DERNIÈRE semaine de spécifique sur les formats courts · 🔴 **OUVERT**
+## O-95 · La continue en EAU LIBRE tombe à la DERNIÈRE semaine de spécifique sur les formats courts · ✅ **FERMÉ le 20/08 (doc O72_O84_O95) — le TEST glisse en fin de développement**
+
+**Fermeture.** Mesuré d'abord : les 8 profils ont TOUS une spec de 2 semaines — **les deux pistes
+du ticket étaient VIDES pour la population réelle** (rien à décaler dans une spec de 2 semaines,
+rien à porter à 3). La forme : quand la source n'est pas mesurée et que la spec ne peut porter
+que 2 créneaux, le TEST glisse en fin de DÉVELOPPEMENT (une mesure se prend le plus tôt possible
+— l'argument de D3 lui-même, et l'athlète gagne du temps pour rapporter sa distance) ; la spec
+garde alors 2 vrais paliers : **l'eau libre en PREMIÈRE semaine, la distance de course en
+dernière**. Point unique `palierLayout` (annonce ET pose — le calcul dupliqué était la cause
+d'O-84a), borné au défaut mesuré (`n === 2`, dev existant). Sur les 8 : test S4/S7 [dev] · eau
+libre S5/S8 (première semaine de spec) · finale 750/1500 = la distance — **les S/M « inconnus »
+ATTEIGNENT désormais leur distance de course** là où l'ancien palier unique plafonnait à 500-600.
+Re-mesuré : **tardive 8 → 0**. Garde : T-06 (f), quatre assertions (test en dev · ow en première
+semaine · finale en dernière · l'annonce dit la disposition). Coût publié : chez les DÉBUTANTS,
+C15 clampe les nouvelles cibles à 500 m — 4 blocs épinglés rabotés de plus (T-39 26, ré-épinglé
+avec cause), du mécanisme O-54 §2 déjà arbitré.
 
 Trouvé par la re-vérification B-17 (critère 3). **8 profils** (`B17/tri/{S,M}/{inter,debutant}/
 {inconnue,absente}`) reçoivent leur première — et unique — continue en eau libre à **100 % de la
@@ -9669,6 +9700,28 @@ sont conformes).
 ```verify
 id: O-95
 quoi: combien de profils reçoivent leur première continue eau libre dans la dernière moitié de la spec ?
-attendu: /tardive : 8/
+attendu: /tardive : 0/
 cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const{profiles}=await import('./scripts/goldenMaster.mjs');let n=0;for(const{sport,a}of profiles()){if(sport!=='tri')continue;let p;try{p=globalThis.EBV2.buildPlan(sport,a)}catch{continue}const spec=p.weeks.filter(w=>w.phase?.id==='spec').map(w=>w.num);const ow=[];for(const w of p.weeks)for(const d of w.days)for(const s of d.sessions)if(/^Nage continue en eau libre/.test(s.name))ow.push(w.num);if(!ow.length||spec.length<2)continue;if((ow[0]-spec[0])/(spec.length-1)>0.5)n++;}console.log('tardive : '+n);"
+```
+
+## O-72 RÉVISÉ (doc O72_O84_O95 §1) — T-58, un PLATEAU pas un point · mesuré sur REEL, garde au lot progression
+
+*« "Le max est dans la dernière semaine de charge" décrit une structure valide parmi plusieurs.
+Forme révisée : aucune semaine de charge postérieure au maximum ne descend de plus de 10 % sous
+lui. À mesurer avant de conclure que le déplacement S40 → S37 est une régression. »*
+
+**Mesuré sur REEL (moteur courant, récups exclues)** : max S37 à 9,1 h · charges postérieures
+S38 8,0 · S39 8,8 · S40 8,7. **T-58 serait ROUGE d'une semaine** : S38 est à **12 %** sous le
+max — 11 minutes sous la ligne des −10 % (8,19 h), l'unité de la conséquence d'abord (règle 14).
+S39 et S40 tiennent le plateau. Le déplacement S40 → S37 n'est donc PAS la forme qu'O-72 fermait
+(un pic en base suivi de vingt semaines de déclin) : c'est un bloc final en plateau avec UN creux
+d'une semaine, à 11 min de la borne. Rapporté, pas ajusté — **la garde T-58 s'écrit au lot
+progression** (item 5 de l'ordre), qui possède la forme du pic ; l'écrire avant, c'est épingler
+un rouge qu'on s'apprête à re-former.
+
+```verify
+id: T-58-MESURE
+quoi: le bloc final de REEL est-il un plateau (charges après le max ≥ 90 % du max) ?
+attendu: /S38.*12 ?%|VIOLÉ par S38/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const{profiles}=await import('./scripts/goldenMaster.mjs');for(const{key,sport,a}of profiles()){if(!key.startsWith('REEL'))continue;const p=globalThis.EBV2.buildPlan(sport,a);const wk=p.weeks.map(w=>({n:w.num,r:!!w.isRecup,ph:w.phase?.id,h:Math.round(w.days.reduce((t,d)=>t+d.sessions.reduce((u,s)=>u+(s.race?0:(s.min||0)),0),0)/6)/10}));const ch=wk.filter(w=>!w.r&&w.ph!=='taper'&&w.ph!=='race'&&w.h>0);const mx=ch.reduce((x,y)=>y.h>=x.h?y:x);const v=ch.filter(w=>w.n>mx.n&&w.h<mx.h*0.9);console.log(v.length?'VIOLÉ par '+v.map(w=>'S'+w.n+' ('+w.h+' h, '+Math.round((1-w.h/mx.h)*100)+'% sous)').join(' · '):'plateau tenu');break;}"
 ```

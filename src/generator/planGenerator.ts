@@ -444,11 +444,28 @@ export function reconcileDeclaredVolume(
       // propres passes) : sur un plan de trail, la garantie peut donc ne rien pouvoir réduire.
       // La FRÉQUENCE prend alors le relais, comme partout ailleurs — la plus petite séance non
       // longue cède. Jamais la sortie longue : c'est le pivot de la semaine.
+      //
+      // O-84c (re-vérification B-17, 20/08/2026) — CE REPLI ÉTAIT LE SIXIÈME MÉCANISME de « la
+      // nage est la victime par défaut » : il élisait par minimum de minutes SANS passer par le
+      // point unique (T-46 le ratait — son motif cherchait `dayMin(`, ce helper s'appelle
+      // `dayMinOf` : un balayage syntaxique sur une famille sémantique, règle 15 ; le motif est
+      // élargi ET le site est routé). Le jour le plus court de la semaine est le palier B-17
+      // épinglé (~30-40 min) : intouchable en TAILLE, il perdait son JOUR — « protéger la taille
+      // seule → le type perd ses occurrences » — y compris le palier de la DISTANCE DE COURSE
+      // (PW/tri/S : 550 m livrés pour 750). Forme T-45 : le jour porteur d'un bloc ÉPINGLÉ est
+      // épargné tant qu'une autre victime existe ; s'il est le seul candidat, on S'ARRÊTE — une
+      // promesse affichée ne paie pas, la semaine reste au-dessus et la boucle de réparation
+      // fait le reste (comme quand `cand.length <= 2`).
       for (let g = 0; g < 3 && wm(wk) > peakBest; g++) {
-        const cand = wk.days.filter((d) => d.sessions.some((sx) => sx.d !== "rs" && !sx.long && !sx.race && !sx.brick));
+        const cand = wk.days.filter((d) => !jourIntouchable(d)
+          && d.sessions.some((sx) => sx.d !== "rs" && !sx.long && !sx.race && !sx.brick));
         if (cand.length <= 2) break;
+        const porteEpingle = (d: V1Day) => d.sessions.some((sx) => sx.d !== "rs"
+          && (sx.steps || []).some((st) => (st as { bnd?: { pinned?: boolean } }).bnd?.pinned));
+        const libres = cand.filter((d) => !porteEpingle(d));
+        if (!libres.length) break;
         const dayMinOf = (d: V1Day) => d.sessions.reduce((t, sx) => t + (sx.min || 0), 0);
-        const victim = cand.reduce((x, y) => (dayMinOf(y) < dayMinOf(x) ? y : x));
+        const victim = libres.reduce((x, y) => (dayMinOf(y) < dayMinOf(x) ? y : x));
         victim.charge = "off";
         victim.slot = "off";
         victim.sessions = [{ d: "rs", name: "OFF (la semaine de pic reste la plus grosse)", det: "repos — une phase de développement ne dépasse pas la phase de pic : c'est la périodisation, pas un réglage", steps: [], min: 0 }];

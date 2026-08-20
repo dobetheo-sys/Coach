@@ -3619,8 +3619,27 @@ class TrainingReasoningEngine {
             "Tu es débutant en triathlon, pas en natation : tu as déclaré nager " + Math.round(gp .departM) + " m d'affilée. Le plafond de séance suit ce que tu sais faire et la progression que ton plan peut construire, plus ton échauffement — pas une case cochée au questionnaire");
       }
       const spc = phases.find((ph) => ph.id === "spec");
-      if (gp && spc) D("B17-paliers", "Nages continues prescrites", palierPosables(gp, spc.weeks) + " palier(s) en phase spécifique",
-        "La continuité se construit par une MONTÉE, jamais par un test unique à la fin : découvrir la distance trois semaines avant l'épreuve laisse le temps de s'inquiéter, pas celui de s'adapter — et le nombre est borné par la place réellement disponible");
+      // O-84 (a/b) — L'ANNONCE SE REDÉRIVE DES CONDITIONS DE POSE, PAS D'UN COMPTE ABSTRAIT.
+      // Mesuré (re-vérification B-17, 20/08/2026) : 22 profils annonçaient « N paliers » quand le
+      // plan livre 1 test + N−1 continues — l'arbitrage D3 dit lui-même que le test MESURE et que
+      // le palier CONSTRUIT, l'annonce les confondait ; et 1 profil épaule annonçait 3 paliers que
+      // le site de pose suspend délibérément (`!inj.shoulder && !medHold`, src/sports/tri). Les
+      // trois branches ci-dessous lisent les MÊMES conditions que la pose (T-06 les compare au
+      // plan livré profil par profil — c'est lui qui tient les deux sites ensemble).
+      if (gp && spc) {
+        const lay = palierLayout(gp, spc.weeks, phases.find((ph) => ph.id === "dev")?.weeks ?? 0);
+        const nP = lay.nProgression - lay.nTest;
+        const val = inj.shoulder || medHold
+          ? "suspendues — " + (medHold ? "drapeau médical" : "nage aménagée pour ton épaule")
+          : lay.nTest
+            ? (nP < 1 ? "1 test de continuité en phase spécifique"
+              : "1 test" + (lay.testEnDev ? " (fin de développement)" : "") + " + " + nP + " palier(s) en phase spécifique")
+            : nP + " palier(s) en phase spécifique";
+        D("B17-paliers", "Nages continues prescrites", val,
+          inj.shoulder || medHold
+            ? "La progression de continuité attendra que la nage redevienne complète : la poser sur une nage aménagée mesurerait autre chose que ta continuité"
+            : "La continuité se construit par une MONTÉE, jamais par un test unique à la fin : découvrir la distance trois semaines avant l'épreuve laisse le temps de s'inquiéter, pas celui de s'adapter — et le nombre est borné par la place réellement disponible");
+      }
     }
     D("courbe", "Courbe de charge", "base " + BANDS.base[0] + "→peak 1.0→affûtage " + BANDS.taper[1], "Bandes normalisées × pic, récup ×" + RECUP_WEEK_FACTOR + ", lissage C22 ≤+" + Math.round((C22_MAX_WEEKLY_GROWTH - 1) * 100) + "%/sem");
 
@@ -6574,7 +6593,7 @@ function buildTriSessions(kit            )              {
   //     plus serrés, là où l'ancien porteur n'en livrait qu'un.
   const b17Slot = "facile2";
   let b17Pose = false;
-  if (phase === "spec" && slot === b17Slot && slotIdx === 0 && !inj.shoulder && !medHold) {
+  if ((phase === "spec" || phase === "dev") && slot === b17Slot && slotIdx === 0 && !inj.shoulder && !medHold) {
     // D3 §3b — LA PROGRESSION PART DE L'ATHLÈTE. Le gate reçoit la durée RÉELLE du plan (`r.weeks`),
     // sans quoi son point de départ et sa franchissabilité seraient calculés sur un horizon par
     // défaut — et la séance prescrite ne correspondrait pas à la décision affichée (R11.1).
@@ -6586,17 +6605,29 @@ function buildTriSessions(kit            )              {
     // à 95 % de la distance de course, c'est-à-dire l'inverse d'une progression.
     const g = continuityGate(a                           , r.weeks);
     const spec = (r.phases || []).find((ph) => ph.id === "spec");
+    const dev = (r.phases || []).find((ph) => ph.id === "dev");
     if (g && spec) {
       const len = Math.max(1, spec.end - spec.start);
+      // O-95 — LA DISPOSITION VIENT DU POINT UNIQUE `palierLayout` (l'annonce `B17-paliers` lit
+      // la même fonction — c'est le calcul dupliqué qui avait produit O-84a, l'annonce comptant
+      // le test comme un palier). Quand la spec ne peut porter que 2 créneaux, le TEST glisse en
+      // fin de développement : la mesure se prend le plus tôt possible (l'argument de D3
+      // lui-même), et la spec garde ses deux paliers — l'eau libre en PREMIÈRE semaine au lieu
+      // de la dernière, la distance finale en dernière.
+      const lay = palierLayout(g, len, dev ? Math.max(0, dev.end - dev.start) : 0);
       // D3 — BORNÉ PAR LA PLACE. Sans cette borne, `positions` collapse plusieurs paliers sur la
       // même semaine et `indexOf` ne rend que le premier de chaque groupe : le DERNIER palier,
       // celui qui vaut la distance de course, n'était jamais posé.
-      const n = palierPosables(g, len);
+      const n = lay.nSpec;
       const idx = Math.max(0, Math.min(len - 1, weekNum - 1 - spec.start));
       const positions = Array.from({ length: n }, (_, i) => (n <= 1 ? 0 : Math.round((i * (len - 1)) / (n - 1))));
-      const k = positions.indexOf(idx);
-      if (k >= 0) {
-        const cible = Math.max(200, Math.round(palierDistanceM(g, k, n) / 50) * 50);
+      const kSpec = phase === "spec" ? positions.indexOf(idx) : -1;
+      const testEnDevIci = phase === "dev" && lay.testEnDev && !!dev && weekNum === dev.end;
+      if (kSpec >= 0 || testEnDevIci) {
+        // `step` est l'index dans la PROGRESSION COMPLÈTE (test compris) : le test vaut 0, les
+        // paliers de spec suivent — avec `testEnDev`, le k-ième créneau de spec est le pas k+1.
+        const step = testEnDevIci ? 0 : lay.testEnDev ? kSpec + 1 : kSpec;
+        const cible = Math.max(200, Math.round(palierDistanceM(g, step, lay.nProgression) / 50) * 50);
         // D3 (arbitrage « je ne sais pas n'est pas une valeur », 16/08/2026) — QUAND LA CONTINUITÉ
         // N'EST PAS MESURÉE, LA PREMIÈRE SÉANCE EST UN TEST, PAS UN PALIER.
         //
@@ -6611,8 +6642,8 @@ function buildTriSessions(kit            )              {
         // peux » chez quelqu'un dont personne ne connaît la continuité est exactement le scénario
         // que B-17 existe pour empêcher en eau libre — le mur tous les 25 m est ce qui rend ce
         // test acceptable. La consigne eau libre se décale donc au palier SUIVANT.
-        const test = g.source !== "mesure" && k === 0;
-        const ow = k === (g.source !== "mesure" ? 1 : 0);
+        const test = lay.nTest === 1 && step === 0;
+        const ow = step === lay.nTest;
         b17Pose = true;
         swMain = test ? {
           name: "Test de continuité — aussi loin que possible, sans t'arrêter",
@@ -9695,11 +9726,28 @@ function reconcileDeclaredVolume(
       // propres passes) : sur un plan de trail, la garantie peut donc ne rien pouvoir réduire.
       // La FRÉQUENCE prend alors le relais, comme partout ailleurs — la plus petite séance non
       // longue cède. Jamais la sortie longue : c'est le pivot de la semaine.
+      //
+      // O-84c (re-vérification B-17, 20/08/2026) — CE REPLI ÉTAIT LE SIXIÈME MÉCANISME de « la
+      // nage est la victime par défaut » : il élisait par minimum de minutes SANS passer par le
+      // point unique (T-46 le ratait — son motif cherchait `dayMin(`, ce helper s'appelle
+      // `dayMinOf` : un balayage syntaxique sur une famille sémantique, règle 15 ; le motif est
+      // élargi ET le site est routé). Le jour le plus court de la semaine est le palier B-17
+      // épinglé (~30-40 min) : intouchable en TAILLE, il perdait son JOUR — « protéger la taille
+      // seule → le type perd ses occurrences » — y compris le palier de la DISTANCE DE COURSE
+      // (PW/tri/S : 550 m livrés pour 750). Forme T-45 : le jour porteur d'un bloc ÉPINGLÉ est
+      // épargné tant qu'une autre victime existe ; s'il est le seul candidat, on S'ARRÊTE — une
+      // promesse affichée ne paie pas, la semaine reste au-dessus et la boucle de réparation
+      // fait le reste (comme quand `cand.length <= 2`).
       for (let g = 0; g < 3 && wm(wk) > peakBest; g++) {
-        const cand = wk.days.filter((d) => d.sessions.some((sx) => sx.d !== "rs" && !sx.long && !sx.race && !sx.brick));
+        const cand = wk.days.filter((d) => !jourIntouchable(d)
+          && d.sessions.some((sx) => sx.d !== "rs" && !sx.long && !sx.race && !sx.brick));
         if (cand.length <= 2) break;
+        const porteEpingle = (d       ) => d.sessions.some((sx) => sx.d !== "rs"
+          && (sx.steps || []).some((st) => (st                                  ).bnd?.pinned));
+        const libres = cand.filter((d) => !porteEpingle(d));
+        if (!libres.length) break;
         const dayMinOf = (d       ) => d.sessions.reduce((t, sx) => t + (sx.min || 0), 0);
-        const victim = cand.reduce((x, y) => (dayMinOf(y) < dayMinOf(x) ? y : x));
+        const victim = libres.reduce((x, y) => (dayMinOf(y) < dayMinOf(x) ? y : x));
         victim.charge = "off";
         victim.slot = "off";
         victim.sessions = [{ d: "rs", name: "OFF (la semaine de pic reste la plus grosse)", det: "repos — une phase de développement ne dépasse pas la phase de pic : c'est la périodisation, pas un réglage", steps: [], min: 0 }];
@@ -16820,6 +16868,45 @@ function palierCount(g                )         {
  */
 function palierPosables(g                , specWeeks        )         {
   return Math.max(1, Math.min(palierCount(g), Math.max(1, specWeeks)));
+}
+
+/**
+ * O-95 — LA DISPOSITION DES CRÉNEAUX DE CONTINUITÉ, EN UN POINT (annonce ET pose la lisent —
+ * R11.1 : deux calculs de la même disposition avaient déjà produit O-84a, l'annonce comptant le
+ * test comme un palier).
+ *
+ * Quand la continuité n'est pas mesurée, le premier créneau est le TEST (D3 : le test MESURE, le
+ * palier CONSTRUIT). Mesuré (20/08/2026) : les 8 profils où l'eau libre tombait à la DERNIÈRE
+ * semaine de spécifique ont TOUS une spec de 2 semaines — le test prenait la première, la
+ * consigne eau libre se décalait au palier suivant, c'est-à-dire la dernière semaine avant le
+ * pic. Découvrir l'eau libre à la dernière continue avant l'affûtage est le contraire du « tôt »
+ * que B-17 promet, sur la population qui en a le plus besoin. Les deux pistes du ticket
+ * (« décaler vers le milieu », « porter n à 3 quand spec ≥ 3 ») étaient VIDES pour cette
+ * population — il n'y a rien à décaler dans une spec de 2 semaines.
+ *
+ * La forme : le test GLISSE en fin de DÉVELOPPEMENT — une mesure se prend le plus tôt possible,
+ * c'est l'argument de D3 lui-même (« le moteur sait déjà réclamer une mesure ») et l'athlète
+ * gagne du temps pour rapporter la distance. La spec porte alors 2 vrais paliers : l'eau libre
+ * en PREMIÈRE semaine, la distance finale en dernière. La progression complète compte 3 pas
+ * (test → palier eau libre → palier final), d'où `nProgression`.
+ */
+function palierLayout(g                , specWeeks        , devWeeks        )   
+                                                                                        
+                     
+                                                                         
+                
+                                                                                     
+                
+                                                                                    
+                       
+  {
+  const n = palierPosables(g, specWeeks);
+  if (g.source === "mesure") return { testEnDev: false, nTest: 0, nSpec: n, nProgression: n };
+  // Borné au défaut MESURÉ : n = 2 exactement (test + 1 seul palier, l'eau libre en dernière
+  // semaine), et seulement si un développement existe pour recevoir le test. À n = 1 il n'y a
+  // pas de progression à sauver ; à n ≥ 3 l'eau libre tombe déjà dans la première moitié.
+  if (n === 2 && specWeeks >= 2 && devWeeks >= 1) return { testEnDev: true, nTest: 1, nSpec: 2, nProgression: 3 };
+  return { testEnDev: false, nTest: 1, nSpec: n, nProgression: n };
 }
 
 /**

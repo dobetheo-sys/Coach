@@ -158,7 +158,12 @@ T("T-05", "rouge", "part de modéré ≤ 1 − plancher de facile − 0,05 (inte
 // quatre propriétés que B-17 promet — et il porte les deux défauts §14 (D1 : une seule par
 // semaine ; D2 : livré == cible au mètre près, critère EXACT, « un bloc dont la distance porte un
 // sens ne tolère pas de tolérance »).
-T("T-06", "rouge", "B-17 — nage continue prescrite en tri : gate, une par semaine, montée monotone, livré == cible", () => {
+// O-84 FERMÉ (20/08/2026) — `attendu` passe à "vert" dans le commit du correctif, comme le
+// cliquet §6.3 l'exige : l'annonce se redérive des conditions de pose (a : test ≠ palier ;
+// b : exemption épaule/médical dite), et le repli fréquence de « dev ≤ pic » ne peut plus élire
+// le jour d'un palier épinglé (c — routé par le point unique, T-46 élargi à `dayMinOf`).
+// Re-mesuré : 0 profil sur 187 avec livré ≠ annoncé (était 29).
+T("T-06", "vert", "B-17 — nage continue prescrite en tri : gate, une par semaine, montée monotone, livré == cible", () => {
   // 1 650 m à 1'50/100 m = 30,25 min : au-dessus du plancher S10 de 30 min, donc le gate est
   // satisfait pour les quatre formats et AUCUN n'est rabattu. La prémisse est assertée plus bas :
   // sans elle, un profil rabattu au sprint rendrait le test vert sur un format qu'il ne nomme pas
@@ -251,6 +256,25 @@ T("T-06", "rouge", "B-17 — nage continue prescrite en tri : gate, une par sema
       if (livrees !== n) bad.push(`doubles=${dbl}/sessions_max=${sm} : ${livrees} continue(s) livrée(s) pour ${n} annoncée(s)`);
       else vus.push(`dbl=${dbl}/sm=${sm} ${livrees}/${n} ✓`);
     }
+  }
+  // (f) O-95 — QUAND LA SPEC NE PEUT PORTER QUE 2 CRÉNEAUX (source non mesurée), LE TEST GLISSE
+  // EN FIN DE DÉVELOPPEMENT : l'eau libre tombe en PREMIÈRE semaine de spec (pas la dernière —
+  // découvrir l'eau libre à la dernière continue avant l'affûtage est le contraire du « tôt »
+  // que B-17 promet), et la distance finale reste en dernière. L'annonce dit la disposition
+  // (`palierLayout`, le point unique que la pose lit aussi).
+  {
+    const p = globalThis.EBV2.buildPlan("tri", { ...base, format: "S", longest_swim_known: "non", race_date: dans(8) });
+    const spec = (p.weeks ?? []).filter((w) => w.phase?.id === "spec").map((w) => w.num);
+    const testW = (p.weeks ?? []).filter((w) => (w.days ?? []).some((d) => (d.sessions ?? []).some((s) => /^Test de continuité/.test(String(s.name ?? "")))));
+    const conts = [];
+    for (const w of p.weeks ?? []) for (const d of w.days ?? []) for (const s of d.sessions ?? [])
+      if (CONT.test(String(s.name ?? ""))) conts.push({ w: w.num, ow: /eau libre/.test(String(s.name)), m: +(String(s.name).match(/(\d+)\s*m d'affilée/)?.[1] ?? 0) });
+    if (!testW.length || testW[0].phase?.id !== "dev") bad.push(`O-95 : le test n'est pas en fin de dev (${testW.length ? "phase " + testW[0].phase?.id : "absent"})`);
+    if (!conts.length || !conts[0].ow || conts[0].w !== spec[0]) bad.push(`O-95 : l'eau libre n'est pas en PREMIÈRE semaine de spec (${conts.length ? "S" + conts[0].w + (conts[0].ow ? "" : " sans eau libre") : "aucune continue"}, spec S${spec[0]})`);
+    if (conts.length && conts[conts.length - 1].w !== spec[spec.length - 1]) bad.push(`O-95 : la continue finale a quitté la dernière semaine de spec`);
+    const dOb = (p._v2?.decisions ?? []).find((x) => x.id === "B17-paliers");
+    if (!/1 test \(fin de développement\)/.test(String(dOb?.val ?? ""))) bad.push(`O-95 : l'annonce ne dit pas la disposition — « ${dOb?.val ?? "absente"} »`);
+    if (!bad.some((b) => b.startsWith("O-95"))) vus.push(`O-95 : test S${testW[0]?.num}[dev] · ow S${conts[0]?.w} · finale S${conts[conts.length - 1]?.w} ✓`);
   }
   return { ok: !bad.length, detail: bad.length ? bad.slice(0, 6).join(" · ") : vus.join(" · ") };
 });
@@ -1017,7 +1041,11 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 // point fixe retire, la moitié ouverte d'O-35. Attribué par EXPÉRIENCE CONTRÔLÉE : borne
 // neutralisée dans la seule sonde (contre-preuve T-57), S4/S5 reviennent à 356/496 et T-48
 // revient vert — un seul facteur, deux mesures.
-const SCEAU_ATTENDU = { S1: 4, S4: 357, S5: 504 };
+// O-84c/O-95 (20/08/2026) — S5 504 → **502**, une BAISSE : protéger le jour du palier épinglé
+// dans le repli fréquence de « dev ≤ pic » (O-84c) et re-disposer les continues des 8 profils
+// courts (O-95) redonnent à 2 profils un livré qui retrouve `min(plafonds)` — l'identité T-25
+// redevient vraie. Même famille que les baisses O-82/O-94, épinglée avec la même rigueur.
+const SCEAU_ATTENDU = { S1: 4, S4: 357, S5: 502 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;
@@ -1429,7 +1457,13 @@ T("T-39", "vert", "un bloc ÉPINGLÉ n'est pas raboté par le plafond de dose (O
   // (vérifié : avec la fixture REEL mais sans la borne, ce test est VERT à 25). Le mécanisme est
   // la politique de la passe : elle prend dans les DÉVERSOIRS d'abord, donc le volume excédentaire
   // part avant que les passes aval n'aient à raboter un bloc épinglé pour tenir leurs bornes.
-  const RABOTES_ATTENDUS = 22;
+  // O-95 (20/08/2026) — 22 → **26** : le test glissé en fin de dev libère la spec pour deux
+  // VRAIS paliers, dont les cibles montent (l'ancien unique palier des inconnus plafonnait plus
+  // bas) — chez les DÉBUTANTS, C15 clampe ces nouvelles cibles à 500 m : 4 blocs épinglés
+  // rabotés de plus, du mécanisme O-54 §2 déjà arbitré (le plafond de SÉCURITÉ gagne, le titre
+  // est synchronisé sur le livré). Le compte monte parce que la promesse est plus ambitieuse,
+  // pas parce qu'une passe nouvelle rabote.
+  const RABOTES_ATTENDUS = 26;
   let n = 0, ko = 0; const zones = {}, ex = [];
   for (const { key, plan } of goldenAvecMoteur()) {
     for (const w of plan?.weeks ?? []) for (const d of w.days ?? []) for (const s of d.sessions ?? [])
@@ -1872,7 +1906,11 @@ T("T-50", "vert", "PROPRIÉTÉ — la bande d'allure affichée se redérive du p
 // à céder (C26c), rend cette fois sa part parce que c'est la CIBLE qui baisse, pas une coupe.
 // Attribué par la contre-preuve T-57 (borne neutralisée dans la seule sonde → les deux chiffres
 // reviennent exactement à 8 676 / 431 633).
-const PIC_ATTENDU = { vo2Min: 8704, seuilM: 429703, profils: 188 };
+// O-84c/O-95 (20/08/2026) — VO2 8 704 → **8 720 min**, nage seuil 429 703 → **428 603 m** : les
+// 6 profils PW gardent leur palier (le jour n'est plus élu OFF) et les 8 profils courts changent
+// de disposition — les semaines de pic voisines se rééquilibrent d'un cran. Amplitudes 0,2 % et
+// 0,3 %, direction cohérente (un palier préservé prend sa place, le seuil rend la sienne).
+const PIC_ATTENDU = { vo2Min: 8720, seuilM: 428603, profils: 188 };
 T("T-48", "vert", "la composition du PIC en tri est épinglée : le VO2 a cédé, la nage seuil a gagné (C26c)", () => {
   let vo2 = 0, seuil = 0, profils = 0;
   for (const { key, plan } of goldenAvecMoteur()) {
@@ -1983,7 +2021,13 @@ T("T-46", "vert", "toute élection de victime passe par le point unique (`estInt
     const lignes = sansCommentaires(readFileSync(resolve(ROOT, f), "utf8")).split("\n");
     lignes.forEach((l, i) => {
       // une ÉLECTION : on retient le minimum de minutes parmi des candidats.
-      if (!/dayMin\(y\) < dayMin\(x\)|m < victim\.min/.test(l)) return;
+      // O-84c (20/08/2026) — le motif était SYNTAXIQUE là où la famille est SÉMANTIQUE (règle
+      // 15) : il cherchait `dayMin(y) < dayMin(x)` et le repli fréquence de « dev ≤ pic » nomme
+      // son helper `dayMinOf` — le 11ᵉ site élisait hors du point unique SOUS ce balayage vert.
+      // C'est la réponse à la question du fondateur (§2c) : « sa portée est plus étroite que la
+      // classe » ET « un site de plus ». Élargi à tout comparateur `<` entre deux appels du même
+      // helper de minutes ; contre-prouvé en retirant `jourIntouchable` du site → rouge.
+      if (!/dayMin\w*\(y\) < dayMin\w*\(x\)|m < victim\.min/.test(l)) return;
       sites++;
       // les exclusions du site vivent dans les ~20 lignes qui précèdent l'élection.
       const fenetre = lignes.slice(Math.max(0, i - 22), i + 1).join("\n");
@@ -2423,7 +2467,6 @@ T("T-57", "vert", "V2.1 compte la borne d'épaule ; le manque de REEL n'existe p
 });
 
 const ROUGES_ATTENDUS = {
-  "T-06": "O-84 — le plan ANNONCE N paliers de continuité et en livre N−1 : **29 profils tri sur 187**, mesuré IDENTIQUE avant et après O-82 (c'est ce qui prouve que ce lot n'en est pas la cause). Le palier est élu victime par une coupe qui ne passe pas par `prioriteFinancement` — cinquième mécanisme de la prédiction « la nage est la victime par défaut ». Une promesse affichée n'est pas un créneau comme un autre.",
   "T-44": "O-66 — la coupe classe en MINUTES une contrainte qui compte des SÉANCES : arbitrage rendu le 17/08, à faire APRÈS le merge et en premier",
   "T-34": "O-43 — la conversion déplace ce qui est prescrit (pic +9 %, fréquence) : filtre du fondateur, une seule issue le passe",
   "T-01": "A-01 — sessionIntensity() importe zoneClass() au lieu de sa copie (+ V-08 pour sw.aero)",

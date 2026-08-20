@@ -470,6 +470,45 @@ export function palierPosables(g: ContinuityGate, specWeeks: number): number {
 }
 
 /**
+ * O-95 — LA DISPOSITION DES CRÉNEAUX DE CONTINUITÉ, EN UN POINT (annonce ET pose la lisent —
+ * R11.1 : deux calculs de la même disposition avaient déjà produit O-84a, l'annonce comptant le
+ * test comme un palier).
+ *
+ * Quand la continuité n'est pas mesurée, le premier créneau est le TEST (D3 : le test MESURE, le
+ * palier CONSTRUIT). Mesuré (20/08/2026) : les 8 profils où l'eau libre tombait à la DERNIÈRE
+ * semaine de spécifique ont TOUS une spec de 2 semaines — le test prenait la première, la
+ * consigne eau libre se décalait au palier suivant, c'est-à-dire la dernière semaine avant le
+ * pic. Découvrir l'eau libre à la dernière continue avant l'affûtage est le contraire du « tôt »
+ * que B-17 promet, sur la population qui en a le plus besoin. Les deux pistes du ticket
+ * (« décaler vers le milieu », « porter n à 3 quand spec ≥ 3 ») étaient VIDES pour cette
+ * population — il n'y a rien à décaler dans une spec de 2 semaines.
+ *
+ * La forme : le test GLISSE en fin de DÉVELOPPEMENT — une mesure se prend le plus tôt possible,
+ * c'est l'argument de D3 lui-même (« le moteur sait déjà réclamer une mesure ») et l'athlète
+ * gagne du temps pour rapporter la distance. La spec porte alors 2 vrais paliers : l'eau libre
+ * en PREMIÈRE semaine, la distance finale en dernière. La progression complète compte 3 pas
+ * (test → palier eau libre → palier final), d'où `nProgression`.
+ */
+export function palierLayout(g: ContinuityGate, specWeeks: number, devWeeks: number): {
+  /** le test se pose en fin de DEV (sinon : premier créneau de spec quand nTest = 1) */
+  testEnDev: boolean;
+  /** 1 si la source n'est pas mesurée (un test est prescrit), 0 sinon */
+  nTest: number;
+  /** nombre de créneaux de continuité posés EN SPEC (test compris quand il y est) */
+  nSpec: number;
+  /** taille de la progression complète, test compris — le `n` de palierDistanceM */
+  nProgression: number;
+} {
+  const n = palierPosables(g, specWeeks);
+  if (g.source === "mesure") return { testEnDev: false, nTest: 0, nSpec: n, nProgression: n };
+  // Borné au défaut MESURÉ : n = 2 exactement (test + 1 seul palier, l'eau libre en dernière
+  // semaine), et seulement si un développement existe pour recevoir le test. À n = 1 il n'y a
+  // pas de progression à sauver ; à n ≥ 3 l'eau libre tombe déjà dans la première moitié.
+  if (n === 2 && specWeeks >= 2 && devWeeks >= 1) return { testEnDev: true, nTest: 1, nSpec: 2, nProgression: 3 };
+  return { testEnDev: false, nTest: 1, nSpec: n, nProgression: n };
+}
+
+/**
  * LA DISTANCE DU PALIER `i` SUR `n`, EN MÈTRES — interpolée entre le départ de l'athlète et la
  * distance de course, jamais lue dans une table.
  *

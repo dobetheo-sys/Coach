@@ -8,7 +8,7 @@ import { C21_REPRISE_BRICK_FACTOR, BRICK_TAPER_BIKE_BOUNDS, C22_MAX_WEEKLY_GROWT
 import { intOf } from "../../generator/renderer.ts";
 import { registerSport, type SessionKit, type PredictKit } from "../registry.ts";
 import { TRI_SWIM, TRI_BIKE, TRI_RUN, TRI_BIKE_KM, TRI_TRANSITION } from "../../engine/predictor.ts";
-import { continuityGate, palierPosables, palierDistanceM, B17_ECHAUF_M, B17_RETOUR_M } from "../../engine/swimContinuity.ts";
+import { continuityGate, palierLayout, palierDistanceM, B17_ECHAUF_M, B17_RETOUR_M } from "../../engine/swimContinuity.ts";
 
 export function buildTriSessions(kit: SessionKit): V1Session[] {
   const { r, a, fmt, slot, phase, prog, weekNum, slotIdx, lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, swimDrillGlossary, S2, W, Wm, C, Cm, B, Bd } = kit;
@@ -142,7 +142,7 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
   //     plus serrés, là où l'ancien porteur n'en livrait qu'un.
   const b17Slot = "facile2";
   let b17Pose = false;
-  if (phase === "spec" && slot === b17Slot && slotIdx === 0 && !inj.shoulder && !medHold) {
+  if ((phase === "spec" || phase === "dev") && slot === b17Slot && slotIdx === 0 && !inj.shoulder && !medHold) {
     // D3 §3b — LA PROGRESSION PART DE L'ATHLÈTE. Le gate reçoit la durée RÉELLE du plan (`r.weeks`),
     // sans quoi son point de départ et sa franchissabilité seraient calculés sur un horizon par
     // défaut — et la séance prescrite ne correspondrait pas à la décision affichée (R11.1).
@@ -154,17 +154,29 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
     // à 95 % de la distance de course, c'est-à-dire l'inverse d'une progression.
     const g = continuityGate(a as Record<string, unknown>, r.weeks);
     const spec = (r.phases || []).find((ph) => ph.id === "spec");
+    const dev = (r.phases || []).find((ph) => ph.id === "dev");
     if (g && spec) {
       const len = Math.max(1, spec.end - spec.start);
+      // O-95 — LA DISPOSITION VIENT DU POINT UNIQUE `palierLayout` (l'annonce `B17-paliers` lit
+      // la même fonction — c'est le calcul dupliqué qui avait produit O-84a, l'annonce comptant
+      // le test comme un palier). Quand la spec ne peut porter que 2 créneaux, le TEST glisse en
+      // fin de développement : la mesure se prend le plus tôt possible (l'argument de D3
+      // lui-même), et la spec garde ses deux paliers — l'eau libre en PREMIÈRE semaine au lieu
+      // de la dernière, la distance finale en dernière.
+      const lay = palierLayout(g, len, dev ? Math.max(0, dev.end - dev.start) : 0);
       // D3 — BORNÉ PAR LA PLACE. Sans cette borne, `positions` collapse plusieurs paliers sur la
       // même semaine et `indexOf` ne rend que le premier de chaque groupe : le DERNIER palier,
       // celui qui vaut la distance de course, n'était jamais posé.
-      const n = palierPosables(g, len);
+      const n = lay.nSpec;
       const idx = Math.max(0, Math.min(len - 1, weekNum - 1 - spec.start));
       const positions = Array.from({ length: n }, (_, i) => (n <= 1 ? 0 : Math.round((i * (len - 1)) / (n - 1))));
-      const k = positions.indexOf(idx);
-      if (k >= 0) {
-        const cible = Math.max(200, Math.round(palierDistanceM(g, k, n) / 50) * 50);
+      const kSpec = phase === "spec" ? positions.indexOf(idx) : -1;
+      const testEnDevIci = phase === "dev" && lay.testEnDev && !!dev && weekNum === dev.end;
+      if (kSpec >= 0 || testEnDevIci) {
+        // `step` est l'index dans la PROGRESSION COMPLÈTE (test compris) : le test vaut 0, les
+        // paliers de spec suivent — avec `testEnDev`, le k-ième créneau de spec est le pas k+1.
+        const step = testEnDevIci ? 0 : lay.testEnDev ? kSpec + 1 : kSpec;
+        const cible = Math.max(200, Math.round(palierDistanceM(g, step, lay.nProgression) / 50) * 50);
         // D3 (arbitrage « je ne sais pas n'est pas une valeur », 16/08/2026) — QUAND LA CONTINUITÉ
         // N'EST PAS MESURÉE, LA PREMIÈRE SÉANCE EST UN TEST, PAS UN PALIER.
         //
@@ -179,8 +191,8 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
         // peux » chez quelqu'un dont personne ne connaît la continuité est exactement le scénario
         // que B-17 existe pour empêcher en eau libre — le mur tous les 25 m est ce qui rend ce
         // test acceptable. La consigne eau libre se décale donc au palier SUIVANT.
-        const test = g.source !== "mesure" && k === 0;
-        const ow = k === (g.source !== "mesure" ? 1 : 0);
+        const test = lay.nTest === 1 && step === 0;
+        const ow = step === lay.nTest;
         b17Pose = true;
         swMain = test ? {
           name: "Test de continuité — aussi loin que possible, sans t'arrêter",
