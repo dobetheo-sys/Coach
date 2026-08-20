@@ -9874,6 +9874,91 @@ la sortie longue vélo ne PROGRESSE pas                 saturée à 201' (plafon
 5 tri/Full à budget serré sans longue CAP en spec      arbitrage de priorité, T-59
 ```
 
+### §2 — QUELLE MOITIÉ SATURE ? La mesure demandée avant toute écriture (20/08/2026)
+
+*« `structurel = nSess × durée max`. La semaine de pic livre 10 séances pour 12 prescrites — ça ne
+dit pas encore lequel des deux facteurs sature. »* **Trois expériences à un facteur, aucune ligne
+de moteur écrite.**
+
+**(a) Les DURÉES sont saturées.** Sonde V2.1 neutralisée — la courbe vise alors les plafonds de
+charge (13-20 h au lieu de 11,2) :
+
+```
+                         pic livré   séances   total du plan
+avec la sonde (livré)      11,18 h       9        357 h
+sans la sonde              11,52 h       9        350 h
+```
+
+**+0,34 h sur la semaine, et le TOTAL DESCEND de 7 h.** Retirer la contrainte structurelle
+n'achète presque rien : ce n'est plus elle qui borne. Détail par type sur la semaine de pic —
+brick **173' → 173'** (gelé à sa borne), Endurance vélo **198 → 202**, footing **33 → 35**,
+sortie longue CAP **97 → 90** (elle DESCEND) ; ce qui bouge vraiment est la nage (récup 54 → 68,
+seuil 51 → 59).
+
+**(b) Le NOMBRE de séances ne répond plus à la déclaration.** Balayage `sessions_max` × `doubles` :
+
+```
+sessions_max     8      10      12      14
+doubles = oui   8 séances / 11,0 h   9 / 11,2   9 / 11,2   9 / 11,2      max 10 par semaine
+doubles = parfois        7 / 8,7 h   7 / 8,7    7 / 8,7    7 / 8,7       aucun jour doublé
+```
+
+**Au-delà de 10, `sessions_max` ne change RIEN** — 12 et 14 rendent le plan de 10. La structure
+plafonne à **7 jours × doublage sur 3 créneaux au plus** (mesuré : la semaine de pic double 2
+jours, la plus fournie du plan en double 3). Et `doubles: "parfois"` ne place AUCUN jour double —
+comportement voulu et déjà dit à l'athlète (message R20.2), mais il vaut « non » dans les faits.
+
+**(c) L'arithmétique du fondateur, vérifiée sur le livré.** `11,18 h / 9 séances = 74,5 min de
+moyenne` — la moyenne visée (75 min pour 12,5 h sur 10 séances) est **déjà atteinte**. Ce qui
+manque n'est pas 8 minutes par séance : c'est **UNE séance de plus à la moyenne actuelle**.
+
+> **Verdict : « des créneaux, pas des minutes » est JUSTE, avec une nuance qui compte.** Les types
+> qui ont encore de la marge sont ceux qu'on ne veut PAS agrandir (la natation, déjà 8 points
+> au-dessus de sa cible), et ceux qu'on veut agrandir (vélo, brick) sont à leur borne. Le lot
+> suivant porte donc sur le NOMBRE DE CRÉNEAUX PLACÉS — combien de jours peuvent porter deux
+> séances, et lesquels — pas sur les durées.
+
+### §3 — le critère du maillon devient un INDICATEUR (révision du fondateur, actée)
+
+*« Mon `≥ 12,5 h` portait sur le volume, jamais sur la façon d'y arriver. Sur 70.3, 10 séances de
+75 min valent probablement mieux que 12 de 62. »* **Acté** : le critère de sortie reste
+`pic ≥ 12,5 h` ; « le maillon change de nom » descend au rang d'indicateur. La mesure (c) ci-dessus
+montre d'ailleurs que les deux se rejoignent ici — la moyenne par séance est déjà à 75 min, donc le
+volume ne peut venir que d'un créneau de plus, et le maillon changera de nom quand il viendra.
+
+### §4 — l'écart d'allocation restant est un MÉCANISME, pas un manque de volume
+
+La question était : *« si le volume monte à 12,5 h et que les parts ne bougent pas, c'est un
+mécanisme ; si les parts suivent, c'était le volume. »* **La même expérience répond sans attendre
+le volume** : quand la contrainte structurelle tombe, les minutes libérées vont à la NATATION —
+
+```
+                sw        bk        rn
+avec sonde    27,9 %    40,3 %    31,8 %
+sans sonde    29,6 %    40,2 %    30,2 %      ← +1,7 pt de nage, le vélo IMMOBILE
+```
+
+**Le vélo ne bouge pas d'un dixième** : il est à ses bornes de séance. Donc du volume
+supplémentaire, aujourd'hui, ne rapprocherait PAS de la cible — il l'éloignerait. C'est un
+mécanisme de routage (combien de créneaux portent la nage), et c'est le même objet que §2.
+
+### §5 — le résidu de T-59 est un ARBITRAGE, écrit comme tel
+
+Les 5 `tri/Full` à budget serré ne sont pas un défaut ouvert : **à budget serré sur un Full, la
+natation a besoin de sa FRÉQUENCE** (la technique se perd par la fréquence, R13.3 — c'est la règle
+qui occupe ces créneaux) **et la course a de la marge ailleurs** (elle garde son créneau long, le
+brick, et la sortie longue de base/dev). Poser la sortie longue à pied sur le second créneau
+facile reviendrait à retirer une nage à quelqu'un qui n'en a déjà que trois. **Si ce résidu doit
+être fermé un jour, ce sera par une décision de priorité explicite, pas par un correctif** — et
+c'est pourquoi T-59 le compte au lieu de l'exempter en silence.
+
+```verify
+id: SATURATION
+quoi: la déclaration de séances agit-elle encore au-delà de 10, et la semaine de pic est-elle à sa moyenne cible ?
+attendu: /sm=12 : 9 séances · 11\.2 h · moyenne 7[0-9] min/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const{profiles}=await import('./scripts/goldenMaster.mjs');let r;for(const p of profiles())if(p.key.startsWith('REEL'))r=p;const P=globalThis.EBV2.buildPlan(r.sport,{...r.a,sessions_max:'12'});const wM=w=>w.days.reduce((t,d)=>t+d.sessions.reduce((u,s)=>u+(s.race?0:(s.min||0)),0),0);const ch=P.weeks.filter(w=>!w.isRecup&&w.phase?.id!=='taper'&&w.phase?.id!=='race');const pic=ch.reduce((a,b)=>wM(b)>=wM(a)?b:a);const n=pic.days.reduce((t,d)=>t+d.sessions.filter(s=>s.d!=='rs'&&!s.race).length,0);console.log('sm=12 : '+n+' séances · '+(wM(pic)/60).toFixed(1)+' h · moyenne '+Math.round(wM(pic)/n)+' min');"
+```
+
 ```verify
 id: LOT-VOL-REPARTITION
 quoi: les quatre pièces structurelles tiennent-elles sur le profil réel ?

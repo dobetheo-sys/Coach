@@ -606,6 +606,17 @@ n'est PAS une régression de forme. **Deux fautes de mon instrument publiées** 
 doublage mesurait une grandeur voisine ; un plancher de population inventé à 100 pour un corpus
 qui en compte 68). Cliquets ré-épinglés avec cause : S4 357 → **341** · S5 504 · rabotages 29 ·
 pic tri 8 244 min / 410 901 m. Rayon golden **188 profils, tous en tri** · batterie 11/11.
+**§2 mesuré ensuite, aucune ligne de moteur écrite (« QUELLE MOITIÉ SATURE ? »)** : les DURÉES sont
+saturées — neutraliser la sonde V2.1 n'achète que **+0,34 h** sur la semaine de pic et fait DESCENDRE
+le total de 7 h ; le brick est gelé à sa borne, et ce qui grandit est la NAGE. Le NOMBRE de séances
+ne répond plus à la déclaration : **`sessions_max` 10, 12 et 14 rendent le même plan** (7 jours ×
+doublage sur 3 créneaux au plus), et `doubles: parfois` ne place aucun jour double. La moyenne par
+séance vaut **déjà 75 min** — il ne manque pas 8 min par séance, il manque **UNE séance**. Donc
+« des créneaux, pas des minutes » est juste, avec la nuance qui décide : **les types qui ont encore
+de la marge sont ceux qu'on ne veut pas agrandir**. Et l'écart d'allocation restant est un
+MÉCANISME, pas un manque de volume (sans la sonde : nage 27,9 → 29,6 %, vélo IMMOBILE à 40,2 %).
+Le critère « le maillon change de nom » devient un INDICATEUR (révision du fondateur, actée) ; le
+critère de sortie reste `pic ≥ 12,5 h`.
 
 **O-96 FERMÉ (doc CARTE_CONTRADICTION_SEANCES) — la contradiction 12/9 était un DEUXIÈME RENDU,
 pas un troisième calcul** (constat du fondateur sur son profil réel après montée à
