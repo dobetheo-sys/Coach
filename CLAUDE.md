@@ -580,6 +580,40 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**L'ENTRÉE DE PLAN DU DÉBUTANT NAGEUR — les 22 semaines sans nage sont FERMÉES, et le test en
+semaine 1 est ARRÊTÉ par C22** (arbitrage ENTREE_PLAN_DEBUTANT.md, 21/08/2026 — voir
+`BUGS_OUVERTS.md` « L'ENTRÉE DE PLAN DU DÉBUTANT NAGEUR », patch du §2a conservé dans
+`b17-test-en-semaine-1.patch`) : le pire cas mesuré était un débutant Sprint à continuité déclarée
+**INCONNUE** — quatre semaines sans nager, puis un 500 m continu en EAU LIBRE comme première
+séance de natation. **La réponse au §2b : ni le test ni un palier qui l'absorbe — le test n'était
+posé NULLE PART.** `palierLayout` le posait à `dev.end`, une position CALENDAIRE, qui sur ce
+profil est la semaine de RÉCUP : aucun créneau de nage, donc aucun test ; le plan annonçait la
+mesure et ne la demandait jamais. **Le §3 n'est aucune des trois hypothèses, c'en est une
+quatrième** : le schéma POSE bien un `facile2` en base, ce sont DEUX PASSES qui l'éteignent —
+`OFF (fréquence nage)`, la coupe qui absorbe le plancher piscine C24 (« la fréquence cède, pas la
+taille »), et le repli « dev ≤ pic ». ⚠ **La première contredit frontalement le principe écrit
+2 700 lignes plus haut DANS LE MÊME FICHIER** (« la FRÉQUENCE n'est jamais la monnaie […] retirer
+une séance de nage serait la prédiction du 19/08 commise par la garde censée la protéger ») —
+deux règles opposées sur la même discipline, et c'est la seconde qui s'exécutait. **Le correctif
+existait déjà dix lignes plus haut** : la branche DÉCHARGE de la même passe porte
+`if (restants <= 1) continue` sous « un affûtage sans une seule séance n'affûte rien » — jamais
+rejouée sur la branche de CHARGE. Les deux passes consultent désormais le niveau **ZÉRO** du
+plancher (`seancesDiscipline`, point unique ; dans le repli, même forme que `porteEpingle` :
+épargné tant qu'une autre victime existe). **O-98 30 → 8 · la nage 22 → 0 · la course 8 → 8**
+(isolées, l'« accident »). Contre-prouvé dans les deux sens : coupe dé-gardée → 21, repli dé-gardé
+→ 14 ; cliquet `T-60` descendu de 30 à **8** dans le même commit. **⛔ Le §2a est ARRÊTÉ** : écrit
+intégralement et il MARCHE (test en S1, en bassin, annonce « 1 test (première séance de nage) »),
+mais il casse **`D3` du banc v6 — C22, violation DURE du manifeste** (`tri/S` S4→S5 +22 %).
+Attribué par bisection par fichier : la cause est `swimContinuity` + `tri`, pas les gardes ; et ce
+n'est pas la taille des paliers (la variante `nProgression = n` casse aussi). **La courbe DÉCLARÉE
+change** — S3 3,80 → 2,40 h, la périodisation se déplace : poser le test dans la BASE reshape le
+plan bien au-delà de la natation. Trois issues au registre, la plus petite étant **(c) garder
+O-95 et corriger sa seule faute — que la position soit un CRÉNEAU DE NAGE existant, pas un numéro
+de semaine**. **Trouvé au passage (§5)** : sur 4 profils, les paliers B-17 annoncés à 800/1350/
+2250 m sont livrés à **500 m** — le plafond de séance rabat toute la progression, préexistant.
+Batterie **11/11**, golden **990 recapturé (14 profils, tous débutants tri)**, `audit:v1` 459 à 0,
+`lotPhysio` 31 verts · 25 rouges attendus · 0 régression, `sw.js` `eb-pwa-78d9dc04b2e8`.
+
 **LE PLANCHER DE FRÉQUENCE livré — la valeur a bougé une TROISIÈME fois, et le plancher a refusé
 la pièce AVANT qu'elle ne vide deux semaines de natation** (arbitrage « DEUX EST LA BORNE, TROIS
 EST LA CIBLE », 21/08/2026 — voir `BUGS_OUVERTS.md` « LE PLANCHER DE FRÉQUENCE », module

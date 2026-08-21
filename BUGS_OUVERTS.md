@@ -36,6 +36,149 @@ assumés entre deux règles, les chantiers humains, et les entrées de registre 
 
 ## §1 — Défauts ouverts, par gravité
 
+### L'ENTRÉE DE PLAN DU DÉBUTANT NAGEUR — les 22 semaines sans nage sont FERMÉES, et le test en semaine 1 est ARRÊTÉ par C22 · ⛔ **§2a À ARBITRER**
+
+**Arbitrage d'entrée (ENTREE_PLAN_DEBUTANT.md, 21/08/2026)**, ordre donné : 1. le test en SEMAINE 1
+et en PISCINE · 2. la mesure du §3 (pourquoi zéro nage en S1-S3) · 3. le cliquet sur les 23 comptes.
+*« Le 1 avant tout : il est en production, sur une population que le ticket de sécurité existe pour
+protéger. »*
+
+**Livré : le §3 (la mesure) ET son correctif, qui ferme les 22 semaines. Le §2a est écrit, mesuré,
+et RETIRÉ — il viole C22.** Patch conservé dans `b17-test-en-semaine-1.patch`.
+
+#### §1 — La réponse au §2b, mesurée avant d'écrire
+
+Le §2b demandait : *« la séance de S5 est-elle le test, ou le premier palier d'eau libre qui a
+absorbé le test ? »* **Ni l'un ni l'autre : le test n'était posé NULLE PART.**
+
+```
+B17/tri/S/debutant/inconnue — toutes les nages du plan
+  S5  Nage continue en EAU LIBRE — 500 m d'affilée     ← 1er palier, pas le test
+  S6  Nage continue — 500 m d'affilée
+  décision B17-paliers : « 1 test (fin de développement) + 2 palier(s) »
+```
+
+`palierLayout` posait le test à `dev.end` — une position CALENDAIRE. Sur ce profil, `dev.end` est
+**la semaine de récup**, dont les créneaux sont trois footings : aucun créneau de nage, donc aucun
+test. Le plan annonçait la mesure et ne la demandait jamais.
+
+#### §2 — Le §3 : ce n'est aucune des trois hypothèses, c'en est une quatrième
+
+Le §3 listait trois suspects (budget serré · base généraliste · mécanisme de comptage) et pariait
+sur le troisième. **Aucun des trois.** Le schéma générique de semaine POSE bien un `facile2` (le
+créneau de nage) en base ; ce sont DEUX PASSES qui l'éteignent, et la première porte un nom qui
+dit ce qu'elle fait :
+
+```
+S1  recup · dur1 · OFF(la semaine de pic reste la plus grosse) · dur2 · OFF(fréquence nage) · durLong · facileR
+```
+
+**(a) `OFF (fréquence nage)`** — la coupe qui absorbe le gonflement du plancher piscine (C24).
+Quand les remontées font déborder la semaine, elle rend des mètres, puis **retire une séance
+entière**, sous ce commentaire : *« une séance piscine sous le plancher ne vaut pas le déplacement :
+la fréquence cède, pas la taille »*.
+
+⚠ **Elle contredit frontalement le principe écrit 2 700 lignes plus haut DANS LE MÊME FICHIER** :
+*« La FRÉQUENCE n'est jamais la monnaie […] retirer une séance de nage pour tenir une borne de
+volume serait la prédiction du 19/08 — la nage est la victime par défaut — commise par la garde
+censée la protéger. »* Deux règles opposées sur la même discipline, dans le même fichier, et c'est
+la seconde qui s'exécutait.
+
+**(b) le repli « dev ≤ pic »** — il élit un jour à éteindre pour que le développement ne dépasse
+pas le pic, et il prenait le seul créneau de nage des deux premières semaines.
+
+#### §3 — Le correctif : la garde existait déjà, dix lignes plus haut
+
+La branche **DÉCHARGE** de la même passe porte exactement la garde qui manquait —
+`if (restants <= 1) continue` — sous un commentaire qui en énonce la raison : *« un affûtage sans
+une seule séance n'affûte rien, il désentraîne »*. Elle n'avait **jamais été rejouée sur la branche
+de CHARGE**. La forme la plus familière de ce dépôt : une garde écrite sur une branche et absente
+de sa sœur.
+
+Les deux passes consultent désormais le niveau **ZÉRO** du plancher de fréquence
+(`seancesDiscipline`, le point unique). Dans le repli, la garde a la MÊME forme que `porteEpingle`
+qui la précède : *épargné tant qu'une autre victime existe ; seul candidat → on s'arrête*. La liste
+des disciplines n'est pas écrite, elle est DÉRIVÉE de ce que la semaine porte — donc elle vaut pour
+les sept sports sans qu'aucun soit nommé.
+
+```
+O-98         30 → 8 semaines de charge à zéro   (les 22 sans NAGE fermées)
+la nage      22 → 0
+la course     8 →  8   (isolées, G/tri/Full/vol-min, jamais deux de suite — l'« accident »)
+```
+
+**Contre-prouvé dans les deux sens, sur le corpus** : coupe piscine dé-gardée → **21** · repli
+dé-gardé → **14**. Cliquet `T-60` descendu de 30 à **8** dans le même commit — un cliquet qui ne
+descend pas avec son correctif ne protège pas le gain.
+
+Le plan du profil le plus exposé nage désormais **dès la semaine 1** (S1, S2, S3 puis la spec),
+au lieu de quatre semaines sèches.
+
+#### §4 — ⛔ Le §2a est ARRÊTÉ : déplacer le test en semaine 1 viole C22
+
+Écrit intégralement (le test devient la PREMIÈRE séance de nage du plan via un fait dérivé,
+`premierDuSlot`, calculé par `weekBuilder` ; `palierLayout` perd sa position calendaire ; l'annonce
+suit ; `T-06` réécrit sur la propriété). **Il marche** — mesuré sur le profil visé :
+
+```
+S1  Test de continuité — aussi loin que possible, sans t'arrêter   EN BASSIN
+S2  Nage éducatifs        S3  Nage éducatifs
+S5  Nage continue en eau libre — 600 m        S6  Nage continue — 750 m
+annonce : « 1 test (première séance de nage) + 2 palier(s) en phase spécifique »
+```
+
+**Et il casse `D3` du banc v6 — C22, une violation DURE du manifeste** :
+
+```
+tri/S(8sem)  S4→S5  déclaré +22 % / prescrit +22 %  → courbe
+```
+
+Attribué par bisection par fichier : la cause est le couple `swimContinuity` + `tri/index`, pas les
+gardes du plancher (celles-ci laissent la courbe plate). Et ce n'est **pas** la taille des paliers —
+la variante `nProgression = n` casse aussi (+20 %). **La courbe DÉCLARÉE elle-même change** :
+`S3` passe de 3,80 à 2,40 h et la périodisation se déplace (`S7` passe de footings à des bricks avec
+une journée « semaine de récupération »). Poser le test dans la phase de BASE reshape le plan bien
+au-delà de la natation.
+
+**C'est un arbitrage, pas un réglage** : le test EST une mesure et D3 dit qu'elle se prend le plus
+tôt possible ; mais l'ouvrir à la base déplace la construction du volume. Trois issues, non
+tranchées :
+
+```
+(a) poser le test hors de la courbe de volume (une séance qui ne compte pas dans la semaine)
+(b) le poser à la première semaine de DEV plutôt que de BASE — à mesurer, C22 peut tenir
+(c) garder O-95 (fin de dev) et corriger sa seule faute : que la position soit un CRÉNEAU DE
+    NAGE existant et non un numéro de semaine
+```
+
+**(c) est la plus petite** et elle ferme le défaut réel du §2b (le test jamais posé) sans toucher
+la courbe. Elle n'a pas été essayée faute de temps dans ce lot.
+
+⚠ **Ce qui reste ouvert en production** : sur ces profils, le test annoncé n'est toujours pas posé,
+et la première nage reste un palier en eau libre. **Les quatre semaines sèches, elles, sont
+fermées** — c'est la moitié du §1 de l'arbitrage, celle qui touche la sécurité.
+
+#### §5 — Ce que le §2a a exposé au passage : la progression B-17 est fictive sur 4 profils
+
+Trouvé en mesurant le rayon du §2a sur `T-39` (blocs épinglés rabotés) : sur
+`B17/tri/{70.3,Full}/debutant/{absente,inconnue}`, **les paliers annoncés à 800, 1350 et 2250 m
+sont livrés à 500 m** — le plafond de séance de nage (`swimSessionCapAtWeek`, une borne de
+capacité) les rabat tous. La progression que B-17 annonce n'est jamais construite, et D2 (« le
+dernier palier vaut EXACTEMENT la distance de course ») est faux là aussi. **Défaut PRÉEXISTANT**,
+visible avant comme après le §2a (12 nouveaux, 8 disparus, même motif, mêmes 4 profils).
+
+L'arbitrage : soit le plafond gagne et l'ANNONCE se borne à lui, soit la progression gagne et le
+plafond cède — et un plafond de sécurité ne cède pas. Donc l'annonce doit dire ce qu'elle va
+livrer, et si la continuité de course est hors d'atteinte, le DIRE (O-17). **Ouvert, non tranché.**
+
+```verify
+id: entree-plan-debutant
+quoi: les semaines de charge tri sans une seule séance d'une discipline de l'épreuve
+attendu: /ZERO-8/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');const {seancesDiscipline}=await import('./src/engine/plancherFrequence.ts');let z=0,sw=0;for(const{sport,a}of profiles()){if(sport!=='tri')continue;let p;try{p=globalThis.EBV2.buildPlan(sport,a)}catch{continue}for(const w of p.weeks??[]){if(w.isRecup||w.phase?.id==='taper')continue;for(const d0 of ['sw','bk','rn'])if(seancesDiscipline(w,d0)===0){z++;if(d0==='sw')sw++;}}}console.log('zéro '+z+' dont nage '+sw+' · '+(z<=8&&sw===0?'ZERO-8':'CLIQUET-DEPASSE'));"
+```
+
+
 ### LE PLANCHER DE FRÉQUENCE — la valeur a bougé une TROISIÈME fois, et le plancher a refusé la pièce avant qu'elle ne casse deux semaines · ✅ **LIVRÉ**
 
 **Arbitrage d'entrée (PLANCHER_FREQUENCE.md, 21/08/2026)** : *« deux est la borne, trois est la

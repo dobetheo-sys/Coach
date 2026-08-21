@@ -457,13 +457,33 @@ export function reconcileDeclaredVolume(
       // épargné tant qu'une autre victime existe ; s'il est le seul candidat, on S'ARRÊTE — une
       // promesse affichée ne paie pas, la semaine reste au-dessus et la boucle de réparation
       // fait le reste (comme quand `cand.length <= 2`).
+      // PLANCHER DE FRÉQUENCE, niveau ZÉRO (21/08/2026) — MÊME FORME QUE `porteEpingle`, SUR UNE
+      // AUTRE PROPRIÉTÉ : un jour dont le retrait viderait une discipline PRÉSENTE dans la semaine
+      // est épargné tant qu'une autre victime existe ; s'il est le seul candidat, on s'arrête,
+      // exactement comme pour les blocs épinglés.
+      //
+      // Mesuré : c'est le SECOND producteur des semaines à zéro d'O-98. Le premier (la coupe du
+      // plancher piscine) fermé, il restait 6 semaines de charge tri sans une seule nage, toutes
+      // en S1-S2 — et sur le profil le plus exposé, un débutant Sprint à continuité INCONNUE, ce
+      // repli retirait le seul créneau de nage de ses deux premières semaines.
+      //
+      // La liste des disciplines n'est pas écrite : elle est DÉRIVÉE de ce que la semaine porte,
+      // donc elle vaut pour les sept sports sans qu'aucun ne soit nommé. Le helper est défini ICI,
+      // au-dessus de la boucle, et pas à côté de son usage : T-46 vérifie que les exclusions d'une
+      // élection vivent dans les lignes qui la précèdent, et l'éloigner de `jourIntouchable`
+      // faisait rougir la sonde sur un site qui passe pourtant bien par le point unique.
+      const videUneDiscipline = (d: V1Day) => {
+        const sansLui = { days: wk.days.filter((x) => x !== d) };
+        return ["sw", "bk", "rn"].some((disc) =>
+          seancesDiscipline(wk, disc) >= PLANCHER_FREQ.dur && seancesDiscipline(sansLui, disc) < PLANCHER_FREQ.dur);
+      };
       for (let g = 0; g < 3 && wm(wk) > peakBest; g++) {
         const cand = wk.days.filter((d) => !jourIntouchable(d)
           && d.sessions.some((sx) => sx.d !== "rs" && !sx.long && !sx.race && !sx.brick));
         if (cand.length <= 2) break;
         const porteEpingle = (d: V1Day) => d.sessions.some((sx) => sx.d !== "rs"
           && (sx.steps || []).some((st) => (st as { bnd?: { pinned?: boolean } }).bnd?.pinned));
-        const libres = cand.filter((d) => !porteEpingle(d));
+        const libres = cand.filter((d) => !porteEpingle(d) && !videUneDiscipline(d));
         if (!libres.length) break;
         const dayMinOf = (d: V1Day) => d.sessions.reduce((t, sx) => t + (sx.min || 0), 0);
         const victim = libres.reduce((x, y) => (dayMinOf(y) < dayMinOf(x) ? y : x));
@@ -3204,6 +3224,28 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         raised.sort((x, y) => (x.s.min || 0) - (y.s.min || 0));
         const victim = raised.shift()!;
         if (victim.d.forced || victim.s.long) continue;
+        // PLANCHER DE FRÉQUENCE, niveau ZÉRO (21/08/2026) — CETTE COUPE NE VIDE JAMAIS LA
+        // DISCIPLINE DE SA SEMAINE.
+        //
+        // La branche DÉCHARGE, dix lignes plus haut, porte déjà exactement cette garde
+        // (`restants <= 1` → on ne retire pas) sous un commentaire qui en énonce la raison :
+        // *« un affûtage sans une seule séance n'affûte rien, il désentraîne »*. Elle n'avait
+        // jamais été rejouée sur la branche de CHARGE — la forme la plus familière de ce dépôt,
+        // une garde écrite sur une branche et absente de sa sœur.
+        //
+        // Ce que ça coûtait, mesuré : **16 des 22 semaines de charge tri sans une seule nage**
+        // (O-98) viennent d'ici. Le pire cas est un débutant sur Sprint dont la continuité est
+        // déclarée INCONNUE : quatre semaines sans nager, puis une première séance de natation
+        // en eau libre. La passe faisait donc son travail (absorber le gonflement du plancher
+        // piscine C24) en produisant précisément ce que B-17 existe pour empêcher.
+        //
+        // ⚠ ET ELLE CONTREDISAIT LE PRINCIPE ÉCRIT DANS CE MÊME FICHIER, à la ligne 493 :
+        // *« La FRÉQUENCE n'est jamais la monnaie […] retirer une séance de nage pour tenir une
+        // borne de volume serait la prédiction du 19/08 — la nage est la victime par défaut —
+        // commise par la garde censée la protéger. »* Deux règles opposées sur la même
+        // discipline, dans le même fichier, et c'est la seconde qui s'exécutait. La fréquence
+        // peut encore céder ici — mais jamais jusqu'à zéro.
+        if (seancesDiscipline({ days: wd }, String(victim.s.d)) - 1 < PLANCHER_FREQ.dur) continue;
         const idx = victim.d.sessions.indexOf(victim.s);
         if (idx < 0) continue;
         victim.d.sessions.splice(idx, 1);

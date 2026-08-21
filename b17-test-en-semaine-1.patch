@@ -1,0 +1,186 @@
+# TENTATIVE §2a — LE TEST EN SEMAINE 1 : écrite, mesurée, ARRÊTÉE (C22)
+
+Diff conservé des quatre fichiers du correctif §2a/§2b. Voir BUGS_OUVERTS.md « §2a ARRÊTÉ ».
+
+diff --git a/src/engine/reasoningEngine.ts b/src/engine/reasoningEngine.ts
+index f2521e8..ae2ae24 100644
+--- a/src/engine/reasoningEngine.ts
++++ b/src/engine/reasoningEngine.ts
+@@ -490,7 +490,7 @@ export class TrainingReasoningEngine {
+           ? "suspendues — " + (medHold ? "drapeau médical" : "nage aménagée pour ton épaule")
+           : lay.nTest
+             ? (nP < 1 ? "1 test de continuité en phase spécifique"
+-              : "1 test" + (lay.testEnDev ? " (fin de développement)" : "") + " + " + nP + " palier(s) en phase spécifique")
++              : "1 test (première séance de nage) + " + nP + " palier(s) en phase spécifique")
+             : nP + " palier(s) en phase spécifique";
+         D("B17-paliers", "Nages continues prescrites", val,
+           inj.shoulder || medHold
+diff --git a/src/engine/swimContinuity.ts b/src/engine/swimContinuity.ts
+index 21012cc..06224cb 100644
+--- a/src/engine/swimContinuity.ts
++++ b/src/engine/swimContinuity.ts
+@@ -489,9 +489,11 @@ export function palierPosables(g: ContinuityGate, specWeeks: number): number {
+  * en PREMIÈRE semaine, la distance finale en dernière. La progression complète compte 3 pas
+  * (test → palier eau libre → palier final), d'où `nProgression`.
+  */
+-export function palierLayout(g: ContinuityGate, specWeeks: number, devWeeks: number): {
+-  /** le test se pose en fin de DEV (sinon : premier créneau de spec quand nTest = 1) */
+-  testEnDev: boolean;
++export function palierLayout(g: ContinuityGate, specWeeks: number, _devWeeks = 0): {
++  /** le test se pose sur le PREMIER créneau de nage du plan (D3) — jamais à une position
++   *  calendaire. Conservé sous son ancien nom pour les lecteurs ; `testEnDev` est un ALIAS
++   *  historique de `testEnPremier` et vaut la même chose. */
++  testEnPremier: boolean;
+   /** 1 si la source n'est pas mesurée (un test est prescrit), 0 sinon */
+   nTest: number;
+   /** nombre de créneaux de continuité posés EN SPEC (test compris quand il y est) */
+@@ -500,12 +502,22 @@ export function palierLayout(g: ContinuityGate, specWeeks: number, devWeeks: num
+   nProgression: number;
+ } {
+   const n = palierPosables(g, specWeeks);
+-  if (g.source === "mesure") return { testEnDev: false, nTest: 0, nSpec: n, nProgression: n };
+-  // Borné au défaut MESURÉ : n = 2 exactement (test + 1 seul palier, l'eau libre en dernière
+-  // semaine), et seulement si un développement existe pour recevoir le test. À n = 1 il n'y a
+-  // pas de progression à sauver ; à n ≥ 3 l'eau libre tombe déjà dans la première moitié.
+-  if (n === 2 && specWeeks >= 2 && devWeeks >= 1) return { testEnDev: true, nTest: 1, nSpec: 2, nProgression: 3 };
+-  return { testEnDev: false, nTest: 1, nSpec: n, nProgression: n };
++  if (g.source === "mesure") return { testEnPremier: false, nTest: 0, nSpec: n, nProgression: n };
++  // §2a (21/08/2026) — LE TEST EST LA PREMIÈRE SÉANCE DE NAGE DU PLAN, TOUJOURS.
++  //
++  // O-95 avait déplacé le test de la spec vers la fin du développement EN CITANT l'argument de
++  // D3 (« une mesure se prend le plus tôt possible »). Le mouvement allait dans la bonne
++  // direction et **il s'est arrêté à mi-chemin** : D3 dit la PREMIÈRE séance de nage, pas la fin
++  // du développement. Et une position CALENDAIRE ne garantit rien — mesuré, `dev.end` tombait
++  // sur une semaine de récup sans créneau de nage : le test n'était jamais posé, et le plan
++  // livrait comme première natation le palier suivant, EN EAU LIBRE, à un débutant dont la
++  // continuité est déclarée inconnue.
++  //
++  // La position n'est donc plus un numéro de semaine : c'est une PROPRIÉTÉ du créneau
++  // (`premierDuSlot`), et la spec porte ses `n` paliers pleins — la progression compte n+1 pas.
++  // Le cas particulier `n === 2 && specWeeks >= 2 && devWeeks >= 1` disparaît : il n'y a plus de
++  // branche où le test occupe un créneau de spec.
++  return { testEnPremier: true, nTest: 1, nSpec: n, nProgression: n + 1 };
+ }
+ 
+ /**
+diff --git a/src/generator/sessionLibrary.ts b/src/generator/sessionLibrary.ts
+index ebb96b9..4f34557 100644
+--- a/src/generator/sessionLibrary.ts
++++ b/src/generator/sessionLibrary.ts
+@@ -53,7 +53,7 @@ export interface SessionCtx {
+ // sans une seule nage que le plancher existe pour refuser. 0 ou 1 = pas de second exemplaire, et
+ // la conversion ne se fait pas : les reconstructions internes qui ne passent pas ce paramètre
+ // tombent donc du côté PRUDENT.
+-export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: number, weekNum = 1, slotIdx = 0, isRecup = false, semaineRecup = false, creneauxDuSlot = 0): V1Session[] {
++export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: number, weekNum = 1, slotIdx = 0, isRecup = false, semaineRecup = false, creneauxDuSlot = 0, premierDuSlot = false): V1Session[] {
+   const r = ctx.r;
+   const a = r.profile;
+   const sp = a.sport, fmt = a.format;
+@@ -113,7 +113,7 @@ export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog:
+   // d'être dupliquée par sport. Un sport inconnu lève (`UnknownSportError`) au lieu de
+   // retourner un tableau vide, qui produisait des jours muets sans que personne le voie.
+   const kit: SessionKit = {
+-    r, a, sp: sp as string, fmt, slot, phase, prog, weekNum, slotIdx, isRecup, semaineRecup, creneauxDuSlot,
++    r, a, sp: sp as string, fmt, slot, phase, prog, weekNum, slotIdx, isRecup, semaineRecup, creneauxDuSlot, premierDuSlot,
+     lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, G, swimDrillGlossary,
+     S2, P, W, Wm, C, Cm, B, Bd,
+   };
+diff --git a/src/generator/weekBuilder.ts b/src/generator/weekBuilder.ts
+index 02d19c3..2ed1dfe 100644
+--- a/src/generator/weekBuilder.ts
++++ b/src/generator/weekBuilder.ts
+@@ -328,6 +328,26 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
+     for (const d of days) { const c = d.week + "|" + d.slot; compte.set(c, (compte.get(c) || 0) + 1); }
+     for (const d of days) creneauxDuSlot.set(d, compte.get(d.week + "|" + d.slot) || 0);
+   }
++  // D3 / §2a (21/08/2026) — CE JOUR EST-IL LE PREMIER DU PLAN À PORTER CE CRÉNEAU ?
++  //
++  // *« L'inconnu n'est pas une valeur par défaut, c'est une mesure manquante — la PREMIÈRE
++  // séance de nage est un test de continuité. »* Le module du sport ne peut pas le savoir seul :
++  // il voit un jour, jamais le plan. Le fait est calculé ici, une fois, et il est GÉNÉRIQUE —
++  // aucun sport, aucune discipline n'est nommé, c'est « le premier créneau de ce type ».
++  //
++  // Sans lui, le test se posait à une position CALENDAIRE (la fin du développement), donc sur
++  // une semaine qui pouvait ne porter aucun créneau de nage : mesuré, il tombait sur la semaine
++  // de récup et n'était jamais posé — le plan annonçait « 1 test + 2 paliers » et livrait deux
++  // paliers, dont le premier en EAU LIBRE, à un débutant dont la continuité est inconnue.
++  const premierDuSlot = new Map<GenDay, boolean>();
++  {
++    const vu = new Set<string>();
++    for (const d of days) {
++      if (d.slot === "off") continue;
++      premierDuSlot.set(d, !vu.has(d.slot as string));
++      vu.add(d.slot as string);
++    }
++  }
+   const rangDansCreneau = new Map<GenDay, number>();
+   {
+     const vus = new Map<string, number>();
+@@ -343,7 +363,7 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
+     const prog = ph.weeks > 1 ? (d.week - 1 - ph.start) / (ph.weeks - 1) : 0.5;
+     d.prog = Math.max(0, Math.min(1, prog));
+     d.date = iso(start + i * MS);
+-    d.sessions = buildSessions(ctx, d.slot as Parameters<typeof buildSessions>[1], d.phaseId, d.prog, d.week, rangDansCreneau.get(d) || 0, !!d.isR, (recupParSemaine.get(d.week) || false), (creneauxDuSlot.get(d) || 0));
++    d.sessions = buildSessions(ctx, d.slot as Parameters<typeof buildSessions>[1], d.phaseId, d.prog, d.week, rangDansCreneau.get(d) || 0, !!d.isR, (recupParSemaine.get(d.week) || false), (creneauxDuSlot.get(d) || 0), (premierDuSlot.get(d) || false));
+     for (const s of d.sessions) {
+       if (s.steps && s.steps.length) renderSess(s, refs, hz, r.baseRefs);
+       else if (s.min == null) s.min = 0;
+diff --git a/src/sports/registry.ts b/src/sports/registry.ts
+index 8ab10b6..e45ec61 100644
+--- a/src/sports/registry.ts
++++ b/src/sports/registry.ts
+@@ -121,6 +121,11 @@ export interface SessionKit {
+    *  appliqué au point où la décision se prend. `0`/`1` = pas de second exemplaire (les
+    *  reconstructions internes qui ne le passent pas tombent du côté prudent). */
+   creneauxDuSlot: number;
++  /** D3 (21/08/2026) — ce jour est-il le PREMIER du plan à porter ce créneau ? Générique : aucun
++   *  sport ni discipline n'est nommé. C'est le fait dont D3 a besoin — « la première séance de
++   *  nage du plan est un test de continuité » — et qu'un module, qui ne voit qu'un jour, ne peut
++   *  pas déduire. `false` sur les reconstructions internes qui ne le passent pas. */
++  premierDuSlot: boolean;
+   /** O-70 — le jour appartient-il à une semaine de RÉCUPÉRATION ? Les branches lisaient la
+    *  PHASE et jamais la CHARGE : le créneau `facileR` d'une semaine de décharge du pic
+    *  construisait un « VO2max course » — la séance la plus intense de la semaine posée dans
+diff --git a/src/sports/tri/index.ts b/src/sports/tri/index.ts
+index caa719c..98767a8 100644
+--- a/src/sports/tri/index.ts
++++ b/src/sports/tri/index.ts
+@@ -11,7 +11,7 @@ import { TRI_SWIM, TRI_BIKE, TRI_RUN, TRI_BIKE_KM, TRI_TRANSITION } from "../../
+ import { continuityGate, palierLayout, palierDistanceM, B17_ECHAUF_M, B17_RETOUR_M } from "../../engine/swimContinuity.ts";
+ 
+ export function buildTriSessions(kit: SessionKit): V1Session[] {
+-  const { r, a, fmt, slot, phase, prog, weekNum, slotIdx, lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, swimDrillGlossary, semaineRecup, S2, W, Wm, C, Cm, B, Bd } = kit;
++  const { r, a, fmt, slot, phase, prog, weekNum, slotIdx, lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, swimDrillGlossary, semaineRecup, premierDuSlot, S2, W, Wm, C, Cm, B, Bd } = kit;
+   const runInj = inj.list.includes("course");
+   const PB = ({ base: [0.35, 0.55], dev: [0.55, 0.75], spec: [0.75, 0.9], peak: [0.9, 1], taper: [0.35, 0.45] } as Record<string, [number, number]>)[phase] || [0.5, 0.8];
+   const PT = (lo: number, hi: number) => Math.max(1, Math.round((lo + (hi - lo) * (PB[0] + (PB[1] - PB[0]) * prog)) * sessionScale));
+@@ -142,7 +142,11 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
+   //     plus serrés, là où l'ancien porteur n'en livrait qu'un.
+   const b17Slot = "facile2";
+   let b17Pose = false;
+-  if ((phase === "spec" || phase === "dev") && slot === b17Slot && slotIdx === 0 && !inj.shoulder && !medHold) {
++  // §2a — LE TEST PEUT DONC TOMBER EN BASE : la porte s'ouvre sur le PREMIER créneau de nage du
++  // plan (`kit.premierDuSlot`), quelle que soit sa phase, en plus des créneaux de spec qui
++  // portent les paliers. C'est ce qui manquait pour que D3 soit tenue : `base` était exclue, donc
++  // même avec un créneau de nage en semaine 1, aucun test ne pouvait s'y poser.
++  if ((phase === "spec" || phase === "dev" || premierDuSlot) && slot === b17Slot && slotIdx === 0 && !inj.shoulder && !medHold) {
+     // D3 §3b — LA PROGRESSION PART DE L'ATHLÈTE. Le gate reçoit la durée RÉELLE du plan (`r.weeks`),
+     // sans quoi son point de départ et sa franchissabilité seraient calculés sur un horizon par
+     // défaut — et la séance prescrite ne correspondrait pas à la décision affichée (R11.1).
+@@ -171,11 +175,13 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
+       const idx = Math.max(0, Math.min(len - 1, weekNum - 1 - spec.start));
+       const positions = Array.from({ length: n }, (_, i) => (n <= 1 ? 0 : Math.round((i * (len - 1)) / (n - 1))));
+       const kSpec = phase === "spec" ? positions.indexOf(idx) : -1;
+-      const testEnDevIci = phase === "dev" && lay.testEnDev && !!dev && weekNum === dev.end;
+-      if (kSpec >= 0 || testEnDevIci) {
++      // Le test se pose sur le PREMIER créneau de nage du plan — une propriété, jamais un numéro
++      // de semaine (§2a). Les paliers restent en spec et démarrent au pas 1.
++      const testIci = lay.nTest === 1 && premierDuSlot;
++      if (kSpec >= 0 || testIci) {
+         // `step` est l'index dans la PROGRESSION COMPLÈTE (test compris) : le test vaut 0, les
+         // paliers de spec suivent — avec `testEnDev`, le k-ième créneau de spec est le pas k+1.
+-        const step = testEnDevIci ? 0 : lay.testEnDev ? kSpec + 1 : kSpec;
++        const step = testIci ? 0 : kSpec + lay.nTest;
+         const cible = Math.max(200, Math.round(palierDistanceM(g, step, lay.nProgression) / 50) * 50);
+         // D3 (arbitrage « je ne sais pas n'est pas une valeur », 16/08/2026) — QUAND LA CONTINUITÉ
+         // N'EST PAS MESURÉE, LA PREMIÈRE SÉANCE EST UN TEST, PAS UN PALIER.
