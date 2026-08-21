@@ -22,6 +22,7 @@ import { TrainingReasoningEngine } from "../engine/reasoningEngine.ts";
 import { renderSess, stepMeters, stepWorkMin, zoneSpeedRatio, type PaceRefs, type Refs } from "./renderer.ts";
 import { sessionLoad, intensitySplit, zoneClass, type AthleteRefs } from "../engine/loadModel.ts";
 import { T2_DPLUS_GROWTH, T2_DMOINS_GROWTH, T3_ECCENTRIC_RECOVERY, TRAIL_ACCESS, syncReturnRecovery } from "../engine/trailModel.ts";
+import { PLANCHER_FREQ, PLANCHER_BUDGET_MIN, plancherFrequenceSemaine, seancesDiscipline } from "../engine/plancherFrequence.ts";
 import { buildDays, type GenDay } from "./weekBuilder.ts";
 import { buildSessions } from "./sessionLibrary.ts";
 import { predictRace, courseProfileOf, legProfileOf, raceBikeBand, bikeIFShift, marathonPaceBand, raceRunBand } from "../engine/predictor.ts";
@@ -4677,6 +4678,53 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
                 why: "La cible vient du partage du temps de ta COURSE, corrigé pour la natation — la technique se perd par la fréquence, pas par le volume, donc on nage plus que sa part de chrono. Ce que tu lis est ce que ton plan livre : l'écart vient de la structure de ta semaine (combien de créneaux portent quelle discipline), pas d'un réglage — le forcer reviendrait à prendre des minutes sous des planchers de séance qui existent pour te protéger.",
               });
             }
+          }
+        }
+      }
+
+      // PLANCHER DE FRÉQUENCE (arbitrage « DEUX EST LA BORNE, TROIS EST LA CIBLE », 21/08/2026)
+      // — LA FRÉQUENCE SE PUBLIE, ELLE NE SE FORCE PAS.
+      //
+      // Descripteur, donc APRÈS le point fixe et lu sur le plan LIVRÉ (T-16c) : le mettre dans
+      // la boucle le ferait participer à ce qu'il décrit. Il n'y a AUCUNE passe qui rattrape une
+      // semaine — le module dit pourquoi (`plancherFrequence.ts`) : la borne existe pour BORDER
+      // les pièces à venir, et corriger les semaines qui la franchissent aujourd'hui est un
+      // correctif d'allocation sur les profils à 3-5 séances, pas un réglage de fréquence.
+      //
+      // Émis seulement quand il y a quelque chose à dire (au moins une semaine sous la cible),
+      // et le message nomme la DISCIPLINE la plus basse et ce que la semaine peut porter — le
+      // canal `warnings` de R11.2 dit d'informer, pas de bavarder (O-17).
+      {
+        const disciplines = (ALLOC_CIBLE[a.sport as string] ? ["sw", "bk", "rn"] : []) as string[];
+        if (disciplines.length) {
+          const NOMD: Record<string, string> = { bk: "vélo", rn: "course", sw: "natation" };
+          let pireDisc = "", pireN = Infinity, sousCible = 0, sousDur = 0, charges = 0;
+          for (const w of plan.weeks) {
+            if (w.isRecup || w.phase?.id === "taper") continue;
+            charges++;
+            const nSeances = w.days.reduce((t, d) => t + d.sessions.filter((sx) => sx.d !== "rs" && !sx.race).length, 0);
+            const niv = plancherFrequenceSemaine(nSeances);
+            for (const d0 of disciplines) {
+              const n = seancesDiscipline(w, d0);
+              if (n < niv.cible) sousCible++;
+              if (n < niv.dur) sousDur++;
+              if (n < pireN) { pireN = n; pireDisc = d0; }
+            }
+          }
+          if (charges > 0 && sousCible > 0) {
+            r.decisions.push({
+              id: "frequence",
+              what: "Fréquence par discipline",
+              val: sousCible + " semaine-discipline(s) sous la cible de " + PLANCHER_FREQ.cible
+                + " séances — au plus bas, " + NOMD[pireDisc] + " à " + pireN + (pireN > 1 ? " séances" : " séance")
+                + (sousDur > 0 ? " · " + sousDur + " semaine(s) sans aucune séance d'une discipline" : ""),
+              why: "La technique se maintient par la FRÉQUENCE, pas par le volume : c'est pour ça que "
+                + "tu nages plus que ta part de chrono. Ce plan ne force rien — avec " + PLANCHER_BUDGET_MIN
+                + " séances par semaine, deux séances par discipline deviennent tenables ; en dessous, "
+                + "donner deux créneaux à une discipline qui pèse un huitième de ta course reviendrait à "
+                + "les prendre à celles qui en pèsent sept. Le levier est le nombre de créneaux, donc le "
+                + "doublage, pas un réglage de répartition.",
+            });
           }
         }
       }

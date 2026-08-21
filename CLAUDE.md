@@ -580,6 +580,48 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**LE PLANCHER DE FRÉQUENCE livré — la valeur a bougé une TROISIÈME fois, et le plancher a refusé
+la pièce AVANT qu'elle ne vide deux semaines de natation** (arbitrage « DEUX EST LA BORNE, TROIS
+EST LA CIBLE », 21/08/2026 — voir `BUGS_OUVERTS.md` « LE PLANCHER DE FRÉQUENCE », module
+`src/engine/plancherFrequence.ts`, garde **T-60**, pièce **C3** livrée bornée) : le lot précédent
+avait mesuré que **3** condamnait 42 % des semaines du profil réel, le fondateur avait redescendu
+à **2** ; mesuré sur le CORPUS, **2 condamne 64,2 % des 3 522 semaines de charge tri** — le même
+refus, un cran plus bas. **Ce qui sépare les populations n'est pas l'athlète, c'est le BUDGET** :
+sous 2 nages 70,9 % à ≤5 séances · 63,7 % à 6-7 · **0,0 % dès 8**. Trois niveaux livrés : **ZÉRO**
+(dérivé, aucun nombre à choisir — jamais une semaine de charge sans une seule séance d'une
+discipline de l'épreuve), **DEUX** (là où le budget le rend tenable), **TROIS** (cible publiée par
+la décision `frequence`, jamais forcée — O-17). **Le domaine n'est PAS `swim_limit`** : la clé
+n'est déclarée que pour le sport `swim`, elle n'existe pas en tri ; et la borne d'épaule qu'invoque
+l'analogie ne lit PAS un adjectif déclaré mais une continuité MESURÉE (O-85 §1). Le proxy mesuré ne
+sépare d'ailleurs rien — nage limitante 63,2 % sous 2, les autres **77,4 %**. **Il n'est pas le
+premier** : `C29` (affûtage) et `S7_COLD` (swimrun) tiennent déjà des planchers de fréquence, et la
+forme min/cible est reprise de `S7`. **⚠ L'unité décide du verdict** : sans les legs de brick,
+119 semaines sont à zéro ; avec, **30** — `seancesDiscipline` est le point unique. **Le plancher a
+fait son travail avant la pièce** : `C3` rejouée telle quelle vidait complètement la natation de
+`G/tri/Full/doubles` S12 et S14 (ZÉRO 30 → 32). Elle consulte donc un neuvième paramètre,
+`creneauxDuSlot` — convertir le premier exemplaire d'un créneau seulement s'il en reste un second.
+**Livrée bornée : pic 11,2 → 11,5 h · vélo 39,9 → 43,3 % · nage 28,0 → 26,5 % · ZÉRO intact à 30 ·
+sous-plancher 4 → 1** — strictement meilleure que la version non bornée sur tous les axes sauf
+l'ampleur de l'allocation. **⚠ La surprise : la discipline sous le plancher est le VÉLO**, pas la
+nage (REEL S4/S14/S24 à 1 séance de vélo) — C3, qui ajoute du vélo, en répare trois ; la prédiction
+« la nage est la victime par défaut » ne tient pas sur cet axe. **Deux défauts de mon écriture,
+publiés** : ma première borne passait le BUDGET de la semaine et était INERTE par construction (le
+doublage n'ajoute pas de `GenDay`, le compte plafonnait à 7 pour un seuil à 8 — règle 15 dans mon
+propre instrument) ; et **le module manquait au BUNDLE** — `buildApp.mjs` maintient sa liste
+`ORDER` à la main, le bundle a reçu les appels sans les définitions et a annoncé « ✓ bundle
+injecté », c'est `audit:v1` qui l'a dit à **108 erreurs**. **Trouvé en chemin** : le ticket de
+`T-58` portait « 2 plans sur 68 », jamais re-mesuré — `HEAD` en rendait **3**, REEL compris ; le
+creux de REEL est ANTÉRIEUR à C3 (vérifié à facteur unique) et C3 le creuse de 18 min. Le compte
+est désormais un cliquet publié. **T-57 réécrit sur la POPULATION** (V2.1 comptée sur 217 plans
+dont 54 en tri, 0 sans descente) : ses deux moitiés épinglaient un ÉTAT de REEL, et le correctif le
+moins coûteux qui les gardait vertes était d'abaisser la cible — le défaut même que `manque` expose
+(règle 19). Cliquets ré-épinglés avec cause : S5 504 → **505** · nage seuil du pic 410 901 →
+**411 251 m** (la nage perd du FACILE, la part de seuil monte, C26c coupe moins ; VO2 immobile).
+**T-60 contre-prouvée sur des variantes RÉELLES** — C3 sans sa borne → ZÉRO 32 · C3 en même parité
+→ 13 sous le plancher. Batterie **11/11**, golden **990 recapturé (188 profils, toute la population
+tri ; 186 ne changent que par la décision ajoutée — seuls 2 profils doublent)**, `audit:v1` 459 à 0,
+`lotPhysio` 31 verts · 25 rouges attendus · 0 régression.
+
 **ALTERNANCE `facile2` — la pièce ÉCRITE, MESURÉE, RETIRÉE le même jour : l'alternance qu'elle
 devait poser EXISTE DÉJÀ, et l'y ajouter EST la conversion totale que le fondateur réservait**
 (ALTERNANCE_FACILE2.md, 20/08/2026 — voir `BUGS_OUVERTS.md` « ALTERNANCE `facile2` », patch

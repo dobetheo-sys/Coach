@@ -37,6 +37,7 @@ import { toProfile } from "../src/app/bridge.ts";
 import { riegelExponent, riegelSecWith, RUN_KM, marathonPaceBand, RN_MARA_RATIO_PLANCHER, TRI_SWIM, SWIM_RACE } from "../src/engine/predictor.ts";
 import { plancherDeDignite } from "../src/generator/planGenerator.ts";
 import { swimWeeklyLoadCapM } from "../src/engine/swimContinuity.ts";
+import { PLANCHER_FREQ, PLANCHER_BUDGET_MIN, plancherFrequenceSemaine, seancesDiscipline } from "../src/engine/plancherFrequence.ts";
 import { profiles as goldenProfiles } from "./goldenMaster.mjs";
 import { estCharge } from "./lib/planMetrics.mjs";
 
@@ -1053,7 +1054,11 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 // S5 502 → **504** : deux profils de plus où `min(plafonds)` ne retrouve pas le pic livré — la
 // moitié ouverte d'O-35 (ce que le point fixe RETIRE n'est porté par aucun maillon), et le lot
 // déplace ce qu'il retire.
-const SCEAU_ATTENDU = { S1: 4, S4: 341, S5: 504 };
+// PLANCHER DE FRÉQUENCE + C3 (21/08/2026) — S5 504 → **505**, un profil de plus où
+// `min(plafonds)` ne retrouve pas le pic livré. C'est la moitié ouverte d'O-35 (ce que le point
+// fixe RETIRE n'est porté par aucun maillon), et la pièce C3 déplace ce qui est retiré :
+// attribué par expérience à facteur unique — la pièce neutralisée, S5 revient à 504.
+const SCEAU_ATTENDU = { S1: 4, S4: 341, S5: 505 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;
@@ -1928,7 +1933,13 @@ T("T-50", "vert", "PROPRIÉTÉ — la bande d'allure affichée se redérive du p
 // et la nage seuil cèdent une part de la place. C'est la conséquence VOULUE d'un rééquilibrage
 // de répartition, pas une dérive — et elle est épinglée pour qu'un mouvement futur ait à
 // s'expliquer.
-const PIC_ATTENDU = { vo2Min: 8244, seuilM: 410901, profils: 188 };
+// PLANCHER DE FRÉQUENCE + C3 (21/08/2026) — nage seuil 410 901 → **411 251 m** (+350, soit
+// +0,09 %). La pièce C3 convertit une nage de RÉCUPÉRATION en endurance vélo une semaine sur
+// deux : la nage perd du volume FACILE, la part de seuil dans ce qui reste monte, et C26c coupe
+// donc un peu moins. Le VO2 ne bouge pas (8 244), ce qui est cohérent — la pièce ne touche aucun
+// créneau de qualité. Attribué par expérience à facteur unique : pièce neutralisée, le compte
+// revient à 410 901.
+const PIC_ATTENDU = { vo2Min: 8244, seuilM: 411251, profils: 188 };
 T("T-48", "vert", "la composition du PIC en tri est épinglée : le VO2 a cédé, la nage seuil a gagné (C26c)", () => {
   let vo2 = 0, seuil = 0, profils = 0;
   for (const { key, plan } of goldenAvecMoteur()) {
@@ -2443,11 +2454,26 @@ T("T-56", "vert", "aucune récup ne dépasse ses charges adjacentes, par type ni
  * PRODUISAIT le manque de REEL. Arbitrage « V2.1 reçoit la borne » : la cible descend
  * (13,0 → 9,7) et sur REEL le manque n'est pas masqué, il N'EXISTE PLUS. Quatre moitiés :
  *
- *   (1) REEL : la décision V2.1 existe, sa cible comptée est SOUS 11 h (l'ancienne cible à
- *       13,0 — borne non comptée — rougit) et son avant-borne reste 12,5-13,5 h (c'est bien la
- *       borne qui fait la descente, pas un changement de courbe) ;
- *   (2) REEL : la décision « manque » a DISPARU — le plan cesse de promettre ce qu'il ne peut
- *       pas placer ; si elle revient avec ≥ 1 h/sem, la construction a re-perdu la borne ;
+ * ⚠ RÉÉCRIT LE 21/08/2026, ET LE MOTIF EST LA LEÇON DU CRITÈRE. Mes moitiés (1) et (2) épinglaient
+ * un ÉTAT DE REEL — « la décision V2.1 existe » et « le manque a disparu » — là où la propriété
+ * est « la borne est comptée dans la CONSTRUCTION » et « l'écart se lit sur la cible de BOUCLE ».
+ * La pièce `C3` l'a démontré : elle retire une nage de récupération une semaine sur deux, le clone
+ * saturé cesse d'atteindre le plafond d'épaule, **la borne cesse de MORDRE sur REEL sans avoir été
+ * perdue nulle part** — et les deux moitiés rougissaient sur un progrès. Pire, le correctif le
+ * moins coûteux qui les garde vertes est d'ABAISSER la cible jusqu'au livré, c'est-à-dire le
+ * défaut exact que la décision `manque` existe pour exposer (règle 19). Les deux moitiés portent
+ * désormais sur la POPULATION, et REEL n'est plus qu'un TÉMOIN dont l'état est épinglé avec sa
+ * cause — comme un cliquet.
+ *
+ *   (1) POPULATION : la borne est comptée dans la construction — au moins 50 plans portent la
+ *       décision V2.1 (dont 20 en tri), et sur CHACUN la cible comptée est strictement sous la
+ *       cible d'avant-borne. Mesuré : 217 plans, dont 54 en tri, 0 sans descente. Une constante
+ *       gelée ne satisfait pas ce critère : il faut que la sonde produise deux valeurs
+ *       différentes, donc qu'elle applique quelque chose.
+ *   (2) REEL, témoin : le manque, quand il existe, se lit sur la cible de BOUCLE et non sur la
+ *       courbe rabattue. Épinglé à 1,5 h/sem (13,0 visés · 11,5 livrés) ; au-delà de 2,5 la
+ *       construction a re-perdu la borne, et un manque qui lirait la courbe rabattue
+ *       s'effondrerait vers son quantum de 0,5 ;
  *   (3) REEL : le maillon « structurel » reste sous 11 h et jamais sous le pic livré (le livré
  *       est un témoin, règle 15) ;
  *   (4) POPULATION, les deux branches : des plans DÉCLARENT encore (≥ 50 — mesuré 90/986 après
@@ -2456,13 +2482,23 @@ T("T-56", "vert", "aucune récup ne dépasse ses charges adjacentes, par type ni
  *       vers son quantum de 0,5, et ce plancher est ce qui garde « lit la cible » maintenant
  *       que REEL ne déclare plus (règle 19).
  */
-T("T-57", "vert", "V2.1 compte la borne d'épaule ; le manque de REEL n'existe plus, et les deux branches vivent", () => {
+T("T-57", "vert", "la borne d'épaule est comptée dans la CONSTRUCTION (population) ; le manque lit la cible de boucle, et les deux branches vivent", () => {
   const pb = [];
   const reel = goldenAvecMoteur().find((x) => x.key.startsWith("REEL"));
   if (!reel) return { ok: false, detail: "fixture REEL absente" };
+  let v21 = 0, v21tri = 0, v21ko = 0;
+  for (const { sport, plan } of goldenAvecMoteur()) {
+    const d = (plan._v2?.decisions ?? []).find((x) => x.id === "V2.1");
+    if (!d) continue;
+    v21++; if (sport === "tri") v21tri++;
+    const mm = String(d.val).match(/([\d.]+)h \(au lieu de ([\d.]+)h\)/);
+    if (!(mm && parseFloat(mm[1]) < parseFloat(mm[2]))) v21ko++;
+  }
+  if (v21 < 50) pb.push(`(1) ${v21} plan(s) portent V2.1 — la sonde ne borne plus rien dans la construction`);
+  if (v21tri < 20) pb.push(`(1) ${v21tri} plan(s) tri portent V2.1 — la population qui nage a disparu du champ`);
+  if (v21ko > 0) pb.push(`(1) ${v21ko} décision(s) V2.1 dont la cible comptée n'est pas SOUS la cible d'avant-borne`);
   const dV = (reel.plan._v2?.decisions ?? []).find((x) => x.id === "V2.1");
-  if (!dV) pb.push("(1) la décision V2.1 a disparu de REEL — la sonde ne borne plus rien");
-  else {
+  if (dV) {
     const m = String(dV.val).match(/([\d.]+)h \(au lieu de ([\d.]+)h\)/);
     const cible = parseFloat(m?.[1] ?? "0"), avant = parseFloat(m?.[2] ?? "0");
     // ⚠ SEUIL ABSOLU RETIRÉ (20/08/2026, lot volume+répartition) : ma première écriture exigeait
@@ -2473,11 +2509,11 @@ T("T-57", "vert", "V2.1 compte la borne d'épaule ; le manque de REEL n'existe p
     if (!(cible > 0 && cible < avant * 0.95)) pb.push(`(1) cible V2.1 ${cible} h contre ${avant} h d'avant-borne — la borne d'épaule n'est plus comptée dans la CONSTRUCTION`);
     if (!(avant >= 12.5 && avant <= 13.5)) pb.push(`(1) l'avant-borne (${avant}) n'est plus la cible de boucle 12,5-13,5 — la descente vient d'ailleurs que de la borne`);
   }
+  // (2) TÉMOIN — l'état de REEL est épinglé avec sa cause, il n'est plus la propriété.
   const dM = (reel.plan._v2?.decisions ?? []).find((x) => x.id === "manque");
-  if (dM) {
-    const ecart = parseFloat(String(dM.val).match(/écart ([\d,]+)/)?.[1]?.replace(",", ".") ?? "0");
-    if (ecart >= 1) pb.push(`(2) REEL redéclare un manque de ${ecart} h/sem — la construction a re-perdu la borne`);
-  }
+  const ecartReel = dM ? parseFloat(String(dM.val).match(/écart ([\d,]+)/)?.[1]?.replace(",", ".") ?? "0") : 0;
+  if (ecartReel > 2.5) pb.push(`(2) REEL déclare un manque de ${ecartReel} h/sem (cliquet 2,5) — la construction a re-perdu la borne`);
+  if (dM && ecartReel > 0 && ecartReel < 0.6) pb.push(`(2) le manque de REEL vaut ${ecartReel} h/sem — au quantum du seuil : il lit la courbe RABATTUE, pas la cible de boucle`);
   const st = (reel.plan._r202?.plafonds ?? []).find((x) => x.id === "structurel");
   const pic = reel.plan.volPeak || 0;
   if (!st) pb.push("(3) maillon structurel absent");
@@ -2494,7 +2530,7 @@ T("T-57", "vert", "V2.1 compte la borne d'épaule ; le manque de REEL n'existe p
   if (avec < 50) pb.push(`(4) ${avec} plan(s) déclarent un manque — la déclaration a disparu du corpus`);
   if (sans < 500) pb.push(`(4) ${sans} plan(s) sans manque — la décision est devenue inconditionnelle`);
   if (ecartMax < 2) pb.push(`(4) écart max déclaré ${ecartMax.toFixed(1)} h/sem — un manque qui lit la courbe rabattue s'effondre vers son quantum`);
-  return { ok: pb.length === 0, detail: pb.length ? pb.join(" · ") : `REEL V2.1 « ${dV.val} » · manque absent · structurel ${(+st.brut).toFixed(1)} h · corpus ${avec} déclarent (écart max ${ecartMax.toFixed(1)}) / ${sans} rien à déclarer` };
+  return { ok: pb.length === 0, detail: pb.length ? pb.join(" · ") : `V2.1 comptée sur ${v21} plans (dont tri ${v21tri}), 0 sans descente · REEL ${dV ? "« " + dV.val + " »" : "V2.1 absente (la borne ne mord plus : moins de nage)"} · manque REEL ${dM ? ecartReel + " h/sem" : "absent"} · structurel ${(+st.brut).toFixed(1)} h · corpus ${avec} déclarent (écart max ${ecartMax.toFixed(1)}) / ${sans} rien à déclarer` };
 });
 
 /**
@@ -2541,7 +2577,13 @@ T("T-58", "rouge", "le bloc final est un PLATEAU : aucune charge postérieure au
   // après leur maximum), pas sur un nombre rond : ma première écriture exigeait 100 et rendait
   // la sonde rouge pour insuffisance de population, c'est-à-dire un verdict sur l'instrument.
   if (pop < 50) return { ok: false, detail: `POPULATION : ${pop} plans avec un après-maximum — la sonde ne mesure plus` };
-  return { ok: ko.length === 0, detail: ko.length ? `${ko.length}/${pop} plans creusent après leur maximum · ${ko.sort((a, b) => parseInt(b) - parseInt(a)).slice(0, 12).join(" · ")}` : `${pop} plans avec un après-maximum · 0 creux` };
+  // CLIQUET DE COMPTE (21/08/2026) — le banc ne compare que le ROUGE au ROUGE : un test attendu
+  // rouge peut donc voir son compte doubler sans que rien ne le dise, et c'est arrivé. Le ticket
+  // de T-58 portait « 2 plans sur 68 », chiffre écrit le jour de sa pose et jamais re-mesuré ;
+  // `HEAD` en rendait 3, REEL compris. Le compte est désormais ÉPINGLÉ dans la sortie.
+  const CLIQUET_T58 = 3;
+  const derive = ko.length > CLIQUET_T58 ? ` · ✖ CLIQUET ${CLIQUET_T58} DÉPASSÉ` : "";
+  return { ok: ko.length === 0, detail: ko.length ? `${ko.length}/${pop} plans creusent après leur maximum (cliquet ${CLIQUET_T58})${derive} · ${ko.sort((a, b) => parseInt(b) - parseInt(a)).slice(0, 12).join(" · ")}` : `${pop} plans avec un après-maximum · 0 creux` };
 });
 
 /**
@@ -2634,9 +2676,87 @@ T("T-59", "rouge", "le lot volume+répartition : longue CAP en spec/pic · longu
   return { ok: pb.length === 0, detail: pb.length ? pb.slice(0, 4).join(" · ") : `${pop} profils tri (${serres} à créneau unique, hors champ de (1) · ${popDbl} livrant des jours doubles) · longue CAP en spec ${lrSpec} · longue vélo ${lbHors} · jours doubles mixtes ${dblMixte}/${popDbl} · répartition publiée ${alloc}` };
 });
 
+/**
+ * T-60 (« DEUX EST LA BORNE, TROIS EST LA CIBLE », arbitrage du fondateur 21/08/2026) — LE
+ * PLANCHER DE FRÉQUENCE, SES TROIS NIVEAUX, ET LA POPULATION DE CHACUN.
+ *
+ * Le critère lit `seancesDiscipline` — le MÊME comptage que le module et que la décision qui le
+ * publie (R11.1). Ce n'est pas un détail : selon qu'un leg de brick crédite ou non sa
+ * discipline, le corpus porte **119** ou **30** semaines à zéro. Un critère qui recompterait à sa
+ * façon mesurerait son propre comptage.
+ *
+ *   (1) ZÉRO — cliquet. 30 semaines de charge tri portent zéro séance d'une discipline de
+ *       l'épreuve (22 sans nage, 8 sans course, 0 sans vélo). AUCUNE ne porte de drapeau
+ *       médical, de blessure ni de douleur : ce n'est pas une protection qui retire la
+ *       discipline, c'est le budget — toutes sont à ≤ 5 séances/semaine. Déclaré (O-98) et tenu
+ *       au compte, pas corrigé : le correctif est un arbitrage d'allocation sur les profils les
+ *       plus plafonnés, ceux qui « tombent dans TOUTES les coupes à la fois ».
+ *
+ *   (2) PLANCHER — la borne mord là où le budget la rend tenable, et elle est VÉRIFIÉE À ZÉRO :
+ *       au-dessus de `PLANCHER_BUDGET_MIN` séances, aucune semaine du corpus ne descend sous 2
+ *       séances d'une discipline. C'est ce qui distingue ce plancher de celui que le fondateur
+ *       avait d'abord nommé : il ne condamne rien.
+ *
+ *   (3) POPULATION — « un zéro a besoin de sa population » : (2) rend zéro, il faut donc prouver
+ *       que la mesure a EU LIEU. Le corpus doit contenir des semaines au-dessus du budget
+ *       (mesuré : 24, toutes sur REEL) et des semaines en dessous (mesuré : 3 498), sinon (2)
+ *       est vrai par vacuité.
+ *
+ *   (4) CIBLE — publiée, jamais forcée : la décision `frequence` existe sur les plans qui ont
+ *       quelque chose à dire, et le compte qu'elle affiche se redérive du plan LIVRÉ (T-16d).
+ *
+ * CONTRE-PROUVÉ SUR DES VARIANTES RÉELLES, pas sur des mutations : la variante « C3 en semaines
+ * IMPAIRES » (la pièce posée en phase avec B2) rend **1 semaine à ZÉRO nage et 9 semaines sous
+ * le plancher** sur le profil réel, quand « C3 en semaines PAIRES » en rend **0 et 0**. Le
+ * plancher admet la pièce livrée et refuse celle qui empile les deux conversions sur la même
+ * parité — c'est-à-dire exactement le travail que le §2 de l'arbitrage lui assigne.
+ */
+T("T-60", "rouge", "le plancher de fréquence : jamais zéro discipline · 2 tenu là où le budget le permet · la cible publiée", () => {
+  const pb = [];
+  let zero = 0, zeroSansDrapeau = 0, sousPlancher = 0, popHaut = 0, popBas = 0, avecDecision = 0, plans = 0;
+  const exZ = [], exP = [];
+  for (const { key, plan, a } of goldenAvecMoteur()) {
+    if (plan?._v2?.profile?.sport !== "tri" && a?.sport !== "tri" && !/\/tri\/|^tri\//.test(key)) continue;
+    plans++;
+    if ((plan._v2?.decisions ?? []).some((d) => d.id === "frequence")) avecDecision++;
+    for (const w of plan.weeks ?? []) {
+      if (w.isRecup || w.phase?.id === "taper") continue;
+      const nSeances = (w.days ?? []).reduce((t, d) => t + (d.sessions ?? []).filter((sx) => sx.d !== "rs" && !sx.race).length, 0);
+      const niv = plancherFrequenceSemaine(nSeances);
+      if (nSeances >= PLANCHER_BUDGET_MIN) popHaut++; else popBas++;
+      for (const d0 of ["sw", "bk", "rn"]) {
+        const n = seancesDiscipline(w, d0);
+        if (n < niv.dur) {
+          zero++;
+          // Une discipline retirée par une PROTECTION n'est pas une infraction : le critère doit
+          // dire ce qu'il fait quand le type est ABSENT pour une bonne raison (leçon des cinq
+          // occurrences du 18/08), sinon il mesure une règle de sécurité et l'appelle un défaut.
+          const protege = !!(a?.med_flag || a?.pain || a?.injury || a?.inj_zone);
+          if (!protege) { zeroSansDrapeau++; if (exZ.length < 3) exZ.push(`${key} S${w.num} ${d0} (${nSeances} séances)`); }
+        } else if (n < niv.plancher) { sousPlancher++; if (exP.length < 3) exP.push(`${key} S${w.num} ${d0} à ${n} (${nSeances} séances)`); }
+      }
+    }
+  }
+  if (popHaut < 10) pb.push(`POPULATION : ${popHaut} semaine(s) au-dessus du budget de ${PLANCHER_BUDGET_MIN} — (2) serait vrai par vacuité`);
+  if (popBas < 500) pb.push(`POPULATION : ${popBas} semaine(s) sous le budget — le corpus s'est effondré`);
+  const CLIQUET_SOUS_PLANCHER = 1;
+  if (sousPlancher > CLIQUET_SOUS_PLANCHER) pb.push(`(2) ${sousPlancher} semaine-discipline(s) sous le plancher de ${PLANCHER_FREQ.plancher} alors que le budget le permet — cliquet ${CLIQUET_SOUS_PLANCHER} · ${exP.join(" · ")}`);
+  else if (sousPlancher > 0) pb.push(`(2) ${sousPlancher} semaine-discipline(s) sous le plancher de ${PLANCHER_FREQ.plancher} (cliquet ${CLIQUET_SOUS_PLANCHER}, O-98) · ${exP.join(" · ")}`);
+  if (avecDecision < 50) pb.push(`(4) ${avecDecision} plan(s) tri publient la décision « frequence » sur ${plans}`);
+  const CLIQUET_ZERO = 30;
+  if (zeroSansDrapeau > CLIQUET_ZERO) pb.push(`(1) ${zeroSansDrapeau} semaine(s) à zéro séance d'une discipline, sans drapeau — cliquet ${CLIQUET_ZERO} · ${exZ.join(" · ")}`);
+  else if (zeroSansDrapeau > 0) pb.push(`(1) ${zeroSansDrapeau} semaine(s) à ZÉRO séance d'une discipline de l'épreuve (cliquet ${CLIQUET_ZERO}, O-98) · ${exZ.join(" · ")}`);
+  return {
+    ok: pb.length === 0,
+    detail: pb.length ? pb.join(" · ")
+      : `${plans} plans tri · ${popHaut} sem au-dessus du budget / ${popBas} en dessous · 0 sous le plancher · ${avecDecision} publient la cible`,
+  };
+});
+
 const ROUGES_ATTENDUS = {
+  "T-60": "O-98 — les **30 semaines à ZÉRO** (22 sans nage, 8 sans course, 0 sans vélo) sont un défaut d'ALLOCATION sur les profils à 3-5 séances, pas un défaut de fréquence : avec 3 créneaux pour 3 disciplines, le plan en sacrifie une plutôt que de répartir. Aucune ne porte de drapeau médical, de blessure ni de douleur — ce n'est donc pas une protection. Cliquet posé à 30 : il ne peut plus monter. Le correctif touche la population la plus plafonnée du corpus et se décide séparément.",
   "T-59": "A2 — résidu MESURÉ et BORNÉ : **5 plans sur 104**, tous des `tri/Full` à disponibilité serrée (`vol-min` 3 séances, `off-2j`, `dispo: weekend`, `dispo: partielle`, `poids-levier`). Sur eux, les deux créneaux faciles course de la spécifique portent de la NATATION — la fréquence de nage du tri (R13.3) y a déjà pris la place, et poser la sortie longue là reviendrait à la prendre à la discipline limitante. C'est un ARBITRAGE de priorité sur budget serré (quelle discipline cède quand il n'y a que 6 créneaux pour 3 sports ?), pas un défaut de la pièce : le forcer serait la faute que le garde-fou 4 du lot nomme (« un correctif qui demande des exclusions successives se bat contre quelque chose de structurel : s'arrêter et rapporter »).",
-  "T-58": "O-72 révisé — résidu MESURÉ : **2 plans sur 68**, `O-21b/run/10k` à 7:00 et 8:30/km, S6 à 21-24 min sous la ligne. Ce sont les deux profils LENTS de la passe O-21b, c'est-à-dire la population où l'inversion sur l'axe ALLURE est déclarée ouverte (O-21, résidu publié) : à trancher avec elle, pas ici. Tous les autres creux du corpus valent ≤ 15 min, c'est-à-dire la quantification des séances.",
+  "T-58": "O-72 révisé — résidu MESURÉ et ÉPINGLÉ à **3 plans sur 67** : `O-21b/run/10k` à 7:00 et 8:30/km (S6, 21-24 min sous la ligne), plus **REEL** (S38, 37 min sur `HEAD`, 55 min avec la pièce `C3`). ⚠ Le ticket portait « 2 plans sur 68 » — chiffre écrit le jour de la pose et JAMAIS re-mesuré : `HEAD` en rendait déjà 3, REEL compris. Le creux de REEL est donc ANTÉRIEUR à C3, que la mesure à facteur unique confirme (37 min avec la pièce neutralisée) ; C3 le CREUSE de 18 min, il ne le crée pas. Les deux profils lents sont la population où l'inversion sur l'axe ALLURE est déclarée ouverte (O-21) : à trancher avec elle. Le compte est maintenant un cliquet dans la sortie du test — un rouge attendu ne dérive plus en silence.",
   "T-44": "O-66 — la coupe classe en MINUTES une contrainte qui compte des SÉANCES : arbitrage rendu le 17/08, à faire APRÈS le merge et en premier",
   "T-34": "O-43 — la conversion déplace ce qui est prescrit (pic +9 %, fréquence) : filtre du fondateur, une seule issue le passe",
   "T-01": "A-01 — sessionIntensity() importe zoneClass() au lieu de sa copie (+ V-08 pour sw.aero)",

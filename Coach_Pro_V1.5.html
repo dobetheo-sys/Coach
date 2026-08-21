@@ -2280,6 +2280,144 @@ function rangCession(
   return 1;                                                          // …la nage seuil après lui
 }
 
+// ===== src/engine/plancherFrequence.ts =====
+/**
+ * PLANCHER DE FRÉQUENCE — « DEUX EST LA BORNE, TROIS EST LA CIBLE » (arbitrage du fondateur,
+ * PLANCHER_FREQUENCE.md, 21/08/2026), ET LA MESURE A DÉPLACÉ LES DEUX VALEURS UNE FOIS DE PLUS.
+ *
+ * Le lot précédent avait mesuré que le plancher de TROIS nages que le fondateur avait nommé
+ * était déjà franchi 13 semaines sur 31 avant toute conversion. Il en a tiré la bonne
+ * conclusion — *« poser 3 maintenant, ce serait déclarer 42 % des semaines de charge en
+ * infraction : un plancher qui condamne l'existant au lieu de border le futur »* — et a
+ * redescendu la borne à 2, la cible à 3.
+ *
+ * **Le même raisonnement, appliqué au CORPUS et non au seul profil du fondateur, déplace encore
+ * les valeurs.** Mesuré sur les 3 522 semaines de charge des 188 profils tri du golden :
+ *
+ * ```
+ * sous 3 nages   3 502 / 3 522   99,4 %      ← la « cible » n'est pas approchée, elle est hors d'atteinte
+ * sous 2 nages   2 261 / 3 522   64,2 %      ← poser 2 en dur condamnerait DEUX TIERS du corpus
+ * à ZÉRO nage       22 / 3 522    0,6 %
+ * ```
+ *
+ * Poser « 2 en dur » sans condition referait donc, un cran plus bas, exactement ce que le
+ * fondateur refusait pour 3. Et la coupe qui explique tout est le BUDGET DE SÉANCES, pas
+ * l'athlète :
+ *
+ * ```
+ * ≤5 séances/sem   nage moy 1,24   ·   sous 2 : 70,9 %
+ * 6-7 séances      nage moy 1,37   ·   sous 2 : 63,7 %
+ * 8-9 séances      nage moy 3,05   ·   sous 2 :  0,0 %      ← le plancher y est DÉJÀ tenu
+ * ≥10 séances      nage moy 2,00   ·   sous 2 :  0,0 %
+ * ```
+ *
+ * Avec 6 créneaux pour 3 disciplines, deux nages, c'est un tiers des séances pour une
+ * discipline qui pèse 12 % du chrono : ce n'est pas un défaut, c'est l'allocation qui fait son
+ * travail. Au-dessus de 8 séances, le plancher est tenu par 100 % du corpus **sans qu'aucune
+ * règle ne l'impose** — il ne condamne rien et il borne ce qui viendrait le franchir. C'est
+ * exactement l'usage que le document lui assigne : *« posé avant, il borne la pièce ; posé
+ * après, il est franchi par elle. »*
+ *
+ * TROIS NIVEAUX, ET CHACUN PORTE SA MESURE :
+ *
+ *   ZÉRO (dur)      une semaine de charge ne porte JAMAIS zéro séance d'une discipline de
+ *                   l'épreuve. C'est la borne qui fait le travail que le §2 décrit — *« une
+ *                   semaine sans une seule nage est inacceptable quel que soit l'arbitrage »* —
+ *                   et elle est DÉRIVÉE : aucun nombre à choisir, elle vaut pour les trois
+ *                   disciplines et pour tout sport multi-disciplines.
+ *
+ *   DEUX (plancher) sur la discipline limitante, **quand le budget de la semaine le permet**.
+ *                   `PLANCHER_BUDGET_MIN` est le point de rupture MESURÉ, pas un choix : c'est
+ *                   la valeur au-dessus de laquelle le corpus tient déjà le plancher.
+ *
+ *   TROIS (cible)   publiée, jamais forcée (O-17 : informer plutôt que bloquer). 99,4 % des
+ *                   semaines de charge tri sont dessous ; en faire une contrainte serait
+ *                   réécrire l'allocation par un effet de bord.
+ *
+ * ⚠ CE QUE CE MODULE N'EST PAS. Ce n'est pas une passe : il ne rattrape aucune semaine. Les 30
+ * semaines qui franchissent aujourd'hui le niveau ZÉRO (22 sans nage, 8 sans course) sont
+ * DÉCLARÉES et tenues par un cliquet (`T-60`), pas corrigées — les corriger est un correctif
+ * d'allocation sur les profils à 3-5 séances, c'est-à-dire ceux qui « tombent dans TOUTES les
+ * coupes à la fois », et ça se décide séparément (O-98). Nommer une borne « dure » et ne pas
+ * l'appliquer serait malhonnête si ce n'était pas écrit : c'est écrit.
+ *
+ * ⚠ LE DOMAINE N'EST PAS `swim_limit`, ET LA RAISON VAUT D'ÊTRE LUE. Le §3 du document demande
+ * que le plancher lise `swim_limit`, *« comme la borne d'épaule lit l'expérience »*. Deux
+ * mesures l'écartent :
+ *
+ *   1. **`swim_limit` n'est pas posée en triathlon** — `ANSWER_SCHEMA` la déclare pour le seul
+ *      sport `swim`. Sur le profil du fondateur, la clé n'existe pas ; un plancher qui la lirait
+ *      serait inerte là où il doit border.
+ *   2. **La borne d'épaule NE lit PAS un adjectif déclaré** : elle lit la continuité MESURÉE
+ *      rapportée à la distance de course (O-85 §1, « jamais sur un adjectif auto-déclaré —
+ *      c'est la leçon R14.1, payée quatre fois »). L'analogie du §3 pointe donc vers la mesure,
+ *      pas vers la clé.
+ *
+ * Et le proxy mesuré ne sépare rien : classés par ce ratio, les profils tri dont la nage est
+ * limitante sont sous 2 nages **63,2 %** du temps, les autres **77,4 %** — la classe « nage
+ * limitante » n'est pas celle qui nage le moins. Le domaine du plancher est donc le BUDGET de la
+ * semaine, qui est la seule grandeur que la mesure fait apparaître.
+ *
+ * ⚠ ET IL N'EST PAS LE PREMIER — le §3 posait la question, la réponse est non, deux fois :
+ * `C29`/`C29b`/`C29c` tiennent un plancher de fréquence en AFFÛTAGE (Bosquet 2007, ≥ 80 % des
+ * séances), et `S7_COLD` du swimrun porte déjà la forme à DEUX grandeurs
+ * (`minSessionsPerWeek` / `idealSessionsPerWeek`). La forme retenue ici est celle de `S7` —
+ * borne + cible — parce qu'elle existe déjà dans le dépôt et qu'un troisième vocabulaire pour
+ * la même idée serait la faute que R11.1 interdit.
+ *
+ * ⚠ UNITÉ (règle 14) : le compte est en SÉANCES DE LA DISCIPLINE, **legs de brick compris**.
+ * Ce n'est pas un détail de comptage, c'est le verdict : sans les legs, 119 semaines de charge
+ * tri portent zéro séance d'une discipline ; avec eux, 30 — parce qu'un brick EST du travail de
+ * vélo et de course. Il ne contient jamais de natation, donc il ne crédite jamais la nage.
+ */
+
+/** Le point de rupture MESURÉ du budget hebdomadaire (voir le tableau en tête). */
+const PLANCHER_BUDGET_MIN = 8;
+
+/** Les trois niveaux. Ordres de grandeur d'entraîneur, révocables — la FORME est ce qui compte. */
+const PLANCHER_FREQ = { dur: 1, plancher: 2, cible: 3 }         ;
+
+/**
+ * Ce que la semaine doit tenir, compte tenu de son budget de séances.
+ *
+ * `dur` vaut toujours 1 : une discipline de l'épreuve est présente, quel que soit le budget.
+ * `plancher` ne vaut 2 que si la semaine a de quoi le tenir — sinon il retombe sur `dur`, et
+ * c'est ce qui l'empêche de condamner les deux tiers du corpus.
+ */
+function plancherFrequenceSemaine(nSeancesSemaine        )   
+                                               
+  {
+  const budgetSuffisant = nSeancesSemaine >= PLANCHER_BUDGET_MIN;
+  return {
+    dur: PLANCHER_FREQ.dur,
+    plancher: budgetSuffisant ? PLANCHER_FREQ.plancher : PLANCHER_FREQ.dur,
+    cible: PLANCHER_FREQ.cible,
+  };
+}
+
+/**
+ * Le compte de séances d'une discipline dans une semaine, legs de brick compris.
+ *
+ * POINT UNIQUE (R11.1) : le plancher, la décision qui le publie et la garde qui le vérifie
+ * comptent tous par ici. Deux comptages divergents pour la même grandeur, c'est la forme que
+ * ce dépôt a payée quatre fois (O-42 : quatre conversions mètres ↔ minutes pour une grandeur).
+ */
+const LEG_DE                         = { sw: "swim", bk: "bike", rn: "run" };
+function seancesDiscipline(
+  semaine                                                                                                             ,
+  disc        ,
+)         {
+  let n = 0;
+  for (const j of semaine.days ?? []) for (const s of j.sessions ?? []) {
+    if (s.race) continue;
+    // Un brick est du travail de vélo ET de course — jamais de natation : il ne crédite donc
+    // que les legs qu'il contient réellement.
+    if (s.brick) { if ((s.steps ?? []).some((st) => st.leg === LEG_DE[disc])) n++; }
+    else if (s.d === disc) n++;
+  }
+  return n;
+}
+
 // ===== src/engine/planVolume.ts =====
 /**
  * T-16d — LE VOLUME DE COURSE HEBDOMADAIRE D'UN PLAN, DÉFINI UNE SEULE FOIS.
@@ -3488,6 +3626,12 @@ class UnknownSportError extends Error {
                                                                                                
                                                                       
                         
+                                                                                             
+                                                                                                  
+                                                                                                  
+                                                                                        
+                                                                                 
+                         
                                                                                            
                                                                                        
                                                                                             
@@ -7684,7 +7828,15 @@ function auditPlan(plan        , opts            = {})            {
 // 4 jours de récup ». Un module qui veut savoir « suis-je dans une semaine allégée ? » ne peut
 // donc pas le déduire du jour : mesuré, la sortie longue vélo de B1 se posait dans S22, une
 // décharge, sur son unique jour resté `dur`.
-function buildSessions(ctx            , slot      , phase        , prog        , weekNum = 1, slotIdx = 0, isRecup = false, semaineRecup = false)              {
+// PLANCHER DE FRÉQUENCE (21/08/2026) — `creneauxDuSlot` EST UN NEUVIÈME PARAMÈTRE : combien de
+// fois CE créneau existe dans SA semaine. Une pièce qui convertit un créneau d'une discipline
+// vers une autre doit pouvoir demander « en reste-t-il un autre ? » — sans lui, elle convertit à
+// l'aveugle, et c'est MESURÉ : la première écriture de C3 vidait complètement la natation de deux
+// semaines de `G/tri/Full/doubles` (S12 et S14), c'est-à-dire produisait la semaine de triathlon
+// sans une seule nage que le plancher existe pour refuser. 0 ou 1 = pas de second exemplaire, et
+// la conversion ne se fait pas : les reconstructions internes qui ne passent pas ce paramètre
+// tombent donc du côté PRUDENT.
+function buildSessions(ctx            , slot      , phase        , prog        , weekNum = 1, slotIdx = 0, isRecup = false, semaineRecup = false, creneauxDuSlot = 0)              {
   const r = ctx.r;
   const a = r.profile;
   const sp = a.sport, fmt = a.format;
@@ -7744,7 +7896,7 @@ function buildSessions(ctx            , slot      , phase        , prog        ,
   // d'être dupliquée par sport. Un sport inconnu lève (`UnknownSportError`) au lieu de
   // retourner un tableau vide, qui produisait des jours muets sans que personne le voie.
   const kit             = {
-    r, a, sp: sp          , fmt, slot, phase, prog, weekNum, slotIdx, isRecup, semaineRecup,
+    r, a, sp: sp          , fmt, slot, phase, prog, weekNum, slotIdx, isRecup, semaineRecup, creneauxDuSlot,
     lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, G, swimDrillGlossary,
     S2, P, W, Wm, C, Cm, B, Bd,
   };
@@ -8815,7 +8967,43 @@ function buildTriSessions(kit            )              {
     // nage principale et la technique vivent déjà sur dur1/dur2 — la récup courte reste.
     // D3-b — la nage continue passe DEVANT le routage par phase et par intention : c'est elle qui
     // porte le prérequis de sécurité, et le routage l'envoyait sur « Nage vitesse ».
+    //
+    // C3 (arbitrage « LA RÈGLE D'ALTERNANCE, PAS LA TABLE », 20/08/2026) — LE SEUL CRÉNEAU QUI
+    // NE VARIE JAMAIS PAR PHASE ALTERNE ENFIN SA DISCIPLINE.
+    //
+    // La carte du livré (188 profils tri) dit où vit la rigidité de l'allocation : `dur2` bascule
+    // vélo → course avec la phase, `durLong` course → brick, mais `dur1` (vélo 99 %) et `facile2`
+    // (nage 100 %) ne bougent JAMAIS. `facile2` est celui qui porte la discipline en EXCÈS —
+    // d'où l'alternance ici, et nulle part ailleurs.
+    //
+    // ⚠ ELLE NE TOUCHE QU'UNE BRANCHE, ET LA MESURE A DÉCIDÉ LAQUELLE. Ce que `facile2` contient
+    // n'est pas le même selon que l'athlète double ou non :
+    //
+    //     profil qui DOUBLE     92 % « Nage récup courte » (51' en moyenne)
+    //     corpus non doublé     35 % nage aérobie · 30 % nage seuil · 18 % éducatifs
+    //
+    // Sans doublage, ce créneau porte la QUALITÉ de nage (R13.3 : c'est la seule nage de la
+    // semaine) — y toucher retirerait au triathlète sa seule séance de nage construite. Avec
+    // doublage, la qualité vit déjà sur `dur1`/`dur2` et `facile2` ne porte qu'une récup : c'est
+    // l'échange le moins cher du plan. La condition est donc DÉRIVÉE de ce que le créneau
+    // CONTIENT (la branche `dbl`), jamais d'une liste de profils.
+    //
+    // Et le palier B-17 passe AVANT (`b17Pose`) : une continuité annoncée n'est jamais convertie.
+    // Mêmes exclusions que B1/B2, mêmes raisons (blessure, drapeau médical, prépa < 12 semaines).
+    //
+    // PARITÉ : vélo en semaines PAIRES. Le décalage a été MESURÉ contre l'autre parité (le §4 du
+    // fondateur — « deux pièces qui ajoutent de la charge déclarent leur phase, pas seulement
+    // leur fréquence ») ; le résultat est publié au registre.
     if (b17Pose) S2.push({ d: "sw", name: swMain.name, note: swMain.note, det: "", steps: swMain.steps });
+    // ⚠ UN SEUL CRÉNEAU PAR SEMAINE (`slotIdx === 0`), ET LA MESURE A TRANCHÉ. Le créneau
+    // `facile2` apparaît DEUX fois dans la semaine livrée d'un athlète qui double : convertir les
+    // deux n'est plus une alternance, c'est la conversion totale — mesuré, nage 20,0 % / vélo
+    // 51,1 % contre 24,8 / 45,7 en n'en convertissant qu'un. Le second chiffre est celui que
+    // l'arbitrage appelle « l'alternance », et il préserve la fréquence de nage (2,4 séances par
+    // semaine de charge contre 2,0). La conversion totale reste une DÉCISION à prendre, pas un
+    // réglage à glisser — elle atteint la cible d'allocation et coûte 0,4 séance de nage.
+    else if (dbl && slotIdx === 0 && !inj.count && !medHold && r.weeks >= 12 && weekNum % 2 === 0 && phase !== "taper" && kit.creneauxDuSlot >= 2)
+      S2.push({ d: "bk", name: "Endurance vélo", note: "Endurance pure sur le vélo, à la place d'une nage de récupération : le vélo pèse la moitié de ta course et se construit avec le moins de casse. Ta nage garde ses séances construites — celle-ci n'échange qu'une récupération contre du foncier.", det: "", steps: [W(10, "montée progressive"), Object.assign(B(1, PT(40, 75), "bk.z2", "", " · cadence libre, souple"), { bnd: { floor: 30, cap: 90 } }), C(10, "décrassage")] });
     else if (dbl) S2.push({ d: "sw", recovery: true, name: swShort.name + " courte", note: swShort.note, det: "", steps: swShort.steps, ...( { plainBody: true }          ) });
     else if (phase === "taper") S2.push({ d: "sw", name: "Rappel nage course", note: "Affûtage : on entretient les sensations d'eau sans fatigue — elles se perdent en 10 à 14 jours, et le jour J commence par la natation. Court, précis, à l'allure de course.", det: "", steps: [
       Wm(300, "souple"), Object.assign(Bd(beginner ? 4 : 6, 100, "sw.css", "20-30s", ", à l'allure de course, technique impeccable", false, "sw"), { repCap: 6 }), Cm(100, "souple")] });
@@ -10410,6 +10598,26 @@ function buildDays(r              , refs      , hz         )           {
     for (const d of days) { const l = parSem.get(d.week) || []; l.push(d); parSem.set(d.week, l); }
     for (const [w, l] of parSem) recupParSemaine.set(w, l.filter((d) => d.isR).length >= 4);
   }
+  // PLANCHER DE FRÉQUENCE (21/08/2026) — COMBIEN DE FOIS CE CRÉNEAU EXISTE-T-IL DANS SA SEMAINE ?
+  //
+  // ⚠ MA PREMIÈRE ÉCRITURE PASSAIT LE BUDGET DE SÉANCES DE LA SEMAINE, et elle était FAUSSE :
+  // le doublage n'est PAS représenté par des `GenDay` supplémentaires — un jour porte plusieurs
+  // séances dans son tableau `sessions`, décidé par le module APRÈS ce point. Le compte plafonnait
+  // donc à 7 (un `GenDay` par jour calendaire) là où la semaine livre 8 à 10 séances, et toute
+  // condition « budget ≥ 8 » était inerte par construction. Règle 15, dans mon propre instrument :
+  // j'ai MODÉLISÉ le budget au lieu de l'OBSERVER, et le modèle ne pouvait pas atteindre le seuil.
+  //
+  // La grandeur qui est réellement connue ici — et c'est celle dont une conversion a besoin — est
+  // LOCALE : ce créneau existe-t-il plusieurs fois cette semaine ? Une règle qui convertit le
+  // premier exemplaire d'un créneau vers une autre discipline ne peut pas vider la sienne tant
+  // qu'un second exemplaire subsiste. C'est le niveau ZÉRO du plancher, appliqué là où la
+  // décision se prend.
+  const creneauxDuSlot = new Map                ();
+  {
+    const compte = new Map                ();
+    for (const d of days) { const c = d.week + "|" + d.slot; compte.set(c, (compte.get(c) || 0) + 1); }
+    for (const d of days) creneauxDuSlot.set(d, compte.get(d.week + "|" + d.slot) || 0);
+  }
   const rangDansCreneau = new Map                ();
   {
     const vus = new Map                ();
@@ -10425,7 +10633,7 @@ function buildDays(r              , refs      , hz         )           {
     const prog = ph.weeks > 1 ? (d.week - 1 - ph.start) / (ph.weeks - 1) : 0.5;
     d.prog = Math.max(0, Math.min(1, prog));
     d.date = iso(start + i * MS);
-    d.sessions = buildSessions(ctx, d.slot                                       , d.phaseId, d.prog, d.week, rangDansCreneau.get(d) || 0, !!d.isR, (recupParSemaine.get(d.week) || false));
+    d.sessions = buildSessions(ctx, d.slot                                       , d.phaseId, d.prog, d.week, rangDansCreneau.get(d) || 0, !!d.isR, (recupParSemaine.get(d.week) || false), (creneauxDuSlot.get(d) || 0));
     for (const s of d.sessions) {
       if (s.steps && s.steps.length) renderSess(s, refs, hz, r.baseRefs);
       else if (s.min == null) s.min = 0;
@@ -11244,6 +11452,7 @@ function applyPolarizationGuard(r              , days          , ctx            
  * corrige l'écart V1.5 nage non-débutante (6.3h déclarées / 3.6h livrables).
  */
                                                                                                           
+
 
 
 
@@ -15900,6 +16109,53 @@ function generatePlan(profile                , opts                             
                 why: "La cible vient du partage du temps de ta COURSE, corrigé pour la natation — la technique se perd par la fréquence, pas par le volume, donc on nage plus que sa part de chrono. Ce que tu lis est ce que ton plan livre : l'écart vient de la structure de ta semaine (combien de créneaux portent quelle discipline), pas d'un réglage — le forcer reviendrait à prendre des minutes sous des planchers de séance qui existent pour te protéger.",
               });
             }
+          }
+        }
+      }
+
+      // PLANCHER DE FRÉQUENCE (arbitrage « DEUX EST LA BORNE, TROIS EST LA CIBLE », 21/08/2026)
+      // — LA FRÉQUENCE SE PUBLIE, ELLE NE SE FORCE PAS.
+      //
+      // Descripteur, donc APRÈS le point fixe et lu sur le plan LIVRÉ (T-16c) : le mettre dans
+      // la boucle le ferait participer à ce qu'il décrit. Il n'y a AUCUNE passe qui rattrape une
+      // semaine — le module dit pourquoi (`plancherFrequence.ts`) : la borne existe pour BORDER
+      // les pièces à venir, et corriger les semaines qui la franchissent aujourd'hui est un
+      // correctif d'allocation sur les profils à 3-5 séances, pas un réglage de fréquence.
+      //
+      // Émis seulement quand il y a quelque chose à dire (au moins une semaine sous la cible),
+      // et le message nomme la DISCIPLINE la plus basse et ce que la semaine peut porter — le
+      // canal `warnings` de R11.2 dit d'informer, pas de bavarder (O-17).
+      {
+        const disciplines = (ALLOC_CIBLE[a.sport          ] ? ["sw", "bk", "rn"] : [])            ;
+        if (disciplines.length) {
+          const NOMD                         = { bk: "vélo", rn: "course", sw: "natation" };
+          let pireDisc = "", pireN = Infinity, sousCible = 0, sousDur = 0, charges = 0;
+          for (const w of plan.weeks) {
+            if (w.isRecup || w.phase?.id === "taper") continue;
+            charges++;
+            const nSeances = w.days.reduce((t, d) => t + d.sessions.filter((sx) => sx.d !== "rs" && !sx.race).length, 0);
+            const niv = plancherFrequenceSemaine(nSeances);
+            for (const d0 of disciplines) {
+              const n = seancesDiscipline(w, d0);
+              if (n < niv.cible) sousCible++;
+              if (n < niv.dur) sousDur++;
+              if (n < pireN) { pireN = n; pireDisc = d0; }
+            }
+          }
+          if (charges > 0 && sousCible > 0) {
+            r.decisions.push({
+              id: "frequence",
+              what: "Fréquence par discipline",
+              val: sousCible + " semaine-discipline(s) sous la cible de " + PLANCHER_FREQ.cible
+                + " séances — au plus bas, " + NOMD[pireDisc] + " à " + pireN + (pireN > 1 ? " séances" : " séance")
+                + (sousDur > 0 ? " · " + sousDur + " semaine(s) sans aucune séance d'une discipline" : ""),
+              why: "La technique se maintient par la FRÉQUENCE, pas par le volume : c'est pour ça que "
+                + "tu nages plus que ta part de chrono. Ce plan ne force rien — avec " + PLANCHER_BUDGET_MIN
+                + " séances par semaine, deux séances par discipline deviennent tenables ; en dessous, "
+                + "donner deux créneaux à une discipline qui pèse un huitième de ta course reviendrait à "
+                + "les prendre à celles qui en pèsent sept. Le levier est le nombre de créneaux, donc le "
+                + "doublage, pas un réglage de répartition.",
+            });
           }
         }
       }

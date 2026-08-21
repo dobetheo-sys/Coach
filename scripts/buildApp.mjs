@@ -22,6 +22,9 @@ const ORDER = [
   "src/engine/trace.ts",
   "src/engine/medicalHold.ts",
   "src/engine/prioriteFinancement.ts",
+  // PLANCHER DE FRÉQUENCE (21/08/2026) — module PUR (zéro import), lu par le générateur (la
+  // décision qui publie la cible) et par le banc. Peut venir tôt.
+  "src/engine/plancherFrequence.ts",
   // T-16d — le volume de course d'un plan, défini une seule fois (le pont et la boucle de
   // réparation le lisent tous les deux). Aucune dépendance : peut venir tôt.
   "src/engine/planVolume.ts",

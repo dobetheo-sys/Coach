@@ -115,6 +115,12 @@ export interface SessionKit {
    *  Un module qui pose une séance FONCIÈRE doit lire celui-ci — mesuré, la sortie longue vélo
    *  se posait dans une décharge, sur son unique jour resté `dur`. */
   semaineRecup: boolean;
+  /** PLANCHER DE FRÉQUENCE (21/08/2026) — combien de fois CE créneau existe dans SA semaine.
+   *  Une règle qui CONVERTIT le premier exemplaire d'un créneau vers une autre discipline ne peut
+   *  pas vider la sienne tant qu'un second exemplaire subsiste : c'est le niveau ZÉRO du plancher
+   *  appliqué au point où la décision se prend. `0`/`1` = pas de second exemplaire (les
+   *  reconstructions internes qui ne le passent pas tombent du côté prudent). */
+  creneauxDuSlot: number;
   /** O-70 — le jour appartient-il à une semaine de RÉCUPÉRATION ? Les branches lisaient la
    *  PHASE et jamais la CHARGE : le créneau `facileR` d'une semaine de décharge du pic
    *  construisait un « VO2max course » — la séance la plus intense de la semaine posée dans

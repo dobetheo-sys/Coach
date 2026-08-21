@@ -308,6 +308,26 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
     for (const d of days) { const l = parSem.get(d.week) || []; l.push(d); parSem.set(d.week, l); }
     for (const [w, l] of parSem) recupParSemaine.set(w, l.filter((d) => d.isR).length >= 4);
   }
+  // PLANCHER DE FRÉQUENCE (21/08/2026) — COMBIEN DE FOIS CE CRÉNEAU EXISTE-T-IL DANS SA SEMAINE ?
+  //
+  // ⚠ MA PREMIÈRE ÉCRITURE PASSAIT LE BUDGET DE SÉANCES DE LA SEMAINE, et elle était FAUSSE :
+  // le doublage n'est PAS représenté par des `GenDay` supplémentaires — un jour porte plusieurs
+  // séances dans son tableau `sessions`, décidé par le module APRÈS ce point. Le compte plafonnait
+  // donc à 7 (un `GenDay` par jour calendaire) là où la semaine livre 8 à 10 séances, et toute
+  // condition « budget ≥ 8 » était inerte par construction. Règle 15, dans mon propre instrument :
+  // j'ai MODÉLISÉ le budget au lieu de l'OBSERVER, et le modèle ne pouvait pas atteindre le seuil.
+  //
+  // La grandeur qui est réellement connue ici — et c'est celle dont une conversion a besoin — est
+  // LOCALE : ce créneau existe-t-il plusieurs fois cette semaine ? Une règle qui convertit le
+  // premier exemplaire d'un créneau vers une autre discipline ne peut pas vider la sienne tant
+  // qu'un second exemplaire subsiste. C'est le niveau ZÉRO du plancher, appliqué là où la
+  // décision se prend.
+  const creneauxDuSlot = new Map<GenDay, number>();
+  {
+    const compte = new Map<string, number>();
+    for (const d of days) { const c = d.week + "|" + d.slot; compte.set(c, (compte.get(c) || 0) + 1); }
+    for (const d of days) creneauxDuSlot.set(d, compte.get(d.week + "|" + d.slot) || 0);
+  }
   const rangDansCreneau = new Map<GenDay, number>();
   {
     const vus = new Map<string, number>();
@@ -323,7 +343,7 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
     const prog = ph.weeks > 1 ? (d.week - 1 - ph.start) / (ph.weeks - 1) : 0.5;
     d.prog = Math.max(0, Math.min(1, prog));
     d.date = iso(start + i * MS);
-    d.sessions = buildSessions(ctx, d.slot as Parameters<typeof buildSessions>[1], d.phaseId, d.prog, d.week, rangDansCreneau.get(d) || 0, !!d.isR, (recupParSemaine.get(d.week) || false));
+    d.sessions = buildSessions(ctx, d.slot as Parameters<typeof buildSessions>[1], d.phaseId, d.prog, d.week, rangDansCreneau.get(d) || 0, !!d.isR, (recupParSemaine.get(d.week) || false), (creneauxDuSlot.get(d) || 0));
     for (const s of d.sessions) {
       if (s.steps && s.steps.length) renderSess(s, refs, hz, r.baseRefs);
       else if (s.min == null) s.min = 0;

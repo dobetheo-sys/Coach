@@ -45,7 +45,15 @@ export interface SessionCtx {
 // 4 jours de récup ». Un module qui veut savoir « suis-je dans une semaine allégée ? » ne peut
 // donc pas le déduire du jour : mesuré, la sortie longue vélo de B1 se posait dans S22, une
 // décharge, sur son unique jour resté `dur`.
-export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: number, weekNum = 1, slotIdx = 0, isRecup = false, semaineRecup = false): V1Session[] {
+// PLANCHER DE FRÉQUENCE (21/08/2026) — `creneauxDuSlot` EST UN NEUVIÈME PARAMÈTRE : combien de
+// fois CE créneau existe dans SA semaine. Une pièce qui convertit un créneau d'une discipline
+// vers une autre doit pouvoir demander « en reste-t-il un autre ? » — sans lui, elle convertit à
+// l'aveugle, et c'est MESURÉ : la première écriture de C3 vidait complètement la natation de deux
+// semaines de `G/tri/Full/doubles` (S12 et S14), c'est-à-dire produisait la semaine de triathlon
+// sans une seule nage que le plancher existe pour refuser. 0 ou 1 = pas de second exemplaire, et
+// la conversion ne se fait pas : les reconstructions internes qui ne passent pas ce paramètre
+// tombent donc du côté PRUDENT.
+export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: number, weekNum = 1, slotIdx = 0, isRecup = false, semaineRecup = false, creneauxDuSlot = 0): V1Session[] {
   const r = ctx.r;
   const a = r.profile;
   const sp = a.sport, fmt = a.format;
@@ -105,7 +113,7 @@ export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: 
   // d'être dupliquée par sport. Un sport inconnu lève (`UnknownSportError`) au lieu de
   // retourner un tableau vide, qui produisait des jours muets sans que personne le voie.
   const kit: SessionKit = {
-    r, a, sp: sp as string, fmt, slot, phase, prog, weekNum, slotIdx, isRecup, semaineRecup,
+    r, a, sp: sp as string, fmt, slot, phase, prog, weekNum, slotIdx, isRecup, semaineRecup, creneauxDuSlot,
     lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, G, swimDrillGlossary,
     S2, P, W, Wm, C, Cm, B, Bd,
   };
