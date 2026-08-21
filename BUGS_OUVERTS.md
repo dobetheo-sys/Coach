@@ -189,6 +189,94 @@ de sa pose et jamais re-mesuré ; `HEAD` en rendait **3**, REEL compris (S38, 37
 Le creux de REEL est donc ANTÉRIEUR à C3 — vérifié à facteur unique — et C3 le CREUSE de 18 min
 (37 → 55), il ne le crée pas. Le compte est désormais un **cliquet publié dans la sortie du test**.
 
+#### §11 — O-98 : isolées ou consécutives ? Deux populations, une seule est un trou
+
+Question du fondateur : *« une semaine sans vélo est un accident, trois de suite sans nage sur un
+70.3 est un trou. C'est le seul point qui décide de la gravité. »* Mesuré sur les 30 semaines de
+charge, la suite comptée en semaines CALENDAIRES (une récup à zéro ne rompt pas le jeûne — c'est le
+temps réellement passé sans toucher la discipline) :
+
+```
+NAGE     22 semaines · 14 profils · TOUTES au DÉBUT du plan (S1-S3) · TOUS débutants · formats S et M
+           4 semaines d'affilée dès S1   B17/tri/S/debutant/inconnue   ← continuité DÉCLARÉE inconnue
+           4 semaines d'affilée dès S1   B17/tri/S/debutant/absente    ← continuité DÉCLARÉE absente
+           3 semaines d'affilée dès S1   tri/S/ancien/debutant/competition
+           2 semaines d'affilée dès S1   ×2      1 semaine  ×9
+
+COURSE    8 semaines · UN SEUL profil (G/tri/Full/vol-min, 3 séances/sem)
+          S2, 6, 10, 12, 14, 16, 18, 20 — JAMAIS deux de suite (plus longue suite : 1)
+
+VÉLO      0 semaine de charge. Les zéros vélo du corpus sont TOUS en semaine de récup.
+```
+
+**Le critère du fondateur tranche donc dans les deux sens, et pas là où on l'attendait.** Le cas
+« course » est un accident au sens exact du mot — huit occurrences isolées sur le profil le plus
+plafonné du corpus. Le cas « vélo » n'existe pas. **Le cas « nage » est un trou, et il est pire que
+la formulation de la question** : ce n'est pas « trois de suite sur un 70.3 », c'est
+**systématiquement les trois ou quatre PREMIÈRES semaines, chez le débutant, sur un format court**.
+
+Et la population est la pire possible : les deux profils à 4 semaines sont ceux dont la continuité
+de nage est déclarée **« inconnue »** ou **« absente »**. Le plan livré à `B17/tri/S/debutant/inconnue` :
+
+```
+S1  Sweetspot vélo 54' · Force basse cadence 41' · Sortie longue CAP 30' · Footing facile 25'
+S2  idem
+S3  Tempo vélo 49' · Sweetspot vélo 58' · Sortie longue CAP 30'
+S4  (récup) 3 × Footing facile 16'
+S5  … · Nage continue en EAU LIBRE — 500 m d'affilée
+```
+
+**La première séance de natation que voit cet athlète est un 500 m continu en eau libre, en
+semaine 5.** La décision `B17-paliers` dit « 1 test (fin de développement) + 2 paliers en phase
+spécifique » — le test est bien posé, mais rien ne le précède. Celui qui a répondu « je ne sais pas
+si je sais nager » ne nage pas pendant un mois, puis part en eau libre.
+
+**Conséquence sur la gravité d'O-98 : elle monte.** Ce n'est pas une dispersion à corriger au fil de
+l'eau, c'est une entrée de plan à revoir pour une population nommée (débutant × format court ×
+continuité inconnue), et elle touche la priorité 2 du manifeste (prévention) autant que la
+priorité 3 (régularité). Le correctif reste hors de ce lot — il est en amont de l'allocation, dans
+ce que B-17 pose AVANT son test.
+
+#### §12 — Les rouges attendus : combien portent un compte épinglé ?
+
+Question du fondateur, après la dérive silencieuse de `T-58` : *« s'il n'était pas le seul, d'autres
+dérivent depuis leur écriture. »* Deux mesures, et elles ne disent pas la même chose.
+
+**(a) Combien de tickets écrivent un chiffre qui pourrait être FAUX ? Trois sur vingt-cinq** — et ce
+sont les trois écrits dans les deux derniers jours (`T-58`, `T-59`, `T-60`). Les vingt-deux autres
+nomment leur ticket de fermeture en prose, sans compte : les seuls chiffres qu'ils portent sont des
+bornes de règle (`T-04` « 25-60 »), des années de citation (`T-13` « Lauersen 2014 »), des renvois
+de section, ou une mesure HISTORIQUE explicitement datée (`T-22` « 416 séances duathlon chiffrées »
+décrit ce que B-26 avait mesuré, pas l'état courant). **`T-58` était donc bien le seul à être devenu
+faux, et pour une raison simple : il était le seul ancien ticket à citer un compte.** Vérifié :
+`T-59` (5/104) et `T-60` (30) correspondent à leur mesure du jour.
+
+**(b) Combien de TESTS rendent un compte que rien ne borne ? Vingt-trois sur vingt-cinq.** Seuls
+`T-58` et `T-60` portent un cliquet. Les autres publient un nombre qui peut doubler sans que rien ne
+le dise — et ce ne sont pas de petits nombres :
+
+```
+T-03  146 semaines au-dessus du plafond      T-25  505 identités cassées / 986
+T-05   28 semaines                           T-23   81 écrans / 214
+T-13   28 plans sans renforcement            T-21   29 littéraux à unité
+T-10   41/41 entrées sans sensibilité        T-22   14 steps sans zone
+T-12    9/58 prédictions sans fourchette     T-14   18/921 séances
+```
+
+**Il faut distinguer les deux problèmes, parce qu'ils n'ont pas la même gravité.** Écrire un chiffre
+périmé rend un document FAUX — un lecteur en tire une décision (c'est ce qui est arrivé avec les
+« 2 plans sur 68 »). Ne pas épingler un compte ne rend rien faux : ça rend la dérive INVISIBLE. Le
+banc ne compare aujourd'hui que le ROUGE au ROUGE, donc `T-03` pourrait passer de 146 à 300 semaines
+sans qu'aucune sortie ne change de caractère.
+
+**Le mécanisme qui fermerait la classe** — et c'est la règle du dépôt (« une règle qui échoue trois
+fois est un MÉCANISME manquant ») : chaque test attendu rouge DÉCLARE son compte
+(`return { ok, detail, compte }`), le banc le compare à une table épinglée, et une dérive se
+re-épingle avec sa cause comme `SCEAU_ATTENDU` ou `PIC_ATTENDU`. Coût : 23 retours de test à
+compléter, mécaniques ; conséquence : tout lot qui déplace un compte de dette devra le re-épingler,
+c'est-à-dire l'expliquer. **Non fait dans ce lot** — ça change ce qui rend la CI rouge, et c'est une
+décision, pas un réglage.
+
 ```verify
 id: plancher-frequence
 quoi: les trois niveaux du plancher, comptés legs de brick compris, sur la population tri
