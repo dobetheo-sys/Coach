@@ -271,6 +271,33 @@ T("T-06", "vert", "B-17 — nage continue prescrite en tri : gate, une par semai
     for (const w of p.weeks ?? []) for (const d of w.days ?? []) for (const s of d.sessions ?? [])
       if (CONT.test(String(s.name ?? ""))) conts.push({ w: w.num, ow: /eau libre/.test(String(s.name)), m: +(String(s.name).match(/(\d+)\s*m d'affilée/)?.[1] ?? 0) });
     if (!testW.length || testW[0].phase?.id !== "dev") bad.push(`O-95 : le test n'est pas en fin de dev (${testW.length ? "phase " + testW[0].phase?.id : "absent"})`);
+    // (c) 21/08/2026 — PROPRIÉTÉ : TOUT PLAN QUI ANNONCE UN TEST LE LIVRE, ET EN BASSIN.
+    //
+    // O-95 posait le test à `weekNum === dev.end`, un ORDINAL : sur un plan dont la fin de
+    // développement est une semaine de RÉCUP, aucun créneau de nage ne s'y trouve et le test
+    // n'était **jamais posé** — mesuré 2 profils sur 28 (`B17/tri/S/debutant/{inconnue,absente}`),
+    // ceux dont la continuité est déclarée inconnue, c'est-à-dire précisément la population que
+    // le test existe pour mesurer. Le critère porte donc sur l'ANNONCE == LIVRÉ, sur toute la
+    // population tri, et sur le MILIEU (le mur tous les 25 m est ce qui rend « aussi loin que tu
+    // peux » acceptable — c'est le point de sécurité de D3).
+    {
+      let ann = 0, manque = 0, horsBassin = 0; const exT = [];
+      for (const { key, plan, sport } of goldenAvecMoteur()) {
+        if (sport !== "tri") continue;
+        const dd = (plan._v2?.decisions ?? []).find((x) => x.id === "B17-paliers");
+        if (!/1 test/.test(String(dd?.val ?? ""))) continue;
+        ann++;
+        const tt = [];
+        for (const w of plan.weeks ?? []) for (const j of w.days ?? []) for (const sx of j.sessions ?? [])
+          if (/^Test de continuité/.test(String(sx.name ?? ""))) tt.push(String(sx.det ?? "") + String(sx.note ?? ""));
+        if (!tt.length) { manque++; if (exT.length < 3) exT.push(key); }
+        else if (!/BASSIN/.test(tt[0])) horsBassin++;
+      }
+      if (ann < 20) bad.push(`(c) POPULATION : ${ann} plan(s) tri annoncent un test — la sonde ne mesure plus`);
+      if (manque) bad.push(`(c) ${manque}/${ann} plan(s) annoncent un test et ne le livrent pas — ${exT.join(" · ")}`);
+      if (horsBassin) bad.push(`(c) ${horsBassin} test(s) hors BASSIN — le mur tous les 25 m est le point de sécurité de D3`);
+      if (!manque && !horsBassin) vus.push(`(c) test annoncé == livré ${ann}/${ann}, tous en bassin ✓`);
+    }
     if (!conts.length || !conts[0].ow || conts[0].w !== spec[0]) bad.push(`O-95 : l'eau libre n'est pas en PREMIÈRE semaine de spec (${conts.length ? "S" + conts[0].w + (conts[0].ow ? "" : " sans eau libre") : "aucune continue"}, spec S${spec[0]})`);
     if (conts.length && conts[conts.length - 1].w !== spec[spec.length - 1]) bad.push(`O-95 : la continue finale a quitté la dernière semaine de spec`);
     const dOb = (p._v2?.decisions ?? []).find((x) => x.id === "B17-paliers");

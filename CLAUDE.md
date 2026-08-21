@@ -580,6 +580,36 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**LE PLACEMENT DU TEST — (b) réfuté par la mesure, (c) livré ; et la franchissabilité ne consulte
+AUCUN plafond** (arbitrage PLACEMENT_TEST_ET_O54.md, 21/08/2026 — voir `BUGS_OUVERTS.md` « LE
+PLACEMENT DU TEST », garde **T-06 branche (c)**) : **(b) est refusé par C22** — le test posé en
+phase de BASE et en première semaine de DEV donne **le MÊME +22 %** sur `tri/S` (S4→S5), donc ce
+n'est pas la phase qui est en cause ; la courbe DÉCLARÉE se déforme (S3 3,80 → 2,43 h) et la
+périodisation se déplace. **(c) est livré** : O-95 avait raison sur la PHASE et faux sur sa
+RÉSOLUTION — `weekNum === dev.end` est un ORDINAL, et sur un plan dont la fin de développement est
+une RÉCUP, cette semaine ne porte aucun créneau de nage. *« Une position calendaire dans un plan
+dont la composition varie est un ordinal dans une collection dérivée »* — famille d'O-59, O-71 et
+O-58, quatrième objet. La position devient une PROPRIÉTÉ du créneau (`dernierDuSlot`, calculé par
+`weekBuilder` qui seul voit le plan), avec deux bornes écrites dans le calcul : **rang 0
+seulement** (la condition que le bloc B-17 impose déjà) et **jamais une semaine de décharge** —
+sans la seconde, le test tombait en récup et la branche décharge du plancher piscine l'effaçait,
+le défaut se déplaçant d'un cran au lieu d'être fermé. **Annonce == livré 26/28 → 28/28, tous en
+BASSIN** ; contre-prouvé en remettant l'ordinal → 2/28 rouges. Rayon golden **8 profils**,
+exactement la population à continuité non mesurée. **La réponse au §2 : la liste n'est pas
+incomplète, elle est VIDE** — `franchissable` ne modélise que la rampe (`departM × C22^spanSem`) et
+ne lit AUCUN plafond de séance ; sur un plan long elle rend `true` par construction (atteignable
+**26 220 m** pour une course de 3 800), et sur une source non mesurée elle vaut `null`, donc la
+branche rabattement n'est jamais évaluée pour la population qui en aurait le plus besoin. Mesuré
+sur le livré : **23 plans sur 99** n'atteignent pas la distance de course, avec **quatre** causes
+distinctes (infranchissable sans rabattement · `franchissable` jamais calculé · progression
+TRONQUÉE avant `courseM` · progression NON MONOTONE, `2275 → 3050 → 2150`). **⚠ Une formulation
+d'hier corrigée** : les paliers « annoncés 800/1350/2250 livrés à 500 » lisaient le `bnd.floor`
+interne — le TITRE suit le livré (`T-40` vert), donc le plan n'annonce rien de faux à l'athlète,
+**il est PLAT**. Correctif non écrit : le rayon de `franchissable` (dont dépend le rabattement de
+format) se mesure pour lui-même. Batterie **11/11**, golden **990 recapturé (8 profils)**,
+`audit:v1` 459 à 0, `lotPhysio` 31 verts · 25 rouges attendus · 0 régression, `sw.js`
+`eb-pwa-0917866d525c`.
+
 **L'ENTRÉE DE PLAN DU DÉBUTANT NAGEUR — les 22 semaines sans nage sont FERMÉES, et le test en
 semaine 1 est ARRÊTÉ par C22** (arbitrage ENTREE_PLAN_DEBUTANT.md, 21/08/2026 — voir
 `BUGS_OUVERTS.md` « L'ENTRÉE DE PLAN DU DÉBUTANT NAGEUR », patch du §2a conservé dans

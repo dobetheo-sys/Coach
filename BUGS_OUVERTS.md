@@ -36,6 +36,119 @@ assumés entre deux règles, les chantiers humains, et les entrées de registre 
 
 ## §1 — Défauts ouverts, par gravité
 
+### LE PLACEMENT DU TEST — (b) réfuté par la mesure, (c) livré · et la franchissabilité ne consulte AUCUN plafond
+
+**Arbitrage d'entrée (PLACEMENT_TEST_ET_O54.md, 21/08/2026)** : *(a) rejetée — une séance qui ne
+compte pas dans la semaine est un mensonge sur la charge ; (b) à essayer d'abord, une seule mesure
+décide ; (c) repli garanti.*
+
+#### §1 — (b) est réfuté, et la mesure dit pourquoi
+
+L'argument pour (b) était plausible : *« la base est la phase à bas volume, donc y ajouter une
+séance est une perturbation relative plus grande ; en développement, la même séance pèse moins »*.
+
+```
+test posé en phase de BASE              tri/S  S4→S5  +22 %   ✗ C22
+test posé en 1re semaine de DEV         tri/S  S4→S5  +22 %   ✗ C22   ← le MÊME chiffre
+```
+
+**Le même chiffre aux deux positions : ce n'est donc pas la phase qui est en cause.** La courbe
+DÉCLARÉE elle-même se déforme (`S3` 3,80 → 2,43 h) et la périodisation se déplace (`S7` passe de
+footings à des bricks avec une journée « semaine de récupération »). Avancer le test dans le plan
+reshape le volume bien au-delà de la natation. **(b) est refusé par C22, une règle DURE.**
+
+#### §2 — (c) livré, et il ferme le défaut réel
+
+O-95 avait raison sur la PHASE (fin de développement) et faux sur sa **RÉSOLUTION** :
+`weekNum === dev.end` est un **ordinal**, et sur un plan dont la fin de développement est une
+semaine de RÉCUP, cette semaine ne porte aucun créneau de nage.
+
+> *« Une position calendaire dans un plan dont la composition varie est un ordinal dans une
+> collection dérivée »* — la famille d'O-59, O-71 et O-58, sur un quatrième objet.
+
+La position devient une **propriété du créneau** (`dernierDuSlot` : le dernier créneau de ce type
+dans sa phase, hors semaine de décharge, calculé par `weekBuilder` qui seul voit le plan).
+
+```
+annonce == livré     26/28 → 28/28 plans tri      (les 2 manquants : B17/tri/S/debutant/{inconnue,absente})
+en BASSIN            28/28
+```
+
+**Deux bornes, mesurées et écrites dans le calcul** : seuls les jours de **rang 0** sont candidats
+(c'est la condition que le bloc B-17 impose déjà), et **jamais une semaine de décharge** — un test
+maximal n'a pas sa place dans une semaine qui assimile, et la branche décharge du plancher piscine
+RETIRE les séances sous le plancher au lieu de les remonter : un test posé là est effacé. Sans
+cette seconde borne, le défaut se déplaçait d'un cran au lieu d'être fermé (mesuré : le test
+tombait en S4, la récup, et disparaissait).
+
+Sur le profil qui a motivé le lot, `B17/tri/S/debutant/inconnue`, la natation devient :
+
+```
+S1 éducatifs · S2 éducatifs · S3 ÉDUCATIFS + TEST DE CONTINUITÉ (bassin)
+S5 continue eau libre 500 · S6 continue 500 · S7 éducatifs · S8 rappel
+```
+
+Garde : `T-06` branche (c) — **annonce == livré sur toute la population tri, et en bassin**,
+contre-prouvée en remettant l'ordinal → **2/28 rouges**. Rayon golden : **8 profils**, exactement
+la population à continuité non mesurée (`{S,M} × {debutant,inter} × {absente,inconnue}`).
+
+#### §3 — La réponse au §2 de l'arbitrage : la liste n'est pas incomplète, elle est VIDE
+
+> *« Quels plafonds la vérification de franchissabilité consulte-t-elle ? »*
+
+**Aucun.** `continuityGate` calcule :
+
+```
+atteignableM = departM × C22^spanSem
+franchissable = atteignableM >= courseM
+```
+
+Elle ne modélise que la **rampe de croissance** et ne lit ni `swimSessionCapAtWeek`, ni
+`swimSessionCapM`, ni `CAP_SWIM`, ni C15. Ce n'est donc ni « la liste est incomplète » ni « une
+condition la saute » : **il n'y a pas de liste**. La question à laquelle `franchissable` répond est
+« la croissance à +10 %/semaine suffit-elle à atteindre la distance de course ? », pas « un palier
+de cette taille peut-il être LIVRÉ ? ».
+
+Deux conséquences mesurées, et elles vont dans des sens opposés :
+
+```
+sur un plan LONG   atteignable 26 220 m pour une course de 3 800  →  franchissable = true
+                   par construction : la rampe C22^40 vaut ×45, elle ne borne plus rien
+source NON mesurée franchissable = null  →  la branche rabattement n'est JAMAIS évaluée
+                   pour la population qui en aurait le plus besoin
+```
+
+#### §4 — Ce que ça donne sur le livré : 23 plans sur 99, TROIS causes distinctes
+
+Balayage des plans tri portant au moins deux continues, comparaison de la dernière à la distance de
+course :
+
+| profil | course | suite LIVRÉE | `franchissable` | cause |
+|---|---|---|---|---|
+| `B17/tri/S/debutant/basse-100m` | 750 | 400 → 500 | **false** | l'écart EST déclaré infranchissable et le rabattement ne s'applique pas |
+| `B17/tri/S/debutant/inconnue` | 750 | 500 → 500 | **null** | source non mesurée : `franchissable` n'est jamais calculé |
+| `PW/tri/M/plat` | 1500 | 550 → 900 → **1225** | null | progression TRONQUÉE — le dernier palier devrait valoir `courseM` (D2) |
+| `G/tri/Full/vol-min` | 3800 | 2275 → 3050 → **2150** | true | **NON MONOTONE** — la progression redescend (addendum O-54) |
+
+⚠ **Ma formulation d'hier était imprécise et elle est corrigée** : j'avais écrit « les paliers
+annoncés à 800/1350/2250 m sont livrés à 500 ». Le TITRE de la séance suit le livré (`T-40` est
+vert, aucun titre n'annonce une distance absente). Ce que le plan annonce à l'athlète n'est donc pas
+faux — **il est PLAT** : la décision `B17-paliers` promet « 3 paliers » et le plan livre trois
+séances de la même distance. La valeur `800/1350/2250` était le `bnd.floor` interne, pas ce que
+l'athlète lit.
+
+**Correctif non écrit** : c'est bien une mesure et non un arbitrage, mais le correctif touche
+`franchissable`, dont dépend le rabattement de format — un rayon à mesurer pour lui-même. Et il y a
+**quatre** causes à traiter, pas une.
+
+```verify
+id: test-continuite-pose
+quoi: tout plan tri qui annonce un test de continuité le livre, et en bassin
+attendu: /TEST-LIVRE/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');let a=0,k=0,b=0;for(const{sport,a:ans}of profiles()){if(sport!=='tri')continue;let p;try{p=globalThis.EBV2.buildPlan(sport,ans)}catch{continue}const d=(p._v2?.decisions||[]).find(x=>x.id==='B17-paliers');if(!/1 test/.test(String(d?.val||'')))continue;a++;const t=[];for(const w of p.weeks||[])for(const j of w.days||[])for(const s of j.sessions||[])if(/^Test de continuité/.test(String(s.name||'')))t.push(String(s.det||'')+String(s.note||''));if(!t.length)k++;else if(/BASSIN/.test(t[0]))b++;}console.log(a+' annoncent · '+k+' manquants · '+b+' en bassin · '+(a>=20&&k===0&&b===a?'TEST-LIVRE':'TEST-MANQUANT'));"
+```
+
+
 ### L'ENTRÉE DE PLAN DU DÉBUTANT NAGEUR — les 22 semaines sans nage sont FERMÉES, et le test en semaine 1 est ARRÊTÉ par C22 · ⛔ **§2a À ARBITRER**
 
 **Arbitrage d'entrée (ENTREE_PLAN_DEBUTANT.md, 21/08/2026)**, ordre donné : 1. le test en SEMAINE 1

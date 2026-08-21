@@ -53,7 +53,7 @@ export interface SessionCtx {
 // sans une seule nage que le plancher existe pour refuser. 0 ou 1 = pas de second exemplaire, et
 // la conversion ne se fait pas : les reconstructions internes qui ne passent pas ce paramètre
 // tombent donc du côté PRUDENT.
-export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: number, weekNum = 1, slotIdx = 0, isRecup = false, semaineRecup = false, creneauxDuSlot = 0): V1Session[] {
+export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: number, weekNum = 1, slotIdx = 0, isRecup = false, semaineRecup = false, creneauxDuSlot = 0, dernierDuSlot = false): V1Session[] {
   const r = ctx.r;
   const a = r.profile;
   const sp = a.sport, fmt = a.format;
@@ -113,7 +113,7 @@ export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog: 
   // d'être dupliquée par sport. Un sport inconnu lève (`UnknownSportError`) au lieu de
   // retourner un tableau vide, qui produisait des jours muets sans que personne le voie.
   const kit: SessionKit = {
-    r, a, sp: sp as string, fmt, slot, phase, prog, weekNum, slotIdx, isRecup, semaineRecup, creneauxDuSlot,
+    r, a, sp: sp as string, fmt, slot, phase, prog, weekNum, slotIdx, isRecup, semaineRecup, creneauxDuSlot, dernierDuSlot,
     lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, G, swimDrillGlossary,
     S2, P, W, Wm, C, Cm, B, Bd,
   };

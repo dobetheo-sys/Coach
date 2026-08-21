@@ -121,6 +121,11 @@ export interface SessionKit {
    *  appliqué au point où la décision se prend. `0`/`1` = pas de second exemplaire (les
    *  reconstructions internes qui ne le passent pas tombent du côté prudent). */
   creneauxDuSlot: number;
+  /** D3 (21/08/2026) — ce jour est-il le PREMIER du plan à porter ce créneau ? Générique : aucun
+   *  sport ni discipline n'est nommé. C'est le fait dont D3 a besoin — « la première séance de
+   *  nage du plan est un test de continuité » — et qu'un module, qui ne voit qu'un jour, ne peut
+   *  pas déduire. `false` sur les reconstructions internes qui ne le passent pas. */
+  dernierDuSlot: boolean;
   /** O-70 — le jour appartient-il à une semaine de RÉCUPÉRATION ? Les branches lisaient la
    *  PHASE et jamais la CHARGE : le créneau `facileR` d'une semaine de décharge du pic
    *  construisait un « VO2max course » — la séance la plus intense de la semaine posée dans

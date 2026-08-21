@@ -11,7 +11,7 @@ import { TRI_SWIM, TRI_BIKE, TRI_RUN, TRI_BIKE_KM, TRI_TRANSITION } from "../../
 import { continuityGate, palierLayout, palierDistanceM, B17_ECHAUF_M, B17_RETOUR_M } from "../../engine/swimContinuity.ts";
 
 export function buildTriSessions(kit: SessionKit): V1Session[] {
-  const { r, a, fmt, slot, phase, prog, weekNum, slotIdx, lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, swimDrillGlossary, semaineRecup, S2, W, Wm, C, Cm, B, Bd } = kit;
+  const { r, a, fmt, slot, phase, prog, weekNum, slotIdx, lvl, finisher, beginner, medHold, dbl, sessionScale, inj, noVo2, swimDrillGlossary, semaineRecup, dernierDuSlot, S2, W, Wm, C, Cm, B, Bd } = kit;
   const runInj = inj.list.includes("course");
   const PB = ({ base: [0.35, 0.55], dev: [0.55, 0.75], spec: [0.75, 0.9], peak: [0.9, 1], taper: [0.35, 0.45] } as Record<string, [number, number]>)[phase] || [0.5, 0.8];
   const PT = (lo: number, hi: number) => Math.max(1, Math.round((lo + (hi - lo) * (PB[0] + (PB[1] - PB[0]) * prog)) * sessionScale));
@@ -171,7 +171,25 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
       const idx = Math.max(0, Math.min(len - 1, weekNum - 1 - spec.start));
       const positions = Array.from({ length: n }, (_, i) => (n <= 1 ? 0 : Math.round((i * (len - 1)) / (n - 1))));
       const kSpec = phase === "spec" ? positions.indexOf(idx) : -1;
-      const testEnDevIci = phase === "dev" && lay.testEnDev && !!dev && weekNum === dev.end;
+      // (c) 21/08/2026 — LA POSITION DU TEST EST UN CRÉNEAU DE NAGE, PAS UN NUMÉRO DE SEMAINE.
+      //
+      // O-95 avait raison sur la PHASE (fin de développement) et faux sur sa RÉSOLUTION :
+      // `weekNum === dev.end` est un ORDINAL, et sur un plan dont la fin de développement est une
+      // semaine de RÉCUP, cette semaine ne porte aucun créneau de nage — le test n'était **jamais
+      // posé**. Mesuré : 2 plans sur 28 annonçaient « 1 test » sans le livrer, et c'étaient
+      // `B17/tri/S/debutant/{inconnue,absente}`, c'est-à-dire exactement la population que le
+      // test existe pour mesurer. Leur première natation était le palier suivant, EN EAU LIBRE.
+      // Une position calendaire dans un plan dont la composition varie est un ordinal dans une
+      // collection dérivée : la famille d'O-59, O-71 et O-58, sur un quatrième objet.
+      //
+      // ⚠ LA VARIANTE « PREMIÈRE SÉANCE DE NAGE » — la lettre de D3, « une mesure se prend le plus
+      // tôt possible » — A ÉTÉ ÉCRITE ET MESURÉE DEUX FOIS, ET ELLE VIOLE C22 : en phase de BASE
+      // comme en première semaine de DEV, `tri/S` saute de **+22 %** entre S4 et S5 — le même
+      // chiffre aux deux positions, donc ce n'est pas la phase qui est en cause. La courbe
+      // DÉCLARÉE elle-même se déforme (S3 3,80 → 2,43 h) et la périodisation se déplace (S7 passe
+      // de footings à des bricks). Avancer le test dans le plan reshape le volume bien au-delà de
+      // la natation ; la fin du développement RESTE la position, et seule sa résolution change.
+      const testEnDevIci = phase === "dev" && lay.testEnDev && !!dev && dernierDuSlot;
       if (kSpec >= 0 || testEnDevIci) {
         // `step` est l'index dans la PROGRESSION COMPLÈTE (test compris) : le test vaut 0, les
         // paliers de spec suivent — avec `testEnDev`, le k-ième créneau de spec est le pas k+1.

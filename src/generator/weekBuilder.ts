@@ -328,6 +328,46 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
     for (const d of days) { const c = d.week + "|" + d.slot; compte.set(c, (compte.get(c) || 0) + 1); }
     for (const d of days) creneauxDuSlot.set(d, compte.get(d.week + "|" + d.slot) || 0);
   }
+  // (c) 21/08/2026 — CE JOUR EST-IL LE **DERNIER** DE SA PHASE À PORTER CE CRÉNEAU ?
+  //
+  // LE DÉFAUT QUE CE FAIT FERME — et il n'est pas celui qu'on croyait. `palierLayout` posait le
+  // test de continuité B-17 à `dev.end`, une position CALENDAIRE. Sur un plan dont la semaine de
+  // fin de développement est une RÉCUP, cette semaine ne porte aucun créneau de nage : le test
+  // n'était **jamais posé**, le plan annonçait « 1 test + 2 paliers » et livrait deux paliers,
+  // dont le premier en EAU LIBRE, à un débutant dont la continuité est déclarée inconnue.
+  //
+  // **Une position calendaire dans un plan dont la composition varie est un ordinal dans une
+  // collection dérivée** — la famille d'O-59, O-71 et O-58, sur un quatrième objet. Le fait
+  // calculé ici est donc STRUCTUREL : « le dernier créneau de ce type dans cette phase ». Le
+  // module du sport ne peut pas le déduire seul, il voit un jour et jamais le plan.
+  //
+  // ⚠ MESURÉ AVANT DE CHOISIR : la variante « le PREMIER créneau de nage » — plus proche de la
+  // lettre de D3, « une mesure se prend le plus tôt possible » — a été écrite et **elle viole
+  // C22**, en base (+22 % sur `tri/S`) comme en première semaine de dev (+22 %, identique). La
+  // courbe DÉCLARÉE elle-même se déforme (S3 3,80 → 2,43 h) et la périodisation se déplace :
+  // avancer le test dans le plan reshape le volume bien au-delà de la natation. La fin du
+  // développement reste donc la position, et c'est sa RÉSOLUTION qui est corrigée.
+  //
+  // Générique : aucun sport ni discipline n'est nommé.
+  const dernierDuSlot = new Map<GenDay, boolean>();
+  {
+    // Seuls les jours de RANG 0 dans leur semaine sont candidats : c'est la condition que le
+    // consommateur (le bloc B-17) impose déjà, et marquer un jour doublé produirait un fait vrai
+    // que personne ne peut lire.
+    const rang0 = new Set();
+    { const vus = new Set(); for (const d of days) { const c = d.week + "|" + d.slot; if (!vus.has(c)) { rang0.add(d); vus.add(c); } } }
+    const dernier = new Map<string, GenDay>();
+    for (const d of days) {
+      // …et jamais une semaine de DÉCHARGE. Deux raisons, la seconde mesurée : un test maximal
+      // n'a pas sa place dans une semaine qui existe pour assimiler ; et la branche décharge du
+      // plancher piscine RETIRE les séances sous le plancher au lieu de les remonter, donc un
+      // test posé là est effacé — c'est le défaut d'origine (`dev.end` tombait sur la récup),
+      // déplacé d'un cran au lieu d'être fermé.
+      if (d.slot === "off" || !rang0.has(d) || recupParSemaine.get(d.week)) continue;
+      dernier.set(String(d.phaseId) + "|" + String(d.slot), d);
+    }
+    for (const d of dernier.values()) dernierDuSlot.set(d, true);
+  }
   const rangDansCreneau = new Map<GenDay, number>();
   {
     const vus = new Map<string, number>();
@@ -343,7 +383,7 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
     const prog = ph.weeks > 1 ? (d.week - 1 - ph.start) / (ph.weeks - 1) : 0.5;
     d.prog = Math.max(0, Math.min(1, prog));
     d.date = iso(start + i * MS);
-    d.sessions = buildSessions(ctx, d.slot as Parameters<typeof buildSessions>[1], d.phaseId, d.prog, d.week, rangDansCreneau.get(d) || 0, !!d.isR, (recupParSemaine.get(d.week) || false), (creneauxDuSlot.get(d) || 0));
+    d.sessions = buildSessions(ctx, d.slot as Parameters<typeof buildSessions>[1], d.phaseId, d.prog, d.week, rangDansCreneau.get(d) || 0, !!d.isR, (recupParSemaine.get(d.week) || false), (creneauxDuSlot.get(d) || 0), (dernierDuSlot.get(d) || false));
     for (const s of d.sessions) {
       if (s.steps && s.steps.length) renderSess(s, refs, hz, r.baseRefs);
       else if (s.min == null) s.min = 0;
