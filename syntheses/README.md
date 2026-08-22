@@ -20,6 +20,7 @@ registre qu'on re-mesure.
 | 06 | [`franchissable` — deux réfutations](06-franchissable-deux-refutations.md) | `0711262` | byte-identique (mesures seules) |
 | 07 | [L'état des branches — un seul merge en question](07-etat-des-branches.md) | — | aucune ligne touchée |
 | 08 | [Le pic livré maximum sur les 990 profils](08-pic-livre-maximum.md) | `mesure:picmax` | aucune ligne touchée (`src/` byte-identique) |
+| 09 | [Le plafond est le calendrier — les quatre points mesurés](09-plafond-calendrier.md) | `mesure:doublage` | aucune ligne touchée (`src/` byte-identique) |
 
 **Convention** : un compte rendu par réponse, numéroté à la suite. Le fichier est écrit dans le
 dépôt avant d'être envoyé — le conteneur est éphémère, un fichier non commité serait perdu.

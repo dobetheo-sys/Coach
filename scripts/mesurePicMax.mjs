@@ -45,6 +45,7 @@ for (const { key, sport, a } of profiles()) {
     minParSeance: pic / Math.max(1, seances(semPic).length),
     volMax: Number.isFinite(Number(a.vol_max)) ? Number(a.vol_max) : null,
     annonce: p.volPeak ?? null,
+    decisions: (p._v2?.decisions ?? []).map((d) => ({ id: d.id, val: String(d.val ?? "") })),
   });
 }
 if (!lignes.length) { console.error("✖ sonde vide — aucun plan mesuré"); process.exit(1); }
@@ -93,3 +94,35 @@ const md = (arr) => arr[Math.floor(arr.length / 2)];
 console.log("\n§3bis — MINUTES PAR SÉANCE DANS LA SEMAINE DE PIC");
 console.log(`   médiane ${md(tri((l) => l.minParSeance)).toFixed(1)} min · max ${Math.max(...lignes.map((l) => l.minParSeance)).toFixed(1)} min`);
 console.log(`   créneaux : médiane ${md(tri((l) => l.creneaux))} · moyenne ${(lignes.reduce((t, l) => t + l.creneaux, 0) / lignes.length).toFixed(2)}`);
+
+// ─── §5 — LE CAS MODAL : les profils à 10 h qui n'atteignent pas leur déclaration ──────────
+// PLAFOND_CALENDRIER §4 : « si le manque est publié, le produit est honnête ; sinon, N profils
+// reçoivent 7 h en ayant demandé 10, sans explication. » On lit la DÉCISION livrée, jamais une
+// règle relue à la main.
+const modal = lignes.filter((l) => l.volMax === 10 && l.picH < 0.9 * 10);
+console.log("\n§5 — LE CAS MODAL : vol_max = 10 h NON ATTEINT");
+console.log(`   population : ${modal.length} profils`);
+const has = (l, id) => l.decisions.some((d) => d.id === id);
+const avecManque = modal.filter((l) => has(l, "manque"));
+const avecR202 = modal.filter((l) => has(l, "R20.2"));
+const muets = modal.filter((l) => !has(l, "manque") && !has(l, "R20.2"));
+console.log(`   décision « manque » publiée ......... ${avecManque.length} (${((100 * avecManque.length) / modal.length).toFixed(1)} %)`);
+console.log(`   décision « R20.2 » publiée .......... ${avecR202.length} (${((100 * avecR202.length) / modal.length).toFixed(1)} %)`);
+console.log(`   AUCUNE des deux — profils MUETS ..... ${muets.length} (${((100 * muets.length) / modal.length).toFixed(1)} %)`);
+const dm = new Map();
+for (const l of modal) dm.set(l.creneaux, (dm.get(l.creneaux) ?? 0) + 1);
+console.log(`   créneaux au pic : ${[...dm].sort((x, y) => x[0] - y[0]).map(([k, v]) => `${k} → ${v}`).join(" · ")}`);
+const causes = new Map();
+for (const l of avecR202) {
+  const v = l.decisions.find((d) => d.id === "R20.2").val;
+  const m = /ce qui borne, c'est ([^(]+)/.exec(v);
+  const c = (m ? m[1] : v).trim();
+  causes.set(c, (causes.get(c) ?? 0) + 1);
+}
+console.log("   ce que dit leur carte « ce qui borne » :");
+for (const [c, n] of [...causes].sort((x, y) => y[1] - x[1]).slice(0, 8)) console.log(`      ${String(n).padStart(4)} × ${c}`);
+if (muets.length) {
+  const g = muets.map((l) => 10 - l.picH).sort((x, y) => x - y);
+  console.log(`   MUETS — écart à la déclaration : médiane ${g[Math.floor(g.length / 2)].toFixed(2)} h · max ${g[g.length - 1].toFixed(2)} h · ${muets.filter((l) => l.picH < 8).length} sous 8 h`);
+}
+if (muets.length) console.log(`   exemples de muets : ${muets.slice(0, 5).map((l) => `${l.key} (${l.picH.toFixed(1)} h)`).join(" · ")}`);

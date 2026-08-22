@@ -36,6 +36,100 @@ assumés entre deux règles, les chantiers humains, et les entrées de registre 
 
 ## §1 — Défauts ouverts, par gravité
 
+### O-100 — `dispo` INVERSE le pic : déclarer PLUS de disponibilité livre MOINS de volume · 🔴 **OUVERT**
+
+**Trouvé** en exécutant PLAFOND_CALENDRIER §1-§2 (22/08/2026), `npm run mesure:doublage`.
+Quatrième inversion de monotonie du dépôt (après `I13` sur le niveau, `O-21` sur l'allure,
+`O-77` sur `vol_max`), sur un cinquième axe : **la disponibilité déclarée**.
+
+Mesuré à facteur unique (grille 288 plans, 4 bases RÉELLES du corpus × `doubles` × `dispo` ×
+`sessions_max` × `vol_max`), pic LIVRÉ maximum :
+
+```
+bike/gravel    weekend 16,80 h  >  partielle 16,53  >  semaine 16,00  =  quotidienne 16,00
+run/marathon   weekend  9,82 h  >  partielle  9,70  >  semaine  9,43  =  quotidienne  9,43
+tri/70.3       semaine 12,32 h  >  quotidienne 11,52          (doubles = oui)
+```
+
+L'athlète qui déclare pouvoir s'entraîner TOUS LES JOURS reçoit **0,80 h de moins** en vélo,
+**0,39 h de moins** en course, **0,80 h de moins** en tri que celui qui ne peut que le weekend.
+Le sens est constant sur les quatre bases et sur les deux `vol_max`.
+
+⚠ **Ce n'est pas nécessairement un défaut de volume — c'est un défaut de MONOTONIE.** Une
+raison défendable existe (moins de jours ⇒ des séances plus longues, donc moins de temps
+perdu en échauffements et retours au calme), et elle explique le sens. Ce qui n'est pas
+défendable est qu'une réponse plus permissive puisse **réduire** ce que le moteur promet,
+sans qu'aucune décision ne le dise. À arbitrer : soit le moteur monte l'offre avec les jours,
+soit il PUBLIE que concentrer la semaine rend plus de volume.
+
+```verify
+id: O-100-dispo-inverse
+quoi: le pic livré décroît quand la disponibilité déclarée augmente
+attendu: bike/gravel weekend > quotidienne (la propriété est publiée par le script)
+cmd: npm run mesure:doublage
+```
+
+### O-99 — `vol_max` propose une plage que la disponibilité déclarée rend inatteignable · 🟠 **ARBITRAGE**
+
+`ANSWER_SCHEMA` offre `vol_max` de **1 à 40 h**, sans lien avec les réponses de disponibilité
+déjà données. Mesuré (`npm run mesure:picmax`, 986 plans) — ratio livré/déclaré **médian** :
+
+```
+vol_max déclaré     3 h  →  101 %        12 h  →  47 %
+                   10 h  →   70 %        20 h  →  58 %
+```
+
+Et le §4 de la mesure le prouve dans le sens fort : **même en neutralisant TOUS les plafonds
+de durée de séance** (`blockBounds`, facteur unique), `20 h` reste à **65 %** de médiane. Ce
+n'est donc pas une borne à desserrer.
+
+Le plafond réellement OFFERT est dérivable et il est MESURÉ (`npm run mesure:doublage`, §E) :
+
+```
+                     weekend  partielle  semaine  quotidienne
+run/marathon           9,8       9,7       9,4       9,4      (doubles sans effet)
+bike/gravel           16,8      16,5      16,0      16,0      (doubles sans effet)
+tri/70.3  doubles=non  8,1       9,2       9,4       8,7
+tri/70.3  doubles=oui  8,0      11,1      12,3      11,5
+tri/Full  doubles=oui 11,5      15,8      16,6      16,6
+```
+
+**Un marathonien ne devrait pas se voir proposer 20 h : le moteur n'en livrera jamais plus de
+9,8.** C'est la seule promesse cassée que l'utilisateur rencontre AVANT d'avoir son plan.
+
+⚠ **Deux réserves avant d'écrire quoi que ce soit.** (1) Borner l'offre par la disponibilité
+suppose la monotonie que **O-100 réfute** — le plafond offert le plus haut est aujourd'hui
+celui du `weekend` : la borne doit donc se dériver du MAXIMUM sur les réponses, pas de la
+réponse elle-même, tant qu'O-100 n'est pas tranché. (2) `vol_max` est une DÉCLARATION de
+l'athlète, pas une commande : la borner, c'est décider à sa place. La forme O-17 serait
+d'INFORMER (« au-delà de N h, le moteur ne pourra pas placer ce volume ») plutôt que de
+brider le champ.
+
+### O-98bis — 129 profils reçoivent moins que leur déclaration SANS aucune décision qui le dise · 🟡 **OUVERT**
+
+PLAFOND_CALENDRIER §4 demandait : *« si le manque est publié, le produit est honnête ; sinon,
+N profils reçoivent 7 h en ayant demandé 10, sans explication »*. Mesuré sur les **731**
+profils qui déclarent `vol_max: 10` et ne l'atteignent pas à 10 % près :
+
+```
+décision « R20.2 » publiée .....  594  (81,3 %)
+décision « manque » publiée ....   69  ( 9,4 %)
+AUCUNE des deux — MUETS ........  129  (17,6 %)
+```
+
+**La prémisse du §4 est donc partiellement RÉFUTÉE, et c'est le bon sens** : les gros écarts
+SONT publiés. Les muets ont un écart **médian de 1,12 h**, maximum 2,85 h, et **un seul** est
+sous 8 h — le silence porte sur l'écart modeste, pas sur les 3 h manquantes. Reste que le
+seuil de publication n'est écrit nulle part comme une décision : il est le résidu de deux
+règles qui ne se sont pas concertées.
+
+```verify
+id: O-98bis-muets
+quoi: profils à vol_max 10 non atteint sans décision manque ni R20.2
+attendu: le script publie le compte qu'il trouve (129 au 22/08/2026)
+cmd: npm run mesure:picmax
+```
+
 ### `franchissable` — les deux prémisses de l'arbitrage sont RÉFUTÉES par la mesure · ✅ **MESURE, moteur inchangé**
 
 **Arbitrage d'entrée (FRANCHISSABILITE_VACUEUSE.md, 21/08/2026)**, ordre : 1. *« qui lit
