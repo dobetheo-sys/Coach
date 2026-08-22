@@ -16,7 +16,7 @@ registre qu'on re-mesure.
 | 03 | [O-98 : la gravité tranchée · audit des rouges attendus](03-O98-gravite-et-rouges-attendus.md) | `70d5ce0` | byte-identique (mesures seules) |
 | 04 | [L'entrée de plan du débutant nageur](04-entree-plan-debutant-nageur.md) | `cc8f3a2` | livré (2 gardes) · §2a retiré (patch conservé) |
 | 05 | [Le placement du test · la franchissabilité](05-placement-du-test-et-franchissabilite.md) | `c50de88` | livré (c) · (b) réfuté par C22 |
-| 06 | [`franchissable` — deux réfutations](06-franchissable-deux-refutations.md) | `ed8f917` | byte-identique (mesures seules) |
+| 06 | [`franchissable` — deux réfutations](06-franchissable-deux-refutations.md) | `0711262` | byte-identique (mesures seules) |
 
 **Convention** : un compte rendu par réponse, numéroté à la suite. Le fichier est écrit dans le
 dépôt avant d'être envoyé — le conteneur est éphémère, un fichier non commité serait perdu.
