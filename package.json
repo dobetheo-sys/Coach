@@ -90,6 +90,7 @@
     "check:chemins": "node scripts/checkChemins.mjs",
     "mesure:longue-volmax": "node scripts/mesureLongueVolMax.mjs",
     "mesure:doublage": "node scripts/mesureDoublage.mjs",
+    "mesure:cycle10": "node scripts/mesureCycle10.mjs",
     "mesure:t61": "node scripts/mesureT61.mjs",
     "mesure:picmax": "node scripts/mesurePicMax.mjs",
     "mesure:puits": "node scripts/mesurePuits.mjs",

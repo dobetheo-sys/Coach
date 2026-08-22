@@ -102,6 +102,49 @@ dur, le CRÉNEAU (qui décide du contenu) livre du facile. C'est la même famill
 « type du créneau » : le schéma est agnostique de la discipline ET de l'intensité réelle, seul
 le module de sport décide — et personne ne vérifie que les deux disent la même chose.
 
+#### LE SCHÉMA DE 10 DÉCLARE BIEN CINQ POSITIONS DURES — IL N'EN REMPLIT QU'UNE (22/08/2026)
+
+Ordre CYCLE10_INTENSIFICATION §4, mesuré par `npm run mesure:cycle10` (position par position,
+clé `jc` posée par `weekBuilder`, jamais reconstruite — règle 21).
+
+**§1 · la séquence déclarée** (`weekBuilder.ts`, `schema(use10 = true)`) :
+
+```
+j1 dur/dur1 · j2 facile/facileR · j3 dur/dur2 · j4 facile/facile2 · j5 dur/facileR
+j6 facile/facileR · j7 dur/dur2 · j8 facile/facile2 · j9 dur/durLong · j10 recup/recup
+```
+
+**Cinq positions de charge `dur`, jamais deux consécutives.** L'intention d'intensification EST
+dans le schéma — la prémisse « il en porte l'équivalent d'une » est donc **fausse au niveau du
+schéma**, et vraie au niveau du CONTENU.
+
+**§2 · ce que les cinq positions livrent** (4 bases réelles, mêmes chiffres sur les quatre) :
+
+```
+j1  dur1     → DUR       ■        j7  dur2     → modéré    □
+j3  dur2     → modéré    □        j9  durLong  → facile    □
+j5  facileR  → facile    □        cycle de 7 : 3 promises, 1 livrée
+5 positions promises DURES · 1 livrée · 0 enchaînement de deux dures
+```
+
+**Le schéma de 7 a le même ratio : 3 promises, 1 livrée.** Les DEUX schémas ne délivrent qu'un
+seul jour dur par cycle ; le cycle de 10 est simplement plus long, d'où la densité plus basse.
+**Ce n'est donc pas un schéma à écrire : c'est le REMPLISSAGE des positions par le module de
+sport qu'il faut changer.** `dur2` porte « Force basse cadence » et « Sweetspot », `durLong`
+porte la sortie longue — aucun des deux n'est dur, par conception.
+
+⚠ **Deux écarts entre la séquence livrée et celle du fondateur, publiés** : le schéma ne pose
+**aucun `off`** et **une seule récup** (sa séquence en veut 1 et 2) ; en `run` et `trail`, les
+`off` apparaissent quand même — posés en aval par le plafond de jours d'impact
+(`MAX_RUN_DAYS`), pas par le schéma.
+
+**§3 · la séquence intentionnelle n'est écrite NULLE PART.** Recherche faite : `src/` ne
+contient que des mentions incidentes du cycle de 10 (le message d'`answerSchema.ts:620`, la
+décision `cycle`, des commentaires de conséquence dans `weekBuilder`/`planGenerator`) ; aucune
+spec de la séquence, aucune fourchette de séances clés. **Verdict : fonctionnalité jamais
+construite, pas régression.** C'est la deuxième intention de conception de ce fil qui ne vit
+qu'en conversation (après la fourchette 3-4) : **les deux doivent entrer au dépôt avec le lot.**
+
 #### T-61 A TRANCHÉ LE VOCABULAIRE : `dur` VEUT DIRE « SÉANCE CLÉ » (22/08/2026)
 
 Mesuré sur **986 plans · 80 242 jours de charge**, 7 sports (`npm run mesure:t61`). Part des
