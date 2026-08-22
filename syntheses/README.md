@@ -23,6 +23,7 @@ registre qu'on re-mesure.
 | 09 | [Le plafond est le calendrier — les quatre points mesurés](09-plafond-calendrier.md) | `mesure:doublage` | aucune ligne touchée (`src/` byte-identique) |
 | 10 | [O-100 se scinde — §1b est un vrai défaut](10-o100-scinde.md) | `mesure:doublage` §F | aucune ligne touchée (`src/` byte-identique) |
 | 11 | [Dur/facile : le cycle de 10 jours dilue le dur](11-dur-facile-cycle10.md) | `mesure:doublage` §G/§H | aucune ligne touchée (`src/` byte-identique) |
+| 12 | [T-61 tranche : `dur` veut dire « séance clé »](12-dur-ou-cle.md) | `mesure:t61` | aucune ligne touchée (`src/` byte-identique) |
 
 **Convention** : un compte rendu par réponse, numéroté à la suite. Le fichier est écrit dans le
 dépôt avant d'être envoyé — le conteneur est éphémère, un fichier non commité serait perdu.

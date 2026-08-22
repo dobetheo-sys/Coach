@@ -102,6 +102,55 @@ dur, le CRÉNEAU (qui décide du contenu) livre du facile. C'est la même famill
 « type du créneau » : le schéma est agnostique de la discipline ET de l'intensité réelle, seul
 le module de sport décide — et personne ne vérifie que les deux disent la même chose.
 
+#### T-61 A TRANCHÉ LE VOCABULAIRE : `dur` VEUT DIRE « SÉANCE CLÉ » (22/08/2026)
+
+Mesuré sur **986 plans · 80 242 jours de charge**, 7 sports (`npm run mesure:t61`). Part des
+jours étiquetés `dur` qui livrent RÉELLEMENT du dur, au classificateur du moteur :
+
+```
+dur1      14 399 jours  ·  76,2 %
+dur2      14 102 jours  ·  45,9 %
+durLong   13 763 jours  ·   0,0 %      ← sur les SEPT sports, sans exception
+facileR       30 jours  ·   0,0 %
+```
+
+`durLong` contient « Sortie longue » ×4 244, « Sortie longue vélo » ×2 157, « Brick vélo+CAP »
+×1 486 ; `dur2` contient « Force basse cadence » ×3 011, « Sweetspot vélo » ×868 — modéré par
+conception. **`dur` ne peut donc pas signifier « intensité au-dessus du seuil » : il signifie
+séance CLÉ.** La garde « charge déclarée == intensité livrée » est donc REFUSÉE comme
+spécification — elle serait rouge sur 3 créneaux sur 4 par CONCEPTION.
+
+**Et l'intention du cycle de 10 jours est ÉCRITE dans le moteur** — `weekBuilder.ts:802`, un
+avertissement adressé à l'athlète : *« passer sur un cycle de 10 jours pour **espacer les
+séances clés** au lieu de les entasser sur 7 jours »*. Compté sur le livré (`tri/70.3`,
+`doubles: oui`) : **`semaine` 4,29 clés / 10 j · `quotidienne` 3,50**, espacement médian 7 → 10
+jours. **Le cycle fait exactement ce que le moteur promet qu'il fait.**
+
+⚠ **Donc O-100b change de nature** : ce n'est pas un défaut de génération, c'est un mécanisme
+DOCUMENTÉ dont la conséquence (−6 % de volume, −31 % de minutes dures) n'est **publiée nulle
+part**, et qui s'applique à qui a coché la réponse la plus permissive. La fourchette « 3 à 4
+séances clés par cycle » est celle du fondateur : **elle n'est écrite nulle part dans le
+dépôt** — si elle fait foi, `quotidienne` est DANS la cible et c'est le schéma de 7 qui est
+au-dessus.
+
+### O-102 — `facile2` est étiqueté `facile` et livre du DUR un jour sur trois · 🟠 **OUVERT**
+
+Trouvé par le §4 de `mesure:t61` — l'inverse, que personne n'avait mesuré :
+
+```
+tri|facile2/facile   1 181 jours durs sur 3 424   (34,5 %)
+tri|facileR/facile      56 jours durs sur 6 735   ( 0,8 %)
+```
+
+`facile2` est le créneau typé **nage à 100 %** (lot « type du créneau ») : c'est la nage seuil
+qui y tombe. La charge déclarée dit `facile` — **et c'est elle qui alimente la courbe de
+volume** — pendant que le contenu est dur un jour sur trois. **L'écart est quarante fois plus
+gros que `facileR/dur`** (1 181 jours contre 30), et il va dans le sens qui compte : la semaine
+est comptée plus facile qu'elle n'est.
+
+À relier au plancher de fréquence et à la prédiction « la nage est la victime par défaut » :
+c'est encore sur `facile2` que ça tombe.
+
 **Conséquence pour l'arbitrage** : réparer O-100b n'est pas « remonter le volume », c'est
 choisir entre deux issues nommées — soit le cycle de 10 jours porte autant de `dur1` par unité
 de temps que celui de 7 (densité préservée), soit il assume d'être un cycle plus facile et le
