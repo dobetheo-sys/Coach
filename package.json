@@ -89,6 +89,7 @@
     "mesure:progression": "node scripts/mesureProgression.mjs",
     "check:chemins": "node scripts/checkChemins.mjs",
     "mesure:longue-volmax": "node scripts/mesureLongueVolMax.mjs",
+    "mesure:picmax": "node scripts/mesurePicMax.mjs",
     "mesure:puits": "node scripts/mesurePuits.mjs",
     "mesure:manque": "node scripts/mesureManque.mjs",
     "mesure:circularite": "node scripts/mesureCircularite.mjs",
