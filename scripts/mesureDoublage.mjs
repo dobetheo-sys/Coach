@@ -18,6 +18,7 @@
 import "../src/app/bridge.ts";
 import { profiles } from "./goldenMaster.mjs";
 import { estCharge } from "./lib/planMetrics.mjs";
+import { intensitySplit } from "../src/engine/loadModel.ts";
 
 const seances = (d) => (d.sessions ?? []).filter((s) => s && s.d !== "rs" && !s.race);
 const minJour = (d) => seances(d).reduce((t, s) => t + (s.min || 0), 0);
@@ -135,4 +136,66 @@ if (b703) {
     console.log(`                pic 7 j ${(pic7 / 60).toFixed(2)} h · pic 10 j ${(pic10 / 60).toFixed(2)} h (${((pic10 / 60) * 0.7).toFixed(2)} h ramené à 7 j)`);
   }
   console.log("   → si l'inversion persiste sur 10 j, c'est le MOTEUR (règle d'arbitrage posée avec l'hypothèse).");
+}
+
+// ─── §G — DUR / FACILE : densité, espacement, répartition (question du 22/08/2026) ─────────
+// « Dure » = le CLASSIFICATEUR DU MOTEUR le dit (`intensitySplit(s).hardMin > 0`) — jamais une
+// seconde liste de noms de séances (leçon T-01 : trois classificateurs divergents).
+// Les deux plans livrent des semaines de 7 jours (§F) : on compte donc PAR JOUR de charge, et
+// on exprime la même densité dans les deux unités (×7 et ×10). Un compte a besoin de son
+// moment ; une densité a besoin de sa fenêtre.
+if (b703) {
+  console.log("\n§G — DUR / FACILE sur tri/70.3, doubles = oui");
+  for (const dispo of ["semaine", "quotidienne"]) {
+    const a = { ...b703.a, doubles: "oui", sessions_max: "14", vol_max: "20", dispo };
+    const p = globalThis.EBV2.buildPlan(b703.sport, a);
+    // Suite des jours de CHARGE, à plat, dans l'ordre du plan : c'est sur elle que se lit
+    // l'espacement (règle 21 : une propriété positionnelle se lit PAR POSITION).
+    const jours = [];
+    for (const w of p.weeks ?? []) { if (!estCharge(w)) continue; for (const d of w.days ?? []) jours.push(d); }
+    let nDur = 0, nSeances = 0, minDur = 0, minMod = 0, minFacile = 0;
+    const posDur = [];
+    jours.forEach((d, i) => {
+      let jourDur = false;
+      for (const s of seances(d)) {
+        nSeances++;
+        let sp2; try { sp2 = intensitySplit(s); } catch { sp2 = { hardMin: 0, modMin: 0 }; }
+        const h = sp2.hardMin || 0, m = sp2.modMin || 0;
+        minDur += h; minMod += m; minFacile += Math.max(0, (s.min || 0) - h - m);
+        if (h > 0) { nDur++; jourDur = true; }
+      }
+      if (jourDur) posDur.push(i);
+    });
+    const nJ = jours.length;
+    const ecarts = posDur.slice(1).map((x, i) => x - posDur[i]).sort((x, y) => x - y);
+    const med = ecarts.length ? ecarts[Math.floor(ecarts.length / 2)] : null;
+    const tot = minDur + minMod + minFacile;
+    console.log(`   ${dispo}`);
+    console.log(`      jours de charge ${nJ} · séances ${nSeances} · séances DURES ${nDur}`);
+    console.log(`      densité : ${((7 * nDur) / nJ).toFixed(2)} dures / 7 j  ·  ${((10 * nDur) / nJ).toFixed(2)} dures / 10 j   (séances : ${((7 * nSeances) / nJ).toFixed(2)} / 7 j)`);
+    console.log(`      espacement entre 2 JOURS durs : médiane ${med} j · minimum ${ecarts[0]} j · ${ecarts.filter((e) => e === 1).length} enchaînements à 1 j`);
+    console.log(`      minutes : dur ${Math.round(minDur)} (${((100 * minDur) / tot).toFixed(1)} %) · modéré ${Math.round(minMod)} (${((100 * minMod) / tot).toFixed(1)} %) · facile ${Math.round(minFacile)} (${((100 * minFacile) / tot).toFixed(1)} %)`);
+    console.log(`      par 7 j : dur ${((7 * minDur) / nJ).toFixed(1)} min · facile ${((7 * minFacile) / nJ).toFixed(1)} min`);
+  }
+}
+
+// ─── §H — LA CAUSE : quel CRÉNEAU produit le dur, et combien de fois ? ─────────────────────
+// Règle 16 : « qu'est-ce qui produit ceci ? » se pose jusqu'au producteur. §G dit que le dur
+// tombe ; §H dit d'OÙ il tombait.
+if (b703) {
+  console.log("\n§H — QUEL CRÉNEAU PRODUIT LE DUR (tri/70.3, doubles = oui)");
+  for (const dispo of ["semaine", "quotidienne"]) {
+    const a = { ...b703.a, doubles: "oui", sessions_max: "14", vol_max: "20", dispo };
+    const p = globalThis.EBV2.buildPlan(b703.sport, a);
+    const jours = new Map(), durs = new Map();
+    for (const w of p.weeks ?? []) { if (!estCharge(w)) continue;
+      for (const d of w.days ?? []) {
+        const k = `${d.slot}/${d.charge}`;
+        jours.set(k, (jours.get(k) ?? 0) + 1);
+        let h = 0; for (const s of seances(d)) { try { h += intensitySplit(s).hardMin || 0; } catch { /* une séance sans steps ne pèse pas */ } }
+        if (h > 0) durs.set(k, (durs.get(k) ?? 0) + 1);
+      } }
+    console.log(`   ${dispo}`);
+    for (const [k, n] of [...jours].sort()) console.log(`      ${k.padEnd(18)} ${String(n).padStart(3)} jours de charge · dont DURS ${String(durs.get(k) ?? 0).padStart(3)}`);
+  }
 }

@@ -75,6 +75,38 @@ l'instrument »*. **Deux mesures la réfutent, dans cet ordre.**
 Par la règle d'arbitrage posée avec l'hypothèse (*« elle persiste → c'est le moteur »*),
 **O-100b est un vrai défaut**, et c'est lui qui bloque la dérivation d'O-99.
 
+#### La CAUSE, mesurée (22/08/2026) — le cycle de 10 jours DILUE le dur
+
+`npm run mesure:doublage` §G et §H, sur `tri/70.3` / `doubles: oui` / 217 jours de charge dans
+les deux états. « Dure » = ce que dit le classificateur du moteur (`intensitySplit().hardMin >
+0`), jamais une seconde liste de noms.
+
+```
+                       séances/7 j   séances DURES/7 j   /10 j    dur      facile
+semaine                    8,00           1,68            2,40   48,0 min  462,2 min   (par 7 j)
+quotidienne                8,26           1,19            1,71   33,3 min  473,3 min
+espacement entre 2 jours durs :  semaine médiane 7 j, min 7  ·  quotidienne médiane 10 j, min 4
+```
+
+**`quotidienne` livre PLUS de séances et MOINS de dur** : −29 % de séances dures, **−31 % de
+minutes dures**, à facile quasi identique (+2 %). L'espacement médian passe de 7 à 10 jours —
+c'est la signature du cycle.
+
+**§H nomme le producteur (règle 16)** : **un seul créneau produit du dur, `dur1`**, et il passe
+de **31 à 25 jours de charge** (−19 %) parce que le cycle en contient un par 10 jours au lieu
+d'un par 7.
+
+⚠ **Et le schéma de 10 pose une charge `dur` sur un créneau `facileR`** — 22 jours étiquetés
+`facileR/dur`, **dont 0 dur livré**. La CHARGE (qui alimente la courbe de volume) promet du
+dur, le CRÉNEAU (qui décide du contenu) livre du facile. C'est la même famille que le lot
+« type du créneau » : le schéma est agnostique de la discipline ET de l'intensité réelle, seul
+le module de sport décide — et personne ne vérifie que les deux disent la même chose.
+
+**Conséquence pour l'arbitrage** : réparer O-100b n'est pas « remonter le volume », c'est
+choisir entre deux issues nommées — soit le cycle de 10 jours porte autant de `dur1` par unité
+de temps que celui de 7 (densité préservée), soit il assume d'être un cycle plus facile et le
+DIT. Le second est cohérent avec O-100a.
+
 ⚠ **Trouvé en le mesurant** : la décision dit « Cycle de 10 jours — activé » sur un plan dont
 les 43 semaines font 7 jours. Elle n'est pas FAUSSE (le cycle des créneaux tourne bien sur 10
 positions, et le plan diffère), mais son libellé décrit un calendrier que l'athlète ne recevra
