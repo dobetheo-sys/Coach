@@ -21,6 +21,7 @@ registre qu'on re-mesure.
 | 07 | [L'état des branches — un seul merge en question](07-etat-des-branches.md) | — | aucune ligne touchée |
 | 08 | [Le pic livré maximum sur les 990 profils](08-pic-livre-maximum.md) | `mesure:picmax` | aucune ligne touchée (`src/` byte-identique) |
 | 09 | [Le plafond est le calendrier — les quatre points mesurés](09-plafond-calendrier.md) | `mesure:doublage` | aucune ligne touchée (`src/` byte-identique) |
+| 10 | [O-100 se scinde — §1b est un vrai défaut](10-o100-scinde.md) | `mesure:doublage` §F | aucune ligne touchée (`src/` byte-identique) |
 
 **Convention** : un compte rendu par réponse, numéroté à la suite. Le fichier est écrit dans le
 dépôt avant d'être envoyé — le conteneur est éphémère, un fichier non commité serait perdu.

@@ -36,36 +36,82 @@ assumés entre deux règles, les chantiers humains, et les entrées de registre 
 
 ## §1 — Défauts ouverts, par gravité
 
-### O-100 — `dispo` INVERSE le pic : déclarer PLUS de disponibilité livre MOINS de volume · 🔴 **OUVERT**
+### O-100 SCINDÉ — deux inversions sous un numéro, une seule est un défaut · 🔴 **§1b CONFIRMÉ**
 
-**Trouvé** en exécutant PLAFOND_CALENDRIER §1-§2 (22/08/2026), `npm run mesure:doublage`.
-Quatrième inversion de monotonie du dépôt (après `I13` sur le niveau, `O-21` sur l'allure,
-`O-77` sur `vol_max`), sur un cinquième axe : **la disponibilité déclarée**.
+**Mesuré** (O100_SCINDE.md, 22/08/2026) — `npm run mesure:doublage` pour l'ampleur, sonde
+dédiée pour la fenêtre de 10 jours.
 
-Mesuré à facteur unique (grille 288 plans, 4 bases RÉELLES du corpus × `doubles` × `dispo` ×
-`sessions_max` × `vol_max`), pic LIVRÉ maximum :
+#### O-100a — `weekend` > `quotidienne` : DÉFENDABLE, à DIRE · 🟡
 
 ```
-bike/gravel    weekend 16,80 h  >  partielle 16,53  >  semaine 16,00  =  quotidienne 16,00
-run/marathon   weekend  9,82 h  >  partielle  9,70  >  semaine  9,43  =  quotidienne  9,43
-tri/70.3       semaine 12,32 h  >  quotidienne 11,52          (doubles = oui)
+bike/gravel    weekend 16,80  >  quotidienne 16,00
+run/marathon   weekend  9,82  >  quotidienne  9,43
 ```
 
-L'athlète qui déclare pouvoir s'entraîner TOUS LES JOURS reçoit **0,80 h de moins** en vélo,
-**0,39 h de moins** en course, **0,80 h de moins** en tri que celui qui ne peut que le weekend.
-Le sens est constant sur les quatre bases et sur les deux `vol_max`.
+Le modèle est CORRECT : deux journées entières portent des séances beaucoup plus longues, et
+l'échauffement se paie deux fois au lieu de sept. Ce n'est pas une inversion à corriger, c'est
+un fait à ÉNONCER — personne ne comprend qu'en déclarant plus de jours il obtient moins
+d'heures si la carte ne l'explique pas. **Reclassé : ce n'est plus un défaut de monotonie.**
 
-⚠ **Ce n'est pas nécessairement un défaut de volume — c'est un défaut de MONOTONIE.** Une
-raison défendable existe (moins de jours ⇒ des séances plus longues, donc moins de temps
-perdu en échauffements et retours au calme), et elle explique le sens. Ce qui n'est pas
-défendable est qu'une réponse plus permissive puisse **réduire** ce que le moteur promet,
-sans qu'aucune décision ne le dise. À arbitrer : soit le moteur monte l'offre avec les jours,
-soit il PUBLIE que concentrer la semaine rend plus de volume.
+#### O-100b — `semaine` > `quotidienne` : l'hypothèse d'artefact est RÉFUTÉE · 🔴 **VRAI DÉFAUT**
+
+Sept jours dans les deux cas ; `semaine` = « tous les jours, contraint », `quotidienne` =
+« tous les jours, libre ». Une réponse plus permissive, **même nombre de jours**, moins de
+volume — aucune explication physiologique.
+
+L'hypothèse posée était : *« `quotidienne` ouvre le cycle glissant de 10 jours, donc c'est
+l'instrument »*. **Deux mesures la réfutent, dans cet ordre.**
+
+1. **La prémisse est vraie mais sans objet** : `use10` s'active bien (`a.dispo ===
+   "quotidienne" && a.shift_ok === "oui" && offDays.length < 2`, `reasoningEngine.ts:373`,
+   décision « Cycle de 10 jours — activé » publiée) — **mais le plan livré reste une grille de
+   7 jours dans les DEUX cas** : 43 semaines, `1j×1 · 7j×42`, identique. `use10` fait tourner
+   le CYCLE DES CRÉNEAUX sur 10 positions, il ne change pas le calendrier. Il n'y a donc rien
+   à re-fenêtrer.
+2. **Mesurée quand même sur une fenêtre glissante de 10 jours** (`tri/70.3`, `doubles: oui`,
+   `sessions_max: 14`, `vol_max: 20`) : `semaine` **18,63 h** contre `quotidienne` **16,38 h**
+   — soit 13,04 contre 11,47 ramenés à 7 jours. **L'inversion PERSISTE.**
+
+Par la règle d'arbitrage posée avec l'hypothèse (*« elle persiste → c'est le moteur »*),
+**O-100b est un vrai défaut**, et c'est lui qui bloque la dérivation d'O-99.
+
+⚠ **Trouvé en le mesurant** : la décision dit « Cycle de 10 jours — activé » sur un plan dont
+les 43 semaines font 7 jours. Elle n'est pas FAUSSE (le cycle des créneaux tourne bien sur 10
+positions, et le plan diffère), mais son libellé décrit un calendrier que l'athlète ne recevra
+pas. Famille T-40, sur la surface décision.
 
 ```verify
-id: O-100-dispo-inverse
-quoi: le pic livré décroît quand la disponibilité déclarée augmente
-attendu: bike/gravel weekend > quotidienne (la propriété est publiée par le script)
+id: O-100b-fenetre-10j
+quoi: l'inversion semaine > quotidienne survit à la mesure sur 10 jours
+attendu: la propriété est publiée par le script (18,63 h contre 16,38 h au 22/08/2026)
+cmd: npm run mesure:doublage
+```
+
+### O-101 — `doubles` est demandée à TOUS les sports et n'agit qu'en triathlon · 🟠 **OUVERT**
+
+Mesuré : `run/marathon` et `bike/gravel` rendent le MÊME plan au centième sous `non`,
+`parfois` et `oui`. Le guard `doublesAddVolume` n'est déclaré qu'en tri.
+
+**Les deux branches de la question ont été vérifiées, et c'est la première.** La question vit
+dans l'étape « Ta capacité réelle » (`endurabuild/js/ui/steps.js`), **poussée sans aucune
+condition de sport** — un marathonien y répond, et sa réponse ne change rien.
+
+Ce n'est PAS une violation non détectée de R20.1 : `banc_sensibilite.cjs:146` porte
+`doubles: true` dans sa liste d'exemptions, avec sa raison (*« ne vaut que là où une seconde
+séance existe (multisport) — testé en tri ci-dessus »*). Le gate couvre le MOTEUR ; ce qui
+n'est couvert nulle part, c'est qu'une question **posée** puisse être inerte sans le dire —
+famille U19 (« un bouton mort et muet n'informe ni ne bloque »).
+
+**Et le corollaire est plus lourd que la question** : `run/marathon` ne dépassera **jamais
+9,82 h** de pic livré, quelles que soient les réponses — sept jours, sept séances, aucun
+doublage possible. Dix à quatorze heures est courant pour un marathonien sérieux : **le moteur
+ne sait pas produire cette préparation, et rien ne le dit.** C'est un plafond de DISCIPLINE
+qui n'a jamais été énoncé, et il est plus grave que la plage du champ `vol_max` (O-99).
+
+```verify
+id: O-101-doubles-inerte
+quoi: doubles non/parfois/oui rendent le même pic hors triathlon
+attendu: run et bike identiques aux trois réponses (le script publie les valeurs)
 cmd: npm run mesure:doublage
 ```
 

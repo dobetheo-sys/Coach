@@ -107,3 +107,32 @@ for (const nom of BASES.keys()) for (const dispo of DISPO) {
   });
   console.log(`   ${nom.padEnd(13)} ${dispo.padEnd(11)} ${l.join("  ")}`);
 }
+
+// ─── §F — O-100b : l'inversion `semaine` > `quotidienne` survit-elle à la fenêtre de 10 jours ?
+// L'hypothèse posée était « `quotidienne` ouvre le cycle glissant de 10 jours, donc c'est
+// l'instrument ». On vérifie la PRÉMISSE d'abord (le plan livré a-t-il des semaines de 10
+// jours ?), puis on mesure quand même sur la fenêtre de 10 jours — règle 15 : on observe la
+// sortie, on ne modélise pas le cycle.
+const b703 = BASES.get("tri/70.3");
+if (b703) {
+  console.log("\n§F — O-100b : LA FENÊTRE DE 10 JOURS");
+  for (const dispo of ["semaine", "quotidienne"]) {
+    const a = { ...b703.a, doubles: "oui", sessions_max: "14", vol_max: "20", dispo };
+    const p = globalThis.EBV2.buildPlan(b703.sport, a);
+    const cyc = (p._v2?.decisions ?? []).find((d) => d.id === "cycle");
+    const ch = (p.weeks ?? []).filter(estCharge);
+    const pic7 = Math.max(...ch.map((w) => w.days.reduce((t, d) => t + minJour(d), 0)));
+    const jours = (p.weeks ?? []).flatMap((w) => (w.days ?? []).map((d) => ({ m: minJour(d), c: estCharge(w) })));
+    let pic10 = 0;
+    for (let i = 0; i + 10 <= jours.length; i++) {
+      const f = jours.slice(i, i + 10);
+      if (!f.every((x) => x.c)) continue;
+      pic10 = Math.max(pic10, f.reduce((t, x) => t + x.m, 0));
+    }
+    const tailles = new Map();
+    for (const w of p.weeks ?? []) tailles.set(w.days.length, (tailles.get(w.days.length) ?? 0) + 1);
+    console.log(`   ${dispo.padEnd(12)} use10=${String(p.use10).padEnd(5)} décision « cycle »=${cyc ? "publiée" : "absente"} · jours/semaine LIVRÉS : ${[...tailles].sort((x, y) => x[0] - y[0]).map(([k, v]) => `${k}j×${v}`).join(" · ")}`);
+    console.log(`                pic 7 j ${(pic7 / 60).toFixed(2)} h · pic 10 j ${(pic10 / 60).toFixed(2)} h (${((pic10 / 60) * 0.7).toFixed(2)} h ramené à 7 j)`);
+  }
+  console.log("   → si l'inversion persiste sur 10 j, c'est le MOTEUR (règle d'arbitrage posée avec l'hypothèse).");
+}
