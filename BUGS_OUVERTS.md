@@ -36,6 +36,101 @@ assumés entre deux règles, les chantiers humains, et les entrées de registre 
 
 ## §1 — Défauts ouverts, par gravité
 
+### `franchissable` — les deux prémisses de l'arbitrage sont RÉFUTÉES par la mesure · ✅ **MESURE, moteur inchangé**
+
+**Arbitrage d'entrée (FRANCHISSABILITE_VACUEUSE.md, 21/08/2026)**, ordre : 1. *« qui lit
+`franchissable`, et que fait-il de `false` ? »* — *« le seul des cinq où un mécanisme de sécurité
+rend le bon verdict et où rien ne l'utilise »* · 2. le `min()` de livrabilité, rayon mesuré à part.
+
+**Les deux se sont retournés à la mesure. Aucune ligne de moteur n'est écrite** (`src/`
+byte-identique).
+
+#### §1 — Le verdict n'est PAS ignoré : il est consommé à 100 %
+
+`reasoningEngine.ts:159` porte un consommateur complet — `if (g0.franchissable === false)` → il
+cherche le plus long format que la rampe atteint (bornée aux formats **à ou sous** celui demandé,
+c'est la garde d'O-57), rabat, publie un `warning` et une décision `B17-continuite`.
+
+```
+tri · franchissable = false 14 · = true 146 · = null 28
+  parmi les 14 false :  10 rabattus
+                         4 « le format le plus court est déjà le tien, on construit »
+                         0 SANS conséquence
+```
+
+Le cas cité dans l'arbitrage, `B17/tri/S/debutant/basse-100m`, est dans les **4** :
+
+```
+gate      satisfait=false · franchissable=false · source=mesure
+          departM 200 · atteignableM 354 · courseM 750
+décision  « Continuité de nage à construire | 15 min visées »
+warning   « …tu déclares 2 min de nage en continu (200 m) pour un seuil de 15 min : le format
+             le plus court est déjà le tien, ton plan construit cette continuité semaine après
+             semaine, et une nage continue à la distance de course avant le jour J n'est pas
+             une option. »
+```
+
+**Le rabattement ne s'applique pas parce qu'il n'y a nulle part où rabattre — le sprint est le
+format le plus court —, et le plan LE DIT.** C'est O-17 dans sa forme exacte : informer, ne pas
+bloquer.
+
+⚠ **C'est MA formulation d'hier qui a produit cette lecture, et elle est corrigée.** J'avais écrit
+« l'écart EST déclaré infranchissable et le rabattement ne s'applique pas » — littéralement vrai,
+et trompeur par omission : je n'ai pas dit que le format était déjà le plus court, ni que le plan
+publie un avertissement et une décision. Un fait vrai présenté sans sa cause se lit comme un
+défaut.
+
+#### §2 — Le `min()` de livrabilité est INERTE par construction, mesuré : 0 sur 188
+
+Le correctif proposé était :
+
+```
+atteignableM = min( departM × C22^spanSem , plafond de séance applicable AU PIC )
+```
+
+Mesuré avant d'écrire, comme demandé — **0 profil sur 188 bascule**. Et la raison est structurelle,
+pas empirique : le plafond de séance EST déjà la même rampe.
+
+```
+atteignableM              = departM × C22^spanSem
+swimSessionCapAtWeek(k)   = min( courseM , departM × C22^(k−1) ) + auxiliaire
+```
+
+`min(atteignableM, capPic)` ne peut donc **jamais** descendre sous `courseM` quand `atteignableM`
+l'atteint : les deux grandeurs sont la même projection, l'une plafonnée à la distance de course.
+La pièce n'aurait rien borné et se serait lue comme une garde.
+
+**Ce que ça laisse intact** : la vacuité du §2 de l'arbitrage est réelle — sur un plan long,
+`C22^40 = ×45` donne **26 220 m atteignables pour une course de 3 800**, et `franchissable` rend
+`true` sans rien mesurer. Mais **le plafond de séance n'est pas le bon co-facteur pour la borner**,
+puisqu'il projette au même taux. Il en faudrait un qui ne dérive PAS de C22 — et il reste à
+identifier. Ticket rouvert avec cette contrainte écrite.
+
+#### §3 — Ce que la mesure confirme de l'arbitrage
+
+Le `null` sur source non mesurée est bien **correct par conception** (D3 : « l'inconnu n'est pas
+une valeur par défaut, c'est une mesure manquante ») — 28 profils, et chacun reçoit la décision
+« Évaluation de la nage EN ATTENTE » plus le test prescrit. Le défaut de
+`B17/tri/S/debutant/inconnue` n'est donc pas le `null` : c'est la **progression plate** (cause 3),
+qui reste ouverte.
+
+Les causes 3 et 4 — progression **tronquée** (`550 → 900 → 1225` pour 1500, viole D2) et
+progression **non monotone** (`2275 → 3050 → 2150`) — ne sont pas touchées par ce lot. La seconde
+est la **cinquième inversion de monotonie** du dépôt, sur un cinquième axe : *à l'intérieur d'une
+séquence annoncée comme croissante*.
+
+#### §4 — Et la décision ment là où les titres ne mentent pas
+
+Acquis de l'arbitrage, à traiter au point 3 de la file : `T-40` garde le TITRE (aucune séance
+n'annonce une distance qu'elle ne contient pas, vert), mais **la DÉCISION `B17-paliers` annonce
+« N paliers » et le plan peut livrer N séances identiques**. Un palier implique une montée. Même
+famille que `T-40`, autre surface, même correctif : la décision se dérive du livré.
+
+```verify
+id: franchissable-consomme
+quoi: tout verdict `franchissable = false` produit une conséquence (rabattement ou « déjà le plus court »)
+attendu: /VERDICT-CONSOMME/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');const {continuityGate}=await import('./src/engine/swimContinuity.ts');let f=0,ok=0;for(const{sport,a}of profiles()){if(sport!=='tri')continue;let p;try{p=globalThis.EBV2.buildPlan(sport,a)}catch{continue}const g=continuityGate(a,(p.weeks||[]).length);if(g?.franchissable!==false)continue;f++;const d=(p._v2?.decisions||[]).find(x=>x.id==='B17-continuite');if(/Format rabattu|à construire/.test(String(d?.what||'')))ok++;}console.log(f+' verdicts false · '+ok+' avec conséquence · '+(f>=10&&ok===f?'VERDICT-CONSOMME':'VERDICT-IGNORE'));"
 ### LE PLACEMENT DU TEST — (b) réfuté par la mesure, (c) livré · et la franchissabilité ne consulte AUCUN plafond
 
 **Arbitrage d'entrée (PLACEMENT_TEST_ET_O54.md, 21/08/2026)** : *(a) rejetée — une séance qui ne
