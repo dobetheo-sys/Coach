@@ -102,6 +102,54 @@ dur, le CRÉNEAU (qui décide du contenu) livre du facile. C'est la même famill
 « type du créneau » : le schéma est agnostique de la discipline ET de l'intensité réelle, seul
 le module de sport décide — et personne ne vérifie que les deux disent la même chose.
 
+### O-103 — le cycle de 10 n'est PAS livré tel qu'il est déclaré : 20 % de ses positions clés dérivent · 🔴 **OUVERT**
+
+Mesuré le 22/08/2026 en cherchant d'où venait l'écart « 4,00 créneaux de qualité déclarés →
+3,50 livrés », attribué à « la rotation ». **Ce n'est pas la rotation.** `npm run mesure:cycle10`
+§4, position par position, sur les 4 bases réelles :
+
+```
+                       cycle de 10          semaine de 7
+run/marathon           24/31   (77 %)       33/33   (100 %)
+bike/gravel            24/31   (77 %)       33/33   (100 %)
+tri/Full               60/73   (82 %)       75/75   (100 %)
+tri/70.3               69/86   (80 %)       93/93   (100 %)
+```
+
+**Le schéma de 7 est livré à 100 % sur les quatre bases. Celui de 10 perd un cinquième de ses
+positions clés** — et 4 à 10 par plan basculent vers un créneau NON clé (`facileR/facile`,
+`facile2/facile`, `off`), c'est-à-dire une journée facile à la place d'une séance clé. Le reste
+échange entre créneaux clés (`dur2 → dur1`), sans perte de compte.
+
+Aucune de ces journées n'est `forced` ni `swapped` : ce n'est pas un échange de jours de
+l'athlète. La dérive se concentre sur **`j7`** (le second `dur2`) et frappe les semaines qui
+bordent une décharge — **un cycle de 10 chevauche les semaines calendaires ET les cycles de
+récup, ce que le schéma de 7 ne fait jamais.** C'est la seule différence structurelle entre les
+deux, et elle suffit à expliquer 100 % contre 80 %.
+
+**Conséquence directe sur le lot d'intensification** : convertir `j5` en créneau de qualité ne
+suffit pas. Mesuré à facteur unique (`npm run casser` sur le schéma, fixture `REEL/tri/70.3`) :
+
+```
+état courant            clés 3,50/10 j · jours durs 1,15 · dur 5,6 % · pic 11,52 h · total 305 h
+j5 → `dur1`             clés 3,73     · jours durs 1,38 · dur 7,3 % · pic 12,30 h · total 324 h
+j5 → `dur2`             clés 4,06     · jours durs 1,57 · dur 6,6 % · pic 11,23 h · total 324 h
+schéma de 7 (témoin)    clés 4,29     · jours durs 1,68 · dur 7,9 % · pic 12,32 h
+```
+
+**Aucune des deux variantes n'atteint la densité du schéma de 7.** L'arithmétique qui prévoyait
+5,00 contre 4,29 suppose une livraison à 100 %, et la dérive en mange 20 %. **O-103 se traite
+donc AVANT la conversion de `j5`**, sinon la pièce se mesure contre un plancher qui bouge.
+
+Rayon : **5 profils du corpus activent `use10`** (`O-21b/run/10k` ×4, `REEL/tri/70.3`).
+
+```verify
+id: O-103-derive
+quoi: les positions clés du cycle de 10 ne portent pas toutes leur créneau déclaré
+attendu: le script publie ce qu'il trouve (77-82 % contre 100 % au 22/08/2026)
+cmd: npm run mesure:cycle10
+```
+
 #### LE SCHÉMA DE 10 DÉCLARE BIEN CINQ POSITIONS DURES — IL N'EN REMPLIT QU'UNE (22/08/2026)
 
 Ordre CYCLE10_INTENSIFICATION §4, mesuré par `npm run mesure:cycle10` (position par position,

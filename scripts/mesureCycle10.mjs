@@ -77,3 +77,38 @@ for (const [nom, base] of BASES) {
     console.log(`   enchaînements de deux positions DURES livrées : ${consec}`);
   }
 }
+
+// ─── §4 — O-103 : LE CYCLE EST-IL LIVRÉ TEL QU'IL EST DÉCLARÉ ? ───────────────────────────
+// L'écart « 4,00 créneaux de qualité déclarés → 3,50 livrés » a été attribué à « la rotation ».
+// Ce n'en est pas : on compare, POSITION PAR POSITION, le créneau déclaré par le schéma et
+// celui que le jour porte réellement (règle 15 — on observe la sortie livrée).
+{
+  const ATTENDU = {
+    10: new Map([[1, "dur1"], [3, "dur2"], [5, "facileR"], [7, "dur2"], [9, "durLong"]]),
+    7: new Map([[2, "dur1"], [4, "dur2"], [6, "durLong"]]),
+  };
+  const CLES = new Set(["dur1", "dur2", "durLong"]);
+  console.log("\n§4 — O-103 : LE CYCLE EST-IL LIVRÉ TEL QU'IL EST DÉCLARÉ ?");
+  for (const [nom, base] of BASES) {
+    for (const [libelle, dispo, len] of [["cycle de 10", "quotidienne", 10], ["semaine de 7", "semaine", 7]]) {
+      const a = { ...base.a, doubles: "oui", sessions_max: "14", vol_max: "20", dispo, shift_ok: "oui" };
+      let p; try { p = globalThis.EBV2.buildPlan(base.sport, a); } catch { continue; }
+      const A = ATTENDU[len];
+      let att = 0, ok = 0, versFacile = 0;
+      const ec = new Map();
+      for (const w of p.weeks ?? []) { if (!estCharge(w)) continue;
+        for (const d of w.days ?? []) {
+          const cible = A.get(d.jc);
+          if (!cible || !CLES.has(cible)) continue; // seules les positions CLÉS
+          att++;
+          if (d.slot === cible) { ok++; continue; }
+          if (!CLES.has(d.slot)) versFacile++;
+          const k = `j${d.jc} ${cible}→${d.slot}/${d.charge}`;
+          ec.set(k, (ec.get(k) ?? 0) + 1);
+        } }
+      if (!att) continue;
+      console.log(`   ${nom.padEnd(13)} ${libelle} : ${ok}/${att} positions clés portent leur créneau (${((100 * ok) / att).toFixed(0)} %) · ${versFacile} basculent vers un créneau NON clé`);
+      for (const [k, v] of [...ec].sort((x, y) => y[1] - x[1]).slice(0, 4)) console.log(`      ${k} ×${v}`);
+    }
+  }
+}
