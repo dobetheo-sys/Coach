@@ -112,3 +112,36 @@ for (const [nom, base] of BASES) {
     }
   }
 }
+
+// ─── §5 — LE CONTENU DES POSITIONS CLÉS, PAR PHASE (vérification qui peut inverser §1) ────
+// L'arbitrage « permanent + contenu par phase » suppose que le contenu des créneaux clés est
+// MODÉRÉ en base. Si la base porte du dur au-dessus du seuil sur plusieurs créneaux, la densité
+// d'intensité est haute dès la semaine 1 et l'argument par phase revient. On mesure.
+{
+  const CLES = new Set(["dur1", "dur2", "durLong"]);
+  console.log("\n§5 — LE CONTENU DES CRÉNEAUX CLÉS, PAR PHASE (cycle de 10)");
+  for (const [nom, base] of BASES) {
+    const a = { ...base.a, doubles: "oui", sessions_max: "14", vol_max: "20", dispo: "quotidienne", shift_ok: "oui" };
+    let p; try { p = globalThis.EBV2.buildPlan(base.sport, a); } catch { continue; }
+    const parPhase = new Map();
+    for (const w of p.weeks ?? []) {
+      if (!estCharge(w)) continue;
+      const ph = w.phase?.id ?? "?";
+      for (const d of w.days ?? []) {
+        if (!CLES.has(d.slot) || !seances(d).length) continue;
+        const e = parPhase.get(ph) ?? { n: 0, DUR: 0, "modéré": 0, facile: 0, vide: 0, noms: new Map() };
+        e.n++; const i = intensite(d); e[i] = (e[i] ?? 0) + 1;
+        for (const s of seances(d)) e.noms.set(s.name, (e.noms.get(s.name) ?? 0) + 1);
+        parPhase.set(ph, e);
+      }
+    }
+    console.log(`   ${nom}`);
+    for (const ph of ["base", "dev", "spec", "peak"]) {
+      const e = parPhase.get(ph);
+      if (!e) continue;
+      const noms = [...e.noms].sort((x, y) => y[1] - x[1]).slice(0, 3).map(([n, c]) => `${n} ×${c}`).join(" · ");
+      console.log(`      ${ph.padEnd(5)} ${String(e.n).padStart(3)} créneaux clés · DUR ${String(Math.round((100 * e.DUR) / e.n)).padStart(3)}% · modéré ${String(Math.round((100 * e["modéré"]) / e.n)).padStart(3)}% · facile ${String(Math.round((100 * e.facile) / e.n)).padStart(3)}%`);
+      console.log(`            ${noms}`);
+    }
+  }
+}

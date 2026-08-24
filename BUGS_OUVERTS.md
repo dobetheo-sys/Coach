@@ -102,6 +102,42 @@ dur, le CRÉNEAU (qui décide du contenu) livre du facile. C'est la même famill
 « type du créneau » : le schéma est agnostique de la discipline ET de l'intensité réelle, seul
 le module de sport décide — et personne ne vérifie que les deux disent la même chose.
 
+### O-104 — sous `use10`, le volume d'une semaine calendaire varie de 86 à 543 min selon le seul JOUR DE COURSE · 🟠 **OUVERT**
+
+Trouvé le 24/08/2026 en attribuant un gate rouge (`audit:v6` `R23.18-D`). Profil IDENTIQUE, seule
+la date de course glisse d'un jour, `dispo: quotidienne` + `shift_ok: oui` + `doubles: oui` donc
+`use10 = true` :
+
+```
+course lundi    semaine avant l'A−  86 min      ratio A−/précédente 84 %   ✖
+course mardi                       220 min                            49 %   ✔
+course mercredi                    290 min                            60 %   ✔
+course jeudi                       262 min                            61 %   ✔
+course vendredi                    376 min                            60 %   ✔
+course samedi                      543 min                            60 %   ✔
+course dimanche                    292 min                            60 %   ✔
+```
+
+**Un facteur SIX sur le volume d'une semaine, pour un athlète identique.** Même famille
+qu'O-103 : un cycle de 10 jours découpé en semaines calendaires de 7 rend des semaines dont le
+contenu dépend de la PHASE du cycle au moment de la coupe — et le jour de course fixe cette
+phase, puisque le plan s'arrête au soir du jour J (N2).
+
+⚠ **Ce n'est pas seulement un artefact de lecture** : la « semaine » est l'unité que l'athlète
+voit, que la courbe de charge pilote et que les gardes de croissance (C22) mesurent. Une
+semaine à 86 min au milieu d'une préparation n'est pas une semaine de récupération décidée,
+c'est un résidu de découpe.
+
+À traiter AVEC O-103 : les deux ont la même cause structurelle, et un correctif local à l'un
+laissera l'autre.
+
+```verify
+id: O-104-jour-de-course
+quoi: sous use10, le volume hebdomadaire dépend du jour de course
+attendu: 86 min le lundi contre 220-543 les autres jours (24/08/2026)
+cmd: npm run audit:v6
+```
+
 ### O-103 — le cycle de 10 n'est PAS livré tel qu'il est déclaré : 20 % de ses positions clés dérivent · 🔴 **OUVERT**
 
 Mesuré le 22/08/2026 en cherchant d'où venait l'écart « 4,00 créneaux de qualité déclarés →

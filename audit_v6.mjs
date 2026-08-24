@@ -96,8 +96,26 @@ const planMin = (p) => p.weeks.reduce((t, w) => t + weekMin(w), 0);
 const swimMeters = (s) =>
   (s.steps || []).reduce((t, st) => t + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0);
 
+/**
+ * ISO d'une date située `days` jours après le LUNDI COURANT — et non après « maintenant ».
+ *
+ * ⚠ SEPTIÈME OCCURRENCE DE LA FAMILLE R20.7 / A-6 : un instrument dont le verdict dépend du
+ * JOUR OÙ ON LE LANCE. Ancré sur `Date.now()`, `isoIn(112)` rendait un lundi le lundi, un mardi
+ * le mardi… — donc le JOUR DE SEMAINE de la course fabriquée changeait chaque jour, alors que
+ * la longueur de la dernière semaine en dépend (N2) et que le schéma de 10 jours glisse sur le
+ * calendrier. Mesuré le 24/08/2026 (un lundi) : `R23.18-D` rouge ce jour-là, **verte les six
+ * autres** — la semaine qui précède l'A− vaut 86 min le lundi contre 220 à 543 min les autres
+ * jours, sur un profil identique (ouvert en O-104). A-6 avait ancré cinq bancs par
+ * `bench-dates.cjs` ; celui-ci y avait échappé, parce que ses dates ÉTAIENT déjà relatives —
+ * elles l'étaient à la mauvaise origine.
+ *
+ * Le lundi courant est l'origine que le moteur emploie lui-même (`plan_start` par défaut) :
+ * une date construite ici tombe donc toujours sur le même jour de semaine.
+ */
 const isoIn = (days) => {
-  const d = new Date(Date.now() + days * 864e5);
+  const d = new Date();
+  d.setHours(12, 0, 0, 0); // midi : aucun basculement de jour par fuseau
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7) + days); // recalé sur le lundi courant
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
@@ -1572,8 +1590,13 @@ test("R23.18-D", "Le mini-affûtage A− MORD sur le livré : semaine A− ≤ 6
   // La garantie vit donc au POINT FIXE, et on la mesure là où elle mord : une course en
   // MILIEU DE SEMAINE (mercredi), qui laisse assez de jours pleins pour dépasser 60 % sans
   // le bloc (mesuré : 69 % sans, 60 % avec).
-  const p = build("run", { format: "marathon", race_date: isoIn(16 * 7), vol_max: "10", vol_recent: "8",
-    sessions_max: "6", dispo: "quotidienne", races: "oui", race1_date: isoIn(16 * 7 - 39), race1_prio: "A-", race1_format: "semi" });
+  // ⚠ LA COURSE EST POSÉE UN MERCREDI, EXPLICITEMENT (`+ 2` sur un lundi d'origine). Elle
+  // l'était par accident tant qu'`isoIn` partait de « maintenant » — et l'accident tombait un
+  // jour sur sept sur un lundi, où la semaine qui précède l'A− vaut 86 min au lieu de 220-543
+  // (O-104). Le mercredi est la fixture que ce critère DÉCRIT depuis son écriture ; la
+  // rendre explicite ne déplace pas le poteau, elle cesse de le laisser bouger.
+  const p = build("run", { format: "marathon", race_date: isoIn(16 * 7 + 2), vol_max: "10", vol_recent: "8",
+    sessions_max: "6", dispo: "quotidienne", races: "oui", race1_date: isoIn(16 * 7 + 2 - 39), race1_prio: "A-", race1_format: "semi" });
   let wi = -1;
   p.weeks.forEach((w, k) => w.days.forEach((d) => d.sessions.forEach((sx) => { if (sx.race && !/Course A$/.test((sx.name || "").trim())) wi = k; })));
   if (wi < 1) return { ok: false, detail: "semaine A− introuvable" };

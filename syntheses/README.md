@@ -26,6 +26,7 @@ registre qu'on re-mesure.
 | 12 | [T-61 tranche : `dur` veut dire « séance clé »](12-dur-ou-cle.md) | `mesure:t61` | aucune ligne touchée (`src/` byte-identique) |
 | 13 | [Le schéma de 10 déclare cinq positions dures, en remplit une](13-cycle10-cinq-positions.md) | `mesure:cycle10` | aucune ligne touchée (`src/` byte-identique) |
 | 14 | [La dérive du cycle : 20 % des positions clés ne sont pas livrées](14-derive-du-cycle.md) | `mesure:cycle10` §4 | aucune ligne touchée (`src/` byte-identique) |
+| 15 | [Permanent confirmé, la spec écrite, deux gates qui dépendaient du jour](15-permanent-et-spec.md) | `mesure:cycle10` §5 | spec (commentaire) + 2 instruments ancrés |
 
 **Convention** : un compte rendu par réponse, numéroté à la suite. Le fichier est écrit dans le
 dépôt avant d'être envoyé — le conteneur est éphémère, un fichier non commité serait perdu.

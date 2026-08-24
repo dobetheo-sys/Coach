@@ -406,7 +406,16 @@ function* profiles() {
       off_days: "non", doubles: "oui", age: "35", sex: "H", weight: "85", terrain: "vallonne",
       leg_swim_env: "lac", milieu: "bassin", longest_swim_m: "1000", longest_swim_known: "oui",
       pace_known: "oui", pace: "4:42", ftp_known: "oui", ftp: "236", css_known: "oui", css: "2:02",
-      race_date: RACE_PASS_DATES[0] };
+      // ⚠ `plan_start` ÉPINGLÉ — sans lui, ce profil DÉRIVE D'UNE SEMAINE SUR L'AUTRE.
+      // Sa course est absolue (2027-06-07) mais son départ ne l'était pas : faute de
+      // `plan_start`, le moteur démarre au LUNDI COURANT, donc la préparation raccourcit d'une
+      // semaine chaque lundi et le plan change. Mesuré le 24/08/2026 (un lundi) :
+      // `golden:verify` rouge sur ce seul profil, `lotPhysio` T-60 en régression avec lui —
+      // deux gates rouges un jour sur sept, qui se lisent comme une régression du lot en cours.
+      // C'est le défaut que la passe « course datée » avait fermé pour les autres (N2) et que
+      // cette fixture, ajoutée après (O-85 §2), n'avait pas reçu. Un golden doit être
+      // REPRODUCTIBLE : la date est donc figée, comme les dates de course de la passe voisine.
+      race_date: RACE_PASS_DATES[0], plan_start: "2026-08-17" };
     yield { key: ["REEL", "tri", "70.3", "nage-limitante"].join("/"), sport: "tri", a };
   }
 }

@@ -32,6 +32,62 @@ interface DaySlot {
   slot: string;
 }
 
+/**
+ * LE CYCLE DE 10 JOURS — SON INTENTION, SA SÉQUENCE, ET L'ÉCART MESURÉ ENTRE LES DEUX.
+ *
+ * ⚠ CE BLOC EXISTE PARCE QUE L'INTENTION DE CE CYCLE N'ÉTAIT ÉCRITE NULLE PART, et que tous
+ * les motifs qui l'entourent disent l'INVERSE de ce qu'il vise. Vérifié le 22/08/2026 :
+ * `answerSchema.ts` (« répartirait mieux le peu de créneaux disponibles »), la décision `cycle`
+ * de `reasoningEngine` (« densité mieux RÉPARTIE »), et l'avertissement de couverture plus bas
+ * dans ce fichier (« ESPACER les séances clés au lieu de les entasser sur 7 jours ») décrivent
+ * un cycle d'ESPACEMENT — celui de Friel pour masters et récupération lente. **Ce n'en est
+ * pas un.** Sans ce bloc, le prochain lecteur conclut que le cycle sert à espacer et le
+ * « répare » dans ce sens (décision du fondateur, PERMANENT_ET_CONTENU §5-§6).
+ *
+ * INTENTION — une structure d'INTENSIFICATION.
+ *   Le facteur limitant d'une séance clé n'est pas le calendrier, c'est la récupération entre
+ *   deux. Dix jours donnent trois créneaux de plus pour intercaler le facile et le repos, donc
+ *   pour tenir CINQ séances clés sans jamais en enchaîner deux — ce que sept jours ne
+ *   permettent pas (cinq clés sur sept jours, c'est nécessairement deux consécutives).
+ *
+ * DENSITÉ — constante sur toute la préparation, le CONTENU varie par phase.
+ *   Le cycle reste PERMANENT (arbitrage du 22/08/2026) : sa longueur est le rythme de vie de
+ *   l'athlète, pas un paramètre, et en changer en cours de plan casse une routine. La
+ *   périodisation passe par le contenu, et elle le fait DÉJÀ — mesuré sur 986 plans et 14 499
+ *   semaines de charge : la base ne porte **0,0 %** de VO2max (part de dur 3,9 %), le
+ *   développement 70,2 % des semaines (6,6 %), le spécifique 77,0 % (7,9 %). La borne « aucune
+ *   intensité au-dessus du seuil en base » n'a pas à être écrite : elle est déjà tenue.
+ *
+ * SÉQUENCE VISÉE (10 positions) — cinq clés, jamais deux consécutives, un OFF et deux récups
+ * pour absorber. **La séquence ci-dessous n'est pas encore celle-là**, et l'écart est mesuré :
+ *
+ *   position   visée        déclarée ici     livré (npm run mesure:cycle10)
+ *   j5         clé          `facileR`        facile — c'est la 5ᵉ position clé qui MANQUE
+ *   OFF        1            0                (ceux de run/trail viennent de MAX_RUN_DAYS, en aval)
+ *   récup      2            1
+ *
+ * ÉCART MESURÉ, à ne pas re-diagnostiquer (22/08/2026, `tri/70.3`, `doubles: oui`) :
+ *   · créneaux de qualité déclarés .... 4,00 / 10 j   contre 4,29 pour le schéma de 7
+ *   · créneaux de qualité LIVRÉS ...... 3,50 / 10 j   — le cycle N'INTENSIFIE PAS aujourd'hui
+ *   · positions clés qui portent leur créneau déclaré : **77 à 82 %** selon le sport, contre
+ *     **100 % pour le schéma de 7** sur les quatre bases mesurées (O-103). La dérive frappe
+ *     `j7` et les semaines qui BORDENT UNE DÉCHARGE : un cycle de 10 chevauche les semaines
+ *     calendaires ET les cycles de récup, ce que celui de 7 ne fait jamais. Le correctif ne
+ *     peut donc pas être local à `j7` — c'est le chevauchement qui produit la dérive.
+ *
+ * ⚠ `dur` DANS CE SCHÉMA VEUT DIRE « SÉANCE CLÉ », PAS « INTENSITÉ AU-DESSUS DU SEUIL » —
+ * mesuré sur 80 242 jours de charge : les positions étiquetées `dur` livrent du dur au
+ * classificateur à 76,2 % (`dur1`), 45,9 % (`dur2`) et **0,0 %** (`durLong`, sur les sept
+ * sports). `dur2` porte du sweetspot et de la force, `durLong` la sortie longue et le brick :
+ * ce sont des séances CLÉS qui demandent de la récupération autour, et **elles ne doivent pas
+ * livrer du VO2max** — cinq séances au-dessus du seuil en dix jours n'est pas un plan. Le mot
+ * collisionne avec celui du classificateur ; les contenus sont bons.
+ *
+ * ORDRE DU LOT (arbitré) : O-103 (le cycle livre ce qu'il déclare) → `j5` en créneau de
+ * qualité, `dur1` si l'intention est d'intensifier → l'OFF du schéma → la condition
+ * d'activation lit le NIVEAU et pas seulement la disponibilité (3,5 clés/semaine est tenable
+ * pour un athlète expérimenté, excessif pour un débutant).
+ */
 function schema(use10: boolean, phase: string, isRecup: boolean, r?: ReasonedPlan): DaySlot[] {
   // R10 phase 1 — un sport peut avoir son PROPRE schéma de semaine (le trail : descente et
   // marche sont des séances à part entière, la longue est le pivot du week-end, le lundi porte
