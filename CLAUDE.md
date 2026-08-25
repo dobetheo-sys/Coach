@@ -317,6 +317,27 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
   des trois pertes. Même raisonnement que le crochet du journal, `lotPhysio` en CI et
   `check:chemins` : ne pas compter sur la discipline là où un mécanisme suffit.
 
+- **Toute affirmation de DENSITÉ déclare son unité — créneaux ou minutes, jamais implicite**
+  (arbitrage du fondateur, 24/08/2026). C'est le corollaire du dénominateur appliqué au comptage :
+  **trois fois dans le même chantier la dualité créneau/minute a renversé un verdict.**
+  (1) « le schéma de 10 ne livre qu'UN jour dur » (classificateur) contre « il porte QUATRE
+  créneaux de qualité » — deux comptes justes, deux conclusions opposées sur le même schéma ;
+  (2) la densité du cycle de 10, moins dense en créneaux et autant en minutes ; (3) la base,
+  **36 % de créneaux « dur » pour 3,9 % de minutes** — j'allais publier que la base est trop
+  intense alors qu'elle porte du SEUIL, pas du VO2max (mesuré : 0,00 % de VO2max sur 4 688
+  semaines de base). La bonne unité dépend de la question : *combien de séances demandent de la
+  récupération autour ?* se compte en créneaux ; *le plan est-il trop intense ?* se compte en
+  minutes. Avec les trois voisines, le quatuor est complet : **un ratio a besoin de sa base, un
+  compte a besoin de son moment, un zéro a besoin de sa population, une densité a besoin de son
+  unité.**
+
+- **On n'écrit pas la promesse avant que le mécanisme la tienne** (même arbitrage). Trois motifs
+  visibles par l'athlète décrivent le cycle de 10 jours comme une structure qui « répartit » et
+  « espace », quand son intention est d'INTENSIFIER — les corriger avant que le lot atterrisse
+  écrirait une promesse fausse dans l'autre sens. La forme qui tient dans l'intervalle : un bloc
+  de spec qui dit *que* les motifs sont faux et *pourquoi*, côté développeur, et rien de changé
+  côté athlète tant que le mécanisme ne tient pas.
+
 - **Un ZÉRO a besoin de sa POPULATION** (arbitrage du fondateur, 17/08/2026). L'heuristique
   « un taux saturé accuse l'instrument » a un ANGLE MORT, et il est large : **elle ne peut pas se
   déclencher quand la valeur saturée est la valeur DÉSIRÉE.** Zéro écart, zéro violation, zéro

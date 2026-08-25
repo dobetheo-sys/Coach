@@ -128,6 +128,32 @@ voit, que la courbe de charge pilote et que les gardes de croissance (C22) mesur
 semaine à 86 min au milieu d'une préparation n'est pas une semaine de récupération décidée,
 c'est un résidu de découpe.
 
+#### OÙ TOMBE L'ÉCART — mesuré le 24/08/2026, et la crainte est LEVÉE
+
+La question posée était : *« si l'écart est du même ordre sur la dernière semaine de charge et
+l'affûtage, c'est la pièce la plus urgente des deux »*. Balayage des SEPT jours de course
+possibles, `npm run mesure:cycle10` §6, avec le témoin `use10 = false` :
+
+```
+                            cycle de 10        semaine de 7 (témoin)
+pic                         x1,0               x1,0
+DERNIÈRE semaine de charge  x1,0               x1,0
+affûtage (moyenne/sem)      x1,7 à x2,7        x1,8 à x3,2      ← le témoin varie AUTANT
+dernière semaine            x7,2 à x17,7       x2,5 à x3,7
+```
+
+**Le pic et la dernière semaine de charge sont IDENTIQUES sur les sept jours** — l'approche de
+l'objectif ne bouge pas. La dispersion de l'affûtage n'est **pas** le cycle : le témoin la
+présente aussi, c'est N2 (le plan s'arrête au soir du jour J). Et la « dernière semaine » varie
+parce qu'elle fait **1 à 7 jours** : vérifié, son volume est proportionnel à sa longueur dans
+les deux états (0 · 17 · 55 · 105 · 147 · 196 · 241 min pour 1 à 7 jours), ce qui est N2 par
+conception.
+
+**Donc l'écart ne frappe PAS la semaine qui précède l'objectif.** Le facteur six mesuré au banc
+v6 portait sur une semaine bordant une course INTERMÉDIAIRE (A− à 39 jours), en milieu de plan.
+**O-103 est la pièce, O-104 en est une manifestation** — ordre confirmé, gravité revue à la
+baisse.
+
 À traiter AVEC O-103 : les deux ont la même cause structurelle, et un correctif local à l'un
 laissera l'autre.
 

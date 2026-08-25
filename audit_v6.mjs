@@ -744,7 +744,7 @@ test("U14", "un défaut tacite va vers la prudence, et il est journalisé", "pas
 
 test("U9", "le refus « course trop proche » ne parle jamais d'une autre épreuve que la sienne", "pass", () => {
   const bad = [];
-  const course = new Date(Date.now() + 14 * 864e5).toISOString().slice(0, 10);
+  const course = isoIn(14); // ancré au lundi courant (check:dates) — le jour de semaine ne décide plus
   const cas = [["run", "10k"], ["run", "marathon"], ["bike", "cyclo"], ["swim", "fond"],
     ["tri", "S"], ["tri", "Full"], ["duathlon", "M"], ["trail", "?"], ["swimrun", "sprint"]];
   let vus = 0;

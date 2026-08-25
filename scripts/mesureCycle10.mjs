@@ -145,3 +145,43 @@ for (const [nom, base] of BASES) {
     }
   }
 }
+
+// ─── §6 — O-104 : OÙ TOMBE L'ÉCART ? (dernière semaine de charge et affûtage) ─────────────
+// « La gravité n'est pas la même selon où la semaine tombe » (arbitrage du 24/08/2026) : une
+// semaine à 86 min en base est une anomalie de calendrier ; la même à huit jours de la course
+// est un affûtage qui désentraîne. On balaie les SEPT jours de course possibles et on regarde
+// où l'écart se concentre — avec le témoin `use10 = false`, sans quoi on mesurerait le
+// calendrier et non le cycle.
+{
+  const JOURS = ["lun", "mar", "mer", "jeu", "ven", "sam", "dim"];
+  const lundi = () => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d; };
+  const isoDans = (sem, jour) => { const d = lundi(); d.setDate(d.getDate() + (sem - 1) * 7 + jour); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+  const minSem = (w) => (w.days ?? []).reduce((t, d) => t + (d.sessions ?? []).reduce((u, s) => u + (s && s.d !== "rs" && !s.race ? (s.min || 0) : 0), 0), 0);
+  console.log("\n§6 — O-104 : OÙ TOMBE L'ÉCART, SUR LES SEPT JOURS DE COURSE POSSIBLES ?");
+  for (const [nom, base] of BASES) {
+    for (const [libelle, dispo] of [["cycle de 10", "quotidienne"], ["semaine de 7 (témoin)", "semaine"]]) {
+      const lignes = [];
+      for (let j = 0; j < 7; j++) {
+        const a = { ...base.a, doubles: "oui", sessions_max: "14", vol_max: "20", dispo, shift_ok: "oui", race_date: isoDans(24, j) };
+        let p; try { p = globalThis.EBV2.buildPlan(base.sport, a); } catch { continue; }
+        const ws = p.weeks ?? [];
+        const charge = ws.filter(estCharge);
+        const taper = ws.filter((w) => (w.phase?.id ?? "") === "taper");
+        lignes.push({
+          j, pic: Math.max(0, ...charge.map(minSem)),
+          derniereCharge: charge.length ? minSem(charge[charge.length - 1]) : 0,
+          affutage: taper.length ? Math.round(taper.reduce((t, w) => t + minSem(w), 0) / taper.length) : 0,
+          veille: minSem(ws[ws.length - 1] ?? { days: [] }),
+        });
+      }
+      if (!lignes.length) continue;
+      const ec = (k) => { const v = lignes.map((l) => l[k]).filter((x) => x > 0); if (!v.length) return "—"; const mn = Math.min(...v), mx = Math.max(...v); return `${mn}-${mx} min (x${(mx / Math.max(1, mn)).toFixed(1)})`; };
+      console.log(`   ${nom.padEnd(13)} ${libelle}`);
+      console.log(`      pic .................... ${ec("pic")}`);
+      console.log(`      DERNIERE sem. de charge  ${ec("derniereCharge")}`);
+      console.log(`      affutage (moyenne/sem) . ${ec("affutage")}`);
+      console.log(`      derniere semaine ....... ${ec("veille")}`);
+      console.log(`      par jour : ${lignes.map((l) => `${JOURS[l.j]} ${l.derniereCharge}`).join(" · ")}`);
+    }
+  }
+}

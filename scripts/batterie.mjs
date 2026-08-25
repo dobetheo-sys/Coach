@@ -23,6 +23,10 @@ const SOCLE = [
   "audit:v1", "audit:invariants", "audit:v6", "audit:v7",
   "audit:r13", "audit:r14", "audit:r14.1", "audit:r18",
   "golden:verify", "golden:bundle",
+  // Contrôle STATIQUE, pas un banc : il ne construit aucun plan, il refuse un MOTIF — une
+  // fixture de banc gardé qui dérive une date de calendrier depuis « maintenant » (7 occurrences
+  // de la famille R20.7/A-6, chacune ancrée individuellement, et la 8e serait arrivée).
+  "check:dates",
 ];
 const EXTRA = { lotPhysio: ["node", ["scripts/lotPhysio.mjs"]] };
 

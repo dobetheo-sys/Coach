@@ -225,7 +225,10 @@ perime("R14.4", "débutant > intermédiaire > avancé, et plafonds littérature 
  *       DOIT PAS être annulé (c'est l'anti-précipice), à f = 0,8 il doit être fortement réduit.
  */
 check("R14.5-A", "adhérence : sensible au taux, et la réduction est bornée par la part ÉCOULÉE (O-68)", () => {
-  const today = new Date(Date.now()).toISOString().slice(0, 10);
+  // ⚠ ANCRÉ (check:dates) — « aujourd'hui » pris sur l'horloge déplaçait le bord de la
+  // fenêtre d'adhérence d'un jour par jour, sur un plan dont toutes les autres dates sont
+  // calées sur le lundi courant. `iso(0)` EST ce lundi : la fenêtre cesse de glisser.
+  const today = iso(0);
   // f ≈ 0,13 — début de plan : la mesure pèse peu, la réduction est plafonnée par f
   const a1 = ans({ race_date: iso(52 * 7), plan_start: iso(-8 * 7), format: "70.3" });
   const p1 = plan(a1);
@@ -245,7 +248,10 @@ check("R14.5-A", "adhérence : sensible au taux, et la réduction est bornée pa
     info: `f=0,13 : 95%→${(hi1.gainPct.ftp * 100).toFixed(1)} · 30%→${(lo1.gainPct.ftp * 100).toFixed(1)} (plancher ${(hi1.gainPct.ftp * (1 - f1) * 0.9 * 100).toFixed(1)}) · f=0,8 : 95%→${(hi2.gainPct.ftp * 100).toFixed(1)} · 30%→${(lo2.gainPct.ftp * 100).toFixed(1)}` };
 });
 check("R14.5-B", "adhérence < 50 % : motif affiché, annulation PROPORTIONNÉE à la part écoulée (O-68)", () => {
-  const today = new Date(Date.now()).toISOString().slice(0, 10);
+  // ⚠ ANCRÉ (check:dates) — « aujourd'hui » pris sur l'horloge déplaçait le bord de la
+  // fenêtre d'adhérence d'un jour par jour, sur un plan dont toutes les autres dates sont
+  // calées sur le lundi courant. `iso(0)` EST ce lundi : la fenêtre cesse de glisser.
+  const today = iso(0);
   const a1 = ans({ race_date: iso(52 * 7), plan_start: iso(-8 * 7), format: "70.3" });
   const pj1 = proj(Object.assign({}, a1, { done: markDone(plan(a1), today, 6, 0.20) }));
   const a2 = ans({ race_date: iso(12 * 7), plan_start: iso(-48 * 7), format: "70.3" });
@@ -307,7 +313,10 @@ check("ANX-PROF", "terrain=montagne applique bien la correction de relief au jou
 check("ANX-ADH", "l'adhérence est une fenêtre glissante des semaines écoulées, pas le % du plan entier", () => {
   const a = ans({});
   const p = plan(a);
-  const today = new Date(Date.now()).toISOString().slice(0, 10);
+  // ⚠ ANCRÉ (check:dates) — « aujourd'hui » pris sur l'horloge déplaçait le bord de la
+  // fenêtre d'adhérence d'un jour par jour, sur un plan dont toutes les autres dates sont
+  // calées sur le lundi courant. `iso(0)` EST ce lundi : la fenêtre cesse de glisser.
+  const today = iso(0);
   const pj = proj(Object.assign({}, a, { done: markDone(p, today, 6, 1.0) }));
   if (!pj) return { ok: false, info: "pas de projection" };
   return { ok: pj.adherence >= 0.9, info: "adhérence=" + (pj.adherence * 100).toFixed(0) + "% (6 dernières semaines toutes cochées sur un plan de 59)" };

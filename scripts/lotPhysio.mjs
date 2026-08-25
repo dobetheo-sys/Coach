@@ -2738,6 +2738,49 @@ T("T-59", "rouge", "le lot volume+répartition : longue CAP en spec/pic · longu
  * plancher admet la pièce livrée et refuse celle qui empile les deux conversions sur la même
  * parité — c'est-à-dire exactement le travail que le §2 de l'arbitrage lui assigne.
  */
+// ---- T-62 · la périodisation d'intensité est GARDÉE, pas seulement propre --------------
+// « Une règle qui n'a rien à corriger ment sur son utilité — vrai pour une RÈGLE, pas pour un
+// TÉMOIN » (arbitrage du fondateur, 24/08/2026). Mesuré la veille : la base ne porte AUCUN
+// VO2max sur tout le corpus, et la part de dur double de la base au spécifique. Cette propriété
+// tient parce que personne n'y a mis de VO2max, **pas parce que quelque chose l'empêche** — et
+// le lot qui vient touche précisément le REMPLISSAGE des créneaux clés (`j5 → dur1` ajoute une
+// position `dur1` à toutes les phases, base comprise). C'est le moment où on veut le savoir.
+//
+// Même patron que `SCEAU_ATTENDU` et `base:cliquet` : le témoin ne corrige rien, il alerte si
+// ça monte. Le VO2max se lit sur la ZONE des steps, jamais sur le nom (leçon O-79).
+const CLIQUET_BASE_DUR_PCT = 4.0; // part de dur en base — mesuré 3,9 %, cliquet au dixième au-dessus
+const CLIQUET_POP_BASE = 4000;    // un zéro a besoin de sa population : la sonde refuse un corpus tronqué
+T("T-62", "vert", "périodisation d'intensité : ZÉRO VO2max en base, et la part de dur y reste sous son cliquet", () => {
+  const ZVO2 = /vo2/i;
+  let semBase = 0, semBaseVo2 = 0, vo2Base = 0, durBase = 0, totBase = 0;
+  const parPhase = new Map();
+  const ex = [];
+  for (const { key, plan } of goldenAvecMoteur()) {
+    for (const w of plan.weeks ?? []) {
+      if (w.isRecup || w.phase?.id === "taper") continue;
+      const ph = w.phase?.id ?? "?";
+      let vo2 = 0, dur = 0, tot = 0;
+      for (const d of w.days ?? []) for (const sx of (d.sessions ?? []).filter((y) => y && y.d !== "rs" && !y.race)) {
+        try { dur += intensitySplit(sx).hardMin || 0; } catch { /* une séance sans steps ne pèse pas */ }
+        tot += sx.min || 0;
+        for (const st of sx.steps ?? []) if (ZVO2.test(String(st.z ?? st.zone ?? ""))) vo2 += st._min ?? 0;
+      }
+      const e = parPhase.get(ph) ?? { dur: 0, tot: 0 };
+      e.dur += dur; e.tot += tot; parPhase.set(ph, e);
+      if (ph !== "base") continue;
+      semBase++; vo2Base += vo2; durBase += dur; totBase += tot;
+      if (vo2 > 0) { semBaseVo2++; if (ex.length < 5) ex.push(`${key} S${w.num} ${Math.round(vo2)} min de VO2max`); }
+    }
+  }
+  if (semBase < CLIQUET_POP_BASE) return { ok: false, detail: `population INSUFFISANTE : ${semBase} semaines de base pour un plancher de ${CLIQUET_POP_BASE} — la sonde ne mesure rien` };
+  const pctDur = (100 * durBase) / Math.max(1, totBase);
+  const prog = ["base", "dev", "spec"].map((ph) => { const e = parPhase.get(ph); return e ? `${ph} ${((100 * e.dur) / Math.max(1, e.tot)).toFixed(1)}%` : `${ph} —`; }).join(" → ");
+  const detail = `${semBase} semaines de base · ${semBaseVo2} avec VO2max · dur ${pctDur.toFixed(1)}% (cliquet ${CLIQUET_BASE_DUR_PCT}%) · progression ${prog}` + (ex.length ? ` · ex : ${ex.join(" · ")}` : "");
+  if (semBaseVo2 > 0) return { ok: false, detail: "VO2max EN BASE — " + detail };
+  if (pctDur > CLIQUET_BASE_DUR_PCT) return { ok: false, detail: "la part de dur en base a MONTÉ — " + detail };
+  return { ok: true, detail };
+});
+
 T("T-60", "rouge", "le plancher de fréquence : jamais zéro discipline · 2 tenu là où le budget le permet · la cible publiée", () => {
   const pb = [];
   let zero = 0, zeroSansDrapeau = 0, sousPlancher = 0, popHaut = 0, popBas = 0, avecDecision = 0, plans = 0;
