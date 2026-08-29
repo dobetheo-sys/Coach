@@ -14425,18 +14425,42 @@ function generatePlan(profile                , opts                             
       // structure du plan ne bouge pas d'une séance (vérifié : golden inchangé hors décisions).
       let structBrut = Math.min(_sondeCapH > 0 ? _sondeCapH : Infinity, L.c20 > 0 ? L.c20 : Infinity);
       {
-        const wPic = wl.filter((w) => !w.isRecup)
-          .reduce((x               , y) => (!x || (y.days            ).reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.min || 0), 0), 0)
-            > (x.days            ).reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.min || 0), 0), 0) ? y : x), null);
-        if (wPic) {
-          const clone = structuredClone(wPic.days            );
-          _dechargeW = false; // O-82 — `wPic` est une semaine de charge (filtre `!w.isRecup`)
+        // ÉTAPE 2 DU CHANTIER « UNITÉ DE VOLUME = CYCLE » — LA SONDE CLONE UN CYCLE, PAS UNE
+        // SEMAINE CALENDAIRE.
+        //
+        // Elle clonait `wPic.days`, une semaine de 7 jours. Sous un cycle de 10, une semaine
+        // calendaire ne contient qu'une TRANCHE du cycle, et la tranche change d'une semaine à
+        // l'autre : mesuré (diagnostic 18), le nombre de créneaux d'une semaine de charge de
+        // `REEL` varie de 7 à 10 alors que le schéma de 7 en pose 8, toujours. La sonde
+        // mesurait donc la capacité d'une tranche arbitraire, et son résultat dépendait de
+        // l'endroit où la découpe tombait.
+        //
+        // Un CYCLE contient toujours le même nombre de positions. `cyc` est déjà posé sur
+        // chaque jour par `weekBuilder` : aucune structure nouvelle. Le résultat est ensuite
+        // ramené à l'unité d'AFFICHAGE — des heures par 7 jours, ce que l'athlète déclare et
+        // ce que la chaîne R20.2 compare (`caps`, `util`, `declared`).
+        //
+        // ⚠ EN MODE 7 JOURS, `cycleLen / 7 = 1` ET LE CYCLE EST LA SEMAINE : toutes les
+        // conversions sont l'identité, et le golden doit rester au bit près sur les 985
+        // profils qui n'activent pas `use10`. C'est le critère d'acceptation de l'étape.
+        const cycleLen = r.use10 ? 10 : 7;
+        const parCycle = new Map                  ();
+        for (const w of wl) for (const d of w.days            ) {
+          if (d.isR || d.cyc == null) continue; // un cycle de DÉCHARGE ne mesure aucune capacité
+          const l = parCycle.get(d.cyc) ?? []; l.push(d); parCycle.set(d.cyc, l);
+        }
+        const minutesDe = (ds          ) => ds.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.min || 0), 0), 0);
+        let picCycle                  = null;
+        for (const ds of parCycle.values()) if (!picCycle || minutesDe(ds) > minutesDe(picCycle)) picCycle = ds;
+        if (picCycle) {
+          const clone = structuredClone(picCycle);
+          _dechargeW = false; // O-82 — le cycle retenu est un cycle de charge (filtre `d.isR`)
           const avant = weekMin(clone);
           for (let it = 0; it < 4; it++) {
             renderWeek(clone);
             const cur = weekMin(clone) / 60;
             if (cur <= 0) break;
-            scaleWeekBody(clone, (Math.max(peakH, cur) * 2) / cur); // cible inatteignable → saturation aux plafonds
+            scaleWeekBody(clone, (Math.max(peakH * cycleLen / 7, cur) * 2) / cur); // cible inatteignable → saturation aux plafonds
           }
           clampWeekBody(clone);
           renderWeek(clone);
@@ -14455,24 +14479,36 @@ function generatePlan(profile                , opts                             
                 u + (s.d === "sw" ? (s.steps || []).reduce((v, st) => v + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0) : 0), 0), 0);
               let livreMaxM = 0;
               for (const w of wl) livreMaxM = Math.max(livreMaxM, swM(w.days            ));
+              // ⚠ ÉTAPE 2 — LA BORNE D'ÉPAULE EST HEBDOMADAIRE, LE CLONE EST UN CYCLE.
+              // `swimWeeklyLoadCapM` rend des mètres par 7 jours, et `livreMaxM` est bien un
+              // maximum PAR SEMAINE livrée : les deux restent dans leur unité. Seule la
+              // comparaison au clone change d'échelle — sans quoi la borne mordrait 10/7 fois
+              // trop fort sur un cycle de 10 jours (règle 14 : on ne compare qu'après conversion
+              // dans une monnaie commune).
               const cap94 = swimWeeklyLoadCapM(gate94, livreMaxM);
+              const cap94Cycle = cap94 == null ? null : (cap94 * cycleLen) / 7;
               const cloneM = swM(clone);
-              if (cap94 && cloneM > cap94) {
+              if (cap94Cycle && cloneM > cap94Cycle) {
                 const cloneSwMin = clone.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.d === "sw" ? (s.min || 0) : 0), 0), 0);
-                rendu -= ((cloneSwMin / Math.max(1, cloneM)) * (cloneM - cap94)) / 60;
+                rendu -= ((cloneSwMin / Math.max(1, cloneM)) * (cloneM - cap94Cycle)) / 60;
                 // …et le LIVRÉ est un témoin (règle 15) : le plan délivre déjà `volPeak` sous la
                 // même borne, donc une « capacité » plus basse est réfutée par l'observation —
                 // la conversion à l'allure moyenne du clone (plus rapide que celle du livré,
                 // la saturation grossit les blocs au seuil) pouvait rendre 9,1 h pour un pic
                 // livré à 9,6. Une capacité ne descend jamais sous ce qui a été fait.
-                rendu = Math.max(rendu, volPeak);
+                rendu = Math.max(rendu, (volPeak * cycleLen) / 7); // `rendu` est encore en h/CYCLE ici
               }
             }
           }
+          // ÉTAPE 2 — RETOUR À L'UNITÉ D'AFFICHAGE. Tout ce qui précède est en heures par
+          // CYCLE ; `structBrut` se compare à `caps`, `util` et `declared`, qui sont des heures
+          // par SEMAINE de 7 jours. La conversion est ici, en UN point, et vaut l'identité en
+          // mode 7 jours.
+          const renduHebdo = (rendu * 7) / cycleLen;
           // la re-sonde ne peut que DESCENDRE le plafond structurel : si la semaine livrée porte
           // plus que ce que la première sonde annonçait, c'est la première qui sous-estimait, et
           // l'écart relève du même ticket — on ne remonte pas un plafond avec une mesure aval.
-          if (rendu > 0 && avant > 0 && rendu < structBrut) structBrut = rendu;
+          if (renduHebdo > 0 && avant > 0 && renduHebdo < structBrut) structBrut = renduHebdo;
         }
       }
       if (Number.isFinite(structBrut))

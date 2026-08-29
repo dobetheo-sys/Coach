@@ -1085,7 +1085,14 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 // `min(plafonds)` ne retrouve pas le pic livré. C'est la moitié ouverte d'O-35 (ce que le point
 // fixe RETIRE n'est porté par aucun maillon), et la pièce C3 déplace ce qui est retiré :
 // attribué par expérience à facteur unique — la pièce neutralisée, S5 revient à 504.
-const SCEAU_ATTENDU = { S1: 4, S4: 341, S5: 505 };
+// ÉTAPE 2 DU CHANTIER (24/08/2026) — S5 DESCEND DE 505 À 504, ET LA CAUSE EST ATTRIBUÉE.
+// S5 compte les plans où `min(plafonds)` du record R20.2 ne vaut PAS le pic livré (T-25). La
+// sonde structurelle clone désormais un CYCLE et non une semaine calendaire : sur
+// `REEL/tri/70.3`, `structurel` passe de 11,81 à 11,50 h pour un pic livré de 11,52 — l'écart
+// tombe de 0,29 h à 0,02, sous la tolérance de 0,1. C'est un profil de MOINS en violation,
+// c'est-à-dire la direction voulue : le plafond annoncé cesse de décrire une unité que le plan
+// ne livre pas. Cliquet ré-épinglé avec sa cause, jamais descendu en silence.
+const SCEAU_ATTENDU = { S1: 4, S4: 341, S5: 504 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;
