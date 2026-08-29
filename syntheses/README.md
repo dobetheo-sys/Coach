@@ -31,6 +31,7 @@ registre qu'on re-mesure.
 | 17 | [Diagnostic : le plafond de 11,5 h ne vient pas de `G_PLAFOND`](17-diagnostic-plafond-11h.md) | `casser` sur `G_PLAFOND` | aucune ligne touchée |
 | 18 | [Le cycle de 10 j n'agit que sur la rotation des créneaux](18-cycle-10j-vs-calendrier-7j.md) | `mesure:cycle10` · `mesure:doublage` | aucune ligne touchée |
 | 19 | [Plan de chantier : l'unité de volume devient le CYCLE](19-plan-chantier-unite-de-volume.md) | cartographie | feuille de route, aucune ligne écrite |
+| 20 | [Étape 0 : le partage de la dérive O-103](20-etape0-partage-derive.md) | `mesure:cycle10` · `casser` | mesure seule, aucune ligne écrite |
 
 **Convention** : un compte rendu par réponse, numéroté à la suite. Le fichier est écrit dans le
 dépôt avant d'être envoyé — le conteneur est éphémère, un fichier non commité serait perdu.
