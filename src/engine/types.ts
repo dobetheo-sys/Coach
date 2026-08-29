@@ -99,14 +99,60 @@ export interface Decision {
   livre?: number;
 }
 
+/**
+ * ÉTAPE 1 DU CHANTIER « UNITÉ DE VOLUME = CYCLE » — RENDRE L'UNITÉ EXPLICITE, SANS LA CHANGER.
+ *
+ * Le diagnostic 18 a établi que `cycleLen` (7 ou 10 jours) pilote la ROTATION DES CRÉNEAUX
+ * pendant que TOUT ce qui porte du volume est indexé sur une semaine calendaire de 7 jours
+ * (`weekBuilder.ts`, `const w = Math.floor(i / 7)`). Le mélange est invisible à la lecture
+ * parce qu'aucune grandeur ne dit son unité : `peakH` est-il par semaine, par cycle, par jour ?
+ *
+ * Ces alias ne contraignent rien au compilateur (ce sont des `number`) et **ne changent aucune
+ * valeur** : ils NOMMENT. C'est leur seul objet, et c'est ce qui rend relisibles les étapes 2
+ * à 4, qui elles déplaceront des valeurs. Règle 14 du dépôt, appliquée au temps.
+ *
+ * Le jour où l'unité changera, un `HParCycle` apparaîtra à côté — et la conversion sera
+ * `hParCycle = hParSemaine × cycleLen / 7`, en UN point.
+ */
+/** Heures par SEMAINE CALENDAIRE de 7 jours — l'unité que l'athlète déclare et que l'écran rend. */
+export type HParSemaine = number;
+/** Minutes par SEMAINE CALENDAIRE de 7 jours. */
+export type MinParSemaine = number;
+/** Séances par SEMAINE CALENDAIRE de 7 jours. */
+export type SeancesParSemaine = number;
+/** Un nombre de JOURS — jamais converti en semaines ni en cycles (physiologie : R13.6, RECUP_EVERY). */
+export type Jours = number;
+/** Un multiplicateur sans dimension (les FACTEURS de la chaîne R20.2). */
+export type Facteur = number;
+
 export interface Phase {
   id: "base" | "dev" | "spec" | "peak" | "taper";
   nom: string;
   pct: number;
   c: string;
+  /** Numéro de SEMAINE de début (inclus) — l'indexation historique, inchangée. */
   start: number;
+  /** Numéro de SEMAINE de fin (exclu) — l'indexation historique, inchangée. */
   end: number;
   weeks: number;
+}
+
+/**
+ * Les bornes d'une phase en JOURS — DÉRIVÉES, jamais stockées (étape 1 du chantier).
+ *
+ * Un plafond de phase sourcé (R13.6 : affûtage ≤ 3 semaines, peak ≤ 5 — Bosquet 2007) se lit
+ * ici en 21 et 35 JOURS, c'est-à-dire dans l'unité où il a été mesuré. Les étapes 2-4 du
+ * chantier liront une phase en jours par cette fonction, sans avoir à choisir entre « semaine »
+ * et « cycle » au moment où elles écrivent.
+ *
+ * ⚠ POURQUOI UNE FONCTION ET PAS DEUX CHAMPS : mesuré, poser `startJ`/`endJ` sur l'objet
+ * `phases` produit **986 écarts sur 990** au golden — les phases sont photographiées dans le
+ * plan, et le critère d'acceptation de l'étape 1 est « 0 écart ». C'est aussi la forme juste
+ * au sens de R11.1 : un champ stocké à côté de `start`/`end` serait une seconde source, libre
+ * de diverger le jour où C19 ou R13.6 réécrit l'un sans l'autre.
+ */
+export function phaseJours(p: Phase): { startJ: Jours; endJ: Jours; joursTotal: Jours } {
+  return { startJ: p.start * 7, endJ: p.end * 7, joursTotal: (p.end - p.start) * 7 };
 }
 
 /** Sortie du raisonnement : tout ce dont le générateur a besoin, chiffré et justifié. */
@@ -115,9 +161,9 @@ export interface ReasonedPlan {
   decisions: Decision[];
   weeks: number;
   phases: Phase[];
-  volPeak: number; // h — pic théorique affichable
-  volBase: number;
-  peakH: number; // h — pic de la courbe de charge (après C20/médical)
+  volPeak: HParSemaine; // pic théorique affichable — heures par SEMAINE de 7 jours
+  volBase: HParSemaine;
+  peakH: HParSemaine; // pic de la courbe de charge (après C20/médical) — h par SEMAINE de 7 jours
   sessionScale: number;
   use10: boolean;
   recupEvery: number;
@@ -176,15 +222,15 @@ export interface ReasonedPlan {
    * calcul explicable, et le record `plan._r202` les expose pour que T-25/T-26 les vérifient.
    */
   volLimits: {
-    declared: number;    // h — `vol_max` tel que l'athlète l'a demandé (plafond)
-    caps: number;        // h — plafond de l'historique
-    util: number;        // h — volume utile du format (au-delà, les heures ne servent plus l'objectif)
-    marg: number;        // × — marge de sécurité hors compétition
-    recup: number;       // × — 1B : sommeil court / charge de vie lourde
-    swimTime: number;    // × — le volume promis se convertit en temps DANS L'EAU
-    med: number;         // × — drapeau médical (plan de maintien)
-    c20: number;         // h — plafond STRUCTUREL C20 (nage débutant : nSess × durée C15), 0 si inactif
-    sessionsMax: number; // séances/sem déclarées
-    budget: number;      // séances/sem retenues (déclaré ∧ implicite du volume)
+    declared: HParSemaine;    // `vol_max` tel que l'athlète l'a demandé (plafond)
+    caps: HParSemaine;        // plafond de l'historique
+    util: HParSemaine;        // volume utile du format (au-delà, les heures ne servent plus l'objectif)
+    marg: Facteur;            // marge de sécurité hors compétition
+    recup: Facteur;           // 1B : sommeil court / charge de vie lourde
+    swimTime: Facteur;        // le volume promis se convertit en temps DANS L'EAU
+    med: Facteur;             // drapeau médical (plan de maintien)
+    c20: HParSemaine;         // plafond STRUCTUREL C20 (nage débutant : nSess × durée C15), 0 si inactif
+    sessionsMax: SeancesParSemaine; // déclarées
+    budget: SeancesParSemaine;      // retenues (déclaré ∧ implicite du volume)
   };
 }

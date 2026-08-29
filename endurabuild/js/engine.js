@@ -103,15 +103,61 @@
                  
  
 
+/**
+ * ÉTAPE 1 DU CHANTIER « UNITÉ DE VOLUME = CYCLE » — RENDRE L'UNITÉ EXPLICITE, SANS LA CHANGER.
+ *
+ * Le diagnostic 18 a établi que `cycleLen` (7 ou 10 jours) pilote la ROTATION DES CRÉNEAUX
+ * pendant que TOUT ce qui porte du volume est indexé sur une semaine calendaire de 7 jours
+ * (`weekBuilder.ts`, `const w = Math.floor(i / 7)`). Le mélange est invisible à la lecture
+ * parce qu'aucune grandeur ne dit son unité : `peakH` est-il par semaine, par cycle, par jour ?
+ *
+ * Ces alias ne contraignent rien au compilateur (ce sont des `number`) et **ne changent aucune
+ * valeur** : ils NOMMENT. C'est leur seul objet, et c'est ce qui rend relisibles les étapes 2
+ * à 4, qui elles déplaceront des valeurs. Règle 14 du dépôt, appliquée au temps.
+ *
+ * Le jour où l'unité changera, un `HParCycle` apparaîtra à côté — et la conversion sera
+ * `hParCycle = hParSemaine × cycleLen / 7`, en UN point.
+ */
+/** Heures par SEMAINE CALENDAIRE de 7 jours — l'unité que l'athlète déclare et que l'écran rend. */
+                                 
+/** Minutes par SEMAINE CALENDAIRE de 7 jours. */
+                                   
+/** Séances par SEMAINE CALENDAIRE de 7 jours. */
+                                       
+/** Un nombre de JOURS — jamais converti en semaines ni en cycles (physiologie : R13.6, RECUP_EVERY). */
+                           
+/** Un multiplicateur sans dimension (les FACTEURS de la chaîne R20.2). */
+                             
+
                         
                                                  
               
               
             
+                                                                                  
                 
+                                                                               
               
                 
  
+
+/**
+ * Les bornes d'une phase en JOURS — DÉRIVÉES, jamais stockées (étape 1 du chantier).
+ *
+ * Un plafond de phase sourcé (R13.6 : affûtage ≤ 3 semaines, peak ≤ 5 — Bosquet 2007) se lit
+ * ici en 21 et 35 JOURS, c'est-à-dire dans l'unité où il a été mesuré. Les étapes 2-4 du
+ * chantier liront une phase en jours par cette fonction, sans avoir à choisir entre « semaine »
+ * et « cycle » au moment où elles écrivent.
+ *
+ * ⚠ POURQUOI UNE FONCTION ET PAS DEUX CHAMPS : mesuré, poser `startJ`/`endJ` sur l'objet
+ * `phases` produit **986 écarts sur 990** au golden — les phases sont photographiées dans le
+ * plan, et le critère d'acceptation de l'étape 1 est « 0 écart ». C'est aussi la forme juste
+ * au sens de R11.1 : un champ stocké à côté de `start`/`end` serait une seconde source, libre
+ * de diverger le jour où C19 ou R13.6 réécrit l'un sans l'autre.
+ */
+function phaseJours(p       )                                                    {
+  return { startJ: p.start * 7, endJ: p.end * 7, joursTotal: (p.end - p.start) * 7 };
+}
 
 /** Sortie du raisonnement : tout ce dont le générateur a besoin, chiffré et justifié. */
                                
@@ -119,9 +165,9 @@
                         
                 
                   
-                                                  
-                  
-                                                                      
+                                                                                   
+                       
+                                                                                                  
                        
                  
                      
@@ -180,16 +226,16 @@
                                                                                               
      
               
-                                                                                 
-                                                       
-                                                                                                       
-                                                                  
-                                                                         
-                                                                                 
-                                                                  
-                                                                                                        
-                                                 
-                                                                                
+                                                                                  
+                                                        
+                                                                                                        
+                                                                   
+                                                                          
+                                                                                  
+                                                                   
+                                                                                                         
+                                                
+                                                                               
     
  
 
@@ -3957,6 +4003,23 @@ class TrainingReasoningEngine {
       }
     }
 
+    // ÉTAPE 1 DU CHANTIER « UNITÉ DE VOLUME = CYCLE » — LES BORNES EN JOURS, DÉRIVÉES.
+    //
+    // Posées ICI et pas à la construction des phases : `start`/`end` sont encore réécrits
+    // ensuite par C19 (semaine de peak garantie) et R13.6 (plafonds absolus d'affûtage et de
+    // pic). Les dériver plus haut donnerait des bornes en jours qui décrivent un état
+    // intermédiaire — c'est la leçon payée douze fois dans ce dépôt (« une garantie vérifiée
+    // au milieu du pipeline ne vérifie que l'avant-dernier état »), et elle vaut aussi pour un
+    // DESCRIPTEUR. Aucun consommateur aujourd'hui : ces champs existent pour que les étapes
+    // 2-4 lisent une phase en jours sans choisir entre « semaine » et « cycle ».
+    //
+    // ⚠ ET ELLES SONT UNE DÉRIVATION, PAS DES CHAMPS STOCKÉS — mesuré : les poser sur l'objet
+    // `phases` produit **986 écarts sur 990** au golden, parce que les phases sont
+    // PHOTOGRAPHIÉES dans le plan. Le critère d'acceptation de l'étape 1 est « 0 écart » : une
+    // étape de lisibilité qui déplace la photo n'est plus une étape de lisibilité. Et c'est
+    // aussi la bonne forme au sens de R11.1 : un champ stocké à côté de `start`/`end` est une
+    // seconde source, libre de diverger le jour où C19 ou R13.6 réécrit l'un sans l'autre.
+    // `phaseJours()` (ci-dessous) rend les bornes en jours à la demande, depuis la seule source.
     return {
       profile: a,
       decisions,

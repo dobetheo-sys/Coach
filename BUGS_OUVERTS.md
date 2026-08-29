@@ -164,6 +164,37 @@ attendu: 86 min le lundi contre 220-543 les autres jours (24/08/2026)
 cmd: npm run audit:v6
 ```
 
+#### LE PRODUCTEUR DE LA DÉRIVE EST IDENTIFIÉ : `applyWeeklyVariety` (24/08/2026)
+
+Le résidu publié par l'étape 0 — 6 jours `dur2→dur1` sans producteur, 46 % de la dérive de
+`REEL` — est **entièrement localisé**, et il emporte 12 des 13 jours.
+
+`weekBuilder.ts:573` — `applyWeeklyVariety` boucle **`for (let w = 1; w <= r.weeks; w++)`** sur
+les SEMAINES CALENDAIRES, avec un `seen` de noms de séance par semaine. Quand un nom de séance
+de QUALITÉ se répète dans la semaine, elle bascule le créneau du jour :
+`alt = d.slot === "dur1" ? "dur2" : d.slot === "dur2" ? "dur1" : null` — et à défaut de
+séance inédite dans le créneau alternatif, elle retombe sur `easyFallbackSlot`.
+
+**Le mécanisme est l'interaction exacte décrite par l'étape 0** : le schéma de 10 pose DEUX
+`dur2` (j3 et j7) ; une semaine calendaire de 7 jours peut donc en contenir deux, le second
+répète un nom, et la passe le convertit. **Le schéma de 7 n'en pose qu'un : la passe ne se
+déclenche jamais** — d'où 0 % de dérive à `cycleLen = 7`, la même passe tournant.
+
+Neutralisation (`npm run casser`, `if (true) return;`) :
+
+```
+état courant                       13/217 jours (6,0 %) · positions clés 13/82 (15,9 %)
+applyWeeklyVariety neutralisée      1/217        (0,5 %) · positions clés  1/82 ( 1,2 %)
+applyPeakSignature neutralisée     12/217        (5,5 %) — le 13e jour, `dur2→durLong`
+jc=7 sans applyWeeklyVariety       dur2 ×22 (au lieu de dur2 ×13 · dur1 ×6 · facileR ×3)
+```
+
+⚠ **ET LA MOITIÉ DE LA « DÉRIVE » N'EST PAS UNE PERTE.** Sur les 13 jours : **6 restent sur un
+créneau CLÉ** (`dur2→dur1`) et 1 aussi (`dur2→durLong`, la signature de pic, délibérée) ; seuls
+**6 basculent réellement vers du facile** (`dur2→facileR`, la branche de repli de la passe). La
+perte de positions clés de `REEL` est donc de **6 jours sur 82 (7,3 %)**, pas 13 — l'indicateur
+d'O-103 compte des conversions ENTRE créneaux clés comme des dérives. À corriger dans la sonde.
+
 ### O-103 — le cycle de 10 n'est PAS livré tel qu'il est déclaré : 20 % de ses positions clés dérivent · 🔴 **OUVERT**
 
 Mesuré le 22/08/2026 en cherchant d'où venait l'écart « 4,00 créneaux de qualité déclarés →

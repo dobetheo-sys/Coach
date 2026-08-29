@@ -619,6 +619,23 @@ export class TrainingReasoningEngine {
       }
     }
 
+    // ÉTAPE 1 DU CHANTIER « UNITÉ DE VOLUME = CYCLE » — LES BORNES EN JOURS, DÉRIVÉES.
+    //
+    // Posées ICI et pas à la construction des phases : `start`/`end` sont encore réécrits
+    // ensuite par C19 (semaine de peak garantie) et R13.6 (plafonds absolus d'affûtage et de
+    // pic). Les dériver plus haut donnerait des bornes en jours qui décrivent un état
+    // intermédiaire — c'est la leçon payée douze fois dans ce dépôt (« une garantie vérifiée
+    // au milieu du pipeline ne vérifie que l'avant-dernier état »), et elle vaut aussi pour un
+    // DESCRIPTEUR. Aucun consommateur aujourd'hui : ces champs existent pour que les étapes
+    // 2-4 lisent une phase en jours sans choisir entre « semaine » et « cycle ».
+    //
+    // ⚠ ET ELLES SONT UNE DÉRIVATION, PAS DES CHAMPS STOCKÉS — mesuré : les poser sur l'objet
+    // `phases` produit **986 écarts sur 990** au golden, parce que les phases sont
+    // PHOTOGRAPHIÉES dans le plan. Le critère d'acceptation de l'étape 1 est « 0 écart » : une
+    // étape de lisibilité qui déplace la photo n'est plus une étape de lisibilité. Et c'est
+    // aussi la bonne forme au sens de R11.1 : un champ stocké à côté de `start`/`end` est une
+    // seconde source, libre de diverger le jour où C19 ou R13.6 réécrit l'un sans l'autre.
+    // `phaseJours()` (ci-dessous) rend les bornes en jours à la demande, depuis la seule source.
     return {
       profile: a,
       decisions,
