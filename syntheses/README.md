@@ -19,19 +19,22 @@ registre qu'on re-mesure.
 | 05 | [Le placement du test · la franchissabilité](05-placement-du-test-et-franchissabilite.md) | `c50de88` | livré (c) · (b) réfuté par C22 |
 | 06 | [`franchissable` — deux réfutations](06-franchissable-deux-refutations.md) | `0711262` | byte-identique (mesures seules) |
 | 07 | [L'état des branches — un seul merge en question](07-etat-des-branches.md) | — | aucune ligne touchée |
-| 08 | [Le pic livré maximum sur les 990 profils](08-pic-livre-maximum.md) | `mesure:picmax` | aucune ligne touchée (`src/` byte-identique) |
-| 09 | [Le plafond est le calendrier — les quatre points mesurés](09-plafond-calendrier.md) | `mesure:doublage` | aucune ligne touchée (`src/` byte-identique) |
-| 10 | [O-100 se scinde — §1b est un vrai défaut](10-o100-scinde.md) | `mesure:doublage` §F | aucune ligne touchée (`src/` byte-identique) |
-| 11 | [Dur/facile : le cycle de 10 jours dilue le dur](11-dur-facile-cycle10.md) | `mesure:doublage` §G/§H | aucune ligne touchée (`src/` byte-identique) |
-| 12 | [T-61 tranche : `dur` veut dire « séance clé »](12-dur-ou-cle.md) | `mesure:t61` | aucune ligne touchée (`src/` byte-identique) |
-| 13 | [Le schéma de 10 déclare cinq positions dures, en remplit une](13-cycle10-cinq-positions.md) | `mesure:cycle10` | aucune ligne touchée (`src/` byte-identique) |
-| 14 | [La dérive du cycle : 20 % des positions clés ne sont pas livrées](14-derive-du-cycle.md) | `mesure:cycle10` §4 | aucune ligne touchée (`src/` byte-identique) |
-| 15 | [Permanent confirmé, la spec écrite, deux gates qui dépendaient du jour](15-permanent-et-spec.md) | `mesure:cycle10` §5 | spec (commentaire) + 2 instruments ancrés |
-| 16 | [Le cliquet T-62, le contrôle statique des dates, et O-104 localisé](16-cliquet-et-controle-statique.md) | `mesure:cycle10` §6 · `check:dates` | T-62 · check:dates (12ᵉ gate) · 4 bancs ancrés |
-| 17 | [Diagnostic : le plafond de 11,5 h ne vient pas de `G_PLAFOND`](17-diagnostic-plafond-11h.md) | `casser` sur `G_PLAFOND` | aucune ligne touchée |
-| 18 | [Le cycle de 10 j n'agit que sur la rotation des créneaux](18-cycle-10j-vs-calendrier-7j.md) | `mesure:cycle10` · `mesure:doublage` | aucune ligne touchée |
-| 19 | [Plan de chantier : l'unité de volume devient le CYCLE](19-plan-chantier-unite-de-volume.md) | cartographie | feuille de route, aucune ligne écrite |
-| 20 | [Étape 0 : le partage de la dérive O-103](20-etape0-partage-derive.md) | `mesure:cycle10` · `casser` | mesure seule, aucune ligne écrite |
+| 08 | [Le pic livré maximum sur les 990 profils](08-pic-livre-maximum.md) | `56d5a9a` | aucune ligne touchée (`src/` byte-identique) |
+| 09 | [Le plafond est le calendrier — les quatre points mesurés](09-plafond-calendrier.md) | `2c8a20d` | aucune ligne touchée (`src/` byte-identique) |
+| 10 | [O-100 se scinde — §1b est un vrai défaut](10-o100-scinde.md) | `fd1f3dc` | aucune ligne touchée (`src/` byte-identique) |
+| 11 | [Dur/facile : le cycle de 10 jours dilue le dur](11-dur-facile-cycle10.md) | `296b642` | aucune ligne touchée (`src/` byte-identique) |
+| 12 | [T-61 tranche : `dur` veut dire « séance clé »](12-dur-ou-cle.md) | `2e8aaac` | aucune ligne touchée (`src/` byte-identique) |
+| 13 | [Le schéma de 10 déclare cinq positions dures, en remplit une](13-cycle10-cinq-positions.md) | `1152ea0` | aucune ligne touchée (`src/` byte-identique) |
+| 14 | [La dérive du cycle : 20 % des positions clés ne sont pas livrées](14-derive-du-cycle.md) | `ab5d74e` | aucune ligne touchée (`src/` byte-identique) |
+| 15 | [Permanent confirmé, la spec écrite, deux gates qui dépendaient du jour](15-permanent-et-spec.md) | `76c58e8` | spec (commentaire) + 2 instruments ancrés |
+| 16 | [Le cliquet T-62, le contrôle statique des dates, et O-104 localisé](16-cliquet-et-controle-statique.md) | `1627bfd` | T-62 · check:dates (12ᵉ gate) · 4 bancs ancrés |
+| 17 | [Diagnostic : le plafond de 11,5 h ne vient pas de `G_PLAFOND`](17-diagnostic-plafond-11h.md) | `5f0e9c8` | aucune ligne touchée |
+| 18 | [Le cycle de 10 j n'agit que sur la rotation des créneaux](18-cycle-10j-vs-calendrier-7j.md) | `7d28d03` | aucune ligne touchée |
+| 19 | [Plan de chantier : l'unité de volume devient le CYCLE](19-plan-chantier-unite-de-volume.md) | `e0f3d2a` | feuille de route, aucune ligne écrite |
+| 20 | [Étape 0 : le partage de la dérive O-103](20-etape0-partage-derive.md) | `6d3c0a7` | mesure seule, aucune ligne écrite |
+
+**Récapitulatif transversal** : [`RECAP.md`](RECAP.md) — une ligne de fond par réponse, le fil
+qui les relie, les fautes d'instrument publiées et ce qui reste ouvert.
 
 **Convention** : un compte rendu par réponse, numéroté à la suite. Le fichier est écrit dans le
 dépôt avant d'être envoyé — le conteneur est éphémère, un fichier non commité serait perdu.
