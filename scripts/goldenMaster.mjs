@@ -380,6 +380,49 @@ function* profiles() {
     yield { key: ["O-21b", "run", "10k", p].join("/"), sport: "run", a };
   }
 
+  // ---- Passe « CYCLE DE 10 JOURS » (chantier « unité de volume = cycle », 24/08/2026) -----
+  //
+  // Le chantier ne pouvait valider sa logique propre au cycle de 10 jours que sur **5 profils**
+  // — `O-21b/run/10k` ×4 et `REEL/tri/70.3` —, c'est-à-dire deux familles sur sept. Les 985
+  // autres prouvent la NON-RÉGRESSION ; ils ne prouvent rien du comportement sous `use10`.
+  //
+  // ⚠ ET LE CORPUS PORTAIT DÉJÀ UNE GARDE QUI EN AVAIT L'AIR : la passe garde-fous pose
+  // `["doubles", { doubles: "oui", dispo: "quotidienne" }]` — mais **jamais `shift_ok`**, et
+  // `use10` exige `dispo === "quotidienne" && shift_ok === "oui" && offDays.length < 2`
+  // (`reasoningEngine.ts:373`). La garde couvre donc le DOUBLAGE et pas le CYCLE, alors que son
+  // nom et sa `dispo` laissent croire l'inverse. C'est la dixième A-2 : un angle mort qui
+  // ressemble à une couverture.
+  //
+  // Ce que la passe balaie, et pourquoi ces axes : les SEPT sports du moteur (un format
+  // représentatif chacun, plus `tri/S` et `tri/Full` pour tenir les deux bouts de l'échelle de
+  // durée), croisés avec trois couples (niveau, intention) pris aux extrémités et au milieu.
+  // Tout le reste vient de `base()` et des `*Extras()` du corpus — aucune valeur inventée pour
+  // l'occasion, seuls varient les axes nommés.
+  //
+  // Les deux dernières entrées portent une DATE de course, avec `plan_start` ÉPINGLÉ : sans
+  // lui, un profil daté redémarre au lundi courant et dérive d'une semaine chaque lundi
+  // (mesuré le 24/08/2026 sur `REEL` — `golden:verify` rouge un jour sur sept). La branche
+  // « course datée » sous `use10` est ainsi couverte sans rendre la photo périssable.
+  const CYCLE10_UNITES = [
+    ["run", "marathon"], ["bike", "gravel"], ["swim", "fond"], ["tri", "S"],
+    ["tri", "Full"], ["trail", ""], ["duathlon", "L"], ["swimrun", "series"],
+  ];
+  const CYCLE10_PROFILS = [["debutant", "plaisir"], ["inter", "competition"], ["avance", "finir"]];
+  const cycle10Extras = (sport) => (sport === "trail" ? trailExtras() : sport === "swimrun" ? swimrunExtras() : sport === "tri" ? triExtras() : {});
+  for (const [sport, format] of CYCLE10_UNITES) {
+    for (const [level, intent] of CYCLE10_PROFILS) {
+      const a = { ...base(), format, history: "confirme", level, intent,
+        dispo: "quotidienne", shift_ok: "oui", off_days: "non", doubles: "oui", ...cycle10Extras(sport) };
+      yield { key: ["CYCLE10", sport, format || "-", level + "-" + intent].join("/"), sport, a };
+    }
+  }
+  for (const [sport, format] of [["tri", "Full"], ["trail", ""]]) {
+    const a = { ...base(), format, history: "confirme", level: "inter", intent: "competition",
+      dispo: "quotidienne", shift_ok: "oui", off_days: "non", doubles: "oui",
+      plan_start: RACE_PASS_START, race_date: RACE_PASS_DATES[0], ...cycle10Extras(sport) };
+    yield { key: ["CYCLE10", sport, format || "-", "datee"].join("/"), sport, a };
+  }
+
   // ---- Passe « ATHLÈTE RÉEL » (O-85 §2, 19/08/2026) -------------------------------------
   //
   // *« Ma configuration — `sessions_max` élevé, `doubles`, 70.3, nage limitante — n'existe dans
@@ -445,7 +488,11 @@ function canon(v) {
  *  990 depuis la fixture `REEL/tri/70.3/nage-limitante` (O-85 §2, 19/08/2026). L'épingle aurait
  *  dû monter DANS le commit de la fixture — elle est restée à 989 deux commits, et le gate a
  *  rougi comme prévu : c'est exactement le travail de « un zéro a besoin de sa population ». */
-const POPULATION = 990;
+// 1016 depuis la passe « CYCLE DE 10 JOURS » (24/08/2026) : +26 profils, tous à `use10`, qui
+// portent les SEPT sports — le chantier « unité de volume = cycle » ne pouvait valider sa
+// logique propre au cycle que sur 5 profils, soit deux familles. L'épingle monte AVEC sa
+// cause, et le moteur est byte-identique dans ce lot : ce qui bouge est le CORPUS.
+const POPULATION = 1016;
 
 function snapshot() {
   const snap = {};

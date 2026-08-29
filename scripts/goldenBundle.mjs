@@ -49,7 +49,7 @@ console.log("GOLDEN — la SOURCE contre le BUNDLE, même corpus, même canonisa
 // ── Passe 1 : la SOURCE ───────────────────────────────────────────────────────────────────
 const refSrc = globalThis.EBV2;
 if (!refSrc) { console.error("✖ EBV2 absent après l'import de bridge.ts"); process.exit(2); }
-const POPULATION = 990;   // un zéro a besoin de sa population — 990 depuis la fixture REEL (O-85 §2), voir goldenMaster.mjs
+const POPULATION = 1016;  // un zéro a besoin de sa population — 1016 depuis la passe CYCLE10 (24/08/2026), voir goldenMaster.mjs
 const t0 = Date.now();
 const A = snapshot();
 if (A.n !== POPULATION) {

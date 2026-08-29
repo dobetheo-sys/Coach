@@ -1092,7 +1092,15 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 // tombe de 0,29 h à 0,02, sous la tolérance de 0,1. C'est un profil de MOINS en violation,
 // c'est-à-dire la direction voulue : le plafond annoncé cesse de décrire une unité que le plan
 // ne livre pas. Cliquet ré-épinglé avec sa cause, jamais descendu en silence.
-const SCEAU_ATTENDU = { S1: 4, S4: 341, S5: 504 };
+// CORPUS ÉLARGI (24/08/2026) — +26 profils `use10` (passe CYCLE10), moteur BYTE-IDENTIQUE.
+// Les trois comptes montent parce que la POPULATION monte, pas parce que le moteur régresse :
+// c'est la preuve mécanique exigée par `base:cliquet` — le nouveau corpus rejoué contre un
+// moteur inchangé. Décomposition, mesurée : S1 4 → 7 · S4 341 → 342 · S5 504 → 521.
+// ⚠ S5 (+17 sur 26 nouveaux profils, 65 %) est le chiffre à ne pas laisser passer : deux tiers
+// des profils `use10` nouvellement couverts annoncent un plafond structurel qui ne vaut pas
+// leur pic livré. C'est la famille O-78 (saturation sans borne : `blockBounds` rend `cap: 9999`
+// sur les blocs de corps sans `bnd`), désormais visible sur cinq sports de plus au lieu d'un.
+const SCEAU_ATTENDU = { S1: 7, S4: 342, S5: 521 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;
@@ -1973,7 +1981,11 @@ T("T-50", "vert", "PROPRIÉTÉ — la bande d'allure affichée se redérive du p
 // donc un peu moins. Le VO2 ne bouge pas (8 244), ce qui est cohérent — la pièce ne touche aucun
 // créneau de qualité. Attribué par expérience à facteur unique : pièce neutralisée, le compte
 // revient à 410 901.
-const PIC_ATTENDU = { vo2Min: 8244, seuilM: 411251, profils: 188 };
+// CORPUS ÉLARGI (24/08/2026) — la passe CYCLE10 ajoute 4 profils tri (`tri/S` ×3 et `tri/Full`
+// ×3, plus la variante datée, dont 4 entrent dans la population de ce test). Moteur
+// BYTE-IDENTIQUE : les trois comptes montent avec la population, pas avec une régression.
+// Mesuré : population 188 → 192 · VO2 8 244 → 8 292 min · nage seuil 411 251 → 425 201 m.
+const PIC_ATTENDU = { vo2Min: 8292, seuilM: 425201, profils: 192 };
 T("T-48", "vert", "la composition du PIC en tri est épinglée : le VO2 a cédé, la nage seuil a gagné (C26c)", () => {
   let vo2 = 0, seuil = 0, profils = 0;
   for (const { key, plan } of goldenAvecMoteur()) {
