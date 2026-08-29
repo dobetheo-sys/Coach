@@ -1100,7 +1100,22 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 // des profils `use10` nouvellement couverts annoncent un plafond structurel qui ne vaut pas
 // leur pic livré. C'est la famille O-78 (saturation sans borne : `blockBounds` rend `cap: 9999`
 // sur les blocs de corps sans `bnd`), désormais visible sur cinq sports de plus au lieu d'un.
-const SCEAU_ATTENDU = { S1: 7, S4: 342, S5: 521 };
+// O-78 LIVRÉ (24/08/2026) — ET `S5` NE BOUGE PAS, POUR UNE RAISON QUI A CHANGÉ LA DÉCISION.
+//
+// L'option (B) arbitrée par le fondateur prévoyait de déclarer `S5` en rouge attendu (521 → 670).
+// **Elle reposait sur un état qu'une garde préexistante REFUSE** : `T-57` branche (3) exige
+// qu'une capacité ne descende jamais sous le pic LIVRÉ — « une capacité que le livré réfute ».
+// Sans plancher, la sonde bornée rendait 9,3 h pour un pic de 11,5, et T-57 est passée rouge.
+// Le plancher (O-94, généralisé) rétablit la propriété — et `S5` ne monte pas : **il TOMBE de
+// 521 à 218**. C'est la direction que le brief espérait, obtenue par l'autre bout : `structurel`
+// étant borné en bas par le pic livré et en haut par des blocs qui ne grandissent plus sans
+// borne, il VAUT le pic livré sur bien plus de profils, et l'identité `min(plafonds) = pic` est
+// satisfaite au lieu d'être contournée. Aucun rouge attendu à déclarer.
+//
+// Le ticket **O-105** reste ouvert et garde tout son objet : `seal.ts:159` recalcule un `min()`
+// brut au lieu de lire l'argmin publié par le moteur (fiche 24 §4). Ce lot le rend moins
+// VISIBLE, il ne le corrige pas.
+const SCEAU_ATTENDU = { S1: 7, S4: 342, S5: 218 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;

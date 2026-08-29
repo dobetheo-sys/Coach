@@ -102,6 +102,44 @@ dur, le CRÉNEAU (qui décide du contenu) livre du facile. C'est la même famill
 « type du créneau » : le schéma est agnostique de la discipline ET de l'intensité réelle, seul
 le module de sport décide — et personne ne vérifie que les deux disent la même chose.
 
+### O-105 — `s5IdentiteR202` recalcule un `min()` brut au lieu de lire l'argmin publié · 🟠 **OUVERT**
+
+Ouvert par le lot O-78 (24/08/2026), diagnostic déjà écrit — fiche 24 §4, aucune investigation
+nouvelle nécessaire.
+
+`seal.ts:159` :
+
+```js
+const min = Math.min(...actifs);   // le GARDE : minimum BRUT de tous les plafonds
+```
+
+Le MOTEUR, lui, ne nomme jamais ce minimum-là (`planGenerator.ts`, garde d'observation) :
+
+```js
+const candidats = actifs.filter((p) => p.livre >= volPeak - 0.1);
+const minP = (candidats.length ? candidats : actifs).reduce(min);   // l'argmin PUBLIÉ
+```
+
+**Le garde mesure une grandeur que le produit n'affiche pas.** Deux computations de « le maillon
+qui borne », libres de diverger — la forme R11.1 que ce dépôt refuse partout ailleurs. Elle est
+restée invisible tant que tous les plafonds étaient au-dessus du pic livré ; O-78 l'a rendue
+visible en faisant descendre `structurel`.
+
+**Correctif attendu** : `s5IdentiteR202` lit `_r202.argmin` (ou refait la même sélection par
+candidats), au lieu de recalculer un minimum sur `actifs`. **Ne pas l'implémenter dans le lot qui
+le fait bouger** — c'est la raison pour laquelle il est un ticket et pas une ligne.
+
+⚠ **Ce lot le rend moins VISIBLE, il ne le corrige pas** : `S5` tombe de 521 à 218 parce que
+`structurel` vaut désormais le pic livré sur beaucoup de profils, pas parce que le garde s'est
+mis à lire la bonne grandeur.
+
+```verify
+id: O-105-min-brut
+quoi: le garde S5 recalcule un min() brut au lieu de lire l'argmin du moteur
+attendu: Math.min(...actifs) présent dans s5IdentiteR202 (seal.ts)
+cmd: grep -n "Math.min(...actifs)" src/generator/seal.ts
+```
+
 ### O-104 — sous `use10`, le volume d'une semaine calendaire varie de 86 à 543 min selon le seul JOUR DE COURSE · 🟠 **OUVERT**
 
 Trouvé le 24/08/2026 en attribuant un gate rouge (`audit:v6` `R23.18-D`). Profil IDENTIQUE, seule

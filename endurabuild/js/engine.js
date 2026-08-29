@@ -12343,6 +12343,29 @@ function generatePlan(profile                , opts                             
   // semaines de CHARGE, et une sonde qui hériterait du drapeau de l'affûtage mesurerait une
   // capacité qui n'est celle d'aucune semaine réelle.
   let _dechargeW = false;
+  /**
+   * O-78 (24/08/2026) — LA SONDE NE CRÉDITE PAS UNE CAPACITÉ QU'ELLE NE PEUT PAS JUSTIFIER.
+   *
+   * `blockBounds` rend `cap: 9999` pour tout bloc de corps sans `bnd` déclaré : c'est une
+   * absence de borne, pas une borne haute. Dans le PLAN, ce fourre-tout est le puits mesuré par
+   * O-78, et le borner a été essayé TROIS fois, chaque fois avec déplacement du défaut — la
+   * dernière posant 18 violations DURES (le brick sous son plancher audité). **Ce lot ne
+   * rouvre pas cette décision.**
+   *
+   * Mais dans la SONDE structurelle, `9999` a une conséquence que le plan n'a pas : la
+   * saturation ne rencontre aucun plafond, et le « plafond structurel » annoncé devient une
+   * grandeur sans rapport avec ce que l'athlète reçoit — mesuré sur le corpus élargi,
+   * **19,7 h annoncées pour 9,78 h livrées** en `run/marathon`, et 65 % des profils `use10`
+   * nouvellement couverts dans ce cas. Une capacité est une AFFIRMATION : un bloc dont aucune
+   * borne n'est déclarée n'autorise aucune affirmation, donc la sonde le laisse à sa taille
+   * livrée au lieu de lui prêter une croissance infinie.
+   *
+   * Le drapeau n'est levé que pour le clone de la re-sonde, jamais pendant la construction :
+   * le plan livré ne bouge pas d'un bit (vérifié, golden 1 016 à 0 écart).
+   */
+  let _sondeSansBorne = false;
+  /** La taille ACTUELLE d'un bloc, dans l'unité que `scaleBlock` borne par `cap`. */
+  const tailleActuelle = (b        )         => (b.distanceM != null ? b.distanceM : (b.durationMin ?? 0));
   const brickRF = a.history === "reprise" ? C21_REPRISE_BRICK_FACTOR : 1; // C21
   function blockBounds(b        , s                )                                 {
     if (b.bnd) {
@@ -12415,8 +12438,12 @@ function generatePlan(profile                , opts                             
       if (s.d === "rn") return { floor: 30, cap: CAP_LONG[fmt] || 9999 };
       if (s.d === "bk") return { floor: 35, cap: CAP_LONG[fmt] || 9999 };
     }
-    if (b.distanceM != null) return { floor: (b.d || s.d) === "sw" && !r.beginner ? 750 : 100, cap: 9999 }; // C24
-    return { floor: 3, cap: 9999 };
+    // O-78 (sonde) — `9999` dit « aucune borne déclarée », pas « borne haute ». Sous la sonde
+    // structurelle, un bloc sans borne reste à sa taille livrée : on ne mesure pas une capacité
+    // sur une croissance que rien n'autorise. Hors sonde, le comportement est INCHANGÉ.
+    const sansBorne = (floor        ) => ({ floor, cap: _sondeSansBorne ? Math.max(floor, tailleActuelle(b)) : 9999 });
+    if (b.distanceM != null) return sansBorne((b.d || s.d) === "sw" && !r.beginner ? 750 : 100); // C24
+    return sansBorne(3);
   }
 
   function scaleBlock(b        , f        , s                )       {
@@ -14455,6 +14482,7 @@ function generatePlan(profile                , opts                             
         if (picCycle) {
           const clone = structuredClone(picCycle);
           _dechargeW = false; // O-82 — le cycle retenu est un cycle de charge (filtre `d.isR`)
+          _sondeSansBorne = true; // O-78 — voir la déclaration : la sonde ne prête pas de croissance à un bloc sans borne
           const avant = weekMin(clone);
           for (let it = 0; it < 4; it++) {
             renderWeek(clone);
@@ -14504,6 +14532,23 @@ function generatePlan(profile                , opts                             
           // CYCLE ; `structBrut` se compare à `caps`, `util` et `declared`, qui sont des heures
           // par SEMAINE de 7 jours. La conversion est ici, en UN point, et vaut l'identité en
           // mode 7 jours.
+          _sondeSansBorne = false; // le drapeau ne survit jamais à la sonde
+          // O-94 / T-57 branche (3) — UNE CAPACITÉ NE DESCEND JAMAIS SOUS CE QUI A ÉTÉ FAIT.
+          //
+          // Ce plancher existait déjà, mais seulement DANS la branche de la borne d'épaule. En
+          // bornant les blocs sans `bnd` (O-78), la sonde s'est mise à rendre 9,3 h pour un pic
+          // LIVRÉ de 11,5 — « une capacité que le livré réfute », dans les mots de la garde qui
+          // l'a attrapé. Le livré est le témoin (règle 15) : le plancher devient général, pour
+          // la même raison que dans les deux cas.
+          //
+          // ⚠ SA CONSÉQUENCE EST PUBLIÉE, PAS SUBIE : `structurel` étant désormais borné en bas
+          // par le pic livré, il devient l'argmin de la chaîne R20.2 sur **498 profils sur
+          // 1 012** contre 56 avant O-78. La carte « ce qui borne » nomme donc bien plus souvent
+          // « le nombre de séances ». C'est la lecture juste — un bloc sans borne n'autorise
+          // aucune affirmation de capacité, et la semaine ne peut alors pas porter plus — mais
+          // elle voisine avec O-43 (« une sortie calculée ne se relit jamais comme une entrée »)
+          // et mérite d'être re-regardée si la carte se met à dire la même chose partout.
+          rendu = Math.max(rendu, (volPeak * cycleLen) / 7);
           const renduHebdo = (rendu * 7) / cycleLen;
           // la re-sonde ne peut que DESCENDRE le plafond structurel : si la semaine livrée porte
           // plus que ce que la première sonde annonçait, c'est la première qui sous-estimait, et
