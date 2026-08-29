@@ -28,6 +28,9 @@ registre qu'on re-mesure.
 | 14 | [La dérive du cycle : 20 % des positions clés ne sont pas livrées](14-derive-du-cycle.md) | `mesure:cycle10` §4 | aucune ligne touchée (`src/` byte-identique) |
 | 15 | [Permanent confirmé, la spec écrite, deux gates qui dépendaient du jour](15-permanent-et-spec.md) | `mesure:cycle10` §5 | spec (commentaire) + 2 instruments ancrés |
 | 16 | [Le cliquet T-62, le contrôle statique des dates, et O-104 localisé](16-cliquet-et-controle-statique.md) | `mesure:cycle10` §6 · `check:dates` | T-62 · check:dates (12ᵉ gate) · 4 bancs ancrés |
+| 17 | [Diagnostic : le plafond de 11,5 h ne vient pas de `G_PLAFOND`](17-diagnostic-plafond-11h.md) | `casser` sur `G_PLAFOND` | aucune ligne touchée |
+| 18 | [Le cycle de 10 j n'agit que sur la rotation des créneaux](18-cycle-10j-vs-calendrier-7j.md) | `mesure:cycle10` · `mesure:doublage` | aucune ligne touchée |
+| 19 | [Plan de chantier : l'unité de volume devient le CYCLE](19-plan-chantier-unite-de-volume.md) | cartographie | feuille de route, aucune ligne écrite |
 
 **Convention** : un compte rendu par réponse, numéroté à la suite. Le fichier est écrit dans le
 dépôt avant d'être envoyé — le conteneur est éphémère, un fichier non commité serait perdu.
