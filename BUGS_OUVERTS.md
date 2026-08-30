@@ -102,6 +102,66 @@ dur, le CRÉNEAU (qui décide du contenu) livre du facile. C'est la même famill
 « type du créneau » : le schéma est agnostique de la discipline ET de l'intensité réelle, seul
 le module de sport décide — et personne ne vérifie que les deux disent la même chose.
 
+### O-107 — trail et swimrun déclarent un `weekSchema` de 7 entrées que le cycle de 10 lit HORS BORNES · 🔴 **OUVERT — accidentel, et aujourd'hui BÉNÉFIQUE (25/08/2026)**
+
+`schema()` (`weekBuilder.ts:40`) délègue au module de sport quand il déclare son propre
+`weekSchema`. `swimrunWeekSchema(_phase, isRecup)` et `trailWeekSchema(phase, isRecup, cat)`
+rendent **7 entrées** et **ne reçoivent pas `use10`**. Le jour est ensuite tiré par
+`const s = sch[dic] || { charge: "facile", slot: "facileR" }` avec `dic` allant jusqu'à 9 :
+**`sch[7]`, `sch[8]` et `sch[9]` sont `undefined`, et le `||` fabrique trois jours faciles par
+cycle que personne n'a écrits.**
+
+Mesuré sur le plan entier :
+
+```
+swimrun/series/inter   facileR 12 → 33 jours (+175 %)   dur1 10→8 · dur2 10→8 · durLong 10→7
+trail/-/inter          facileR 34 → 70 jours (+106 %)   dur1 22→16 · dur2 22→15 · durLong 22→17
+```
+
+⚠ **Ne pas « corriger » sans décider d'abord.** Donner `use10` à ces deux schémas leur retirerait
+ces trois jours : mesuré, **−0,75 à −1,10 h de pic sur les trois profils swimrun**, qui sont
+aujourd'hui les plus gros gagnants du cycle de 10. L'accident est favorable ; le fermer sans
+écrire ce que ces schémas DOIVENT faire sur 10 jours dégraderait les profils qu'il faut préserver.
+
+```verify
+id: O-107-schema-7-entrees
+quoi: les schémas propres rendent 7 entrées et ne reçoivent pas use10
+attendu: swimrunWeekSchema(_phase, isRecup) — deux paramètres, pas de use10
+cmd: grep -n "export function swimrunWeekSchema" src/sports/swimrun/index.ts
+```
+
+### O-108 — sur `REEL`, quatre jours `dur1` ne portent AUCUNE séance de qualité vélo sous `use10` · 🟠 **OUVERT — producteur non identifié**
+
+`VO2max vélo` ne sort QUE du créneau `dur1`, en `dev`/`spec`/`peak`. Mesuré sur
+`REEL/tri/70.3/nage-limitante` : **18 jours `dur1` sous `use10` contre 21 en 7 jours, mais 14
+VO2max livrées contre 21.** Trois séances manquent par le compte de jours (la dilution −30 % du
+schéma de 10) ; **les quatre autres viennent de jours `dur1` qui rendent autre chose** —
+2 en `dev` rendent `Nage aérobie + accélérations + Nage seuil`, 1 en `spec` et 1 en `peak`
+rendent `Endurance vélo + Nage seuil`. **Sous 7 jours ce cas n'existe pas : 32 jours `dur1`,
+32 séances de qualité vélo.**
+
+**Éliminé par expérience à facteur unique** (`npm run casser`, un facteur à la fois, témoin
+positif validant l'instrument — le `dur1` du schéma remplacé par `facileR` fait bien tomber le
+compte de 14 à 2) :
+
+```
+applyPolarizationGuard · applyAntiCollage · applySessionBudget · applyDisciplineCoverage
+applySwimFrequency · applyRunImpactCap · applyAvailability · applyStrengthGrafts
+applyWeeklyVariety · applyPeakSignature          → VO2max ×14, inchangé
+slotIdx · creneauxDuSlot · dernierDuSlot · isR · semaineRecup · prog  → VO2max ×14, inchangé
+```
+
+Le producteur est donc **à l'intérieur de la branche `dur1` du module tri**. À identifier AVANT
+de rééquilibrer le schéma : augmenter le nombre de jours `dur1` ne rendrait au mieux que 3 des
+7 séances manquantes.
+
+```verify
+id: O-108-dur1-sans-velo
+quoi: des jours dur1 sans séance de qualité vélo sous use10
+attendu: VO2max vélo produite uniquement par le créneau dur1
+cmd: grep -c "dur1" src/sports/tri/index.ts
+```
+
 ### O-106 — les phases ne peuvent pas s'aligner sur le cycle tant que la COURBE lit des index de SEMAINE · 🔴 **OUVERT — étape 4 écrite, mesurée, RETIRÉE (25/08/2026)**
 
 Étape 4 du chantier « unité de volume = cycle » (fiche 19) : faire raisonner les bornes de phase
