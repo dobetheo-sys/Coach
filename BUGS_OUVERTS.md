@@ -143,8 +143,22 @@ les deux.
 
 ⚠ **Le pic de `REEL` sous `use10` reste donc à 11,52 h contre 12,32 h en mode 7 jours — l'écart
 de 0,80 h du critère de clôture (fiche 19, étape 7) n'est PAS comblé, et le chantier n'est pas
-terminé.** Décomposition mesurée de cet écart : ≈ 0,30 h de cible déclarée plus basse (12,70 contre
-13,00) et ≈ 0,50 h de sous-livraison (ratio livré/cible 0,907 contre 0,947).
+terminé.**
+
+⚠ **DÉCOMPOSITION RECTIFIÉE (fiche 28, 25/08/2026).** J'avais publié « ≈ 0,30 h de cible déclarée
+plus basse (12,70 contre 13,00) et ≈ 0,50 h de sous-livraison ». **Les 0,30 h n'existent pas comme
+cause** : 12,70 est la cible **RABATTUE** (`vol_declared` est réécrit sur le livré dès que l'écart
+dépasse 10 %, `planGenerator.ts:1227`), c'est-à-dire l'écho du manque et non son origine. Mesurée à
+facteur unique, la cible de BOUCLE (`_ciblesBoucle`, publiée par la décision `manque`) vaut
+**13,0 h/sem dans les DEUX modes**. **La décomposition correcte est : 0,80 h de sous-livraison,
+0,00 h de cible.** Même faute que celle de la fiche 26 — lire une sortie rabattue comme une entrée
+(règle 12 / O-43).
+
+**Conséquence sur ce ticket** : convertir `vol_declared` au cycle ne fermerait PAS l'écart, puisque
+la cible est déjà la bonne. Le producteur mesuré est **O-102/O-103** — sous `use10` le plan entier
+livre 363 h contre 366, mais substitue de l'endurance dédoublée à la qualité et aux sorties longues
+(VO2max ×14 contre ×21, longue CAP ×20 contre ×25, endurance vélo ×39 contre ×30). O-106 reste un
+ticket de JUSTESSE d'unité (O-104 en vit), pas le levier du pic.
 
 ```verify
 id: O-106-phases-semaines
