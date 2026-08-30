@@ -102,6 +102,57 @@ dur, le CRÉNEAU (qui décide du contenu) livre du facile. C'est la même famill
 « type du créneau » : le schéma est agnostique de la discipline ET de l'intensité réelle, seul
 le module de sport décide — et personne ne vérifie que les deux disent la même chose.
 
+### O-106 — les phases ne peuvent pas s'aligner sur le cycle tant que la COURBE lit des index de SEMAINE · 🔴 **OUVERT — étape 4 écrite, mesurée, RETIRÉE (25/08/2026)**
+
+Étape 4 du chantier « unité de volume = cycle » (fiche 19) : faire raisonner les bornes de phase
+en JOURS via `phaseJours()` (livrée à l'étape 1), et les CALER sur les frontières de cycle, pour
+qu'une transition de phase ne tombe plus au milieu d'un cycle de 10 jours.
+
+**Écrite** (`bornesJ` / `phaseAJour` dans `weekBuilder.ts`, 30 lignes ; diff conservé dans
+`e4-phases-en-jours.patch`). **Elle atteint sa cible diagnostique et manque la cible produit** —
+mesuré sur `REEL/tri/70.3/nage-limitante` :
+
+```
+cycles à cheval sur une frontière de phase   4 / 30  →  0 / 30      ✓ la cible diagnostique
+pic livré                                    11,52 h →  10,53 h     ✖ −0,99 h
+cible DÉCLARÉE max                           12,70 h →  10,60 h     ✖ −2,10 h
+valeurs distinctes de la courbe déclarée     29      →  16
+```
+
+Et par phase, la courbe déclarée **cesse de monter** : `base` 3,70–10,60 · `dev` 4,50–10,60 ·
+`spec` 5,30–10,60 · `peak` 3,90–10,60 — les quatre phases plafonnent sur la MÊME valeur, ce qui
+n'est pas une périodisation.
+
+**Sur les 31 profils `use10` : 15 bougent, 11 BAISSENT, 4 montent, somme des pics 224,95 →
+221,47 h (−3,47 h).** La pièce est strictement défavorable au critère pour lequel le chantier
+existe.
+
+**La cause est structurelle, et elle est le ticket** : `r.phases[i].start` / `.end` **restent des
+index de SEMAINE**, et c'est ce couple que lit la courbe de volume (`vol_declared`, une valeur par
+semaine calendaire). Caler les bornes de phase sur des frontières de CYCLE les désynchronise donc
+de la courbe : la phase change au jour 10, la courbe change au jour 7, et le volume promis suit la
+seconde. Une frontière de cycle à J10 vaut la semaine **1,43** — non représentable dans un index
+de semaine entier. `phaseJours()` ne suffit pas : elle DÉRIVE des jours depuis des semaines, elle
+ne convertit pas ce qui les consomme.
+
+**Ce qui reste à traiter (et qui n'est pas de la granularité d'une étape)** : la BOUCLE DE VOLUME
+elle-même doit itérer sur des cycles — `vol_declared` par cycle, pas par semaine calendaire —,
+c'est-à-dire `const w = Math.floor(i / 7)` (`weekBuilder.ts:173`) et tous ses lecteurs. Tant que
+l'unité de la courbe est la semaine, aligner les phases sur le cycle ne peut que faire diverger
+les deux.
+
+⚠ **Le pic de `REEL` sous `use10` reste donc à 11,52 h contre 12,32 h en mode 7 jours — l'écart
+de 0,80 h du critère de clôture (fiche 19, étape 7) n'est PAS comblé, et le chantier n'est pas
+terminé.** Décomposition mesurée de cet écart : ≈ 0,30 h de cible déclarée plus basse (12,70 contre
+13,00) et ≈ 0,50 h de sous-livraison (ratio livré/cible 0,907 contre 0,947).
+
+```verify
+id: O-106-phases-semaines
+quoi: les bornes de phase consommées par la courbe sont des index de SEMAINE
+attendu: p.start / p.end lus comme numéro de semaine dans weekBuilder
+cmd: grep -n "Math.floor(i / 7)" src/generator/weekBuilder.ts
+```
+
 ### O-105 — `s5IdentiteR202` recalcule un `min()` brut au lieu de lire l'argmin publié · 🟠 **OUVERT**
 
 Ouvert par le lot O-78 (24/08/2026), diagnostic déjà écrit — fiche 24 §4, aucune investigation

@@ -1,0 +1,53 @@
+diff --git a/src/generator/weekBuilder.ts b/src/generator/weekBuilder.ts
+index 827f187..c1f97d2 100644
+--- a/src/generator/weekBuilder.ts
++++ b/src/generator/weekBuilder.ts
+@@ -5,6 +5,7 @@
+  * greffes renfo, anti-collage final, garantie de polarisation.
+  */
+ import type { ReasonedPlan, V1Day, V1Session, V1Step } from "../engine/types.ts";
++import { phaseJours } from "../engine/types.ts";
+ import { buildSessions, type SessionCtx } from "./sessionLibrary.ts";
+ import { guard, sportModule } from "../sports/registry.ts";
+ import { intOf, renderSess, type Refs, type HrZones } from "./renderer.ts";
+@@ -167,11 +168,38 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
+   // c'est un trou. Les anticipations de C27b et C27c s'y arrêtent : plutôt renoncer à une
+   // récupération (l'affûtage suit) que d'en empiler deux.
+   const MIN_CHARGE_ENTRE_RECUPS = 2;
+-  const phaseOfWeek = (wk: number) => r.phases.find((p) => wk >= p.start && wk < p.end) || r.phases[4];
++  /**
++   * ÉTAPE 4 DU CHANTIER « UNITÉ DE VOLUME = CYCLE » — LES PHASES SE RÉSOLVENT EN JOURS, ET
++   * LEURS FRONTIÈRES TOMBENT SUR UNE FRONTIÈRE DE CYCLE.
++   *
++   * `p.start`/`p.end` sont des numéros de SEMAINE. Sous un cycle de 10 jours, une frontière de
++   * phase tombe donc au milieu d'un cycle : mesuré sur `REEL`, **4 cycles sur 30 sont à cheval
++   * sur deux phases** (0 sur 43 en mode 7 jours, par construction). Or le schéma de créneaux
++   * est choisi UNE fois par cycle, à partir de la phase de son premier jour — un cycle à cheval
++   * construit donc dix jours avec le schéma de la phase qu'il quitte, pendant que la courbe de
++   * charge, elle, suit la phase de chaque SEMAINE. Les deux moitiés du plan ne parlent pas de
++   * la même phase au même moment.
++   *
++   * Les bornes sont donc converties en JOURS (`phaseJours()`, source unique livrée à l'étape 1)
++   * puis ARRONDIES à la frontière de cycle la plus proche. C'est l'intention que C27a énonce
++   * déjà — « une phase ne s'OUVRE jamais sur une décharge » suppose qu'elle s'ouvre avec un
++   * cycle.
++   *
++   * ⚠ EN MODE 7 JOURS, `cycleLen = 7` ET LES BORNES SONT DÉJÀ DES MULTIPLES DE 7 : l'arrondi
++   * est l'identité, et la résolution par jour rend exactement ce que rendait la résolution par
++   * semaine. Les 985 profils historiques doivent donc être inchangés au bit près — c'est le
++   * critère d'acceptation de l'étape.
++   */
++  const bornesJ = r.phases.map((p) => {
++    const j = phaseJours(p);
++    return { p, a: Math.round(j.startJ / cycleLen) * cycleLen, b: Math.round(j.endJ / cycleLen) * cycleLen };
++  });
++  const phaseAJour = (jour: number) => (bornesJ.find((x) => jour >= x.a && jour < x.b) || bornesJ[bornesJ.length - 1]).p;
++  const phaseOfWeek = (wk: number) => phaseAJour(wk * 7);
+   const cyclesDansPic = Math.max(1, Math.ceil((r.phases.find((p) => p.id === "peak")?.weeks || 0) * 7 / cycleLen));
+   for (let i = 0; i < totalDays; i++) {
+     const w = Math.floor(i / 7);
+-    const ph = r.phases.find((p) => w >= p.start && w < p.end) || r.phases[4];
++    const ph = phaseAJour(i); // étape 4 — la phase se lit au JOUR, pas à la semaine calendaire
+     if (dic >= cycleLen) {
+       cyc++; dic = 0;
+       isR = ph.id !== "taper" && sinceR >= r.recupEvery - 1;
