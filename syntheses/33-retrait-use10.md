@@ -150,6 +150,21 @@ pour rester pertinents si le sujet est rouvert) :
 
 **Ouvert** : **O-111** (§5).
 
+## 7 bis. Une faute d'écriture à moi, publiée — et le gate qui l'a attrapée n'était pas dans la batterie
+
+Ma substitution qui retire la mention `· C<cycle>J<jour>` de la grille a supprimé
+`(plan.use10?" · C"+d.cyc+"J"+d.jc:"")` **entre deux opérateurs de concaténation**, laissant
+`d.jour++'</div>'` : une **erreur de syntaxe** qui empêchait tout `plan-view.js` de charger.
+
+**Les douze gates de la batterie sont restés VERTS** — ils mesurent le moteur, jamais le module
+servi. C'est une suite E2E qui l'a dit, et pas en le nommant : elle a **expiré en attendant la
+carte de sport**, parce que l'app ne démarrait pas. `node --check` sur les fichiers servis l'a
+localisé en une ligne.
+
+Corrigé et poussé immédiatement, `sw.js` reconstruit (`eb-pwa-2a7ae7225f37`). La leçon est celle
+que ce dépôt écrit depuis O-24 sous un autre habillage : **une substitution textuelle sur du code
+SERVI se vérifie par un parseur, pas par la relecture** — et aucun des douze gates ne le fait.
+
 ## 8. Vérifications
 
 ```
@@ -158,6 +173,8 @@ npm run batterie      12/12 verts · 0 rouge
 audit:sensibilite     vert — `shift_ok` retirée du schéma, donc aucune clé orpheline
 check:sw              sw.js reconstruit · VERSION eb-pwa-fd9b97c334ec · 63 assets
 check:app             vert
+node --check          tous les fichiers servis de endurabuild/js — 0 erreur de syntaxe
+E2E                   smoke-questionnaires 33/33 après correctif (suite complète en cours)
 golden                1016 profils recapturés · écarts tous expliqués (§4)
 lotPhysio             33 verts · 24 rouges attendus · 0 régression · 0 accroc au cliquet
 audit:v6              74 verts · 2 dettes déclarées · 0 régression
