@@ -174,7 +174,8 @@ audit:sensibilite     vert — `shift_ok` retirée du schéma, donc aucune clé 
 check:sw              sw.js reconstruit · VERSION eb-pwa-fd9b97c334ec · 63 assets
 check:app             vert
 node --check          tous les fichiers servis de endurabuild/js — 0 erreur de syntaxe
-E2E                   smoke-questionnaires 33/33 après correctif (suite complète en cours)
+E2E                   25/25 suites vertes après correctif (smoke-questionnaires 33/33,
+                      smoke-zenna 70/70, aucune erreur console sur la traversée)
 golden                1016 profils recapturés · écarts tous expliqués (§4)
 lotPhysio             33 verts · 24 rouges attendus · 0 régression · 0 accroc au cliquet
 audit:v6              74 verts · 2 dettes déclarées · 0 régression
