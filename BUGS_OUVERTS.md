@@ -102,7 +102,13 @@ dur, le CRÉNEAU (qui décide du contenu) livre du facile. C'est la même famill
 « type du créneau » : le schéma est agnostique de la discipline ET de l'intensité réelle, seul
 le module de sport décide — et personne ne vérifie que les deux disent la même chose.
 
-### O-109 — PISTE 1 (gabarits de cycle alternés) : écrite, mesurée, RETIRÉE · 🔴 **OUVERT — la densité se répare, le pic BAISSE (25/08/2026)**
+### O-109 — PISTE 1 (gabarits de cycle alternés) : écrite, mesurée, RETIRÉE · ✅ **SANS OBJET le 25/08/2026 — le cycle de 10 jours est retiré**
+
+> ✅ **SANS OBJET depuis le RETRAIT DU CYCLE DE 10 JOURS (25/08/2026).** Le mécanisme que ce
+> ticket décrit n'existe plus : tous les profils passent par le cycle de 7 jours. Le diff du
+> retrait est conservé dans `use10-cycle-10-jours.patch` ; si le sujet est rouvert un jour, ce
+> ticket redevient pertinent tel quel — c'est pourquoi il n'est pas supprimé.
+
 
 Piste 1 de la fiche 29 §5, demandée par la fiche 31 : alterner deux gabarits de cycle sur la parité
 (le patron de B1/B2) pour rendre à `dur1` et `durLong` leur densité par jour. Écrite
@@ -160,6 +166,42 @@ attendu: la liste littérale use10, sans alternance de gabarit
 cmd: grep -c "cycleNum" src/generator/weekBuilder.ts
 ```
 
+### O-111 — le `det` écrit à la main d'une COURSE est réécrit par un re-rendu aval · 🔴 **OUVERT — préexistant, révélé par le retrait du cycle (25/08/2026)**
+
+Le jour d'une course intermédiaire porte un `det` AUTEUR (`planGenerator.ts:4098-4106`) : pour une
+A−, *« Objectif A− : tu la cours POUR DE VRAI. Départ contrôlé, première moitié retenue… »*.
+**Il n'arrive pas jusqu'à l'athlète** : un re-rendu aval (`renderSess`) reconstruit le `det` depuis
+les `steps` et la `note`, et le livré vaut
+
+```
+"36min — 💡 Course A- placée à sa vraie date — la semaine est allégée autour."
+```
+
+**PRÉEXISTANT, prouvé par expérience à facteur unique** : la même fixture en `dispo: "semaine"`
+perd déjà le texte sur le moteur d'AVANT le retrait. Le critère `R23.18-A` du banc v6 était vert
+par **accident de couverture** — la fixture de base du banc déclarait `dispo: quotidienne` +
+`shift_ok: oui`, donc elle tournait sous le cycle de 10 jours, le seul régime où ce jour n'était
+pas re-rendu. **Le défaut touchait donc déjà la majorité des athlètes** ; le retrait l'a rendu
+visible au banc, il ne l'a pas créé.
+
+C'est la famille U9/O-88 : un texte qui ne dit pas ce qu'il annonce. Ici il ne dit RIEN de ce que
+l'auteur avait écrit — l'athlète lit « la semaine est allégée autour » à la place de la consigne
+de course.
+
+**Correctif proposé, en UN point (R11.1)** : `renderSess` ne réécrit jamais le `det` d'une séance
+`race`. Le code l'argumente déjà deux lignes plus bas — *« Une course ne porte PAS de zone
+d'entraînement : ce n'est pas une séance dosée, c'est un événement »* — et la même raison vaut
+pour son texte. **Non appliqué dans ce lot** : mélanger un correctif de rendu à un retrait de
+mécanisme rendrait l'attribution impossible. `R23.18-A` porte `expect: "fail"` avec cette raison,
+à repasser à `"pass"` DANS le commit qui corrige.
+
+```verify
+id: O-111-det-course-reecrit
+quoi: le det écrit à la main d'une course est réécrit par renderSess
+attendu: le texte « POUR DE VRAI » existe dans le générateur mais pas dans le livré
+cmd: grep -c "POUR DE VRAI" src/generator/planGenerator.ts
+```
+
 ### O-110 — `npm run casser` : deux mutations sur le MÊME fichier s'écrasaient en silence · ✅ **FERMÉ le 25/08/2026 (corrigé dans le lot qui l'a trouvé)**
 
 `casser.mjs` écrivait chaque mutation depuis l'ORIGINAL —
@@ -187,7 +229,13 @@ attendu: la boucle lit `courant`, pas `originaux`
 cmd: grep -n "courant.set(m.fichier, src.replace" scripts/casser.mjs
 ```
 
-### O-107 — trail et swimrun déclarent un `weekSchema` de 7 entrées que le cycle de 10 lit HORS BORNES · 🔴 **OUVERT — accidentel, et aujourd'hui BÉNÉFIQUE (25/08/2026)**
+### O-107 — trail et swimrun déclarent un `weekSchema` de 7 entrées que le cycle de 10 lit HORS BORNES · ✅ **SANS OBJET le 25/08/2026 — plus aucun cycle ne lit au-delà de la 7ᵉ position**
+
+> ✅ **SANS OBJET depuis le RETRAIT DU CYCLE DE 10 JOURS (25/08/2026).** Le mécanisme que ce
+> ticket décrit n'existe plus : tous les profils passent par le cycle de 7 jours. Le diff du
+> retrait est conservé dans `use10-cycle-10-jours.patch` ; si le sujet est rouvert un jour, ce
+> ticket redevient pertinent tel quel — c'est pourquoi il n'est pas supprimé.
+
 
 `schema()` (`weekBuilder.ts:40`) délègue au module de sport quand il déclare son propre
 `weekSchema`. `swimrunWeekSchema(_phase, isRecup)` et `trailWeekSchema(phase, isRecup, cat)`
@@ -269,7 +317,13 @@ attendu: d.slot = alt dans applyWeeklyVariety
 cmd: grep -n "d.slot = alt" src/generator/weekBuilder.ts
 ```
 
-### O-106 — les phases ne peuvent pas s'aligner sur le cycle tant que la COURBE lit des index de SEMAINE · 🔴 **OUVERT — étape 4 écrite, mesurée, RETIRÉE (25/08/2026)**
+### O-106 — les phases ne peuvent pas s'aligner sur le cycle tant que la COURBE lit des index de SEMAINE · ✅ **SANS OBJET le 25/08/2026 — phases et courbe sont toutes deux hebdomadaires, donc synchronisées**
+
+> ✅ **SANS OBJET depuis le RETRAIT DU CYCLE DE 10 JOURS (25/08/2026).** Le mécanisme que ce
+> ticket décrit n'existe plus : tous les profils passent par le cycle de 7 jours. Le diff du
+> retrait est conservé dans `use10-cycle-10-jours.patch` ; si le sujet est rouvert un jour, ce
+> ticket redevient pertinent tel quel — c'est pourquoi il n'est pas supprimé.
+
 
 Étape 4 du chantier « unité de volume = cycle » (fiche 19) : faire raisonner les bornes de phase
 en JOURS via `phaseJours()` (livrée à l'étape 1), et les CALER sur les frontières de cycle, pour
@@ -372,7 +426,13 @@ attendu: Math.min(...actifs) présent dans s5IdentiteR202 (seal.ts)
 cmd: grep -n "Math.min(...actifs)" src/generator/seal.ts
 ```
 
-### O-104 — sous `use10`, le volume d'une semaine calendaire varie de 86 à 543 min selon le seul JOUR DE COURSE · 🟠 **OUVERT**
+### O-104 — sous `use10`, le volume d'une semaine calendaire varie de 86 à 543 min selon le seul JOUR DE COURSE · ✅ **SANS OBJET le 25/08/2026**
+
+> ✅ **SANS OBJET depuis le RETRAIT DU CYCLE DE 10 JOURS (25/08/2026).** Le mécanisme que ce
+> ticket décrit n'existe plus : tous les profils passent par le cycle de 7 jours. Le diff du
+> retrait est conservé dans `use10-cycle-10-jours.patch` ; si le sujet est rouvert un jour, ce
+> ticket redevient pertinent tel quel — c'est pourquoi il n'est pas supprimé.
+
 
 Trouvé le 24/08/2026 en attribuant un gate rouge (`audit:v6` `R23.18-D`). Profil IDENTIQUE, seule
 la date de course glisse d'un jour, `dispo: quotidienne` + `shift_ok: oui` + `doubles: oui` donc
@@ -465,7 +525,13 @@ créneau CLÉ** (`dur2→dur1`) et 1 aussi (`dur2→durLong`, la signature de pi
 perte de positions clés de `REEL` est donc de **6 jours sur 82 (7,3 %)**, pas 13 — l'indicateur
 d'O-103 compte des conversions ENTRE créneaux clés comme des dérives. À corriger dans la sonde.
 
-### O-103 — le cycle de 10 n'est PAS livré tel qu'il est déclaré : 20 % de ses positions clés dérivent · 🔴 **OUVERT**
+### O-103 — le cycle de 10 n'est PAS livré tel qu'il est déclaré : 20 % de ses positions clés dérivent · ✅ **SANS OBJET le 25/08/2026**
+
+> ✅ **SANS OBJET depuis le RETRAIT DU CYCLE DE 10 JOURS (25/08/2026).** Le mécanisme que ce
+> ticket décrit n'existe plus : tous les profils passent par le cycle de 7 jours. Le diff du
+> retrait est conservé dans `use10-cycle-10-jours.patch` ; si le sujet est rouvert un jour, ce
+> ticket redevient pertinent tel quel — c'est pourquoi il n'est pas supprimé.
+
 
 Mesuré le 22/08/2026 en cherchant d'où venait l'écart « 4,00 créneaux de qualité déclarés →
 3,50 livrés », attribué à « la rotation ». **Ce n'est pas la rotation.** `npm run mesure:cycle10`

@@ -38,7 +38,6 @@ export interface AthleteProfile {
   climb_min?: string;
   sessions_max?: string;
   dispo?: string; // "semaine" | "quotidienne" | …
-  shift_ok?: string;
   off_which?: string; // "Lun,Mer" — jours bloqués
   injury?: string; // "genou,tibia" | "aucune" (+ quadriceps/cheville/fascia en trail)
   // ---- R7 TRAIL : l'objectif est décrit par ses DONNÉES, pas par un format ----
@@ -102,7 +101,7 @@ export interface Decision {
 /**
  * ÉTAPE 1 DU CHANTIER « UNITÉ DE VOLUME = CYCLE » — RENDRE L'UNITÉ EXPLICITE, SANS LA CHANGER.
  *
- * Le diagnostic 18 a établi que `cycleLen` (7 ou 10 jours) pilote la ROTATION DES CRÉNEAUX
+ * Le diagnostic 18 a établi que la longueur de cycle pilote la ROTATION DES CRÉNEAUX
  * pendant que TOUT ce qui porte du volume est indexé sur une semaine calendaire de 7 jours
  * (`weekBuilder.ts`, `const w = Math.floor(i / 7)`). Le mélange est invisible à la lecture
  * parce qu'aucune grandeur ne dit son unité : `peakH` est-il par semaine, par cycle, par jour ?
@@ -112,7 +111,10 @@ export interface Decision {
  * à 4, qui elles déplaceront des valeurs. Règle 14 du dépôt, appliquée au temps.
  *
  * Le jour où l'unité changera, un `HParCycle` apparaîtra à côté — et la conversion sera
- * `hParCycle = hParSemaine × cycleLen / 7`, en UN point.
+ * `hParCycle = hParSemaine × cycleLen / 7`, en UN point. Depuis le retrait du cycle de
+ * 10 jours (25/08/2026) le cycle EST la semaine, donc ce facteur vaut 1 — les alias d'unité
+ * restent parce qu'ils nomment ce que les grandeurs SONT, ce que le chantier a mesuré comme
+ * la source de la confusion.
  */
 /** Heures par SEMAINE CALENDAIRE de 7 jours — l'unité que l'athlète déclare et que l'écran rend. */
 export type HParSemaine = number;
@@ -165,7 +167,6 @@ export interface ReasonedPlan {
   volBase: HParSemaine;
   peakH: HParSemaine; // pic de la courbe de charge (après C20/médical) — h par SEMAINE de 7 jours
   sessionScale: number;
-  use10: boolean;
   recupEvery: number;
   offDays: string[];
   budgetPerWeek: number; // séances actives max/semaine (budget déclaré ∧ implicite volume)

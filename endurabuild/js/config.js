@@ -122,7 +122,7 @@ const VLAB_Q={
   train_dplus_access:{montagne:"Montagne (+800m)",collines:"Collines (200-800m)",plat:"Plat (<200m)"}};
 const QLABELS={intent:"Intention",format:"Objectif",terrain:"Terrain",epreuve:"Épreuve",milieu:"Milieu",sex:"Sexe",level:"Niveau",swim_limit:"Limite",
   ftp_known:"FTP connue",ftp:"FTP",pace_known:"Allure connue",pace:"Allure seuil",css_known:"CSS connu",css:"CSS",history:"Historique",injury:"Blessures",
-  sessions_max:"Séances max",vol_max:"Volume max",vol_recent:"Volume récent",dispo:"Dispo",shift_ok:"Décalage",off_days:"Jours OFF",off_which:"Jours bloqués",doubles:"Doubles",
+  sessions_max:"Séances max",vol_max:"Volume max",vol_recent:"Volume récent",dispo:"Dispo",off_days:"Jours OFF",off_which:"Jours bloqués",doubles:"Doubles",
   sleep:"Sommeil",life_load:"Charge vie",weight_lever:"Levier poids",cycle_sync:"Cycle menstruel",races:"Courses inter.",age:"Âge",weight:"Poids",
   race_distance_km:"Distance",race_dplus_m:"D+ course",race_technicity:"Technicité",race_night:"Nuit",
   vam_known:"VAM connue",vam:"VAM",train_dplus_access:"Accès dénivelé",poles:"Bâtons",treadmill:"Tapis inclinable"};

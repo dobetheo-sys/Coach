@@ -146,9 +146,7 @@ function driverBand(a){
   else if(a.intent==="finir")C("🏁","Finir","#ff7a1a");
   else if(a.intent==="plaisir")C("☀️","Plaisir","#2e6bff");
   // structure cycle
-  const nOff=(a.off_which||"").split(",").filter(Boolean).length;
-  if(a.dispo==="quotidienne"&&a.shift_ok==="oui"&&nOff<2)C("🔄","Cycles 10j","#9b72ff");
-  else C("📅","Semaine 7j","#9b72ff");
+  C("📅","Semaine 7j","#9b72ff");
   // données / zones
   if(sp==="bike"||sp==="tri"){ if(a.ftp_known==="oui")C("⚡","FTP "+a.ftp+"W","#f0b429"); else C("❤️","Zones FC","#f0b429"); }
   if(sp==="run"||sp==="tri"){ if(a.pace_known==="oui")C("⏱","Seuil "+a.pace,"#00a376"); else C("❤️","Zones FC","#00a376"); }
@@ -186,7 +184,7 @@ function downloadPlan(){
     rows+='<div class="w"><div class="wh"><b>Semaine '+w.num+'</b> · '+w.phase.nom+rt+' · '+w.vol+'h'+(w.isRecup?" (récup)":"")+'</div><div class="g">';
     w.days.forEach(d=>{
       const s=d.sessions.map(x=>(DISC[x.d]?DISC[x.d].ic:"")+" <b>"+x.name+"</b>"+(x.det?" — "+x.det:"")).join("<br>");
-      rows+='<div class="d '+d.charge+'"><div class="dh">'+d.jour+(plan.use10?" · C"+d.cyc+"J"+d.jc:"")+'</div>'+s+'</div>';
+      rows+='<div class="d '+d.charge+'"><div class="dh">'+d.jour++'</div>'+s+'</div>';
     });
     rows+='</div></div>';
   });
@@ -216,7 +214,7 @@ function downloadPlan(){
     +'.dh{font-weight:700;font-size:9px;margin-bottom:3px}ul{font-size:12px;line-height:1.5}'
     +'@media print{body{background:#fff}}</style></head><body>'
     +'<h1>'+cfg.ico+' Mon plan '+cfg.nom+'</h1>'
-    +'<p>'+plan.totalWeeks+' semaines · '+(plan.use10?"cycles de 10 jours":"semaines de 7 jours")+' · volume '+plan.volBase+'h → '+plan.volPeak+'h · objectif '+(a.format||"")+'</p>'
+    +'<p>'+plan.totalWeeks+' semaines · '+"semaines de 7 jours"+' · volume '+plan.volBase+'h → '+plan.volPeak+'h · objectif '+(a.format||"")+'</p>'
     +'<h2>Les décisions de ton plan</h2><ul>'+blue+'</ul>'
     +'<h2>Calendrier complet</h2>'+rows
     +'<p style="margin-top:30px;font-size:11px;color:#635b4a">Généré par Zenna · à valider avec un professionnel de santé. Astuce : ouvre ce fichier et fais Imprimer → Enregistrer en PDF.</p>'

@@ -86,7 +86,7 @@ function measure(sport) {
       // que si les jours ne sont pas réordonnés : on le VÉRIFIE (les jours portent leur nom
       // canonique Lun→Dim), on ne le suppose pas. Une mesure dont l'hypothèse n'est pas
       // testée est une mesure qui peut mentir sans qu'on le sache.
-      if (!w.use10 && w.days.length === JOURS.length && w.days.some((d, i) => d.jour !== JOURS[i])) desordre++;
+      if (w.days.length === JOURS.length && w.days.some((d, i) => d.jour !== JOURS[i])) desordre++;
       w.days.forEach((d, i) => {
         const prevu = schema[i] && schema[i].slot;
         // Un repli = un créneau de QUALITÉ prévu, rendu sur le créneau facile de repli, et

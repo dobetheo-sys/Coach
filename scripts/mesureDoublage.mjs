@@ -132,7 +132,7 @@ if (b703) {
     }
     const tailles = new Map();
     for (const w of p.weeks ?? []) tailles.set(w.days.length, (tailles.get(w.days.length) ?? 0) + 1);
-    console.log(`   ${dispo.padEnd(12)} use10=${String(p.use10).padEnd(5)} décision « cycle »=${cyc ? "publiée" : "absente"} · jours/semaine LIVRÉS : ${[...tailles].sort((x, y) => x[0] - y[0]).map(([k, v]) => `${k}j×${v}`).join(" · ")}`);
+    console.log(`   ${dispo.padEnd(12)} jours/semaine LIVRÉS : ${[...tailles].sort((x, y) => x[0] - y[0]).map(([k, v]) => `${k}j×${v}`).join(" · ")}`);
     console.log(`                pic 7 j ${(pic7 / 60).toFixed(2)} h · pic 10 j ${(pic10 / 60).toFixed(2)} h (${((pic10 / 60) * 0.7).toFixed(2)} h ramené à 7 j)`);
   }
   console.log("   → si l'inversion persiste sur 10 j, c'est le MOTEUR (règle d'arbitrage posée avec l'hypothèse).");

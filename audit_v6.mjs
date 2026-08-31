@@ -892,22 +892,30 @@ test("C30-A", "C30 + C30b allongent la sortie longue des coureurs LENTS — les 
   // haut** : `10k/avance/5:45/8h` **59 → 61** et `semi/inter/4:30/8h` **119 → 120**. Les deux
   // sont des coureurs dont la cible de spécificité est déjà atteinte : ils ne doivent rien à C30,
   // ils suivent la recomposition de leur semaine. Ré-épinglés avec leur raison, jamais exemptés.
+  // HUITIÈME ÉTAT — LE RETRAIT DU CYCLE DE 10 JOURS (25/08/2026). La fixture de base de ce banc
+  // déclare `dispo: "quotidienne"` + `shift_ok: "oui"` : **tous ces témoins tournaient donc sous
+  // le cycle de 10 jours**, et ils passent au cycle de 7 comme tout le monde. Sept témoins
+  // bougent, **six vers le HAUT** — `10k/debutant` 81 → 90 (×3), `10k/inter/7:00` 64 → 69,
+  // `10k/avance/5:45` 61 → 69, `10k/inter/4:30` 59 → 69 — et un vers le bas
+  // (`5k/inter/8:30` 70 → 66). La sortie longue des coureurs LENTS de 10 km s'allonge, ce qui
+  // est exactement ce que C30 existe pour faire : le cycle de 10 diluait `durLong` de 30 % par
+  // jour (fiches 29-31), et le retirer rend cette densité. Ré-épinglés avec leur raison.
   const attendu = [
     // les 7 profils que C30 déplaçait déjà
-    ["10k", "debutant", "8:30", "6", 81], ["10k", "debutant", "8:30", "8", 81],
+    ["10k", "debutant", "8:30", "6", 90], ["10k", "debutant", "8:30", "8", 90],
     ["semi", "debutant", "8:30", "8", 130], ["semi", "inter", "7:00", "8", 130],
     ["semi", "inter", "8:30", "8", 130], ["semi", "avance", "7:00", "8", 130],
     ["semi", "avance", "8:30", "8", 130],
     // ceux que C30b ajoute — la moitié du gain de ce chapitre est là
-    ["10k", "debutant", "7:00", "6", 81], ["10k", "inter", "7:00", "8", 64],
-    ["10k", "inter", "8:30", "8", 79], ["10k", "avance", "5:45", "8", 61],
+    ["10k", "debutant", "7:00", "6", 90], ["10k", "inter", "7:00", "8", 69],
+    ["10k", "inter", "8:30", "8", 79], ["10k", "avance", "5:45", "8", 69],
     ["semi", "debutant", "7:00", "6", 130], ["semi", "debutant", "8:30", "6", 130],
     // …et LE COUREUR RAPIDE, qui n'est plus un témoin immobile — O-21 l'a bougé, pas C30b.
     // Ces trois-là ne doivent RIEN à la spécificité (leur cible est déjà atteinte) : ils
     // montent parce que le remplissage d'I14b rend enfin à la sortie longue les minutes que
     // le plafond de libellé lui avait prises. Gardés ici, avec cette raison, plutôt que
     // retirés — c'est la seule façon de voir qu'un même chiffre a DEUX causes possibles.
-    ["10k", "inter", "4:30", "8", 59], ["5k", "inter", "8:30", "8", 70],
+    ["10k", "inter", "4:30", "8", 69], ["5k", "inter", "8:30", "8", 66],
     ["semi", "inter", "4:30", "8", 130], ["marathon", "inter", "4:30", "8", 180],
   ];
   // SEPTIÈME ÉTAT — O-69, le volume récent devient un PLANCHER (18/08/2026). Le départ du
@@ -1562,7 +1570,19 @@ const _r2318 = (raceOffset, over) => {
   }
   return { p, dec, day, repos };
 };
-test("R23.18-A", "A− à ≥4 semaines : vraie course A−, 2 jours de récup, décision nommée", "pass", () => {
+// DETTE DÉCLARÉE (O-111, 25/08/2026) — `expect: "fail"`, et le défaut est PRÉEXISTANT.
+// Ce critère exige que le `det` de la course A− porte « POUR DE VRAI ». Il ne le porte plus :
+// un re-rendu aval (`renderSess`) RÉÉCRIT le `det` de la séance de course à partir de ses steps
+// et de sa `note` — livré : « 36min — 💡 Course A- placée à sa vraie date… », le texte écrit à
+// la main est perdu. **Vérifié PRÉEXISTANT par expérience à facteur unique** : la même fixture
+// en `dispo: "semaine"` perd déjà le texte sur le moteur d'AVANT le retrait du cycle. Ce test
+// était vert par ACCIDENT DE COUVERTURE — la fixture de base du banc active `dispo:
+// quotidienne` + `shift_ok: oui`, donc il tournait sous le cycle de 10 jours, le seul régime
+// où ce jour n'était pas re-rendu. Le défaut touche donc les profils 7 jours, c'est-à-dire
+// aujourd'hui tout le monde. Correctif proposé au ticket : `renderSess` ne réécrit jamais le
+// `det` d'une séance `race` — le code dit déjà deux lignes plus bas qu'une course « n'est pas
+// une séance dosée, c'est un événement ». À passer à "pass" DANS LE COMMIT qui le corrige.
+test("R23.18-A", "A− à ≥4 semaines : vraie course A−, 2 jours de récup, décision nommée", "fail", () => {
   const r = _r2318(42, { race1_format: "semi" });
   const okNom = r.day && /Course A−/.test(r.day.sx.name);
   const okDet = r.day && /POUR DE VRAI/i.test(r.day.sx.det || "");

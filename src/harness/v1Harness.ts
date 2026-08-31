@@ -110,7 +110,6 @@ export interface V1Plan {
   weeks: V1Week[];
   volPeak: number;
   volBase: number;
-  use10: boolean;
   totalWeeks: number;
   phases?: { id: string; nom: string; pct: number; c: string; start: number; end: number; weeks: number }[];
   races?: { date: string; prio: string }[];

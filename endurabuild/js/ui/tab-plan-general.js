@@ -154,7 +154,7 @@ export function weekGridHTML(plan, w, today, openDetails) {
       return '<div class="gd-row">' + sessDetailsHTML(s, undefined, openDetails) + chk + "</div>";
     }).join("");
     // R7 — chaque jour du plan est annoté de sa VRAIE date calendrier (retour utilisateur)
-    const mark = "<i>" + (d.date === today ? "auj. · " : "") + fmtDay(d.date) + (plan.use10 ? " · C" + d.cyc + "J" + d.jc : "") + "</i>";
+    const mark = "<i>" + (d.date === today ? "auj. · " : "") + fmtDay(d.date) + "" + "</i>";
     // §8 — déplacement de séance : ⇄ sur chaque jour, deux taps = échange persistant.
     const pend = S._swapPending && S._swapPending.w === w.num && S._swapPending.jour === d.jour;
     const swapBtn = '<button class="swapBtn" type="button" data-swap="' + w.num + "|" + d.jour + '" title="Échanger ce jour avec un autre" aria-label="Échanger ' + d.jour + ' avec un autre jour" style="border:none;background:' + (pend ? "#2e6bff" : "transparent") + ";color:" + (pend ? "#fff" : "#b3ab9b") + ';border-radius:5px;font-size:var(--fs-sm);cursor:pointer;padding:2px 6px">⇄</button>';
@@ -426,7 +426,7 @@ export function renderTabPlanGeneral(plan) {
   html += avancementPlanHTML(plan, today);
   html += phaseFriseHTML(plan);
   html += '<div class="card"><div class="eyebrow">Plan général — ' + SPORTS[S.sport].nom + "</div><h2>Ta saison en un coup d’œil</h2>"
-    + '<div class="why">' + plan.totalWeeks + " semaines en " + (plan.use10 ? "cycles de 10 jours (qui glissent)" : "semaines de 7 jours") + ", volume " + plan.volBase + "h → " + plan.volPeak + "h.</div>";
+    + '<div class="why">' + plan.totalWeeks + " semaines en " + "semaines de 7 jours" + ", volume " + plan.volBase + "h → " + plan.volPeak + "h.</div>";
   html += driverBand(a);
   // R23.5 / R23.12 — CE QU'ON VIENT VOIR EN PREMIER : ou j'en suis, et dans combien de jours.
   //

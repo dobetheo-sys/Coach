@@ -42,7 +42,6 @@
                      
                         
                                                   
-                    
                                                   
                                                                                       
                                                                                   
@@ -106,7 +105,7 @@
 /**
  * ÉTAPE 1 DU CHANTIER « UNITÉ DE VOLUME = CYCLE » — RENDRE L'UNITÉ EXPLICITE, SANS LA CHANGER.
  *
- * Le diagnostic 18 a établi que `cycleLen` (7 ou 10 jours) pilote la ROTATION DES CRÉNEAUX
+ * Le diagnostic 18 a établi que la longueur de cycle pilote la ROTATION DES CRÉNEAUX
  * pendant que TOUT ce qui porte du volume est indexé sur une semaine calendaire de 7 jours
  * (`weekBuilder.ts`, `const w = Math.floor(i / 7)`). Le mélange est invisible à la lecture
  * parce qu'aucune grandeur ne dit son unité : `peakH` est-il par semaine, par cycle, par jour ?
@@ -116,7 +115,10 @@
  * à 4, qui elles déplaceront des valeurs. Règle 14 du dépôt, appliquée au temps.
  *
  * Le jour où l'unité changera, un `HParCycle` apparaîtra à côté — et la conversion sera
- * `hParCycle = hParSemaine × cycleLen / 7`, en UN point.
+ * `hParCycle = hParSemaine × cycleLen / 7`, en UN point. Depuis le retrait du cycle de
+ * 10 jours (25/08/2026) le cycle EST la semaine, donc ce facteur vaut 1 — les alias d'unité
+ * restent parce qu'ils nomment ce que les grandeurs SONT, ce que le chantier a mesuré comme
+ * la source de la confusion.
  */
 /** Heures par SEMAINE CALENDAIRE de 7 jours — l'unité que l'athlète déclare et que l'écran rend. */
                                  
@@ -169,7 +171,6 @@ function phaseJours(p       )                                                   
                        
                                                                                                   
                        
-                 
                      
                     
                                                                                            
@@ -1201,7 +1202,6 @@ const ANSWER_SCHEMA                            = {
   doubles: { ...enumF("les doubles séances", ["oui", "parfois", "non"]), fallback: "non (aucune seconde séance dans la journée)" , nature: "vecue" },
   off_days: { ...enumF("les jours bloqués", OUI_NON), nature: "vecue" },
   off_which: { type: "csv", label: "tes jours bloqués", domain: ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"] , nature: "vecue" },
-  shift_ok: { ...enumF("le décalage de tes jours", OUI_NON), nature: "vecue" },
   sex: { ...enumF("ton sexe", ["F", "H", "np"]), nature: "vecue" },
   sleep: { ...enumF("ton sommeil", ["court", "moyen", "bon"]), nature: "vecue" },
   life_load: { ...enumF("ta charge de vie", ["legere", "normale", "lourde"]), nature: "vecue" },
@@ -1670,7 +1670,7 @@ function validateAnswers(sport        , raw                         , todayISO  
         "Tu as bloqué les sept jours de la semaine : il ne reste aucun jour pour t'entraîner. Libère au moins deux jours — un plan sans séance n'est pas un plan.");
     }
     if (off.length >= 5) {
-      warnings.push("Avec " + off.length + " jours bloqués sur 7, il reste " + (7 - off.length) + " jour(s) d'entraînement : le plan sera très en dessous de ton objectif. Un cycle de 10 jours (Profil → décalage) répartirait mieux le peu de créneaux disponibles.");
+      warnings.push("Avec " + off.length + " jours bloqués sur 7, il reste " + (7 - off.length) + " jour(s) d'entraînement : le plan sera très en dessous de ton objectif. Deux leviers existent — viser un format plus court, ou libérer un jour.");
     }
   }
   return { answers: a                  , warnings, defaults };
@@ -3754,8 +3754,9 @@ class TrainingReasoningEngine {
       warnings.push("⚠️ Tu as signalé : " + which + ". Ce plan est un plan de MAINTIEN — aucune intensité n'y est générée, le volume est allégé, et il ne remplace pas un avis médical. Prends rendez-vous avant de reprendre l'entraînement structuré : c'est la seule chose non négociable de cet outil.");
     }
     const offDays = (a.off_which || "").split(",").filter(Boolean);
-    const use10 = a.dispo === "quotidienne" && a.shift_ok === "oui" && offDays.length < 2;
-    if (use10) D("cycle", "Cycle de 10 jours", "activé", "Disponibilité quotidienne : densité mieux répartie qu'en semaine de 7 jours");
+    // Le cycle de 10 jours est RETIRÉ (25/08/2026) — voir l'en-tête de `weekBuilder.ts` pour
+    // le bilan mesuré et `use10-cycle-10-jours.patch` pour le diff. Le cycle est la semaine
+    // pour tout le monde ; `shift_ok` n'est plus posée, et une réponse persistée est ignorée.
     const recupEvery = master ? Math.min(RECUP_EVERY[history], R6_AGE_LOAD.master.recupEvery) : RECUP_EVERY[history];
     D("recup", "Semaine de récupération", "toutes les " + recupEvery + " semaines", master ? "60+ : la récupération se rallonge avec l'âge — cadence resserrée (R6.3)" : history === "reprise" ? "Reprise : récupération plus fréquente" : "Assimilation régulière de la charge");
 
@@ -4029,7 +4030,6 @@ class TrainingReasoningEngine {
       volBase: Math.round(volPeak * 0.58 * 10) / 10,
       peakH,
       sessionScale,
-      use10,
       recupEvery,
       offDays,
       budgetPerWeek,
@@ -8641,74 +8641,36 @@ const J = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
  
 
 /**
- * LE CYCLE DE 10 JOURS — SON INTENTION, SA SÉQUENCE, ET L'ÉCART MESURÉ ENTRE LES DEUX.
+ * LE CYCLE EST LA SEMAINE — le cycle de 10 jours a été RETIRÉ (décision du fondateur, 25/08/2026).
  *
- * ⚠ CE BLOC EXISTE PARCE QUE L'INTENTION DE CE CYCLE N'ÉTAIT ÉCRITE NULLE PART, et que tous
- * les motifs qui l'entourent disent l'INVERSE de ce qu'il vise. Vérifié le 22/08/2026 :
- * `answerSchema.ts` (« répartirait mieux le peu de créneaux disponibles »), la décision `cycle`
- * de `reasoningEngine` (« densité mieux RÉPARTIE »), et l'avertissement de couverture plus bas
- * dans ce fichier (« ESPACER les séances clés au lieu de les entasser sur 7 jours ») décrivent
- * un cycle d'ESPACEMENT — celui de Friel pour masters et récupération lente. **Ce n'en est
- * pas un.** Sans ce bloc, le prochain lecteur conclut que le cycle sert à espacer et le
- * « répare » dans ce sens (décision du fondateur, PERMANENT_ET_CONTENU §5-§6).
+ * Ce dépôt a porté pendant un temps un cycle de 10 jours, activé quand l'athlète déclarait une
+ * disponibilité quotidienne et acceptait que ses jours glissent. Dix-sept fiches de diagnostic
+ * l'ont mesuré, et le bilan est écrit ici pour que personne ne le redécouvre :
  *
- * INTENTION — une structure d'INTENSIFICATION.
- *   Le facteur limitant d'une séance clé n'est pas le calendrier, c'est la récupération entre
- *   deux. Dix jours donnent trois créneaux de plus pour intercaler le facile et le repos, donc
- *   pour tenir CINQ séances clés sans jamais en enchaîner deux — ce que sept jours ne
- *   permettent pas (cinq clés sur sept jours, c'est nécessairement deux consécutives).
+ *   · il ne profitait qu'à une minorité — 22 profils sur 31, et il PÉNALISAIT les formats longs
+ *     à budget élevé (le profil réel du fondateur perdait 0,80 h de pic, 11,52 contre 12,32) ;
+ *   · sa cause était arithmétique et non réparable localement : un créneau à la densité du
+ *     7 jours (1 par 7) dont deux exemplaires ne tombent jamais dans la même fenêtre de 7 jours
+ *     est FORCÉMENT hebdomadaire — sur 70 jours il en faut 10, leurs espacements somment à 70,
+ *     s'ils sont tous ≥ 7 ils valent tous 7. **Aucun gabarit de 10 jours ne peut tenir à la fois
+ *     la densité du 7 et l'absence de répétition** ;
+ *   · les trois corrections mesurées (gabarits alternés, variante de créneau, exemption de la
+ *     passe de variété) réparaient une densité en cassant une autre, sans jamais fermer l'écart.
  *
- * DENSITÉ — constante sur toute la préparation, le CONTENU varie par phase.
- *   Le cycle reste PERMANENT (arbitrage du 22/08/2026) : sa longueur est le rythme de vie de
- *   l'athlète, pas un paramètre, et en changer en cours de plan casse une routine. La
- *   périodisation passe par le contenu, et elle le fait DÉJÀ — mesuré sur 986 plans et 14 499
- *   semaines de charge : la base ne porte **0,0 %** de VO2max (part de dur 3,9 %), le
- *   développement 70,2 % des semaines (6,6 %), le spécifique 77,0 % (7,9 %). La borne « aucune
- *   intensité au-dessus du seuil en base » n'a pas à être écrite : elle est déjà tenue.
- *
- * SÉQUENCE VISÉE (10 positions) — cinq clés, jamais deux consécutives, un OFF et deux récups
- * pour absorber. **La séquence ci-dessous n'est pas encore celle-là**, et l'écart est mesuré :
- *
- *   position   visée        déclarée ici     livré (npm run mesure:cycle10)
- *   j5         clé          `facileR`        facile — c'est la 5ᵉ position clé qui MANQUE
- *   OFF        1            0                (ceux de run/trail viennent de MAX_RUN_DAYS, en aval)
- *   récup      2            1
- *
- * ÉCART MESURÉ, à ne pas re-diagnostiquer (22/08/2026, `tri/70.3`, `doubles: oui`) :
- *   · créneaux de qualité déclarés .... 4,00 / 10 j   contre 4,29 pour le schéma de 7
- *   · créneaux de qualité LIVRÉS ...... 3,50 / 10 j   — le cycle N'INTENSIFIE PAS aujourd'hui
- *   · positions clés qui portent leur créneau déclaré : **77 à 82 %** selon le sport, contre
- *     **100 % pour le schéma de 7** sur les quatre bases mesurées (O-103). La dérive frappe
- *     `j7` et les semaines qui BORDENT UNE DÉCHARGE : un cycle de 10 chevauche les semaines
- *     calendaires ET les cycles de récup, ce que celui de 7 ne fait jamais. Le correctif ne
- *     peut donc pas être local à `j7` — c'est le chevauchement qui produit la dérive.
- *
- * ⚠ `dur` DANS CE SCHÉMA VEUT DIRE « SÉANCE CLÉ », PAS « INTENSITÉ AU-DESSUS DU SEUIL » —
- * mesuré sur 80 242 jours de charge : les positions étiquetées `dur` livrent du dur au
- * classificateur à 76,2 % (`dur1`), 45,9 % (`dur2`) et **0,0 %** (`durLong`, sur les sept
- * sports). `dur2` porte du sweetspot et de la force, `durLong` la sortie longue et le brick :
- * ce sont des séances CLÉS qui demandent de la récupération autour, et **elles ne doivent pas
- * livrer du VO2max** — cinq séances au-dessus du seuil en dix jours n'est pas un plan. Le mot
- * collisionne avec celui du classificateur ; les contenus sont bons.
- *
- * ORDRE DU LOT (arbitré) : O-103 (le cycle livre ce qu'il déclare) → `j5` en créneau de
- * qualité, `dur1` si l'intention est d'intensifier → l'OFF du schéma → la condition
- * d'activation lit le NIVEAU et pas seulement la disponibilité (3,5 clés/semaine est tenable
- * pour un athlète expérimenté, excessif pour un débutant).
+ * Le diff complet du retrait est conservé dans `use10-cycle-10-jours.patch` : rien n'est perdu,
+ * et le code mort ne reste pas dans le moteur à inviter une reprise à l'aveugle. La proposition
+ * de refonte (fiche 32) y est décrite si le sujet doit être rouvert un jour.
  */
-function schema(use10         , phase        , isRecup         , r               )            {
+
+function schema(phase        , isRecup         , r               )            {
   // R10 phase 1 — un sport peut avoir son PROPRE schéma de semaine (le trail : descente et
   // marche sont des séances à part entière, la longue est le pivot du week-end, le lundi porte
   // le renfo excentrique). Il le déclare dans son module ; sinon, le schéma générique par
   // créneaux s'applique — il est agnostique de la discipline, et c'est très bien ainsi.
   const own = r ? sportModule(r.profile.sport          ).weekSchema : null;
   if (own) return own(phase, isRecup, r )             ;
-  if (isRecup) {
-    const d                     = [["facile", "facileR"], ["facile", "facile2"], ["off", "off"], ["facile", "facileR"], ["facile", "facile2"], ["facile", "facileR"], ["off", "off"], ["facile", "facile2"], ["facile", "facileR"], ["recup", "recup"]];
-    return (use10 ? d : d.slice(0, 7)).map((x) => ({ charge: x[0], slot: x[1] }));
-  }
-  if (use10)
-    return ([["dur", "dur1"], ["facile", "facileR"], ["dur", "dur2"], ["facile", "facile2"], ["dur", "facileR"], ["facile", "facileR"], ["dur", "dur2"], ["facile", "facile2"], ["dur", "durLong"], ["recup", "recup"]]                      ).map((x) => ({ charge: x[0], slot: x[1] }));
+  if (isRecup)
+    return ([["facile", "facileR"], ["facile", "facile2"], ["off", "off"], ["facile", "facileR"], ["facile", "facile2"], ["facile", "facileR"], ["off", "off"]]                      ).map((x) => ({ charge: x[0], slot: x[1] }));
   return ([["recup", "recup"], ["dur", "dur1"], ["facile", "facileR"], ["dur", "dur2"], ["facile", "facile2"], ["dur", "durLong"], ["facile", "facileR"]]                      ).map((x) => ({ charge: x[0], slot: x[1] }));
 }
 
@@ -8727,7 +8689,7 @@ function buildDays(r              , refs      , hz         )           {
   const sp = a.sport;
   const ctx             = { r };
   const mod = sportModule(sp          ); // registre R10 : ce que CE sport déclare
-  const cycleLen = r.use10 ? 10 : 7;
+  const cycleLen = 7; // le cycle EST la semaine (retrait du cycle de 10 jours, 25/08/2026)
   // N2 — LE PLAN S'ARRÊTE LE JOUR DE LA COURSE.
   //
   // La dernière semaine était la semaine CALENDAIRE de la course : elle courait jusqu'au
@@ -8864,7 +8826,7 @@ function buildDays(r              , refs      , hz         )           {
       if (isR) sinceR = 0; else sinceR++;
       // L'affûtage est lui-même une décharge : la série de charge repart de zéro en y entrant.
       chargeStreak = isR || ph.id === "taper" ? 0 : chargeStreak + 1;
-      sch = schema(r.use10, ph.id, isR, r);
+      sch = schema(ph.id, isR, r);
     }
     const s = sch[dic] || { charge: "facile", slot: "facileR" };
     const jn = J[i % 7];
@@ -9383,7 +9345,7 @@ function applyRunImpactCap(r              , days          , refs      , hz      
  * Deux issues, jamais le silence :
  *   1. il reste un jour facile → il change de discipline (le sport garde ses deux moteurs) ;
  *   2. l'enveloppe déclarée ne le permet pas → un AVERTISSEMENT le dit, avec le remède
- *      (format plus court, ou cycle de 10 jours).
+ *      (format plus court, ou un jour libéré).
  */
 function applyDisciplineCoverage(r              , days          , refs      , hz         , ctx            )       {
   const mod = sportModule(r.profile.sport          );
@@ -9463,7 +9425,7 @@ function applyDisciplineCoverage(r              , days          , refs      , hz
     if (fixed < missing.length) impossible++;
   }
   if (impossible > 0) {
-    r.warnings.push("Sur " + impossible + " semaine(s), ton enveloppe de jours disponibles ne permet pas de faire tenir toutes les disciplines de ce sport (jours bloqués + disponibilité déclarée). Le plan fait au mieux, mais deux options le rendraient meilleur : viser un format plus court, ou passer sur un cycle de 10 jours (Profil → disponibilité) pour espacer les séances clés au lieu de les entasser sur 7 jours.");
+    r.warnings.push("Sur " + impossible + " semaine(s), ton enveloppe de jours disponibles ne permet pas de faire tenir toutes les disciplines de ce sport (jours bloqués + disponibilité déclarée). Le plan fait au mieux, mais deux options le rendraient meilleur : viser un format plus court, ou libérer un jour de plus dans la semaine.");
   }
 }
 
@@ -12215,7 +12177,7 @@ function generatePlan(profile                , opts                             
       for (const st of ((s                                                                     ).steps ?? []))
         if ((st.d || s.d) === "rn" && st.durationMin) runMin += (st.reps || 1) * st.durationMin;
     }
-    const nSem = Math.max(1, Math.round(days.length / (r.use10 ? 10 : 7)));
+    const nSem = Math.max(1, Math.round(days.length / 7));
     const bande = raceRunBand("tri", fmt, r.baseRefs.thrPace, runMin / nSem / 60 || undefined);
     if (bande) {
       refs.runMara = bande;
@@ -14109,7 +14071,7 @@ function generatePlan(profile                , opts                             
     }
   }
 
-  const plan         = { weeks: wl, volPeak, volBase, use10: r.use10, totalWeeks: r.weeks, phases: r.phases, races, _r202: _r202rec };
+  const plan         = { weeks: wl, volPeak, volBase, totalWeeks: r.weeks, phases: r.phases, races, _r202: _r202rec };
   // C30b (O-26) — la cible de spécificité, calculée ICI (seul endroit qui connaît sport, format
   // et références mesurées) et passée à la passe qui l'applique.
   const _spec30 = String(a.sport) === "run"
@@ -14470,7 +14432,7 @@ function generatePlan(profile                , opts                             
         // ⚠ EN MODE 7 JOURS, `cycleLen / 7 = 1` ET LE CYCLE EST LA SEMAINE : toutes les
         // conversions sont l'identité, et le golden doit rester au bit près sur les 985
         // profils qui n'activent pas `use10`. C'est le critère d'acceptation de l'étape.
-        const cycleLen = r.use10 ? 10 : 7;
+        const cycleLen = 7; // le cycle EST la semaine (retrait du cycle de 10 jours, 25/08/2026)
         const parCycle = new Map                  ();
         for (const w of wl) for (const d of w.days            ) {
           if (d.isR || d.cyc == null) continue; // un cycle de DÉCHARGE ne mesure aucune capacité

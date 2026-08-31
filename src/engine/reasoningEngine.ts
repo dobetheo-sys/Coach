@@ -370,8 +370,9 @@ export class TrainingReasoningEngine {
       warnings.push("⚠️ Tu as signalé : " + which + ". Ce plan est un plan de MAINTIEN — aucune intensité n'y est générée, le volume est allégé, et il ne remplace pas un avis médical. Prends rendez-vous avant de reprendre l'entraînement structuré : c'est la seule chose non négociable de cet outil.");
     }
     const offDays = (a.off_which || "").split(",").filter(Boolean);
-    const use10 = a.dispo === "quotidienne" && a.shift_ok === "oui" && offDays.length < 2;
-    if (use10) D("cycle", "Cycle de 10 jours", "activé", "Disponibilité quotidienne : densité mieux répartie qu'en semaine de 7 jours");
+    // Le cycle de 10 jours est RETIRÉ (25/08/2026) — voir l'en-tête de `weekBuilder.ts` pour
+    // le bilan mesuré et `use10-cycle-10-jours.patch` pour le diff. Le cycle est la semaine
+    // pour tout le monde ; `shift_ok` n'est plus posée, et une réponse persistée est ignorée.
     const recupEvery = master ? Math.min(RECUP_EVERY[history], R6_AGE_LOAD.master.recupEvery) : RECUP_EVERY[history];
     D("recup", "Semaine de récupération", "toutes les " + recupEvery + " semaines", master ? "60+ : la récupération se rallonge avec l'âge — cadence resserrée (R6.3)" : history === "reprise" ? "Reprise : récupération plus fréquente" : "Assimilation régulière de la charge");
 
@@ -645,7 +646,6 @@ export class TrainingReasoningEngine {
       volBase: Math.round(volPeak * 0.58 * 10) / 10,
       peakH,
       sessionScale,
-      use10,
       recupEvery,
       offDays,
       budgetPerWeek,

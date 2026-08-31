@@ -148,7 +148,6 @@ export const ANSWER_SCHEMA: Record<string, FieldSpec> = {
   doubles: { ...enumF("les doubles séances", ["oui", "parfois", "non"]), fallback: "non (aucune seconde séance dans la journée)" , nature: "vecue" },
   off_days: { ...enumF("les jours bloqués", OUI_NON), nature: "vecue" },
   off_which: { type: "csv", label: "tes jours bloqués", domain: ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"] , nature: "vecue" },
-  shift_ok: { ...enumF("le décalage de tes jours", OUI_NON), nature: "vecue" },
   sex: { ...enumF("ton sexe", ["F", "H", "np"]), nature: "vecue" },
   sleep: { ...enumF("ton sommeil", ["court", "moyen", "bon"]), nature: "vecue" },
   life_load: { ...enumF("ta charge de vie", ["legere", "normale", "lourde"]), nature: "vecue" },
@@ -617,7 +616,7 @@ export function validateAnswers(sport: string, raw: Record<string, unknown>, tod
         "Tu as bloqué les sept jours de la semaine : il ne reste aucun jour pour t'entraîner. Libère au moins deux jours — un plan sans séance n'est pas un plan.");
     }
     if (off.length >= 5) {
-      warnings.push("Avec " + off.length + " jours bloqués sur 7, il reste " + (7 - off.length) + " jour(s) d'entraînement : le plan sera très en dessous de ton objectif. Un cycle de 10 jours (Profil → décalage) répartirait mieux le peu de créneaux disponibles.");
+      warnings.push("Avec " + off.length + " jours bloqués sur 7, il reste " + (7 - off.length) + " jour(s) d'entraînement : le plan sera très en dessous de ton objectif. Deux leviers existent — viser un format plus court, ou libérer un jour.");
     }
   }
   return { answers: a as AthleteProfile, warnings, defaults };

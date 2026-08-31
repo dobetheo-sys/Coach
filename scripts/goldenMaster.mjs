@@ -376,33 +376,26 @@ function* profiles() {
   for (const p of ["4:30", "5:45", "7:00", "8:30"]) {
     const a = { ...base(), format: "10k", pace: p, pace_known: "oui", vol_max: "6", vol_recent: "5",
       sessions_max: "3", history: "confirme", level: "debutant", intent: "competition",
-      dispo: "quotidienne", shift_ok: "oui", off_days: "non", doubles: "oui", terrain: "route" };
+      dispo: "quotidienne", off_days: "non", doubles: "oui", terrain: "route" };
     yield { key: ["O-21b", "run", "10k", p].join("/"), sport: "run", a };
   }
 
-  // ---- Passe « CYCLE DE 10 JOURS » (chantier « unité de volume = cycle », 24/08/2026) -----
+  // ---- Passe « DISPONIBILITÉ QUOTIDIENNE + DOUBLES » -------------------------------------
   //
-  // Le chantier ne pouvait valider sa logique propre au cycle de 10 jours que sur **5 profils**
-  // — `O-21b/run/10k` ×4 et `REEL/tri/70.3` —, c'est-à-dire deux familles sur sept. Les 985
-  // autres prouvent la NON-RÉGRESSION ; ils ne prouvent rien du comportement sous `use10`.
+  // Ces 26 profils sont nés pour couvrir le cycle de 10 jours (24/08/2026). **Le cycle a été
+  // RETIRÉ le 25/08/2026** — la passe RESTE, et ses clés aussi. Ce qu'elle balaie n'a jamais
+  // été « le cycle » : c'est la déclaration `dispo: quotidienne` + `doubles: oui` croisée avec
+  // les SEPT sports du moteur et trois couples (niveau, intention) pris aux extrémités et au
+  // milieu. Cette combinaison existe toujours, elle décide toujours du plan, et le corpus ne la
+  // couvrait auparavant que par UN profil (la passe garde-fous « doubles »). La retirer parce
+  // que le mécanisme qui l'avait motivée a disparu rétrécirait la couverture d'un espace de
+  // DÉCISIONS encore vivant (A-2) — on garde, on corrige la raison, pas la clé.
   //
-  // ⚠ ET LE CORPUS PORTAIT DÉJÀ UNE GARDE QUI EN AVAIT L'AIR : la passe garde-fous pose
-  // `["doubles", { doubles: "oui", dispo: "quotidienne" }]` — mais **jamais `shift_ok`**, et
-  // `use10` exige `dispo === "quotidienne" && shift_ok === "oui" && offDays.length < 2`
-  // (`reasoningEngine.ts:373`). La garde couvre donc le DOUBLAGE et pas le CYCLE, alors que son
-  // nom et sa `dispo` laissent croire l'inverse. C'est la dixième A-2 : un angle mort qui
-  // ressemble à une couverture.
-  //
-  // Ce que la passe balaie, et pourquoi ces axes : les SEPT sports du moteur (un format
-  // représentatif chacun, plus `tri/S` et `tri/Full` pour tenir les deux bouts de l'échelle de
-  // durée), croisés avec trois couples (niveau, intention) pris aux extrémités et au milieu.
-  // Tout le reste vient de `base()` et des `*Extras()` du corpus — aucune valeur inventée pour
-  // l'occasion, seuls varient les axes nommés.
+  // Les clés restent telles quelles POUR NE PAS DÉPLACER LES EMPREINTES : un renommage de
+  // donnée produit est un producteur de masse de faux positifs (règle 17).
   //
   // Les deux dernières entrées portent une DATE de course, avec `plan_start` ÉPINGLÉ : sans
-  // lui, un profil daté redémarre au lundi courant et dérive d'une semaine chaque lundi
-  // (mesuré le 24/08/2026 sur `REEL` — `golden:verify` rouge un jour sur sept). La branche
-  // « course datée » sous `use10` est ainsi couverte sans rendre la photo périssable.
+  // lui, un profil daté redémarre au lundi courant et dérive d'une semaine chaque lundi.
   const CYCLE10_UNITES = [
     ["run", "marathon"], ["bike", "gravel"], ["swim", "fond"], ["tri", "S"],
     ["tri", "Full"], ["trail", ""], ["duathlon", "L"], ["swimrun", "series"],
@@ -412,13 +405,13 @@ function* profiles() {
   for (const [sport, format] of CYCLE10_UNITES) {
     for (const [level, intent] of CYCLE10_PROFILS) {
       const a = { ...base(), format, history: "confirme", level, intent,
-        dispo: "quotidienne", shift_ok: "oui", off_days: "non", doubles: "oui", ...cycle10Extras(sport) };
+        dispo: "quotidienne", off_days: "non", doubles: "oui", ...cycle10Extras(sport) };
       yield { key: ["CYCLE10", sport, format || "-", level + "-" + intent].join("/"), sport, a };
     }
   }
   for (const [sport, format] of [["tri", "Full"], ["trail", ""]]) {
     const a = { ...base(), format, history: "confirme", level: "inter", intent: "competition",
-      dispo: "quotidienne", shift_ok: "oui", off_days: "non", doubles: "oui",
+      dispo: "quotidienne", off_days: "non", doubles: "oui",
       plan_start: RACE_PASS_START, race_date: RACE_PASS_DATES[0], ...cycle10Extras(sport) };
     yield { key: ["CYCLE10", sport, format || "-", "datee"].join("/"), sport, a };
   }
@@ -445,7 +438,7 @@ function* profiles() {
   // pas un champ vide, on le demande).
   {
     const a = { ...base(), format: "70.3", history: "confirme", level: "inter", intent: "competition",
-      vol_max: "20", vol_recent: "13", sessions_max: "12", dispo: "quotidienne", shift_ok: "oui",
+      vol_max: "20", vol_recent: "13", sessions_max: "12", dispo: "quotidienne",
       off_days: "non", doubles: "oui", age: "35", sex: "H", weight: "85", terrain: "vallonne",
       leg_swim_env: "lac", milieu: "bassin", longest_swim_m: "1000", longest_swim_known: "oui",
       pace_known: "oui", pace: "4:42", ftp_known: "oui", ftp: "236", css_known: "oui", css: "2:02",

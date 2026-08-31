@@ -1115,7 +1115,12 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 // Le ticket **O-105** reste ouvert et garde tout son objet : `seal.ts:159` recalcule un `min()`
 // brut au lieu de lire l'argmin publié par le moteur (fiche 24 §4). Ce lot le rend moins
 // VISIBLE, il ne le corrige pas.
-const SCEAU_ATTENDU = { S1: 7, S4: 342, S5: 218 };
+// RETRAIT DU CYCLE DE 10 JOURS (25/08/2026) — les trois cliquets DESCENDENT, et c'est la
+// direction attendue : `S1` 7 → 4, `S4` 342 → 340, `S5` 218 → 211. Le cycle de 10 diluait
+// `dur1` et `durLong` de 30 % par jour (fiches 29-31) et faisait chevaucher les semaines
+// calendaires ; le retirer rend au plan sa densité et fait tomber les violations qui vivaient
+// dans ce chevauchement. Ré-épinglés avec leur cause, jamais assouplis.
+const SCEAU_ATTENDU = { S1: 4, S4: 340, S5: 211 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;
@@ -2000,7 +2005,12 @@ T("T-50", "vert", "PROPRIÉTÉ — la bande d'allure affichée se redérive du p
 // ×3, plus la variante datée, dont 4 entrent dans la population de ce test). Moteur
 // BYTE-IDENTIQUE : les trois comptes montent avec la population, pas avec une régression.
 // Mesuré : population 188 → 192 · VO2 8 244 → 8 292 min · nage seuil 411 251 → 425 201 m.
-const PIC_ATTENDU = { vo2Min: 8292, seuilM: 425201, profils: 192 };
+// RETRAIT DU CYCLE DE 10 JOURS (25/08/2026) — la POPULATION monte de 192 à 195 (trois profils
+// tri qui portaient un cycle de 10 livrent désormais une semaine de pic qualifiante), et la
+// composition suit : VO2 8 292 → 8 400 min, nage seuil 425 201 → 432 376 m. Le cycle de 10
+// retirait 30 % de `dur1` par jour — le créneau qui porte la qualité vélo, donc la VO2max
+// (mesuré fiche 30 : 14 séances contre 21 sur `REEL`). Ré-épinglés avec leur cause.
+const PIC_ATTENDU = { vo2Min: 8400, seuilM: 432376, profils: 195 };
 T("T-48", "vert", "la composition du PIC en tri est épinglée : le VO2 a cédé, la nage seuil a gagné (C26c)", () => {
   let vo2 = 0, seuil = 0, profils = 0;
   for (const { key, plan } of goldenAvecMoteur()) {
@@ -2620,7 +2630,12 @@ T("T-57", "vert", "la borne d'épaule est comptée dans la CONSTRUCTION (populat
  * POPULATION ASSERTÉE (« un zéro a besoin de sa population ») : le critère ne vaut que sur les
  * plans qui ont un APRÈS — au moins deux semaines de charge après le maximum.
  */
-T("T-58", "rouge", "le bloc final est un PLATEAU : aucune charge postérieure au max ne descend de plus de 10 % sous lui (O-72 révisé)", () => {
+// PROMU GARDE-FOU (25/08/2026) : ce test attendait un ROUGE — 3 plans sur 67 sous la ligne du
+// plateau, dont les deux `O-21b/run/10k` lents et `REEL`. Le retrait du cycle de 10 jours les
+// referme tous les trois, sans qu'aucune ligne du plateau n'ait été touchée : le creux vivait
+// dans la dérive du cycle. `attendu` passe à "vert" DANS LE MÊME COMMIT, comme la doctrine du
+// banc l'exige — il devient un garde permanent.
+T("T-58", "vert", "le bloc final est un PLATEAU : aucune charge postérieure au max ne descend de plus de 10 % sous lui (O-72 révisé)", () => {
   const wM = (w) => (w.days ?? []).reduce((t, d) => t + (d.sessions ?? []).reduce((u, s) => u + (s.race ? 0 : (s.min || 0)), 0), 0);
   let pop = 0; const ko = [];
   for (const { key, plan } of goldenAvecMoteur()) {
@@ -2866,7 +2881,6 @@ T("T-60", "rouge", "le plancher de fréquence : jamais zéro discipline · 2 ten
 const ROUGES_ATTENDUS = {
   "T-60": "O-98 — **8 semaines à ZÉRO**, toutes de COURSE et toutes sur `G/tri/Full/vol-min` (3 séances/sem) : S2, 6, 10, 12, 14, 16, 18, 20 — ISOLÉES, jamais deux de suite. C'est l'accident au sens du critère du fondateur, et le résidu d'un défaut d'ALLOCATION sur le profil le plus plafonné du corpus (3 créneaux pour 3 disciplines), pas un défaut de fréquence. Les **22 semaines sans NAGE** (le trou) sont FERMÉES : leurs deux producteurs — la coupe du plancher piscine et le repli « dev <= pic » — consultent le niveau ZÉRO du plancher. Cliquet descendu de 30 à 8 avec le correctif.",
   "T-59": "A2 — résidu MESURÉ et BORNÉ : **5 plans sur 104**, tous des `tri/Full` à disponibilité serrée (`vol-min` 3 séances, `off-2j`, `dispo: weekend`, `dispo: partielle`, `poids-levier`). Sur eux, les deux créneaux faciles course de la spécifique portent de la NATATION — la fréquence de nage du tri (R13.3) y a déjà pris la place, et poser la sortie longue là reviendrait à la prendre à la discipline limitante. C'est un ARBITRAGE de priorité sur budget serré (quelle discipline cède quand il n'y a que 6 créneaux pour 3 sports ?), pas un défaut de la pièce : le forcer serait la faute que le garde-fou 4 du lot nomme (« un correctif qui demande des exclusions successives se bat contre quelque chose de structurel : s'arrêter et rapporter »).",
-  "T-58": "O-72 révisé — résidu MESURÉ et ÉPINGLÉ à **3 plans sur 67** : `O-21b/run/10k` à 7:00 et 8:30/km (S6, 21-24 min sous la ligne), plus **REEL** (S38, 37 min sur `HEAD`, 55 min avec la pièce `C3`). ⚠ Le ticket portait « 2 plans sur 68 » — chiffre écrit le jour de la pose et JAMAIS re-mesuré : `HEAD` en rendait déjà 3, REEL compris. Le creux de REEL est donc ANTÉRIEUR à C3, que la mesure à facteur unique confirme (37 min avec la pièce neutralisée) ; C3 le CREUSE de 18 min, il ne le crée pas. Les deux profils lents sont la population où l'inversion sur l'axe ALLURE est déclarée ouverte (O-21) : à trancher avec elle. Le compte est maintenant un cliquet dans la sortie du test — un rouge attendu ne dérive plus en silence.",
   "T-44": "O-66 — la coupe classe en MINUTES une contrainte qui compte des SÉANCES : arbitrage rendu le 17/08, à faire APRÈS le merge et en premier",
   "T-34": "O-43 — la conversion déplace ce qui est prescrit (pic +9 %, fréquence) : filtre du fondateur, une seule issue le passe",
   "T-01": "A-01 — sessionIntensity() importe zoneClass() au lieu de sa copie (+ V-08 pour sw.aero)",

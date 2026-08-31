@@ -103,9 +103,7 @@ function evalRules(a, tier){
 
   // ---- COMMUN : structure cycle ----
   const nOff=(a.off_which||"").split(",").filter(Boolean).length;
-  if(a.off_days==="oui"&&nOff>=2) add("cycle","Structure","Semaine 7 jours (jours bloqués)","Avec "+nOff+" jours bloqués, un cycle glissant placerait des séances clés sur tes indispos. La semaine fixe prime.");
-  else if(a.dispo==="quotidienne"&&a.shift_ok==="oui") add("cycle","Structure","Cycles de 10 jours","Dispo quotidienne + décalage accepté : espacement optimal des séances clés, alternance parfaite.");
-  else if(a.dispo) add("cycle","Structure","Semaine de 7 jours","Repères fixes : la meilleure périodisation est celle qu'on tient.");
+  if(a.dispo) add("cycle","Structure","Semaine de 7 jours","Repères fixes : la meilleure périodisation est celle qu'on tient."+(a.off_days==="oui"&&nOff>=2?" Tes "+nOff+" jours bloqués sont respectés.":""));
 
   // ---- COMMUN : polarisation + renfo selon sport ----
   add("polar","Distribution","Polarisation ~80/20","Facile vraiment facile, dur vraiment dur. La zone grise fatigue sans progrès.");
@@ -326,7 +324,6 @@ function buildFreeSteps(){
       +'<div class="q"><span class="q-label">Des jours OFF obligatoires ?</span><div class="opts" data-key="off_days">'+opt("non","Non")+opt("oui","Oui")+'</div></div><div id="offBranch"></div>'
       +'<div class="q"><span class="q-label">Journées à 2 séances possibles ?</span><div class="opts" data-key="doubles">'+opt("oui","Oui")+opt("parfois","Parfois")+opt("non","Non")+'</div></div>';},
     branches(a){
-      branch("cycleBranch",a.dispo==="quotidienne",'<div class="branch"><div class="branch-tag">↳ Cycle long possible</div><div class="q"><span class="q-label">Un cycle de 10 jours glisse sur le calendrier (ta séance longue change de jour). OK ?</span><div class="opts" data-key="shift_ok">'+opt("oui","Oui, peu importe")+opt("non","Non, repères fixes")+'</div></div></div>');
       branch("offBranch",a.off_days==="oui",'<div class="branch"><div class="branch-tag">↳ Jours bloqués</div><div class="q"><span class="q-label">Lesquels ?</span><div class="opts" data-key="off_which" data-multi="1">'+["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"].map(j=>opt(j,j)).join("")+'</div></div></div>');},
     // U14 — LA VALIDATION NE RETIENT QUE LES TROIS RÉPONSES QUI STRUCTURENT.
     //

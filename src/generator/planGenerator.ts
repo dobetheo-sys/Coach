@@ -2370,7 +2370,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       for (const st of ((s as { steps?: { d?: string; reps?: number; durationMin?: number }[] }).steps ?? []))
         if ((st.d || s.d) === "rn" && st.durationMin) runMin += (st.reps || 1) * st.durationMin;
     }
-    const nSem = Math.max(1, Math.round(days.length / (r.use10 ? 10 : 7)));
+    const nSem = Math.max(1, Math.round(days.length / 7));
     const bande = raceRunBand("tri", fmt, r.baseRefs.thrPace, runMin / nSem / 60 || undefined);
     if (bande) {
       refs.runMara = bande;
@@ -4264,7 +4264,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     }
   }
 
-  const plan: V1Plan = { weeks: wl, volPeak, volBase, use10: r.use10, totalWeeks: r.weeks, phases: r.phases, races, _r202: _r202rec };
+  const plan: V1Plan = { weeks: wl, volPeak, volBase, totalWeeks: r.weeks, phases: r.phases, races, _r202: _r202rec };
   // C30b (O-26) — la cible de spécificité, calculée ICI (seul endroit qui connaît sport, format
   // et références mesurées) et passée à la passe qui l'applique.
   const _spec30 = String(a.sport) === "run"
@@ -4625,7 +4625,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         // ⚠ EN MODE 7 JOURS, `cycleLen / 7 = 1` ET LE CYCLE EST LA SEMAINE : toutes les
         // conversions sont l'identité, et le golden doit rester au bit près sur les 985
         // profils qui n'activent pas `use10`. C'est le critère d'acceptation de l'étape.
-        const cycleLen = r.use10 ? 10 : 7;
+        const cycleLen = 7; // le cycle EST la semaine (retrait du cycle de 10 jours, 25/08/2026)
         const parCycle = new Map<number, GenDay[]>();
         for (const w of wl) for (const d of w.days as GenDay[]) {
           if (d.isR || d.cyc == null) continue; // un cycle de DÉCHARGE ne mesure aucune capacité
