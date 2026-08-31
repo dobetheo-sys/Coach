@@ -102,6 +102,91 @@ dur, le CRÉNEAU (qui décide du contenu) livre du facile. C'est la même famill
 « type du créneau » : le schéma est agnostique de la discipline ET de l'intensité réelle, seul
 le module de sport décide — et personne ne vérifie que les deux disent la même chose.
 
+### O-109 — PISTE 1 (gabarits de cycle alternés) : écrite, mesurée, RETIRÉE · 🔴 **OUVERT — la densité se répare, le pic BAISSE (25/08/2026)**
+
+Piste 1 de la fiche 29 §5, demandée par la fiche 31 : alterner deux gabarits de cycle sur la parité
+(le patron de B1/B2) pour rendre à `dur1` et `durLong` leur densité par jour. Écrite
+(`schema()` reçoit `cycleNum`, gabarit pair = 2ᵉ `dur1`, gabarit impair = 2ᵉ `durLong` ; diff
+conservé dans `piste1-gabarits-alternes.patch`), **moteur RETIRÉ, `src/generator/weekBuilder.ts`
+byte-identique**.
+
+**Densité obtenue (régime générique, 3 222 jours) — la cible est la densité MESURÉE en 7 jours,
+pas la valeur théorique 1/7 : les cycles de récup et l'affûtage diluent les deux modes.**
+
+```
+créneau     use10 AVANT   use10 APRÈS   7 jours (cible)
+dur1           0,101         0,100          0,114        ← INCHANGÉ
+durLong        0,083         0,122          0,113        ← réparé (léger dépassement)
+dur2           0,118         0,080          0,104        ← cassé dans l'autre sens
+facile2        0,178         0,171          0,155
+```
+
+**Et le pic LIVRÉ baisse : −0,79 h cumulés sur les 31 profils** — 8 baissent, 6 montent,
+17 immobiles. `REEL` **11,52 → 11,30 h**, `run/marathon` −0,15 à −0,23, `swim/fond/debutant`
+−0,14. Les 7 profils du régime (A) — trail et swimrun — sont **strictement intacts**, comme voulu.
+
+**Deux mécanismes expliquent l'échec, tous deux `applyWeeklyVariety` (R5.5), et ils sont
+SYMÉTRIQUES :**
+
+- **un second `dur1` dans la semaine calendaire est RENVOYÉ vers `dur2`** par la passe (elle cherche
+  le créneau dur frère) — c'est pourquoi la densité de `dur1` ne bouge pas d'un millième.
+  Contre-preuve : piste 1 avec la passe neutralisée donne `dur1` **0,116**, la cible atteinte.
+- **un second `durLong` n'a PAS de créneau frère** (`alt` vaut `null` pour `durLong`) : la passe
+  tombe alors dans sa branche d'allègement et le **DÉCLASSE en séance facile**. Mesuré sur la
+  variante « seul `durLong` alterne » : `REEL` **11,52 → 10,13 h (−1,39)** — le brick de 200 min
+  devient une séance facile.
+
+**Ajouter un créneau que R5.5 considère comme un doublon n'ajoute pas d'entraînement : ça ajoute
+un déclassement.** Toute reprise de la piste 1 doit donc traiter R5.5 D'ABORD — soit en lui donnant
+une variante pour `durLong`, soit en excluant de son champ les doublons VOULUS par le gabarit.
+
+**Trois variantes mesurées, aucune positive** (Δ pic cumulé sur les 31) :
+
+```
+piste 1 complète (dur1 + durLong alternés)   −0,79 h
+variante « seul dur1 alterne »               −0,70 h   (REEL tenu à 11,53, mais marathon −0,53)
+variante « seul durLong alterne »            REEL −1,39 h
+```
+
+**Ce qui reste vrai et exploitable** : la moitié `durLong` répare bien la densité (0,083 → 0,122),
+et la piste 2 (libérer la position 4, `["dur","facileR"]` d'O-102) est ce qui rendrait `dur2` à sa
+densité au lieu de le casser — l'enchaînement des deux pistes prévu par la fiche 31 est confirmé
+par la mesure, mais aucune des deux n'est livrable avant R5.5.
+
+```verify
+id: O-109-piste1-retiree
+quoi: le schéma de 10 jours ne porte qu'un dur1 et qu'un durLong par cycle
+attendu: la liste littérale use10, sans alternance de gabarit
+cmd: grep -c "cycleNum" src/generator/weekBuilder.ts
+```
+
+### O-110 — `npm run casser` : deux mutations sur le MÊME fichier s'écrasaient en silence · ✅ **FERMÉ le 25/08/2026 (corrigé dans le lot qui l'a trouvé)**
+
+`casser.mjs` écrivait chaque mutation depuis l'ORIGINAL —
+`writeFileSync(m.fichier, originaux.get(m.fichier).replace(m.avant, m.apres))` — donc sur un même
+fichier **seule la DERNIÈRE survivait**, pendant que la boucle imprimait « ⚡ cassé » une fois par
+mutation. L'en-tête n'annonce que des mutations sur des fichiers DIFFÉRENTS ; le cas même-fichier
+était accepté sans un mot.
+
+**C'est exactement la classe que ce harnais existe pour fermer** — « une contre-preuve qui n'a rien
+perturbé rend le même verdict que *le correctif tient* » —, en pire : elle perturbe à MOITIÉ et
+s'imprime comme complète. Trouvé le jour même sur une variante de schéma annoncée à deux entrées
+qui n'en portait qu'une ; le chiffre publié décrivait un état intermédiaire que personne n'avait
+demandé (variante « seul `durLong` alterne », première mesure — invalidée et refaite).
+
+Corrigé : les mutations s'appliquent **cumulativement**, chaque motif est cherché dans le contenu
+COURANT (une mutation peut donc viser ce qu'une précédente a écrit), et la ligne « ⚡ cassé »
+annonce le nombre de mutations par fichier. **Validé en reproduisant un état CONNU** : la piste 1
+neutralisée par deux mutations rend exactement les 31 pics de la ligne de base (`REEL` 11,52 ·
+`O-21b` 3,68 · `tri/S/inter` 3,82), ce que la version d'avant rendait à 11,38.
+
+```verify
+id: O-110-casser-cumulatif
+quoi: les mutations de casser s'appliquent cumulativement sur un même fichier
+attendu: la boucle lit `courant`, pas `originaux`
+cmd: grep -n "courant.set(m.fichier, src.replace" scripts/casser.mjs
+```
+
 ### O-107 — trail et swimrun déclarent un `weekSchema` de 7 entrées que le cycle de 10 lit HORS BORNES · 🔴 **OUVERT — accidentel, et aujourd'hui BÉNÉFIQUE (25/08/2026)**
 
 `schema()` (`weekBuilder.ts:40`) délègue au module de sport quand il déclare son propre
@@ -130,7 +215,7 @@ attendu: swimrunWeekSchema(_phase, isRecup) — deux paramètres, pas de use10
 cmd: grep -n "export function swimrunWeekSchema" src/sports/swimrun/index.ts
 ```
 
-### O-108 — sur `REEL`, quatre jours `dur1` ne portent AUCUNE séance de qualité vélo sous `use10` · 🟠 **OUVERT — producteur non identifié**
+### O-108 — sur `REEL`, quatre jours `dur1` ne portent AUCUNE séance de qualité vélo sous `use10` · ✅ **FERMÉ le 25/08/2026 — RÉFUTÉ : ce ne sont pas des jours `dur1`**
 
 `VO2max vélo` ne sort QUE du créneau `dur1`, en `dev`/`spec`/`peak`. Mesuré sur
 `REEL/tri/70.3/nage-limitante` : **18 jours `dur1` sous `use10` contre 21 en 7 jours, mais 14
@@ -155,11 +240,33 @@ Le producteur est donc **à l'intérieur de la branche `dur1` du module tri**. �
 de rééquilibrer le schéma : augmenter le nombre de jours `dur1` ne rendrait au mieux que 3 des
 7 séances manquantes.
 
+⚠ **RÉFUTÉ, et par le discriminant que mon recensement ne regardait pas : `jc`, le jour dans le
+cycle.** Tracés un par un, les 18 jours `dur1` de `dev`/`spec`/`peak` sous `use10` se répartissent
+en **14 à `jc = 1`** (la position 0 du schéma, le vrai `dur1`) — qui produisent **tous** leur
+`VO2max vélo`, sans exception, exactement comme les 21 jours à `jc = 2` du schéma de 7 — et
+**4 à `jc = 7`**, c'est-à-dire la position 6 du schéma de 10, qui vaut `["dur", "dur2"]`.
+
+**Ces quatre-là n'ont jamais été des `dur1` : ce sont des `dur2` que `applyWeeklyVariety` (R5.5)
+RENOMME** en cherchant une variante pour le second `dur2` de la semaine calendaire — la passe fait
+`d.slot = alt`, donc le recensement les compte comme `dur1`. Contre-preuve : la passe neutralisée,
+les jours `dur1` de `dev`/`spec`/`peak` tombent à **14, tous à `jc = 1`, tous en VO2max**.
+
+**Conséquence sur le compte publié en fiche 29** : la décomposition « 3 séances par le compte de
+jours + 4 par un taux » est fausse. **Le taux vaut 100 % dans les deux modes** ; les 7 VO2max
+manquantes viennent à **100 % du compte de jours `dur1`** — 14 contre 21, soit exactement la
+dilution −33 % du schéma de 10. Il n'y a pas de second mécanisme.
+
+**Le producteur est délibéré et documenté** (`applyWeeklyVariety`, R5.5, audit v7 bis) : son
+en-tête nomme lui-même le cycle de 10 jours comme la cause des `dur2` en double. Ce n'est pas un
+défaut — c'est la passe qui fait son travail. Ce qui était un défaut, c'est **mon recensement, qui
+identifiait un créneau par son ÉTIQUETTE FINALE** alors qu'une passe la réécrit (famille règle 17 :
+un critère n'identifie jamais sa cible par un libellé).
+
 ```verify
-id: O-108-dur1-sans-velo
-quoi: des jours dur1 sans séance de qualité vélo sous use10
-attendu: VO2max vélo produite uniquement par le créneau dur1
-cmd: grep -c "dur1" src/sports/tri/index.ts
+id: O-108-jc-discrimine
+quoi: applyWeeklyVariety renomme un dur2 en dur1 — l'étiquette finale n'est pas le créneau d'origine
+attendu: d.slot = alt dans applyWeeklyVariety
+cmd: grep -n "d.slot = alt" src/generator/weekBuilder.ts
 ```
 
 ### O-106 — les phases ne peuvent pas s'aligner sur le cycle tant que la COURBE lit des index de SEMAINE · 🔴 **OUVERT — étape 4 écrite, mesurée, RETIRÉE (25/08/2026)**

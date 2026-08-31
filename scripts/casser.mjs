@@ -62,14 +62,30 @@ for (const m of mutations) {
 }
 
 // La mutation, originaux en mémoire.
+//
+// ⚠ DEUX MUTATIONS SUR LE MÊME FICHIER S'ÉCRASAIENT EN SILENCE (corrigé le 25/08/2026).
+// Chaque mutation partait de l'ORIGINAL (`originaux.get(f).replace(...)`), donc sur un même
+// fichier seule la DERNIÈRE survivait — pendant que la boucle imprimait « ⚡ cassé » une fois
+// par mutation, ce qui se lit comme « les deux sont appliquées ». C'est exactement la classe
+// que ce harnais existe pour fermer : une contre-preuve partiellement appliquée rend un verdict
+// qui a l'air complet. Mesuré le jour même — une variante de schéma annoncée à deux entrées
+// n'en portait qu'une, et le chiffre publié décrivait un état intermédiaire que personne
+// n'avait demandé. Les mutations s'appliquent désormais CUMULATIVEMENT, et chaque motif est
+// cherché dans le contenu COURANT (donc une mutation peut viser ce qu'une précédente a écrit).
 const originaux = new Map();
+const courant = new Map();
 for (const m of mutations) {
-  const src = readFileSync(m.fichier, "utf8");
+  if (!originaux.has(m.fichier)) {
+    const src = readFileSync(m.fichier, "utf8");
+    originaux.set(m.fichier, src);
+    courant.set(m.fichier, src);
+  }
+  const src = courant.get(m.fichier);
   if (!src.includes(m.avant)) {
     console.error(`✖ motif introuvable dans ${m.fichier} — la contre-preuve n'aurait rien perturbé, on refuse de tourner.`);
     process.exit(2);
   }
-  originaux.set(m.fichier, src);
+  courant.set(m.fichier, src.replace(m.avant, m.apres));
 }
 
 let restaure = false;
@@ -83,9 +99,10 @@ process.on("SIGINT", () => { restaurer(); process.exit(130); });
 process.on("SIGTERM", () => { restaurer(); process.exit(143); });
 process.on("exit", restaurer);
 
-for (const m of mutations) {
-  writeFileSync(m.fichier, originaux.get(m.fichier).replace(m.avant, m.apres));
-  console.error(`⚡ cassé : ${m.fichier.slice(RACINE.length + 1)}`);
+for (const [f, src] of courant) {
+  writeFileSync(f, src);
+  const n = mutations.filter((m) => m.fichier === f).length;
+  console.error(`⚡ cassé : ${f.slice(RACINE.length + 1)}${n > 1 ? ` (${n} mutations)` : ""}`);
 }
 const r = spawnSync(cmd[0], cmd.slice(1), { cwd: RACINE, stdio: "inherit", shell: false });
 restaurer();
