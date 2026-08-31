@@ -88,7 +88,7 @@ interface DaySlot {
  * d'activation lit le NIVEAU et pas seulement la disponibilité (3,5 clés/semaine est tenable
  * pour un athlète expérimenté, excessif pour un débutant).
  */
-function schema(use10: boolean, phase: string, isRecup: boolean, r?: ReasonedPlan): DaySlot[] {
+function schema(use10: boolean, phase: string, isRecup: boolean, r?: ReasonedPlan, cycleNum = 0): DaySlot[] {
   // R10 phase 1 — un sport peut avoir son PROPRE schéma de semaine (le trail : descente et
   // marche sont des séances à part entière, la longue est le pivot du week-end, le lundi porte
   // le renfo excentrique). Il le déclare dans son module ; sinon, le schéma générique par
@@ -99,8 +99,42 @@ function schema(use10: boolean, phase: string, isRecup: boolean, r?: ReasonedPla
     const d: [string, string][] = [["facile", "facileR"], ["facile", "facile2"], ["off", "off"], ["facile", "facileR"], ["facile", "facile2"], ["facile", "facileR"], ["off", "off"], ["facile", "facile2"], ["facile", "facileR"], ["recup", "recup"]];
     return (use10 ? d : d.slice(0, 7)).map((x) => ({ charge: x[0], slot: x[1] }));
   }
-  if (use10)
-    return ([["dur", "dur1"], ["facile", "facileR"], ["dur", "dur2"], ["facile", "facile2"], ["dur", "facileR"], ["facile", "facileR"], ["dur", "dur2"], ["facile", "facile2"], ["dur", "durLong"], ["recup", "recup"]] as [string, string][]).map((x) => ({ charge: x[0], slot: x[1] }));
+  if (use10) {
+    // PISTE 1 (fiche 31) — DEUX GABARITS DE CYCLE ALTERNÉS, parce qu'une densité de 1/7 n'est
+    // pas représentable dans un cycle de 10 avec des entiers.
+    //
+    // Le schéma de 10 jours ne portait qu'UN `dur1` et qu'UN `durLong` par cycle, là où le
+    // schéma de 7 en porte un par semaine : mesuré, 0,100 par jour contre 0,143 — **−30 % sur
+    // les deux créneaux qui portent la qualité principale du sport et sa séance signature**,
+    // échangés contre +40 % de `dur2` et de `facile2`, qui produisent des séances plus PETITES.
+    // C'est ce qui fait perdre du pic au triathlon long et au 10 km (fiche 29) : l'échange se
+    // fait vers des types dont les plafonds de séance sont plus bas.
+    //
+    // 1,43 slot par cycle de 10 n'existe pas. On alterne donc sur la PARITÉ DU CYCLE — le
+    // patron que B1/B2 emploient déjà pour les doubles de nage — un gabarit à 2 `dur1` et un
+    // gabarit à 2 `durLong` : moyenne 1,5 par 10 jours, soit 0,150/jour contre 0,143. L'écart
+    // résiduel (+5 %) est le prix de l'entier ; il va dans le sens de la qualité, pas contre.
+    //
+    // ⚠ CE QUI EST CÉDÉ, ET POURQUOI : la seule position convertible est un `dur2`, donc `dur2`
+    // tombe à 0,100/jour. Deux contraintes l'imposent — le brief réserve `["dur","facileR"]`
+    // (O-102) à la piste 2, et convertir une position PAIRE ferait deux jours durs consécutifs,
+    // ce que ni l'un ni l'autre gabarit ne fait aujourd'hui. Libérer la position 4 (piste 2) est
+    // exactement ce qui rendrait `dur2` à 0,150 : c'est l'argument de l'enchaînement des deux
+    // pistes, mesuré et non supposé.
+    const paire = cycleNum % 2 === 0;
+    return ([
+      ["dur", "dur1"],
+      ["facile", "facileR"],
+      ["dur", paire ? "dur2" : "durLong"],   // ← gabarit IMPAIR : la seconde longue
+      ["facile", "facile2"],
+      ["dur", "facileR"],                     // O-102, hors périmètre de la piste 1
+      ["facile", "facileR"],
+      ["dur", paire ? "dur1" : "dur2"],       // ← gabarit PAIR : la seconde qualité principale
+      ["facile", "facile2"],
+      ["dur", "durLong"],
+      ["recup", "recup"],
+    ] as [string, string][]).map((x) => ({ charge: x[0], slot: x[1] }));
+  }
   return ([["recup", "recup"], ["dur", "dur1"], ["facile", "facileR"], ["dur", "dur2"], ["facile", "facile2"], ["dur", "durLong"], ["facile", "facileR"]] as [string, string][]).map((x) => ({ charge: x[0], slot: x[1] }));
 }
 
@@ -256,7 +290,7 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
       if (isR) sinceR = 0; else sinceR++;
       // L'affûtage est lui-même une décharge : la série de charge repart de zéro en y entrant.
       chargeStreak = isR || ph.id === "taper" ? 0 : chargeStreak + 1;
-      sch = schema(r.use10, ph.id, isR, r);
+      sch = schema(r.use10, ph.id, isR, r, cyc);
     }
     const s = sch[dic] || { charge: "facile", slot: "facileR" };
     const jn = J[i % 7];
