@@ -1128,7 +1128,16 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 // 4 FC max). `S4` 342 → 346 et `S5` 216 → 231 montent avec la POPULATION : 1 063 plans scellés
 // au lieu de 1 042. **`src/` est byte-identique dans ce lot** (`git diff --stat src/` vide) —
 // le moteur n'a pas bougé d'une ligne, seul le corpus a grandi.
-const SCEAU_ATTENDU = { S1: 4, S4: 346, S5: 231 };
+// FICHE 39 — RÉ-ÉPINGLÉ AVEC SA CAUSE, ET LA CAUSE PRINCIPALE EST LA **POPULATION**.
+// Le corpus n'a pas bougé (1069 profils), mais `AGE_MINI_FORMAT` s'est étendu : semi, gravel
+// et les deux formats longs de swimrun sont désormais fermés au mineur, donc **7 profils
+// passent de « plan livré » à « refus typé » et quittent le scellé** — 1063 → 1056 plans.
+// Mesuré à moteur d'AVANT sur la population d'APRÈS (`npm run casser`, R6.1b et les quatre
+// zones neutralisées) : S4 346 · S5 **224**. Les 7 minors emportaient donc 7 violations S5 et
+// aucune S4. Ce qui reste est le MOTEUR, et il est minuscule et attribué à facteur unique :
+// S4 346 → 345 vient de la dérivation d'`impact` (les zones `cheville`/`fascia`/`quadriceps`
+// comptent enfin comme blessure d'appui), S5 224 → 225 vient de R6.1b.
+const SCEAU_ATTENDU = { S1: 4, S4: 345, S5: 225 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;
@@ -2026,7 +2035,12 @@ T("T-50", "vert", "PROPRIÉTÉ — la bande d'allure affichée se redérive du p
 // `INJ/tri` (`course`, `velo`, `cou`). Ils portent une blessure déclarée, donc un volume réduit
 // de ~13 %, et ils ajoutent quand même 180 min de VO2 et 11 875 m de nage seuil au total du
 // corpus. `src/` byte-identique : c'est la population, pas le moteur.
-const PIC_ATTENDU = { vo2Min: 8868, seuilM: 444251, profils: 206 };
+// FICHE 39 — RÉ-ÉPINGLÉ, CAUSE ATTRIBUÉE À FACTEUR UNIQUE : R6.1b, et elle seule. Neutraliser
+// l'appel à `applyContraindicationCap` rend exactement 8868 / 444251 (`npm run casser`) ; le
+// retrait des quatre zones et la graduation d'âge, eux, ne déplacent ni l'un ni l'autre. Les
+// profils tri à blessure de la population voient un jour de la discipline en cause converti,
+// ce qui rend +8 min de VO2 et +150 m de nage seuil au pic. La POPULATION est inchangée (206).
+const PIC_ATTENDU = { vo2Min: 8876, seuilM: 444401, profils: 206 };
 T("T-48", "vert", "la composition du PIC en tri est épinglée : le VO2 a cédé, la nage seuil a gagné (C26c)", () => {
   let vo2 = 0, seuil = 0, profils = 0;
   for (const { key, plan } of goldenAvecMoteur()) {

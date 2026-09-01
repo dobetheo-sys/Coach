@@ -601,6 +601,44 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**LA CONTRE-INDICATION DE DISCIPLINE AGIT ENFIN EN MULTISPORT — et mes deux premières écritures
+ont été arrêtées par des garde-fous à budget ZÉRO** (fiche 39, 01/09/2026 — voir
+`syntheses/37-zones-fragiles-age.md`, passe **R6.1b**, ticket **O-112**) : mesuré sur un
+`tri/70.3`, **onze zones `injury` sur treize rendaient le MÊME plan au centième près**
+(15,62 / 40,48 / 43,90) et la part de COURSE **montait** de 36,22 à 43,90 % chez qui déclare une
+douleur qui l'interdit. `applyContraindicationCap` convertit un jour par semaine au plus, jamais
+le dernier d'une discipline que l'épreuve demande, jamais un brick, jamais une course — et
+**après** la couverture des disciplines et la fréquence de nage, qui remettent ce qu'on retire
+(onzième fois que l'ordre décide). Chaque zone déplace désormais le mix dans le sens qu'elle
+déclare (course 36,22 → **25,42 %** sur les zones d'appui ; vélo 42,38 → **27,87 %** sur `velo` ;
+duathlon 45,02 → 29,83 % ; swimrun 55,23 → 25,33 %). **Elle SUBSTITUE, elle ne supprime pas** :
+ma première écriture posait un `OFF`, la semaine perdait du volume, le garde de polarisation
+reconvertissait alors la nage de QUALITÉ en footing, et le plan finissait avec **plus de course
+et zéro nage continue** — `S-NOVO2` à 11 pour un budget de ZÉRO, `S-LONGSWIM` à 10 pour 5.
+**Elle ne tourne pas dans l'affûtage** : la décroissance R3.13 y RECONSTRUIT le jour converti (la
+protection disparaît) mais la semaine garde la nouvelle répartition, et un « Rappel race-pace »
+passait de 26 à **212 min** — `U-DOSE`, budget ZÉRO. *Une passe dont l'effet est annulé et dont
+l'effet de bord persiste ne doit pas tourner là.* **`epaule` est HORS de la passe** (fiche §1.4) :
+sa charge a déjà O-85, un plafond de mètres qui cliquette sur le livré ; empiler un retrait de
+JOURS sur un plafond de VOLUME faisait tomber la nage d'un 70.3 de 21,4 à **5,6 %** pour un
+athlète qui doit nager 1,9 km le jour J — vérifiée inchangée au centième (9,09 %). **Quatre zones
+proposées à l'athlète n'avaient aucune entrée dans la table** (`cheville`, `fascia`,
+`quadriceps`, `velo` — une aponévrosite plantaire laissait 100 % de course), chacune calquée sur
+une zone déjà câblée ; et `readInjuries` **DÉRIVE** désormais `impact`/`impactAny` de la table au
+lieu d'en recopier la liste — les deux sources avaient divergé, toute zone ajoutée au domaine
+sans l'être ici était invisible au plafond de jours d'appui. **Les facteurs d'âge étaient PLATS
+sur tout leur domaine** (100 ans = 60 ans, 10 ans = 17 ans) : aucune référence externe n'existant
+dans ce dépôt pour l'âge et la charge, **on n'invente pas de formule continue**, on répète le pas
+déjà arbitré (0,85² et 0,70²) ; seuils 13 et 75 ans **révocables**. `AGE_MINI_FORMAT` couvre
+désormais 10 formats (le semi était ouvert à 10 ans) — **O-112 ouvert** : un trail de 42 km reste
+générable à 16 ans quand le marathon est fermé à 18. Golden **25 profils sur 1069**, tous en
+`injury`/`age`/`mineur`. **Les deux cliquets `lotPhysio` ré-épinglés avec leur cause attribuée à
+facteur unique** : T-27 S4 346 → 345 · S5 231 → **225** est d'abord une affaire de POPULATION
+(1063 → 1056 plans scellés, sept mineurs devenus des refus typés — moteur d'AVANT sur population
+d'APRÈS : 346/224), le reste étant `−1` pour la dérivation d'`impact` et `+1` pour R6.1b ; T-48
+VO2 8 868 → **8 876** et nage seuil 444 251 → **444 401** vient de R6.1b et d'elle seule.
+`audit:v1` 459 à 0, **batterie 12/12**, `audit:sensibilite` / `check:app` / `check:sw` verts.
+
 **LE PLACEMENT DU TEST — (b) réfuté par la mesure, (c) livré ; et la franchissabilité ne consulte
 AUCUN plafond** (arbitrage PLACEMENT_TEST_ET_O54.md, 21/08/2026 — voir `BUGS_OUVERTS.md` « LE
 PLACEMENT DU TEST », garde **T-06 branche (c)**) : **(b) est refusé par C22** — le test posé en

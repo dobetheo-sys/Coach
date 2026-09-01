@@ -36,6 +36,37 @@ assumés entre deux règles, les chantiers humains, et les entrées de registre 
 
 ## §1 — Défauts ouverts, par gravité
 
+### O-112 — un trail de 42 km est ouvert à 16 ans quand le marathon est fermé à 18 · 🟠
+
+**Mesuré** (fiche 39, 01/09/2026, `syntheses/37-zones-fragiles-age.md` §Tâche 3) — balayage des
+23 formats du moteur × âges 16/17/18.
+
+`AGE_MINI_FORMAT` (R15.7-C) a été étendu par la fiche 39 et couvre désormais le semi, le
+marathon, `tri/70.3`, `tri/Full`, `duathlon/PM`, `duathlon/L`, `bike/gravel`,
+`swimrun/series` et `swimrun/championship`. Le trail, lui, n'est pas borné par un FORMAT mais
+par une DISTANCE : `AGE_MINI_TRAIL_KM = 50`.
+
+```
+trail 42 km · 16 ans  →  plan généré
+run/marathon (42,195 km) · 16 ans  →  refus typé « format ouvert à 16 ans »
+```
+
+Même distance, plus de dénivelé, un temps d'effort plus long — et l'un passe, l'autre non.
+C'est exactement la famille de l'asymétrie `course`/`velo` que la même fiche vient de fermer :
+deux grandeurs construites sur le même modèle, une seule bornée.
+
+**NON CORRIGÉ : c'est une décision de VALEUR.** Le seuil de 50 km a été arbitré une fois ;
+l'abaisser à 42 aligne le trail sur le marathon, mais ferme aussi tout ce qui est entre 42 et
+50 km. Proposition au fondateur : `AGE_MINI_TRAIL_KM = 42`.
+
+```verify
+id: O-112
+quoi: un trail de 42 km reste générable à 16 ans
+attendu: la constante vaut 50 (donc 42 km passe) — si elle a changé, l'entrée est fermée
+cmd: grep -n "AGE_MINI_TRAIL_KM = " src/engine/answerSchema.ts
+```
+
+
 ### O-100 SCINDÉ — deux inversions sous un numéro, une seule est un défaut · 🔴 **§1b CONFIRMÉ**
 
 **Mesuré** (O100_SCINDE.md, 22/08/2026) — `npm run mesure:doublage` pour l'ampleur, sonde
