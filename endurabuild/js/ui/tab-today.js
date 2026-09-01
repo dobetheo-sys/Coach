@@ -188,7 +188,24 @@ export function renderTabToday(plan) {
   // 1. Le diaporama d'accueil — AUCUNE séance visible avant d'avoir répondu (1×/jour)
   if (!readinessDoneToday()) {
     znClearStickyCta(); znClearParallax(); // le portillon n'a ni séance à valider ni héros
-    $("screen").innerHTML = moment + painBannerHTML() + checkinSlideshowHTML() + '<div class="card">' + sickToggleHTML(today) + "</div>";
+    // ── LE POINT DU MATIN, FAIT L'APRÈS-MIDI (refonte, chantier 3) ──
+    //
+    // Le portillon pose les mêmes questions à 7 h et à 18 h : « comment as-tu dormi », « comment
+    // te sens-tu ». À 18 h, la journée est derrière : la réponse ne sert plus à ADAPTER la
+    // séance (elle est faite, ou elle ne le sera pas), elle sert à la NOTER. Sans le dire, l'app
+    // a l'air de n'avoir pas remarqué l'heure.
+    //
+    // Ce qui NE change pas : le portillon lui-même. On ne saute pas le point du jour parce
+    // qu'il est tard — c'est lui qui nourrit l'ajusteur de DEMAIN, et une journée trouée vaut
+    // moins qu'une journée répondue tard. On change le CADRAGE, pas la règle.
+    let tardif = "";
+    const h = new Date().getHours();
+    if (h >= 14) {
+      tardif = '<div class="warn" style="background:var(--zn-bg-late,#fff3d6);font-weight:600">'
+        + "\u{1F551} <b>Il est " + h + " h.</b> Ton point du jour ne d\u00e9calera plus la s\u00e9ance d\u2019aujourd\u2019hui \u2014 "
+        + "il sert \u00e0 caler celle de demain. Deux questions, et ta s\u00e9ance est juste derri\u00e8re.</div>";
+    }
+    $("screen").innerHTML = moment + painBannerHTML() + tardif + checkinSlideshowHTML() + '<div class="card">' + sickToggleHTML(today) + "</div>";
     bindCheckinSlideshow(() => renderTabToday(plan), () => renderTabToday(plan));
     bindPainBanner(plan, () => renderTabToday(plan));
     bindSickToggle(plan, today);
@@ -235,9 +252,23 @@ export function renderTabToday(plan) {
   // qui se décide aujourd'hui : la séance, sa validation, et le résultat d'une course du jour.
   html += '<div class="card"><div class="eyebrow">Ta préparation</div>';
   html += raceResultCardHTML(plan);
+  // ── PREMIER JOUR, AUCUNE DONNÉE (refonte, chantier 3) ──
+  //
+  // Le graphique de charge se dessine même quand rien n'a été validé : trois courbes plates à
+  // zéro, une légende, « 0 / 84 (0 %) ». Un graphique vide n'est pas neutre — il se lit comme
+  // un échec, alors qu'il ne dit qu'une chose : le plan commence. On remplace donc le tracé par
+  // ce qui va s'y afficher, en une phrase, tant qu'aucune séance n'est cochée. Dès la première,
+  // le graphique revient de lui-même : aucun réglage, aucune bascule à gérer.
+  if (!_doneN) {
+    html += '<div class="load-card"><div class="load-title">Charge par intensité — prévu · validé</div>'
+      + '<div class="load-sub" style="margin-top:6px">Rien à tracer encore : ' + _totalS + ' séance'
+      + (_totalS > 1 ? "s" : "") + ' au programme, aucune validée. La courbe se remplit à la première coche ✓, '
+      + 'et compare alors ce qui était prévu à ce que tu as réellement fait.</div></div>';
+  } else {
   html += '<div class="load-card"><div class="load-title">Charge par intensité — prévu · validé</div>' + chargeChartSVG(plan)
     + chargeChartLegend()
     + '<div class="load-sub">Séances cochées : <b>' + _doneN + " / " + _totalS + "</b>" + (_totalS ? " (" + Math.round((_doneN / _totalS) * 100) + "%)" : "") + ".</div></div>";
+  }
   html += historyCardHTML(plan);
   html += "</div>";
   // R6 — le check-in du matin doit rester accessible : celui qui a déjà répondu (ou dont

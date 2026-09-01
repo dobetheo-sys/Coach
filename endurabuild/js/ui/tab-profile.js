@@ -467,6 +467,34 @@ function bindTrailProfile() {
 function stravaCardHTML(a) {
   const sAuth = a.stravaAuth;
   let h = '<div class="load-card"><div class="load-title">🔗 Strava</div>';
+  // ── STRAVA NE RÉPOND PLUS (refonte, chantier 3) ──
+  //
+  // L'app traite l'échec de CONNEXION (`S._stravaError`) mais pas le silence : un jeton qui a
+  // expiré, un relais tombé, une autorisation retirée côté Strava se manifestent tous de la
+  // même façon — rien n'arrive, et l'écran continue d'afficher « ✓ Connecté ». Le coût n'est pas
+  // cosmétique : les séances importées nourrissent la fatigue lue par « Forme du jour », donc un
+  // silence prolongé fait travailler l'ajusteur sur des données périmées sans le dire.
+  //
+  // La date de référence n'est PAS une nouvelle donnée : c'est la plus récente entrée de
+  // `answers.tests` venue de Strava — le journal que l'import écrit déjà (R24.2). Aucune
+  // structure ajoutée, donc rien à migrer et rien à tenir à jour en double (R11.1).
+  let silence = "";
+  if (sAuth && sAuth.access_token) {
+    const dates = (Array.isArray(a.tests) ? a.tests : [])
+      .filter((t) => /strava/i.test(String(t && t.source || "")))
+      .map((t) => String(t.date || "")).filter(Boolean).sort();
+    const last = dates[dates.length - 1] || "";
+    const jours = last ? Math.round((Date.now() - new Date(last + "T00:00:00Z").getTime()) / 864e5) : -1;
+    // Dix jours : au-delà d'une semaine pleine, un compte actif a forcément produit une sortie.
+    // En deçà, l'alerte serait fausse une semaine de repos sur deux — et une alerte qui crie
+    // pour rien apprend à l'ignorer le jour où elle a raison.
+    if (jours >= 10) {
+      silence = '<div class="load-sub" style="margin-top:6px;color:#8a6d00">⚠ <b>Rien n’est arrivé depuis '
+        + jours + ' jours.</b> Dernier import réussi le ' + esc(last) + '. Ta forme du jour continue d’être '
+        + 'calculée, mais sur tes coches ✓ seules — pas sur tes sorties. Relance un import : si le jeton a '
+        + 'expiré, reconnecte-toi ci-dessous.</div>';
+    }
+  }
   if (sAuth && sAuth.access_token) {
     // Retour utilisateur (08/08/2026) : « déconnexion trop grosse, moins essentielle,
     // l'utilisateur n'a normalement pas besoin de s'en servir ». Le bouton d'IMPORT reste un
@@ -487,7 +515,8 @@ function stravaCardHTML(a) {
       + '<input type="text" id="pfStravaRelay" placeholder="URL du relais (voir server/README.md)" value="' + esc(a.stravaRelay || "") + '" style="flex:1;min-width:180px"></div>'
       + '<div class="load-sub" style="margin-top:4px">Le relais garde le secret Strava hors de l’app — déploiement pas-à-pas dans server/README.md.</div></details>';
   }
-  h += (S._stravaError ? '<div class="load-sub" style="margin-top:4px;color:#b3261e">Connexion Strava refusée (' + esc(S._stravaError) + ") — réessaie ou utilise le jeton manuel.</div>" : "")
+  h += silence
+    + (S._stravaError ? '<div class="load-sub" style="margin-top:4px;color:#b3261e">Connexion Strava refusée (' + esc(S._stravaError) + ") — réessaie ou utilise le jeton manuel.</div>" : "")
     + '<details style="margin-top:6px"><summary class="load-sub" style="cursor:pointer">Repli : jeton manuel (sans serveur)</summary>'
     + '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px">'
     + '<input type="text" id="pfStravaTok" placeholder="token d’accès Strava" style="flex:1;min-width:180px">'

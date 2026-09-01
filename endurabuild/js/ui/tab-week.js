@@ -27,7 +27,7 @@ import { pointLabelInline } from "./checkin.js";
 import { retestBannerHTML, bindRetestBanner } from "./retest.js";
 import { ensurePlan, setTab } from "./tabs.js";
 import { DISC } from "./icons.js";
-import { znDrawChart } from "./zenna-motion.js";
+import { znDrawChart, znPlayDays } from "./zenna-motion.js";
 
 /** Semaine affichée. Non persistée : revenir sur l'onglet ramène à la semaine courante —
  *  c'est la semaine EN COURS qui est le sujet, la navigation n'est qu'une consultation.
@@ -455,6 +455,10 @@ export function renderTabWeek(plan) {
   $("screen").innerHTML = html;
   bindPainBanner(plan, rerender);
   bindRetestBanner(today, () => renderTabWeek(ensurePlan()));
+  // R-ZENNA (motion) — la grille arrive jour par jour. Ici et pas dans `renderActiveTab` :
+  // les flèches de semaine re-rendent l'onglet SANS repasser par `setTab`, et c'est justement
+  // ce geste-là que le mouvement doit accompagner (sept cases se remplacent au même endroit).
+  znPlayDays();
   {
     const g = $("wkGoCheckin");
     if (g) g.onclick = () => setTab("today");

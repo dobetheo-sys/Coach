@@ -82,6 +82,10 @@ body.theme-zenna {
   --zn-ink: #f5f1ea;
   --zn-ink-2: #d7d2c6;
   --zn-good: #1fb8a6;
+  /* Le rouge d'alerte du thème papier (#e63946) mesure 4,46:1 sur --zn-surface : SOUS le
+     seuil AA de 4,5. Éclairci ici (7,61:1), c'est la seule valeur admise dans le sombre —
+     le repli visuel `[style*="color:#e63946"]` de zenna-tabs.css la posait déjà. */
+  --zn-bad: #ff7d92;
   --zn-good-dark: #0f8f81;
   --zn-track-bg: #20252c;
   --zn-sep: rgba(255, 255, 255, .18);

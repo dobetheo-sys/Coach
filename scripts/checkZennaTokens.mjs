@@ -31,7 +31,7 @@ const compte = (css) => {
 // Les abaisser est un progrès à committer ; les monter est un échec.
 const PLAFONDS = {
   "zenna-today.css": { hex: 20, durees: 5 },
-  "zenna-tabs.css": { hex: 50, durees: 9 },
+  "zenna-tabs.css": { hex: 48, durees: 9 },
 };
 
 let echecs = 0;

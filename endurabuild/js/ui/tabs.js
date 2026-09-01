@@ -10,7 +10,7 @@ import { renderTabToday } from "./tab-today.js";
 import { renderTabOutils } from "./tab-outils.js";
 import { renderTabWeek, resetWeekView } from "./tab-week.js";
 import { brancherAide } from "./help.js";
-import { znApplyNavDot, znClearStickyCta, znClearParallax } from "./zenna-motion.js"; // R-ZENNA
+import { znApplyNavDot, znClearStickyCta, znClearParallax, znPlayOnce } from "./zenna-motion.js"; // R-ZENNA
 import { appHeaderHTML } from "./app-header.js";
 
 // Refonte R5 (retour utilisateur) : l'onglet CENTRAL 🎯 Aujourd'hui est l'écran du
@@ -303,6 +303,14 @@ function renderActiveTab() {
   }
   const tab = TABS.find((t) => t[0] === activeTab) || TABS[TABS.length - 1];
   tab[3](plan);
+  // R-ZENNA (motion) — L'ENTRÉE VAUT MAINTENANT POUR LES CINQ ONGLETS, mais UNE FOIS chacun.
+  // Le paragraphe ci-dessus disait « les quatre autres onglets prennent la PALETTE, pas le
+  // mouvement d'entrée », et sa raison tenait : `.rise` met le contenu à opacité 0, donc
+  // rejouer la cascade à chaque aller-retour fait payer une attente à chaque retour. Ce n'est
+  // pas le geste qui coûte, c'est sa répétition — `znPlayOnce` ne joue qu'à la PREMIÈRE arrivée
+  // sur un onglet dans la session. Aujourd'hui n'est pas concerné : il pose sa propre cascade,
+  // enchaînée au tampon de verdict, et la rejoue chaque matin par dessein.
+  if (activeTab !== "today") znPlayOnce(activeTab);
   const bar = $("ebTabbar");
   if (bar) bar.innerHTML = tabbarHTML();
   bindTabbar();

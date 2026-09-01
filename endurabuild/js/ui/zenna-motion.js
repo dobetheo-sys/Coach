@@ -470,3 +470,53 @@ export function znZoneBar(session, blkMin) {
   }).join("");
   return '<div class="zbar" aria-hidden="true">' + bar + "</div>";
 }
+
+/* ============================================================
+   CASCADE DES AUTRES ONGLETS — une fois par onglet, par session
+   ============================================================
+   La cascade était réservée à Aujourd'hui, et `tabs.js` écrit pourquoi : sur un onglet de
+   consultation qu'on parcourt en aller-retour, `.rise` remet le contenu à opacité 0 à CHAQUE
+   retour, donc chaque retour rejoue une attente. L'objection porte sur la RÉPÉTITION, pas sur
+   le geste — arriver sur un écran mérite le même mouvement partout, c'est ce qui dit que
+   l'écran vient de changer.
+
+   Le portillon est donc la répétition elle-même : la cascade joue à la PREMIÈRE arrivée sur
+   chaque onglet, une fois par session ; les allers-retours suivants s'affichent d'un bloc.
+   Aujourd'hui garde son comportement inchangé (il rejoue à chaque arrivée — c'est l'écran du
+   matin, et sa cascade est enchaînée au tampon de verdict).
+
+   Les re-rendus INTERNES ne passent pas par ici : flèches de semaine, sous-onglets et coches
+   appellent leur module de rendu directement, jamais `renderActiveTab`. */
+const _vus = new Set();
+export function znPlayOnce(tabId) {
+  if (!znOn() || !tabId || _vus.has(tabId)) return;
+  _vus.add(tabId);
+  // Le repli n'est PAS « jouer sans animation » : `.rise` pose opacité 0 en attendant une
+  // animation que le CSS coupe. On ne pose donc aucune classe — l'onglet s'affiche tel quel.
+  if (znReduce()) return;
+  znPlay();
+}
+
+/* ============================================================
+   NAVIGATION DE SEMAINE — les jours arrivent l'un après l'autre
+   ============================================================
+   Celle-ci REJOUE à chaque changement de semaine, et c'est ce qui la distingue de la
+   précédente : ce n'est pas une arrivée sur un écran, c'est un CHANGEMENT DE CONTENU dans un
+   écran qui reste. Sept cases se remplacent au même endroit ; sans mouvement, rien ne dit que
+   le tap a pris — surtout entre deux semaines de même volume.
+
+   Décalage plafonné à CINQ pas (la règle de stagger du système) : au-delà, le dernier jour
+   attend plus longtemps que le geste ne dure, et la grille se lit comme une file d'attente. */
+export function znPlayDays() {
+  if (!znOn() || znReduce()) return;
+  const grid = document.querySelector("#screen .gw-grid");
+  if (!grid) return;
+  const jours = [...grid.children].filter((n) => n.nodeType === 1);
+  if (!jours.length) return;
+  grid.classList.remove("zn-days");
+  jours.forEach((n, i) => n.classList.add("d" + Math.min(5, i + 1)));
+  // Reflow entre retrait et pose : sans lui, rejouer la même animation sur une grille déjà
+  // animée ne redéclenche rien (le navigateur regroupe les deux changements de classe).
+  void grid.offsetWidth;
+  grid.classList.add("zn-days");
+}

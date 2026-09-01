@@ -3,7 +3,7 @@
 import { SPORTS } from "../config.js";
 import { S, todayISO, fmtDay, esc } from "../state.js";
 import { evalRules } from "../ui/steps.js";
-import { renderTabs, invalidatePlan, ensurePlan } from "./tabs.js";
+import { renderTabs, invalidatePlan, ensurePlan, setTab } from "./tabs.js";
 import { logProjection } from "../projection-log.js"; // A-5 — enregistre, ne reboucle jamais
 import { DISC, CHARGE } from "./icons.js";
 
@@ -630,11 +630,68 @@ function _parDiscipline(items) {
  * est idempotente par semaine ISO (« une par semaine, la première suffit ») : l'appeler à chaque
  * rendu ne coûte qu'un test de présence, jamais une seconde écriture.
  */
+/* ============================================================
+   QUAND LA PRÉDICTION N'EST PAS POSSIBLE
+   ============================================================
+   `predictionViewHTML` rendait la chaîne vide dans les trois cas de refus : le sous-onglet
+   « 🎯 Prédiction » s'ouvrait alors sur RIEN — pas un message, pas une explication, une page
+   blanche sous deux onglets. C'est le pire des états vides : l'athlète ne peut pas savoir s'il
+   manque une donnée, si son sport n'est pas couvert, ou si l'app est cassée.
+
+   Les trois raisons ne se traitent pas pareil, et c'est pour ça que le refus ne peut pas être
+   un seul écran générique :
+     · `moteur`  — le module de calcul n'est pas chargé. Ce n'est pas la faute de l'athlète et
+                   il n'a rien à corriger : on le dit, et on ne lui donne pas de faux devoir.
+     · `refus`   — le moteur a refusé, et il porte SA raison. On la cite telle quelle plutôt que
+                   de la reformuler : `EBGenerationError` fait déjà exactement ça ailleurs dans
+                   le produit, et une reformulation serait une seconde source de vérité (R11.1).
+     · `donnees` — il manque des références. Là, et là seulement, il y a une action utile : dire
+                   laquelle et emmener au bon endroit.
+
+   La raison est POSÉE PAR `journaliserProjection`, l'unique endroit qui connaît la cause. La
+   recalculer ici demanderait de refaire ses tests dans le même ordre — deux copies d'une même
+   décision, qui divergeraient au premier changement du moteur. */
+let _prRaison = null, _prDetail = "";
+function predictionIndisponibleHTML() {
+  const T = '<div class="load-title">🎯 Pas de prédiction pour l’instant</div>';
+  if (_prRaison === "moteur") {
+    return '<div class="load-card">' + T
+      + '<div class="load-sub" style="margin-top:7px">Le module de calcul n’est pas disponible sur cet appareil. '
+      + "Ton plan et tes séances ne sont pas concernés — ils viennent d’ailleurs. Réessaie après un rechargement ; "
+      + "s’il manque encore, c’est un problème de notre côté, pas de tes réponses.</div></div>";
+  }
+  if (_prRaison === "refus") {
+    return '<div class="load-card">' + T
+      + '<div class="load-sub" style="margin-top:7px">Le moteur a refusé de projeter un chrono'
+      + (_prDetail ? " : " + esc(String(_prDetail).slice(0, 220)) : "")
+      + ". Un refus motivé vaut mieux qu’un chiffre bâti sur une valeur fausse — le reste du plan "
+      + "reste valable.</div></div>";
+  }
+  return '<div class="load-card">' + T
+    + '<div class="load-sub" style="margin-top:7px">Il manque une référence pour projeter un chrono : une allure, '
+    + "une FTP ou un CSS récents, selon les disciplines de ton épreuve. Renseigne-les dans ton profil, ou importe "
+    + "une sortie — la prédiction apparaîtra d’elle-même, sans réglage à activer.</div>"
+    + '<div class="nav" style="margin-top:11px"><button class="btn" type="button" data-goto-tab="profile">Compléter mes références</button></div>'
+    + "</div>";
+}
+
+// Le bouton « Compléter mes références » est délégué et posé UNE fois : la carte est re-rendue à
+// chaque bascule de sous-onglet, donc un écouteur attaché au bouton disparaîtrait avec lui —
+// même raison que `brancherAide` dans tabs.js.
+if (typeof document !== "undefined" && !globalThis.__prGotoOn) {
+  globalThis.__prGotoOn = true;
+  document.addEventListener("click", (e) => {
+    const b = e.target && e.target.closest ? e.target.closest("[data-goto-tab]") : null;
+    if (b && b.dataset.gotoTab) setTab(b.dataset.gotoTab);
+  });
+}
+
 function journaliserProjection(plan) {
-  if (!globalThis.EBV2 || !globalThis.EBV2.predict) return null;
+  if (!globalThis.EBV2 || !globalThis.EBV2.predict) { _prRaison = "moteur"; return null; }
   let pr;
-  try { pr = globalThis.EBV2.predict(S.sport, S.answers, plan); } catch (e) { return null; }
-  if (!pr || (!pr.items.length && !pr.advice.length)) return null;
+  try { pr = globalThis.EBV2.predict(S.sport, S.answers, plan); } catch (e) { _prRaison = "refus"; _prDetail = (e && (e.human || e.message)) || ""; return null; }
+  if (!pr || (!pr.items.length && !pr.advice.length)) { _prRaison = "donnees"; return null; }
+  _prRaison = null; _prDetail = "";
   logProjection(S.sport, S.answers, pr);
   return pr;
 }
@@ -647,7 +704,7 @@ function journaliserProjection(plan) {
  */
 function predictionViewHTML(plan, prPrecalcule) {
   const pr = prPrecalcule !== undefined ? prPrecalcule : journaliserProjection(plan);
-  if (!pr) return "";
+  if (!pr) return predictionIndisponibleHTML();
 
   // `pjRaw` garde le retour BRUT de `projected`, applicable ou non : c'est lui qui porte le
   // MOTIF d'un refus de projeter (`pjRaw.decisions`, ids P7-refus/P8/P6-sans-chrono). `pj` ne
