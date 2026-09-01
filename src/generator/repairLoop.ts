@@ -325,6 +325,7 @@ export function generateAudited(profile: AthleteProfile, auditOpts?: Partial<Aud
     // il jugerait un débutant qui reprend avec le plafond de temps dur d'un compétiteur.
     history: profile.history,
     injured: !!(profile.injury && profile.injury !== "aucune" && profile.injury !== ""),
+    age: parseInt(String(profile.age ?? "")) || undefined, // fiche 42 — même plafond de dur que le générateur (O-36)
     refs: { cssSecPer100m: reasoned.baseRefs.css || 130, thrPaceSecPerKm: reasoned.baseRefs.thrPace || 330 },
     ...auditOpts,
   };
@@ -361,7 +362,7 @@ export function generateAudited(profile: AthleteProfile, auditOpts?: Partial<Aud
   const _spec30f = String(reasoned.profile.sport) === "run"
     ? longRunSpecificityFloor(String(reasoned.profile.format ?? ""), reasoned.baseRefs.thrPace, 0, Number.MAX_SAFE_INTEGER, parseFloat(String(reasoned.profile.vol_max ?? "")) || undefined)
     : null;
-  reconcileDeclaredVolume(best.plan, warnings, (s) => renderSess(s, refs, reasoned.hz, reasoned.baseRefs), { longSpecTargetMin: _spec30f ? _spec30f.target : undefined, swimFloors: guard(reasoned.profile.sport as string, "swimSessionFloors"), format: reasoned.profile.format, beginner: reasoned.beginner, medHold: reasoned.medHold, keepTaperSwim: guard(reasoned.profile.sport as string, "swimRacePrepFrequency") && !reasoned.dbl && !reasoned.medHold, mainDiscipline: sportModule(reasoned.profile.sport as string).mainDiscipline, disciplines: sportModule(reasoned.profile.sport as string).disciplines, sessionsMaxDeclared: parseInt(String(reasoned.profile.sessions_max ?? "")) || undefined, history: reasoned.profile.history, level: reasoned.profile.level, injured: reasoned.inj.count > 0, refs: { cssSecPer100m: reasoned.baseRefs.css || 130, thrPaceSecPerKm: reasoned.baseRefs.thrPace || 330 } });
+  reconcileDeclaredVolume(best.plan, warnings, (s) => renderSess(s, refs, reasoned.hz, reasoned.baseRefs), { longSpecTargetMin: _spec30f ? _spec30f.target : undefined, swimFloors: guard(reasoned.profile.sport as string, "swimSessionFloors"), format: reasoned.profile.format, beginner: reasoned.beginner, medHold: reasoned.medHold, keepTaperSwim: guard(reasoned.profile.sport as string, "swimRacePrepFrequency") && !reasoned.dbl && !reasoned.medHold, mainDiscipline: sportModule(reasoned.profile.sport as string).mainDiscipline, disciplines: sportModule(reasoned.profile.sport as string).disciplines, sessionsMaxDeclared: parseInt(String(reasoned.profile.sessions_max ?? "")) || undefined, history: reasoned.profile.history, level: reasoned.profile.level, injured: reasoned.inj.count > 0, age: parseInt(String(reasoned.profile.age ?? "")) || undefined, refs: { cssSecPer100m: reasoned.baseRefs.css || 130, thrPaceSecPerKm: reasoned.baseRefs.thrPace || 330 } });
   // R5.1 — EN DERNIER : les réparations ciblées (`applyTargetedRepairs`, `reduceDay`) ont pu
   // rescaler des répétitions après la génération. Toute prose dérivée d'un nombre se resynchronise
   // ici, une fois que plus rien ne bougera — cette fois pour de vrai.

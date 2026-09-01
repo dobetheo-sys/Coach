@@ -126,7 +126,7 @@ for (const sport of Object.keys(v1.SPORTS)) {
           const a = { ...baseAnswers(), format, history, level, intent };
           let audit: PlanAudit;
           try {
-            audit = auditPlan(planOf(sport, a) as never, { sport, format, level, history, refs: REFS });
+            audit = auditPlan(planOf(sport, a) as never, { sport, format, level, history, age: parseInt(String(a.age ?? "")) || undefined, refs: REFS });
           } catch (e) {
             if ((e as { code?: string }).code === "ENTREE_INVALIDE") {
               refus.push(sport + "/" + format + " : " + String((e as { human?: string }).human ?? "").slice(0, 90));

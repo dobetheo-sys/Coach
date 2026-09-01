@@ -165,7 +165,7 @@ export function reconcileDeclaredVolume(
   /** Contexte des règles de SÉANCE tenues ici : la fenêtre piscine dépend du niveau.
    *  `keepTaperSwim` (R13.3) : le sport déclare que l'affûtage garde une nage par semaine —
    *  les coupes de fréquence l'évitent tant qu'une autre victime existe. */
-  ctx?: { swimFloors?: boolean; beginner?: boolean; swimCapM?: number; medHold?: boolean; keepTaperSwim?: boolean; mainDiscipline?: string; disciplines?: string[];
+  ctx?: { swimFloors?: boolean; beginner?: boolean; swimCapM?: number; medHold?: boolean; keepTaperSwim?: boolean; mainDiscipline?: string; disciplines?: string[]; age?: number;
     /** O-85 — la porte de continuité B-17, d'où la borne de charge d'épaule dérive son
      *  multiplicateur ET sa position. `null` quand la nage n'est pas un LEG de l'épreuve. */
     swimGate?: ContinuityGate | null;
@@ -2170,7 +2170,7 @@ function enforceRecupSousCharges(plan: V1Plan, render?: (s: V1Session) => void):
 const C26C_PLANCHER_CONTINU_MIN = 8;
 function enforceHardTimeCap(
   plan: V1Plan,
-  ctx: { history?: string; level?: string; injured?: boolean; beginner?: boolean; refs?: { cssSecPer100m: number; thrPaceSecPerKm: number } } | undefined,
+  ctx: { history?: string; level?: string; injured?: boolean; beginner?: boolean; age?: number; refs?: { cssSecPer100m: number; thrPaceSecPerKm: number } } | undefined,
   render?: (s: V1Session) => void,
 ): Map<number, number> {
   /** B-02 (réallocation) — ce que la coupe a retiré, PAR SEMAINE, en minutes livrées. */
@@ -2179,6 +2179,7 @@ function enforceHardTimeCap(
     history: ctx?.history,
     level: ctx?.level ?? (ctx?.beginner ? "debutant" : undefined),
     injured: !!ctx?.injured,
+    age: ctx?.age, // fiche 42 — le mineur n'a pas le plafond de dur d'un adulte
   }) * C26c_HARD_TIME_TOLERANCE;
 
   const totalOf = (w: V1Week) => w.days.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.min || 0), 0), 0);
@@ -4271,7 +4272,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     ? longRunSpecificityFloor(fmt, r.baseRefs.thrPace, 0, Number.MAX_SAFE_INTEGER, parseFloat(String(a.vol_max ?? "")) || undefined)
     : null;
   _o85 = null; _o93 = null; // les compteurs de déclenchement repartent au PREMIER reconcile du build
-  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { longSpecTargetMin: _spec30 ? _spec30.target : undefined, swimFloors: guard(a.sport as string, "swimSessionFloors"), format: a.format, beginner: r.beginner, swimCapM: r.swimSessionCapM, medHold: r.medHold, keepTaperSwim: guard(a.sport as string, "swimRacePrepFrequency") && !r.dbl && !r.medHold, mainDiscipline: sportModule(a.sport as string).mainDiscipline, disciplines: sportModule(a.sport as string).disciplines, sessionsMaxDeclared: parseInt(String(a.sessions_max ?? "")) || undefined, history: a.history, level: a.level, injured: r.inj.count > 0, refs: { cssSecPer100m: r.baseRefs.css || 130, thrPaceSecPerKm: r.baseRefs.thrPace || 330 },
+  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { longSpecTargetMin: _spec30 ? _spec30.target : undefined, swimFloors: guard(a.sport as string, "swimSessionFloors"), format: a.format, beginner: r.beginner, swimCapM: r.swimSessionCapM, medHold: r.medHold, keepTaperSwim: guard(a.sport as string, "swimRacePrepFrequency") && !r.dbl && !r.medHold, mainDiscipline: sportModule(a.sport as string).mainDiscipline, disciplines: sportModule(a.sport as string).disciplines, sessionsMaxDeclared: parseInt(String(a.sessions_max ?? "")) || undefined, history: a.history, level: a.level, injured: r.inj.count > 0, age: parseInt(String(a.age ?? "")) || undefined, refs: { cssSecPer100m: r.baseRefs.css || 130, thrPaceSecPerKm: r.baseRefs.thrPace || 330 },
     // O-85 — LE DOMAINE EST DÉRIVÉ, PAS UNE LISTE DE SPORTS : la borne « k × distance de course »
     // n'a de sens que si la nage est un LEG d'une épreuve multi-discipline. Un sprinteur qui
     // prépare un 100 m nage trente fois sa distance, et c'est correct — lui appliquer la formule

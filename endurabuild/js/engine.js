@@ -2667,6 +2667,8 @@ const C26d_MOD_SHARE_MAX = rule(
                    
                  
                     
+                                                                                      
+               
  
 /**
  * B-02 — UNE MINUTE DURE NE COÛTE PAS LA MÊME CHOSE SELON LA DISCIPLINE.
@@ -2698,10 +2700,23 @@ const HARD_DISC_WEIGHT                         = rule(
 const weightedHardMin = (hardByDisc                                    )         =>
   Object.entries(hardByDisc ?? {}).reduce((t, [d, m]) => t + m * (HARD_DISC_WEIGHT[d] ?? 1), 0);
 
-/** Plafond de temps DUR hebdomadaire pour ce profil (C26 + C26b). */
+/** Plafond de temps DUR hebdomadaire pour ce profil (C26 + C26b + âge). */
 function hardTimeCapMin(ctx               )         {
   let cap = C26b_HARD_TIME_BY_HISTORY[ctx?.history || "confirme"] ?? C26_HARD_TIME_CAP_MIN;
   if (ctx?.level === "debutant") cap = Math.min(cap, C26b_HARD_TIME_BEGINNER_MIN);
+  // FICHE 42 (conseil d'experts, §2.1) — LE PLAFOND DE DUR SUIT L'ÂGE CHEZ LE MINEUR.
+  //
+  // R6.3 retirait la VO2max et réduisait le VOLUME (×0,7), mais le travail au SEUIL restait au
+  // tarif adulte : mesuré, un duathlète de 16 ans livrait 65 min pondérées de dur par semaine,
+  // au ras du plafond adulte confirmé (60 × 1,1 = 66). Le facteur est CELUI déjà arbitré pour
+  // le volume — `R6_AGE_LOAD.mineur.volFactor` (0,7) et `mineur2` (0,5 sous 14 ans) — jamais
+  // un nombre neuf, même construction que les paliers de la fiche 39. Le master n'est PAS
+  // modulé : la résolution du conseil est que son levier est la CADENCE de récupération
+  // (déjà servie, récup toutes les 3 semaines), pas la dose de qualité.
+  const age = ctx?.age;
+  if (age != null && Number.isFinite(age) && age < 18) {
+    cap = Math.round(cap * (age <= R6_AGE_LOAD.mineur2.maxAge ? R6_AGE_LOAD.mineur2.volFactor : R6_AGE_LOAD.mineur.volFactor));
+  }
   if (ctx?.injured) cap = Math.round(cap * C26b_INJURY_FACTOR);
   return cap;
 }
@@ -5715,6 +5730,8 @@ const THRESHOLDS = {
                                                                                  
                    
                     
+                                                                                       
+               
                      
  
 
@@ -6070,7 +6087,7 @@ function auditPlan(plan        , opts            = {})            {
   // Mesuré avant correction sur 7 356 semaines de charge : **1 095 (15 %) au-dessus du plafond
   // que C26 déclare**, jusqu'à 112 min de dur chez un DÉBUTANT dont le plafond est 25 ; et le
   // modéré, seul puni par l'ancienne formulation, ne débordait que 2 fois sur 7 356.
-  const capHard = hardTimeCapMin({ history: opts.history, level: opts.level, injured: !!opts.injured });
+  const capHard = hardTimeCapMin({ history: opts.history, level: opts.level, injured: !!opts.injured, age: opts.age });
   // B-02 — la mesure est PONDÉRÉE par discipline (le plafond, lui, ne bouge pas : le
   // proportionnel est B-02c). La coupe du générateur lit exactement la même grandeur.
   const overHard = perWeekHard.filter((w) => w.hardPond > capHard * C26c_HARD_TIME_TOLERANCE);
@@ -10232,7 +10249,7 @@ function reconcileDeclaredVolume(
   /** Contexte des règles de SÉANCE tenues ici : la fenêtre piscine dépend du niveau.
    *  `keepTaperSwim` (R13.3) : le sport déclare que l'affûtage garde une nage par semaine —
    *  les coupes de fréquence l'évitent tant qu'une autre victime existe. */
-  ctx                                                                                                                                                              
+  ctx                                                                                                                                                                            
                                                                                        
                                                                                              
                                      
@@ -12237,7 +12254,7 @@ function enforceRecupSousCharges(plan        , render                         ) 
 const C26C_PLANCHER_CONTINU_MIN = 8;
 function enforceHardTimeCap(
   plan        ,
-  ctx                                                                                                                                                    ,
+  ctx                                                                                                                                                                  ,
   render                         ,
 )                      {
   /** B-02 (réallocation) — ce que la coupe a retiré, PAR SEMAINE, en minutes livrées. */
@@ -12246,6 +12263,7 @@ function enforceHardTimeCap(
     history: ctx?.history,
     level: ctx?.level ?? (ctx?.beginner ? "debutant" : undefined),
     injured: !!ctx?.injured,
+    age: ctx?.age, // fiche 42 — le mineur n'a pas le plafond de dur d'un adulte
   }) * C26c_HARD_TIME_TOLERANCE;
 
   const totalOf = (w        ) => w.days.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.min || 0), 0), 0);
@@ -14338,7 +14356,7 @@ function generatePlan(profile                , opts                             
     ? longRunSpecificityFloor(fmt, r.baseRefs.thrPace, 0, Number.MAX_SAFE_INTEGER, parseFloat(String(a.vol_max ?? "")) || undefined)
     : null;
   _o85 = null; _o93 = null; // les compteurs de déclenchement repartent au PREMIER reconcile du build
-  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { longSpecTargetMin: _spec30 ? _spec30.target : undefined, swimFloors: guard(a.sport          , "swimSessionFloors"), format: a.format, beginner: r.beginner, swimCapM: r.swimSessionCapM, medHold: r.medHold, keepTaperSwim: guard(a.sport          , "swimRacePrepFrequency") && !r.dbl && !r.medHold, mainDiscipline: sportModule(a.sport          ).mainDiscipline, disciplines: sportModule(a.sport          ).disciplines, sessionsMaxDeclared: parseInt(String(a.sessions_max ?? "")) || undefined, history: a.history, level: a.level, injured: r.inj.count > 0, refs: { cssSecPer100m: r.baseRefs.css || 130, thrPaceSecPerKm: r.baseRefs.thrPace || 330 },
+  reconcileDeclaredVolume(plan, r.warnings, (s) => renderSess(s, refs, r.hz, r.baseRefs), { longSpecTargetMin: _spec30 ? _spec30.target : undefined, swimFloors: guard(a.sport          , "swimSessionFloors"), format: a.format, beginner: r.beginner, swimCapM: r.swimSessionCapM, medHold: r.medHold, keepTaperSwim: guard(a.sport          , "swimRacePrepFrequency") && !r.dbl && !r.medHold, mainDiscipline: sportModule(a.sport          ).mainDiscipline, disciplines: sportModule(a.sport          ).disciplines, sessionsMaxDeclared: parseInt(String(a.sessions_max ?? "")) || undefined, history: a.history, level: a.level, injured: r.inj.count > 0, age: parseInt(String(a.age ?? "")) || undefined, refs: { cssSecPer100m: r.baseRefs.css || 130, thrPaceSecPerKm: r.baseRefs.thrPace || 330 },
     // O-85 — LE DOMAINE EST DÉRIVÉ, PAS UNE LISTE DE SPORTS : la borne « k × distance de course »
     // n'a de sens que si la nage est un LEG d'une épreuve multi-discipline. Un sprinteur qui
     // prépare un 100 m nage trente fois sa distance, et c'est correct — lui appliquer la formule
@@ -15576,6 +15594,7 @@ function generateAudited(profile                , auditOpts                     
     // il jugerait un débutant qui reprend avec le plafond de temps dur d'un compétiteur.
     history: profile.history,
     injured: !!(profile.injury && profile.injury !== "aucune" && profile.injury !== ""),
+    age: parseInt(String(profile.age ?? "")) || undefined, // fiche 42 — même plafond de dur que le générateur (O-36)
     refs: { cssSecPer100m: reasoned.baseRefs.css || 130, thrPaceSecPerKm: reasoned.baseRefs.thrPace || 330 },
     ...auditOpts,
   };
@@ -15612,7 +15631,7 @@ function generateAudited(profile                , auditOpts                     
   const _spec30f = String(reasoned.profile.sport) === "run"
     ? longRunSpecificityFloor(String(reasoned.profile.format ?? ""), reasoned.baseRefs.thrPace, 0, Number.MAX_SAFE_INTEGER, parseFloat(String(reasoned.profile.vol_max ?? "")) || undefined)
     : null;
-  reconcileDeclaredVolume(best.plan, warnings, (s) => renderSess(s, refs, reasoned.hz, reasoned.baseRefs), { longSpecTargetMin: _spec30f ? _spec30f.target : undefined, swimFloors: guard(reasoned.profile.sport          , "swimSessionFloors"), format: reasoned.profile.format, beginner: reasoned.beginner, medHold: reasoned.medHold, keepTaperSwim: guard(reasoned.profile.sport          , "swimRacePrepFrequency") && !reasoned.dbl && !reasoned.medHold, mainDiscipline: sportModule(reasoned.profile.sport          ).mainDiscipline, disciplines: sportModule(reasoned.profile.sport          ).disciplines, sessionsMaxDeclared: parseInt(String(reasoned.profile.sessions_max ?? "")) || undefined, history: reasoned.profile.history, level: reasoned.profile.level, injured: reasoned.inj.count > 0, refs: { cssSecPer100m: reasoned.baseRefs.css || 130, thrPaceSecPerKm: reasoned.baseRefs.thrPace || 330 } });
+  reconcileDeclaredVolume(best.plan, warnings, (s) => renderSess(s, refs, reasoned.hz, reasoned.baseRefs), { longSpecTargetMin: _spec30f ? _spec30f.target : undefined, swimFloors: guard(reasoned.profile.sport          , "swimSessionFloors"), format: reasoned.profile.format, beginner: reasoned.beginner, medHold: reasoned.medHold, keepTaperSwim: guard(reasoned.profile.sport          , "swimRacePrepFrequency") && !reasoned.dbl && !reasoned.medHold, mainDiscipline: sportModule(reasoned.profile.sport          ).mainDiscipline, disciplines: sportModule(reasoned.profile.sport          ).disciplines, sessionsMaxDeclared: parseInt(String(reasoned.profile.sessions_max ?? "")) || undefined, history: reasoned.profile.history, level: reasoned.profile.level, injured: reasoned.inj.count > 0, age: parseInt(String(reasoned.profile.age ?? "")) || undefined, refs: { cssSecPer100m: reasoned.baseRefs.css || 130, thrPaceSecPerKm: reasoned.baseRefs.thrPace || 330 } });
   // R5.1 — EN DERNIER : les réparations ciblées (`applyTargetedRepairs`, `reduceDay`) ont pu
   // rescaler des répétitions après la génération. Toute prose dérivée d'un nombre se resynchronise
   // ici, une fois que plus rien ne bougera — cette fois pour de vrai.

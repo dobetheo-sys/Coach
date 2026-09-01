@@ -611,6 +611,8 @@ export interface EasyFloorCtx {
   history?: string;
   level?: string;
   injured?: boolean;
+  /** Fiche 42 — le plafond de dur suit l'âge chez le MINEUR (voir hardTimeCapMin). */
+  age?: number;
 }
 /**
  * B-02 — UNE MINUTE DURE NE COÛTE PAS LA MÊME CHOSE SELON LA DISCIPLINE.
@@ -642,10 +644,23 @@ export const HARD_DISC_WEIGHT: Record<string, number> = rule(
 export const weightedHardMin = (hardByDisc: Record<string, number> | undefined): number =>
   Object.entries(hardByDisc ?? {}).reduce((t, [d, m]) => t + m * (HARD_DISC_WEIGHT[d] ?? 1), 0);
 
-/** Plafond de temps DUR hebdomadaire pour ce profil (C26 + C26b). */
+/** Plafond de temps DUR hebdomadaire pour ce profil (C26 + C26b + âge). */
 export function hardTimeCapMin(ctx?: EasyFloorCtx): number {
   let cap = C26b_HARD_TIME_BY_HISTORY[ctx?.history || "confirme"] ?? C26_HARD_TIME_CAP_MIN;
   if (ctx?.level === "debutant") cap = Math.min(cap, C26b_HARD_TIME_BEGINNER_MIN);
+  // FICHE 42 (conseil d'experts, §2.1) — LE PLAFOND DE DUR SUIT L'ÂGE CHEZ LE MINEUR.
+  //
+  // R6.3 retirait la VO2max et réduisait le VOLUME (×0,7), mais le travail au SEUIL restait au
+  // tarif adulte : mesuré, un duathlète de 16 ans livrait 65 min pondérées de dur par semaine,
+  // au ras du plafond adulte confirmé (60 × 1,1 = 66). Le facteur est CELUI déjà arbitré pour
+  // le volume — `R6_AGE_LOAD.mineur.volFactor` (0,7) et `mineur2` (0,5 sous 14 ans) — jamais
+  // un nombre neuf, même construction que les paliers de la fiche 39. Le master n'est PAS
+  // modulé : la résolution du conseil est que son levier est la CADENCE de récupération
+  // (déjà servie, récup toutes les 3 semaines), pas la dose de qualité.
+  const age = ctx?.age;
+  if (age != null && Number.isFinite(age) && age < 18) {
+    cap = Math.round(cap * (age <= R6_AGE_LOAD.mineur2.maxAge ? R6_AGE_LOAD.mineur2.volFactor : R6_AGE_LOAD.mineur.volFactor));
+  }
   if (ctx?.injured) cap = Math.round(cap * C26b_INJURY_FACTOR);
   return cap;
 }

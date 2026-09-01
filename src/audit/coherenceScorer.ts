@@ -87,6 +87,8 @@ export interface AuditOpts {
    *  chez celui qui reprend ou qui débute. Le plafond de temps dur en dépend. */
   history?: string;
   injured?: boolean;
+  /** Fiche 42 — le plafond de temps dur suit l'âge chez le mineur (hardTimeCapMin). */
+  age?: number;
   refs?: AthleteRefs;
 }
 
@@ -442,7 +444,7 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
   // Mesuré avant correction sur 7 356 semaines de charge : **1 095 (15 %) au-dessus du plafond
   // que C26 déclare**, jusqu'à 112 min de dur chez un DÉBUTANT dont le plafond est 25 ; et le
   // modéré, seul puni par l'ancienne formulation, ne débordait que 2 fois sur 7 356.
-  const capHard = hardTimeCapMin({ history: opts.history, level: opts.level, injured: !!opts.injured });
+  const capHard = hardTimeCapMin({ history: opts.history, level: opts.level, injured: !!opts.injured, age: opts.age });
   // B-02 — la mesure est PONDÉRÉE par discipline (le plafond, lui, ne bouge pas : le
   // proportionnel est B-02c). La coupe du générateur lit exactement la même grandeur.
   const overHard = perWeekHard.filter((w) => w.hardPond > capHard * C26c_HARD_TIME_TOLERANCE);
