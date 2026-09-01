@@ -201,4 +201,7 @@ et publie l'inversion au lieu du faux vert.
   T4 +2, instrument T9 −35).
 - **Critères réécrits dans l'unité de T1, avec leur raison affichée** : D5 (banc v6), T-41
   (lotPhysio) — jamais supprimés.
-- **Batterie complète en fin de passe** : voir le commit de clôture (12/12 exigé par la fiche).
+- **Batterie complète en fin de passe : 12/12 verts** — audit:v1 459 à 0 · invariants 22×54 ·
+  v6 75 verts · 0 régression · v7 tous budgets tenus · r13/r14/r14.1/r18 · golden:verify
+  1074/1074 · 0 écart · golden:bundle · check:dates · lotPhysio 33 verts · 24 rouges attendus ·
+  0 régression.
