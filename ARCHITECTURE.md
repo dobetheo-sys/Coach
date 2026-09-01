@@ -6112,3 +6112,83 @@ bloc 4 248/4 248, ampleur par zone égale au ratio au dixième de point, 0 chang
 54 semaines sur 2 682 (2,0 %) qui s'éloignent de leur cible, toutes attribuées (50 à la sonde de
 capacité qui lit un clone saturé — famille T-25/O-35 —, 4 à un plafond qui se nomme dans le plan).
 Contre-preuve : rejoué contre le moteur d'avant, le rapport rend « RÉSIDU » et six zones en ✖.
+
+---
+
+## BIKEFIT — la logique pure du bilan de position aéro (étape 1 sur 5)
+
+Portée du dépôt `dobetheo-sys/Bikefiting` (`main`), sur la foi du handoff
+`INTEGRATION_Bikefiting_HANDOFF.md`. **Ce qui est ici est l'étape 1 de son §8 et rien d'autre :
+la logique pure et ses tests. Aucune UI, aucun écran, aucun onglet.** Le reste (React) est
+BLOQUÉ, et la raison est mécanique, pas une préférence — voir plus bas.
+
+**Le handoff a été vérifié avant d'être suivi, et il est exact sur tout ce qu'il affirme.** Les
+trois commandes qu'il donne pour faire foi rendent bien `0` et `7` ; les huit comptes de lignes
+de son §2 sont exacts au chiffre près (5 955 au total) ; `npm test` dans le dépôt d'origine rend
+**70 tests, 70 verts** ; les trois fichiers qu'il déclare morts ne sont importés nulle part hors
+de leurs propres tests. Deux écarts seulement, tous deux par omission :
+
+- son §3 annonce **3 devDependencies** ; le `package.json` réel en porte **9** (Vite 8,
+  TypeScript 6, `@vitejs/plugin-react`, trois paquets `@types`). Avec les 4 `dependencies`,
+  l'intégration complète amène **13 paquets**, pas 7 ;
+- il ne dit rien de la **CSP**, qui est ce qui bloque réellement (ci-dessous).
+
+### Ce qui est porté — `src/bikefit/`
+
+| Fichier | Origine | Contenu |
+|---|---|---|
+| `postureAeroEngine.ts` (578 l.) | `src/engine/posture-aero-engine.ts` | tout le scoring : validation, score confort, score aéro, plages de sensibilité, Pareto, recalibration du feedback. **Zéro import.** |
+| `captureProcessing.ts` (378 l.) | `src/capture/capture-processing.ts` | géométrie des angles (`angleAt`, `angleVsHorizontal`), mesures manuelles ASLR/PMH/PMB, pFSA depuis un masque binaire. |
+| `postureAeroEngine.test.ts` · `captureProcessing.test.ts` | idem | **56 tests `node:test`, 56 verts** — `npm run test:bikefit`. |
+| `docs/SPEC_POSTURE_AERO_MOTEUR.md` | `docs/` | la spec fonctionnelle, qui dit quels seuils sont `[SOURCED]` et lesquels sont `[DEFAULT]`. |
+
+**Le dépôt reste à zéro dépendance, et c'est le seul changement de fond apporté au code porté** :
+l'original passe par `tsx` pour exécuter ses tests. Ici les imports portent leur extension
+(`'./postureAeroEngine.ts'`, la convention de `src/`), et **Node exécute le TypeScript
+nativement** — `tsx` disparaît. Aucun paquet npm ajouté.
+
+**56 tests sur 70, et les 14 manquants sont nommés** : 6 couvraient `extractTrialAngles`
+(le pipeline de détection AUTOMATIQUE, mort — son §6a explique pourquoi, deux échecs sur de
+vraies vidéos, et la mesure est manuelle depuis) ; 3 couvraient `pose-integration.ts`, mort
+aussi ; 5 couvraient la segmentation MediaPipe, qui ne peut pas être portée sans la dépendance.
+La fonction morte est retirée **avec une note à sa place** plutôt que silencieusement, pour la
+raison que le handoff donne lui-même : la porter donnerait l'illusion qu'une détection auto
+existe.
+
+### Ce qui est bloqué, et pourquoi (étapes 2 à 5 du §8)
+
+L'UI (`App.jsx` 2 095 l. + `PostureCaptureFlow.jsx` 1 537 l.) est **React 18 + Tailwind v4 +
+Vite**. Trois murs, mesurés dans ce dépôt :
+
+1. **La PWA n'a pas d'étape de construction.** `endurabuild/index.html` charge
+   `<script type="module" src="js/app.js">` et **45 modules ES servis tels quels**. Du JSX ne
+   peut pas être servi sans compilation : l'adopter, c'est mettre un bundler sur le chemin du
+   produit — ce que `build:standalone` (23 modules recousus en `Blob` + `importmap`) et
+   `check:sw` (VERSION = hachage du contenu SERVI) supposent absent.
+2. **La CSP interdit le WASM, et un gate le garde.** `script-src 'self'`, sans plus. MediaPipe
+   — que le handoff garde pour la segmentation de la photo frontale — exige
+   `'wasm-unsafe-eval'`. Or `tests/e2e/smoke-securite.mjs:31` asserte
+   `/script-src 'self'(;|$)/` : ajouter le jeton **rend ce gate rouge**. Ce n'est pas un
+   obstacle à contourner, c'est une décision de sécurité écrite (S-4) — la lever est un
+   arbitrage du fondateur.
+3. **Les polices.** L'`index.html` d'origine charge Bebas Neue, Inter et IBM Plex Mono depuis
+   Google Fonts (3 références). Ici `font-src 'self'`, les sept polices sont auto-hébergées
+   (D19), et `check:hosts` dérive sa liste blanche de la CSP. Sans effet sur le produit : ce
+   sont **exactement** les polices que la PWA embarque déjà.
+
+Le §5 du handoff (design system) est donc à moitié acquis d'avance : les tokens que son
+`@theme` déclare sont ceux de `zenna-today.css` au nom près (`--color-orange` = `--zn-accent`
+`#ff3d00`, `--color-cyan` = `--zn-cyan` `#00e0c6`, `--color-gold` `#ffd23d`, les trois surfaces).
+Rien à inventer le jour où l'UI sera réécrite en modules ES.
+
+### Ce que le portage NE fait pas
+
+Il ne branche rien. `src/bikefit/` n'est importé par aucun module, n'entre pas dans `ORDER` de
+`buildApp.mjs`, ne touche aucun plan — `audit:v1`, le golden et les bancs sont inertes par
+construction. C'est délibéré : l'étape 1 du §8 est décrite comme « aucun risque, aucune UI »,
+et poser du code de produit sans écran serait poser une promesse que rien ne tient.
+
+Les cinq écarts connus du §7 du handoff (le stub `headOffset_cm`, la pFSA jamais confrontée à
+une vraie photo, `DeviceOrientationEvent.requestPermission()` absent sur iOS, l'amplitude de
+cheville à 0, `ankle_unstable` non traduit) restent **entiers** : ils vivent dans l'UI ou dans
+la mesure terrain, pas dans ce qui est porté ici.
