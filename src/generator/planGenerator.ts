@@ -1231,15 +1231,26 @@ export function reconcileDeclaredVolume(
   //
   // Une promesse d'heures qui ne tient pas est un défaut de véracité, pas un arrondi. Tolérance
   // 10 % : au-delà, le chiffre affiché suit ce qui est réellement prescrit.
-  for (const wk of plan.weeks) {
-    const delivered = weekH(wk);
-    const declared = wk.vol_declared ?? wk.vol;
-    if (declared > 0 && Math.abs(declared - delivered) / declared > 0.10) {
-      wk.vol_declared = delivered;
-      wk.vol = delivered;
+  //
+  // O-116 (fiche 49) — ET ELLE SE REJOUE APRÈS LES PASSES QUI LA DÉFONT. Cette réconciliation
+  // vivait ICI, en amont de C29d et de T-56 (≈ 700 lignes plus bas) : les deux modifient le
+  // LIVRÉ, donc la courbe décrivait l'avant-dernier état. Quatorzième occurrence de la leçon.
+  // Mesuré en resserrant la référence de T-56 (O-114) : le banc v7 passait de 6 à 12 semaines
+  // trail prescrivant plus de 1,4 × leur courbe annoncée — le défaut PRÉEXISTAIT, la coupe plus
+  // stricte l'a rendu visible. `reconcilierCourbe()` est le point unique, appelé aux deux
+  // moments.
+  const reconcilierCourbe = () => {
+    for (const wk of plan.weeks) {
+      const delivered = weekH(wk);
+      const declared = wk.vol_declared ?? wk.vol;
+      if (declared > 0 && Math.abs(declared - delivered) / declared > 0.10) {
+        wk.vol_declared = delivered;
+        wk.vol = delivered;
+      }
+      wk.vol_real = delivered;
     }
-    wk.vol_real = delivered;
-  }
+  };
+  reconcilierCourbe();
   // C13d — UNE SÉANCE SOUS-DOSÉE EST DÉCLASSÉE, PAS RABOTÉE.
   //
   // Corollaire de C13c (plancher d'échauffement 10 min) ET de C13e (échauffement ≤ corps) : pour
@@ -1953,6 +1964,9 @@ export function reconcileDeclaredVolume(
     const rattrapage = enforceDechargePlancher(plan, ctxC29d, render);
     if (rattrapage > 0) enforceRecupSousCharges(plan, render);
     rendus += rattrapage;
+    // O-116 — la courbe se réconcilie de nouveau : C29d vient de rendre des jours et T-56 de
+    // raboter des doses ; l'annonce écrite en amont ne décrit plus le plan.
+    reconcilierCourbe();
     if (rendus > 0) warnings.push("C29d — " + rendus + " jour(s) facile(s) rendu(s) à des semaines de décharge qui étaient tombées sous le quart de leurs voisines : une décharge se fait par le contenu (volume réduit, tout facile), pas par l'interruption.");
   }
   // …et la garantie A− se REJOUE : O-93 peut réduire la semaine qui précède une course A−,
@@ -2379,6 +2393,25 @@ function enforceRecupSousCharges(plan: V1Plan, render?: (s: V1Session) => void):
     // ── axe TYPE : la dose d'un type en récup ≤ la meilleure dose du MÊME type chez les
     // charges qui l'encadrent. Un type absent des deux voisines n'a pas de référent : il
     // relève de l'axe DISCIPLINE (déclaré, pas silencieux).
+    //
+    // O-114 (fiche 49) — LA RÉFÉRENCE EST `max(av, ap)`, ET C'EST UNE DÉCISION, PAS UN OUBLI.
+    //
+    // « Les charges qui l'ENCADRENT » : sur un plan qui MONTE, la charge SUIVANTE est la plus
+    // grosse, donc une décharge peut peser autant qu'une semaine PAS ENCORE FAITE et dépasser
+    // celle qu'elle est là pour absorber. Mesuré sur le corpus trail : **60 profils sur 67
+    // (90 %), 145 inversions**, jusqu'à `Back-to-back` à 124 min en décharge contre 70 en charge
+    // (+77 %) — c'est O-114, et le gate de monotonie les voit parce qu'il compare à la charge
+    // PRÉCÉDENTE, comme l'auditeur le fait au niveau de la SEMAINE (`recupHeavier`).
+    //
+    // ⚠ RESSERRER LA RÉFÉRENCE À `av` A ÉTÉ ÉCRIT, MESURÉ, ET RETIRÉ (fiche 49) : il ferme bien
+    // les 145 inversions et laisse `audit:v1` vert, mais il **perturbe le point fixe** — le test
+    // T-56 du banc `lotPhysio`, qui mesure la MÊME propriété contre `max(av, ap)`, passe de 0 à
+    // **16 inversions de TYPE résiduelles** (pire : `REEL/tri/70.3` S32 « Nage récup courte »
+    // 2 625 pour 2 225). La propriété plus stricte n'est donc pas DÉLIVRABLE en une passe, et
+    // T-56 n'est pas idempotent (une seconde passe inconditionnelle change 23 plans, mesuré au
+    // lot du plancher de décharge). Ce qui reste à trancher est une DÉFINITION — « une décharge
+    // ne pèse pas plus que la charge qui PRÉCÈDE » (auditeur, gate) ou « que celles qui
+    // l'ENCADRENT » (ici) — et c'est une décision d'entraînement, pas un réglage.
     const refT = new Map<string, number>();
     for (const vw of [av, ap]) if (vw) for (const d of vw.days) for (const s of d.sessions) {
       if (s.d === "rs" || s.race) continue;

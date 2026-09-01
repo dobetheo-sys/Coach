@@ -611,6 +611,45 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**O-113 ET O-114 : LES DEUX CAUSES SONT NOMMÉES, AUCUN DES DEUX CORRECTIFS N'EST DÉLIVRABLE
+AUJOURD'HUI — et c'est en cherchant le second qu'un défaut d'ORDRE DE PASSES est tombé**
+(fiche 49, 01/09/2026 — voir `BUGS_OUVERTS.md` « O-113 », « O-114 », « O-116 FERMÉ ») :
+**O-113** — neutraliser `sessionScale` ferme l'inversion vélo **ENTIÈREMENT** (174 = 174 ·
+172 = 172 · 170 = 170, contre 192 → 175 au moteur intact). C'est la **même FAMILLE qu'O-77** — une
+constante de PLAN dérivée de l'enveloppe déclarée, appliquée dès la semaine 1 (règle 20) — avec un
+**porteur différent** : en tri, O-77 vivait dans `_capScale` et `sessionScale` avait été
+explicitement RÉFUTÉE (fiche 47) ; en vélo c'est l'inverse. **Le total de la semaine est identique**
+(456 = 456) : c'est une REDISTRIBUTION — à enveloppe basse les blocs naissent petits, la boucle doit
+faire croître la semaine, et la croissance atterrit sur le receveur élastique (R4.1, la sortie
+longue) ; à enveloppe haute rien ne croît. Ce n'est pas que l'ambitieux est affamé, **c'est que le
+modeste est GONFLÉ**. Ampleur **15 cellules sur 45, 51 semaines, −9 à −15 %**. Correctif non écrit
+et sa raison est mesurée : `sessionScale` multiplie la taille de NAISSANCE de chaque bloc de chaque
+sport, strictement plus que `_capScale` qui ne touchait qu'un plafond — et la fiche 48 a chiffré ce
+que coûte cette classe (3 violations DURES et une régression de SÉCURITÉ pour un correctif plus
+petit). **O-114** — ce n'est **pas** un défaut de périmètre de T-56 : **T-56 et le gate ne mesurent
+pas la même propriété.** T-56 prend `max(charge précédente, charge suivante)` — « les charges qui
+l'ENCADRENT » — donc sur un plan qui MONTE une décharge peut peser autant qu'une semaine **pas
+encore faite** ; le gate et l'auditeur (`recupHeavier`) comparent à la charge qui **PRÉCÈDE**. La
+portée est **30× celle que le gate montrait** : **60 profils trail sur 67 (90 %), 145 inversions**,
+jusqu'à **124 min en décharge contre 70 en charge (+77 %)**. **Le correctif a été écrit, mesuré et
+RETIRÉ** : resserrer la référence ferme les 145 et laisse `audit:v1` vert, mais **perturbe le point
+fixe** — le test T-56 du banc `lotPhysio` passe de 0 à **16 inversions de TYPE résiduelles** (T-56
+n'est pas idempotent). Ce qui reste à trancher est une **DÉFINITION, pas un réglage** : « précède »
+ou « encadrent » — décision d'entraînement, au fondateur ; **O-115 a la même cause**.
+**O-116 FERMÉ, et il n'aurait pas été vu sans la tentative** : la réconciliation « le volume annoncé
+est le volume prescrit » (I10/B3) vivait ≈ 700 lignes **AVANT** C29d et T-56, qui modifient toutes
+deux le LIVRÉ — la courbe décrivait l'avant-dernier état, **quatorzième occurrence de la leçon**.
+Le banc v7 passait de 6 à **12 semaines trail prescrivant plus de 1,4 × leur courbe annoncée** : le
+défaut **PRÉEXISTAIT**, la coupe plus stricte l'a rendu visible. `reconcilierCourbe()` est le point
+unique appelé aux deux moments ; **trail 74 % → 76 %**, v7 dans tous ses budgets. **⚠ Ce qu'il
+apprend n'est pas un détail** : la courbe annoncée n'est PAS un pur descripteur — des passes aval la
+LISENT (`vol_declared ?? vol`), donc la réécrire change le plan ; mesuré à facteur unique, le
+cliquet **T-60 passe de 8 à 9** sur `G/tri/Full/vol-min`, le profil le plus plafonné du corpus
+(même population que les 8 autres, déjà rangée en « accident », O-98) — voisinage d'O-43, publié.
+**Batterie 13/13, `audit:v1` 459 à 0, `audit:monotonie` 24 verts · 4 dettes déclarées · 0 régression
+· 1 628 comparaisons, `lotPhysio` 33 verts · 24 rouges attendus · 0 régression, golden recapturé
+(152 écarts sur 1 074 : tri 90 · swim 37 · swimrun 12 · run 9 · trail 4).**
+
 **FICHE 48 livrée — O-77 est FERMÉE : le plafond de séance suit la POSITION, plus l'ambition
 déclarée** (décision du fondateur, 01/09/2026 — voir `syntheses/44-fiche48-…`, registre O-77
 fermé, **O-115** ouvert) : `capScaleAtWeek(phases, weeks, wk)` (point unique, pure, patron

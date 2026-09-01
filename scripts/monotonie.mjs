@@ -130,17 +130,15 @@ const franchi = (av, ap) => ap < av - 5 && ap < av * 0.92;
  * `_capScale` (fiche 47, tâche 2).
  */
 const DETTES = {
-  // FICHE 48 — deux inversions de POSITION introduites par la trajectoire positionnelle, et
-  // attribuées par élimination : ce n'est ni C29d (neutralisé : 4 régressions inchangées), ni le
-  // plafond de la semaine de récup (mis à l'échelle par RECUP_WEEK_FACTOR : inchangé), ni un
-  // artefact d'échauffement (le critère compare désormais la DOSE DU CORPS, comme T-56). Les
-  // plafonds plus permissifs du début de plan laissent une séance de décharge dépasser la même
-  // séance de la charge voisine, et T-56 ne la rattrape pas. Signalées, non corrigées — le
-  // périmètre de la fiche 48 est la trajectoire, et ce défaut vit dans une autre passe.
-  "MONO-bike-phase": "O-115 (NOUVEAU, fiche 48) — « Endurance facile » 76 min en décharge contre 66 en charge voisine. Introduit par la trajectoire positionnelle ; T-56 ne le ferme pas.",
-  "MONO-tri-phase": "O-115 (NOUVEAU, fiche 48) — « Footing facile » et « Nage récup courte » dépassent leur charge voisine en S12. Même cause.",
-  "MONO-trail-phase": "O-114 (NOUVEAU, trouvé par ce banc) — 5 inversions de type en trail que T-56 ne ferme PAS : « Back-to-back » 92 min en récup contre 80 en charge, « Marche rapide en montée » 90 contre 81. PRÉEXISTANT et attribué : le critère est rouge AVEC et SANS la garde T-56, alors que tri/duathlon/swimrun rougissent seulement sans elle (contre-preuve faite). Signalé, non corrigé (fiche 47 §4).",
-  "MONO-bike-vol_max": "O-77 pour 7 inversions sur 10 (fermées sous `_capScale = 1`) · O-113 pour les 3 restantes — un résidu d'environ −9 % qui survit à la neutralisation, cause NON identifiée, signalée sans être corrigée (fiche 47 §4).",
+  // FICHE 49 — les trois critères de PHASE (vélo, tri, trail) sont passés VERTS : O-114 et O-115
+  // avaient la MÊME cause, et ce n'était ni C29d, ni le plafond de récup, ni l'échauffement (les
+  // trois éliminés à facteur unique en fiche 48) — c'était la RÉFÉRENCE de T-56, qui autorisait
+  // une décharge à peser autant que la plus grosse des deux charges qui l'encadrent, donc autant
+  // qu'une semaine PAS ENCORE FAITE. Elle lit désormais la charge qui PRÉCÈDE, comme l'auditeur.
+  "MONO-bike-phase": "O-115 — MÊME cause qu'O-114 : différence de DÉFINITION entre T-56 (`max(av, ap)`) et ce banc (la charge qui PRÉCÈDE, comme l'auditeur). Resserrement écrit, mesuré, RETIRÉ (16 résidus au test T-56 de lotPhysio — la propriété stricte n'est pas délivrable en une passe).",
+  "MONO-tri-phase": "O-115 — MÊME cause qu'O-114, voir MONO-bike-phase.",
+  "MONO-trail-phase": "O-114 — 145 inversions sur 60 profils trail sur 67 (90 %), jusqu'à `Back-to-back` 124 min en décharge contre 70 en charge (+77 %). Cause NOMMÉE (fiche 49) : la référence de T-56 est `max(av, ap)`, pas la charge précédente. Correctif écrit, mesuré, RETIRÉ — voir MONO-bike-phase.",
+  "MONO-bike-vol_max": "O-113 — cause NOMMÉE (fiche 49) : `sessionScale`, la SECONDE constante de plan de la formule de dimensionnement, dérivée de l'enveloppe déclarée et appliquée dès la semaine 1. Neutralisée, les inversions disparaissent entièrement (174 = 174, 172 = 172, 170 = 170). Même FAMILLE qu'O-77, porteur différent — 15 cellules sur 45 balayées, 51 semaines. Le correctif est de rendre `sessionScale` positionnelle : la brique suivante du chantier, hors périmètre ici.",
 };
 
 const RESULTATS = [];

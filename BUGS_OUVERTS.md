@@ -700,6 +700,23 @@ séances clés par cycle » est celle du fondateur : **elle n'est écrite nulle 
 dépôt** — si elle fait foi, `quotidienne` est DANS la cible et c'est le schéma de 7 qui est
 au-dessus.
 
+### O-116 — la courbe annoncée était écrite AVANT les passes qui la défont · ✅ **FERMÉ le 01/09/2026 (fiche 49)**
+
+> ✅ La réconciliation « le volume annoncé est le volume prescrit, dans les deux sens » (I10/B3)
+> vivait ≈ 700 lignes AVANT C29d et T-56, qui modifient toutes deux le LIVRÉ : la courbe décrivait
+> l'avant-dernier état. **Quatorzième occurrence de la leçon.** Trouvé en resserrant la référence
+> de T-56 (O-114) : le banc v7 passait de 6 à **12 semaines trail prescrivant plus de 1,4 × leur
+> courbe annoncée** — le défaut PRÉEXISTAIT, la coupe plus stricte l'a rendu visible.
+> `reconcilierCourbe()` est le point unique, appelé aux deux moments ; trail revient de 74 % à
+> **76 %** de profils sans défaut et v7 rentre dans tous ses budgets.
+>
+> **⚠ Ce qu'il apprend au passage, et qui n'est pas un détail** : la courbe annoncée n'est PAS un
+> pur descripteur — des passes aval la LISENT (la coupe des séances trop courtes lit
+> `vol_declared ?? vol`), donc la réécrire change le plan. Mesuré à facteur unique : le cliquet
+> T-60 passe de 8 à 9 semaines à zéro séance d'une discipline, sur `G/tri/Full/vol-min`, le profil
+> le plus plafonné du corpus — la même population que les 8 autres, déjà rangée en « accident »
+> (O-98). Voisinage d'O-43 (« une sortie calculée ne se relit jamais comme une entrée »), publié.
+
 ### O-115 — la trajectoire positionnelle laisse une décharge dépasser sa charge voisine · 🟠 **OUVERT (fiche 48, signalé non corrigé)**
 
 Introduit par la fiche 48 : les plafonds plus permissifs du début de plan laissent une séance de
@@ -723,7 +740,33 @@ attendu: MONO-bike-phase et MONO-tri-phase en dette déclarée
 cmd: npm run audit:monotonie
 ```
 
-### O-113 — résidu d'inversion `vol_max` en VÉLO, hors `_capScale` · 🟠 **OUVERT (fiche 47 T1)**
+### O-113 — inversion `vol_max` en VÉLO · 🔴 **CAUSE NOMMÉE le 01/09/2026 (fiche 49) — `sessionScale`, la SECONDE constante de plan**
+
+> 🔴 **Neutraliser `sessionScale` ferme l'inversion ENTIÈREMENT** (174 = 174 · 172 = 172 ·
+> 170 = 170, contre 192 → 175 et 196 → 177 au moteur intact). C'est la **même FAMILLE qu'O-77** —
+> une constante de PLAN dérivée de l'enveloppe déclarée, appliquée dès la semaine 1 (règle 20) —
+> mais un **porteur différent** : en tri, O-77 était portée par `_capScale` et `sessionScale`
+> avait été explicitement RÉFUTÉE (fiche 47) ; en vélo c'est l'inverse. Le même défaut de
+> conception a donc deux carriers selon le sport.
+>
+> **Le total de la SEMAINE est identique** (456 = 456, 457 = 456, 459 = 458) : c'est une
+> REDISTRIBUTION. À enveloppe déclarée basse les blocs naissent petits, la boucle doit faire
+> croître la semaine pour atteindre sa cible, et la croissance atterrit sur le receveur élastique
+> (R4.1) — la sortie longue. À enveloppe haute les blocs naissent gros, aucune croissance n'est
+> nécessaire, et la longue reste à sa taille de naissance. Ce n'est donc pas que le déclarant
+> ambitieux est affamé : c'est que le déclarant modeste est GONFLÉ.
+>
+> **Ampleur** : 15 cellules sur 45 balayées (5 formats × 3 niveaux × 3 volumes récents),
+> 51 semaines inversées, −9 % à −15 %, concentrées à volume récent bas.
+>
+> **Correctif non écrit, et la raison est mesurée** : il faudrait rendre `sessionScale`
+> positionnelle — mais elle multiplie la taille de NAISSANCE de chaque bloc de chaque sport,
+> c'est-à-dire strictement plus que `_capScale` (qui ne touchait qu'un plafond). La fiche 48 a
+> mesuré ce que coûte cette classe de changement : 3 violations DURES et une régression de
+> SÉCURITÉ pour un correctif plus petit. C'est la brique suivante du chantier progression, avec
+> sa propre calibration.
+
+
 
 Le gate de monotonie trouve 10 inversions sur `bike · vol_max` (S1-S3, la séance vélo passe de
 197 à 121 min quand l'enveloppe déclarée monte de 9 à 13 h). Neutraliser `_capScale` en ferme
@@ -738,7 +781,32 @@ attendu: MONO-bike-vol_max en dette déclarée, avec son compte d'inversions
 cmd: npm run audit:monotonie
 ```
 
-### O-114 — cinq inversions de récupération en TRAIL que T-56 ne ferme pas · 🟠 **OUVERT (fiche 47 T1)**
+### O-114 — inversions de récupération en TRAIL · 🔴 **CAUSE NOMMÉE le 01/09/2026 (fiche 49) — une différence de DÉFINITION, et la portée est bien plus large**
+
+> 🔴 **Ce n'est pas un défaut de périmètre de T-56 : c'est que T-56 et le gate ne mesurent pas la
+> même propriété.** T-56 prend pour référence `max(charge précédente, charge suivante)` — « les
+> charges qui l'ENCADRENT ». Sur un plan qui MONTE, la suivante est la plus grosse : une décharge
+> peut donc peser autant qu'une semaine PAS ENCORE FAITE, et dépasser celle qu'elle est là pour
+> absorber. Le gate de monotonie et l'AUDITEUR (`recupHeavier`) comparent, eux, à la charge qui
+> PRÉCÈDE.
+>
+> **La portée est 30× celle que le gate montrait** : **60 profils trail sur 67 (90 %),
+> 145 inversions**, sur trois types — « Footing récup » 49 · « Marche rapide en montée (bâtons) »
+> 48 · « Back-to-back (sur jambes fatiguées) » 46 — et jusqu'à **124 min en décharge contre 70 en
+> charge (+77 %)**.
+>
+> **⚠ LE CORRECTIF A ÉTÉ ÉCRIT, MESURÉ, ET RETIRÉ.** Resserrer la référence à la charge précédente
+> ferme les 145 inversions et laisse `audit:v1` vert — mais il **perturbe le point fixe** : le test
+> T-56 du banc `lotPhysio`, qui mesure la MÊME propriété contre `max(av, ap)`, passe de 0 à **16
+> inversions de TYPE résiduelles** (pire : `REEL/tri/70.3` S32 « Nage récup courte » 2 625 pour
+> 2 225). T-56 n'est pas idempotent — une seconde passe inconditionnelle change 23 plans, mesuré
+> au lot du plancher de décharge. **La propriété stricte n'est donc pas délivrable en une passe.**
+>
+> **Ce qui reste à trancher est une DÉFINITION, pas un réglage** : « une décharge ne pèse pas plus
+> que la charge qui PRÉCÈDE » (auditeur, gate) ou « que celles qui l'ENCADRENT » (T-56). Décision
+> d'entraînement, au fondateur. O-115 a la MÊME cause et suit la même décision.
+
+
 
 Trouvé PAR CONSTRUCTION par le gate de monotonie, sur un axe qu'on croyait propre depuis O-93 :
 en trail, cinq types de séance pèsent plus en semaine de DÉCHARGE que dans la semaine de CHARGE

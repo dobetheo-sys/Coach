@@ -2931,7 +2931,14 @@ T("T-60", "rouge", "le plancher de fréquence : jamais zéro discipline · 2 ten
   // `G/tri/Full/vol-min` — isolées, jamais deux de suite, sur le profil à 3 séances/semaine.
   // Le cliquet DESCEND avec le correctif, sinon il ne protège pas le gain ; contre-prouvé dans
   // les deux sens (coupe dé-gardée -> 21, repli dé-gardé -> 14).
-  const CLIQUET_ZERO = 8;
+  // FICHE 49 — 8 → 9, attribué à FACTEUR UNIQUE : c'est le rejeu de la réconciliation de courbe
+// (O-116) qui l'ajoute, PAS le resserrement de la référence de T-56 (mesuré : la variante
+// « O-116 seul » rend déjà 9). Et il apprend quelque chose : la courbe annoncée n'est pas un pur
+// DESCRIPTEUR — des passes aval la LISENT (la coupe des séances trop courtes lit
+// `vol_declared ?? vol`), donc la réécrire change le plan. Voisinage d'O-43, publié plutôt que
+// tu. La 9ᵉ semaine est sur `G/tri/Full/vol-min`, le profil le plus plafonné du corpus (3 créneaux
+// pour 3 disciplines) — la même population que les 8 autres, déjà rangées en « accident » (O-98).
+const CLIQUET_ZERO = 9;
   if (zeroSansDrapeau > CLIQUET_ZERO) pb.push(`(1) ${zeroSansDrapeau} semaine(s) à zéro séance d'une discipline, sans drapeau — cliquet ${CLIQUET_ZERO} · ${exZ.join(" · ")}`);
   else if (zeroSansDrapeau > 0) pb.push(`(1) ${zeroSansDrapeau} semaine(s) à ZÉRO séance d'une discipline de l'épreuve (cliquet ${CLIQUET_ZERO}, O-98) · ${exZ.join(" · ")}`);
   return {
