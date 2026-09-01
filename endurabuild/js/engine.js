@@ -12119,6 +12119,41 @@ function reconcileDeclaredVolume(
 }
 
 /**
+ * O-50 (fiche 44, tâche 1) — LE PLAFOND DE SÉANCE DÉBUTANT S'EXPRIME AUSSI EN TEMPS D'EAU.
+ *
+ * C24b (600 m) et C15 (850 m) définissent la fenêtre du débutant en MÈTRES, dans un moteur qui
+ * raisonne en temps : au CSS-repli (2:10/100 m), la fenêtre entière vaut 15 à 21 minutes d'eau —
+ * au ras du plancher de durée O-44 (20 min). Le système est alors sur-contraint et le point
+ * fixe résout en JETANT des séances (la coupe C24b « la fréquence cède ») : mesuré, le pic d'un
+ * nageur débutant demi-fond passait de 1,82 h (CSS 2:05) à 0,70-0,77 h (CSS 2:09-2:10) — un
+ * trou CHAOTIQUE dans la réponse au CSS, et le repli « je ne connais pas mon CSS » tombait
+ * exactement dedans (−56 % de plan pour la population que le produit dit servir en premier).
+ *
+ * Le plafond suit donc le TEMPS quand la fenêtre est dégénérée : il garde en minutes la
+ * PROPORTION qu'elle a toujours eue en mètres (C15/C24b = 850/600), ancrée sur le plancher de
+ * durée O-44 — aucun nombre neuf : cap_temps = SWIM_SESSION_FLOOR_MIN × (C15/C24b) ≈ 28 min
+ * d'eau, converti en mètres au CSS de l'athlète (la conversion O-42, `zoneSpeedRatio`).
+ *
+ * La CONDITION est dérivée, jamais une bande de CSS écrite en dur : le plafond ne monte que
+ * lorsque même la plus grande séance légale (le plafond en mètres) coûte déjà au moins le
+ * plancher de durée — la fenêtre est alors dégénérée en TEMPS, tout l'espace légal vit au ras
+ * du plancher et le point fixe n'a plus de jeu. Chez un nageur rapide (850 m < 20 min d'eau),
+ * la fenêtre a du jeu et le plafond C15 du fondateur reste EXACTEMENT ce qu'il est — mesuré :
+ * ma première écriture sans cette condition portait la plus grosse séance de 86 débutants
+ * rapides de 850 à 1 325 m, un contournement de C15 chez qui n'avait aucun défaut. Retirée le
+ * jour même, et publiée.
+ */
+function swimCapDebutantM(baseM        , cssSecPer100m                    )         {
+  const css = cssSecPer100m || 130;
+  const ratio = zoneSpeedRatio("sw.easy", undefined, "css") ?? 1;
+  const tempsBaseMin = (baseM / 100) * (css / 60) / ratio;
+  if (tempsBaseMin < SWIM_SESSION_FLOOR_MIN) return baseM;
+  const capTempsMin = SWIM_SESSION_FLOOR_MIN * (C15_BEGINNER_SWIM_SESSION_CAP_M / C24B_MIN_SWIM_SESSION_BEGINNER_M);
+  const capTempsM = Math.round(((capTempsMin * 60 / css) * 100 * ratio) / 25) * 25;
+  return Math.max(baseM, capTempsM);
+}
+
+/**
  * O-11 / R20.5 — la bande « allure course » vélo de cette épreuve, relief compris. Un seul
  * point pour les deux appelants (génération et réparation) : deux copies auraient divergé, ce
  * qui est très exactement le défaut qu'O-11 décrit.
@@ -12805,7 +12840,7 @@ function generatePlan(profile                , opts                             
   // quoi il faudrait threader la position dans une demi-douzaine de signatures. La position EST
   // le point (règle 20) : `swimSessionCapM` rendait une borne gelée sur la semaine 1, donc un
   // nageur à 2 000 m ne construisait jamais les 3 800 m d'un Ironman.
-  let _swimCapW = r.swimSessionCapM ?? C15_BEGINNER_SWIM_SESSION_CAP_M;
+  let _swimCapW = swimCapDebutantM(r.swimSessionCapM ?? C15_BEGINNER_SWIM_SESSION_CAP_M, r.baseRefs.css);
   // O-82 — LA SEMAINE COURANTE EST-ELLE UNE DÉCHARGE ? Même patron que `_capScale` et
   // `_swimCapW` : une valeur posée par la boucle de semaines et lue par `blockBounds`, faute de
   // quoi il faudrait threader la position dans une demi-douzaine de signatures. Les deux SONDES
@@ -13390,7 +13425,7 @@ function generatePlan(profile                , opts                             
     // pic quand la courbe en demandait 55, et la décroissance partait d'une falaise (−63 %
     // d'un coup, mesuré sur le Full). La longue de S-3 d'un plan long fait encore 60-70 % de
     // sa taille normale : c'est la réduction 40-60 % de Bosquet, pas un arrêt.
-    _swimCapW = r.beginner ? swimSessionCapAtWeek(r.b17Gate ?? null, C15_BEGINNER_SWIM_SESSION_CAP_M, w + 1) : Number.MAX_SAFE_INTEGER;
+    _swimCapW = r.beginner ? swimCapDebutantM(swimSessionCapAtWeek(r.b17Gate ?? null, C15_BEGINNER_SWIM_SESSION_CAP_M, w + 1), r.baseRefs.css) : Number.MAX_SAFE_INTEGER;
     _capScale = ph.id === "taper" ? Math.max(0.3, Math.min(1, Lw + 0.25)) : Math.max(0.4, Math.min(1, (Lw - 0.5) * 1.2 + 0.4));
     _dechargeW = isRW || ph.id === "taper"; // O-82 (A3) — les planchers sont suspendus en décharge
     let targetH = Lw * peakH;
