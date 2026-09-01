@@ -80,6 +80,16 @@ dépôt — historique git si besoin.
   R14.1 : le gain s'indexe sur la **distance au potentiel** (références mesurées), fourchette
   asymétrique, vélo en deux lignes, levier poids sous gardes. Les critères que R14.1 périme
   restent AFFICHÉS dans `bench_r14.cjs` avec leur raison (statut `----`), jamais supprimés.
+- `npm run audit:monotonie` — **le gate de MONOTONIE** (fiche 47, **13ᵉ gate CI**) : pour chaque
+  axe déclaré du schéma, la sortie reste-t-elle monotone quand l'entrée l'est ? Trois familles —
+  `plus` (déclarer plus ne livre jamais moins : `vol_max`, `level`, `history`), `invariant`
+  (l'allure et le CSS ne changent pas le VOLUME livré — propriété d'O-21b), `position` (une
+  décharge ne pèse jamais plus que sa charge voisine, PAR TYPE et PAR DISCIPLINE — O-93). Les
+  VALEURS viennent d'`ANSWER_SCHEMA`, seul le SENS de l'ordre est déclaré (une ligne par axe).
+  **Mesuré PAR POSITION, jamais en agrégat** : la médiane de la longue d'O-77 est monotone
+  (82 → 93 → 93) pendant que la semaine 1 s'effondre de 82 à 51. Dette triée AVANT d'être
+  bloquant (R20.6) : 24 verts · 4 dettes déclarées · 0 régression, 1 628 comparaisons.
+  Il a trouvé **deux inversions nouvelles par construction** (O-113 vélo, O-114 trail).
 - `npm run audit:invariants` — **20 invariants × 54 configurations** (7 sports × 3 enveloppes ×
   3 niveaux), **22e gate CI depuis R20.6**. Une propriété que le plan tient TOUJOURS : dev ≤ pic,
   échauffement ≤ corps, la sortie longue est la plus longue de sa discipline, le plan s'arrête le
@@ -600,6 +610,37 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
 avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
+
+**FICHE 47 livrée — le gate de monotonie, et la cause d'O-77 enfin NOMMÉE** (01/09/2026 — voir
+`syntheses/43-fiche47-…`, registre O-77 réécrit, **O-113** et **O-114** ouverts) : **T2** — la
+bisection converge en trois neutralisations à facteur unique. Le diff complet du `ReasonedPlan`
+ne rend que **cinq champs** différents entre `vol_max` 9 et 13, tous dérivés du volume ;
+`sessionScale` était réfuté ; **`peakH` gelé rend 82 = 82 et la semaine identique (455 = 455)** —
+la COURBE porte tout. La cause est **`_capScale` (`planGenerator.ts:3341`)**, le plafond de
+séance mis à l'échelle par `Lw = cible/peakH`, une position **RELATIVE au pic DÉCLARÉ** : la
+cible absolue de S1 ne bouge pas (plancher O-69), donc déclarer un pic plus haut abaisse le
+plafond de séance de S1. **Identité arithmétique** : plafond 100 × 0,82 = **82** et
+100 × 0,506 = **51**, les valeurs livrées ; `_capScale = 1` fait **CHANGER L'INVERSION DE SIGNE**
+(−31 → +8). Faute de MONNAIE (règle 14) — un plafond de séance doit suivre ce que l'athlète peut
+faire CETTE semaine, pas la place de cette semaine dans une ambition. **⚠ Rectification de ma
+fiche 46** : la longue est livrée à son PLAFOND mis à l'échelle, jamais à son plancher (51 ≈ 50
+était une coïncidence). **Le défaut n'est pas propre à `vol_max`** — le gate trouve la même
+racine sur l'axe `history` en swimrun : toute entrée qui déplace le pic déforme les séances du
+début du plan. **§2.4 mesuré** : la cause explique **62 des 81 pics précoces en NAGE** (81 → 19)
+et **aucun** de ceux du vélo (O-91, comme prévu). **T1** — `npm run audit:monotonie`, dérivé du
+schéma (seul le SENS de l'ordre est déclaré), mesuré PAR POSITION (règle 21) : **24 verts ·
+4 dettes triées · 0 régression · 1 628 comparaisons**, 0 faux positif sur les trois inversions
+fermées, O-77 vue. **Quatre fautes de mon propre instrument publiées** : portée trop large (15
+fausses inversions sur `level`/`history` — la restructuration d'un débutant est voulue) · bande
+de balayage inerte (les bornes du schéma donnent 15/24/36 h, trois plans identiques : **le banc
+ne voyait pas O-77**) · une condition de visibilité prise pour un réglage (`vol_recent` fixe et
+non trivial, sinon cible et plafond se compensent) · **le critère de phase était VACUEUX** et
+c'est la contre-preuve qui l'a dit (il comparait le TOTAL quand O-93 porte sur le TYPE et la
+DISCIPLINE — retirer T-56 le laissait vert). Contre-prouvé dans les deux sens. **Deux inversions
+NOUVELLES trouvées par construction, signalées non corrigées** : **O-113** (résidu `vol_max`
+vélo, 3/10 survivent à `_capScale = 1`, ≈ −9 %) et **O-114** (5 inversions de récup en trail que
+T-56 ne ferme pas — « Back-to-back » 92 min en décharge contre 80 en charge ; rouge AVEC et SANS
+la garde, donc préexistant). `src/` byte-identique : aucune des deux tâches ne change un plan.
 
 **FICHE 44 livrée — dix tâches en une passe, chacune mesurée avant/après, quatre prémisses
 réfutées en chemin** (autonomie accordée au lot, 01/09/2026 — voir `syntheses/41-fiche44-…`,

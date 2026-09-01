@@ -27,6 +27,7 @@
     "audit:amont": "node audit_amont.cjs",
     "audit:sensibilite": "node banc_sensibilite.cjs",
     "audit:public": "node banc_grand_public.cjs",
+    "audit:monotonie": "node scripts/monotonie.mjs",
     "audit:invariants": "node banc_invariants.cjs",
     "trace": "node scripts/trace.mjs",
     "audit:r13": "node bench_r13.cjs endurabuild/js/engine.js EnduraBuild-standalone.html",

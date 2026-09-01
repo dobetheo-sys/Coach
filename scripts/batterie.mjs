@@ -21,6 +21,11 @@ import { spawnSync } from "node:child_process";
 
 const SOCLE = [
   "audit:v1", "audit:invariants", "audit:v6", "audit:v7",
+  // FICHE 47 — le gate de MONOTONIE. Quatre inversions ont été trouvées dans ce dépôt sans
+  // qu'aucun banc les voie ; celui-ci les regarde par construction, sur les axes déclarés du
+  // schéma. Dette triée AVANT de le rendre bloquant (leçon R20.6) : il ne rougit que sur une
+  // RÉGRESSION — un axe qui tenait et ne tient plus, ou une dette payée sans être ré-épinglée.
+  "audit:monotonie",
   "audit:r13", "audit:r14", "audit:r14.1", "audit:r18",
   "golden:verify", "golden:bundle",
   // Contrôle STATIQUE, pas un banc : il ne construit aucun plan, il refuse un MOTIF — une

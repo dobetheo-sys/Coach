@@ -700,6 +700,39 @@ séances clés par cycle » est celle du fondateur : **elle n'est écrite nulle 
 dépôt** — si elle fait foi, `quotidienne` est DANS la cible et c'est le schéma de 7 qui est
 au-dessus.
 
+### O-113 — résidu d'inversion `vol_max` en VÉLO, hors `_capScale` · 🟠 **OUVERT (fiche 47 T1)**
+
+Le gate de monotonie trouve 10 inversions sur `bike · vol_max` (S1-S3, la séance vélo passe de
+197 à 121 min quand l'enveloppe déclarée monte de 9 à 13 h). Neutraliser `_capScale` en ferme
+**7 sur 10** — les 3 restantes survivent, autour de **−9 %** (200 → 183, 192 → 175, 196 → 177).
+Cause NON identifiée : elle n'est ni `_capScale`, ni `sessionScale` (déjà réfutée sur l'axe).
+Signalé sans être corrigé, comme la fiche le demande. Le gate le porte en dette déclarée.
+
+```verify
+id: O-113
+quoi: un résidu d'inversion vol_max subsiste en vélo après neutralisation de _capScale
+attendu: MONO-bike-vol_max en dette déclarée, avec son compte d'inversions
+cmd: npm run audit:monotonie
+```
+
+### O-114 — cinq inversions de récupération en TRAIL que T-56 ne ferme pas · 🟠 **OUVERT (fiche 47 T1)**
+
+Trouvé PAR CONSTRUCTION par le gate de monotonie, sur un axe qu'on croyait propre depuis O-93 :
+en trail, cinq types de séance pèsent plus en semaine de DÉCHARGE que dans la semaine de CHARGE
+voisine — « Back-to-back (sur jambes fatiguées) » **92 min en récup contre 80 en charge**,
+« Marche rapide en montée » 90 contre 81, « Footing récup » 40 contre 30.
+
+**Attribué, et c'est ce qui le distingue** : le critère est rouge **avec ET sans** la garde T-56,
+alors que tri, duathlon et swimrun ne rougissent que SANS elle (contre-preuve faite). T-56 agit
+donc bien — elle ne couvre simplement pas ces cas trail. Préexistant, signalé, non corrigé.
+
+```verify
+id: O-114
+quoi: en trail, des types de séance pèsent plus en décharge qu'en charge voisine
+attendu: MONO-trail-phase en dette déclarée, 5 inversions publiées
+cmd: npm run audit:monotonie
+```
+
 ### O-102 — `facile2` étiqueté `facile` livre du DUR un jour sur trois · ✅ **TRAITÉ le 01/09/2026 (fiche 44 T6) — l'étiquette LIVRÉE suit le contenu, les deux correctifs moteur RÉFUTÉS par la mesure**
 
 > ✅ Le sens est tranché : **l'étiquette suit le contenu**, sur la seule surface où l'athlète
@@ -9867,7 +9900,51 @@ Personne ne l'avait prédit — ni le fondateur ni moi n'avions pensé à leur i
 
 ---
 
-## O-77 — la sortie longue RÉTRÉCIT quand le volume demandé AUGMENTE (inversion sur l'axe `vol_max`) · 🔴 **CAUSE NOMMÉE le 01/09/2026 (fiche 44 T10) — correctif au lot progression**
+## O-77 — la sortie longue RÉTRÉCIT quand le volume demandé AUGMENTE · 🔴 **CAUSE NOMMÉE ET ISOLÉE le 01/09/2026 (fiche 47 T2) — `_capScale` compare une semaine à l'AMBITION du plan**
+
+> 🔴 **LA CAUSE EST `_capScale` (`planGenerator.ts:3341`), et elle est prouvée par neutralisation
+> à facteur unique.** Le plafond de séance de la semaine est mis à l'échelle par
+> `_capScale = max(0,4 ; min(1 ; (Lw − 0,5) × 1,2 + 0,4))`, où `Lw = cible / peakH` est une
+> position **RELATIVE** au pic DÉCLARÉ. Déclarer un pic plus haut abaisse la position relative de
+> la semaine 1 — donc son plafond de séance — alors que sa cible ABSOLUE n'a pas bougé (le
+> plancher O-69 la fige à 0,85 × volume récent).
+>
+> ```
+> S1, tri/70.3, vol_recent 9      Lw       _capScale   plafond longue (100 min)   LIVRÉ
+> vol_max  9                      0,85       0,82              82 min              82
+> vol_max 13                      0,588      0,506             51 min              51
+> ```
+>
+> **L'identité arithmétique est exacte** : 100 × 0,82 = 82 et 100 × 0,506 = 51 sont les valeurs
+> livrées. Quatre neutralisations à facteur unique la confirment :
+>
+> ```
+> moteur intact                  82 → 51   (écart −31)
+> sessionScale = 1               82 → 51   ⇒ ce n'est PAS lui (fiche 44 réfutée)
+> peakH gelé (les deux à 9)      82 → 82   ⇒ la COURBE porte tout, semaine identique (455 = 455)
+> _capScale = 1                  82 → 90   ⇒ l'inversion CHANGE DE SIGNE — la cause est isolée
+> ```
+>
+> ⚠ **RECTIFICATION de la fiche 46** : j'y écrivais « la longue est livrée à son PLANCHER de
+> format ». C'est faux — elle est livrée à son **PLAFOND mis à l'échelle** (100 × `_capScale`).
+> Le plancher (50) n'a jamais mordu ; la coïncidence 51 ≈ 50 m'avait trompé.
+>
+> **Ce n'est PAS propre à `vol_max`** : le gate de monotonie (fiche 47 T1) trouve la même racine
+> sur l'axe `history` en swimrun — toute entrée qui déplace `peakH` déplace `Lw`, donc le plafond
+> de séance de TOUTES les semaines. Le défaut est une faute de MONNAIE (règle 14) : le plafond
+> d'une séance doit suivre ce que l'athlète peut faire CETTE semaine (absolu), pas la place de
+> cette semaine dans une ambition déclarée (relatif).
+>
+> **Premier avis sur le correctif (demandé par la fiche 47 §2.3)** : il est LOCAL en surface —
+> une formule, une ligne — mais il **rouvre la question du dimensionnement positionnel**
+> (approche A du diagnostic). `_capScale` EST la trajectoire positionnelle du plafond de séance ;
+> la corriger, c'est choisir sur quoi elle s'ancre. Deux ancrages possibles, à arbitrer : la
+> POSITION dans le plan (semaine k sur n, indépendante de l'ambition) ou la cible ABSOLUE de la
+> semaine rapportée à une référence de l'athlète (son volume récent). Le second est cohérent avec
+> O-69 ; le premier avec le patron `swimSessionCapAtWeek`. **Non écrit dans cette fiche.**
+
+### O-77 (historique du diagnostic — conservé)
+
 
 > 🔴 **La médiane était un FAUX VERT de règle 21** : sur le moteur courant elle rend
 > 82 → 93 → 93 (« pas d'inversion ») pendant que, PAR SEMAINE, S1-S7 tombent de 82 à 51 min
