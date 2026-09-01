@@ -14344,6 +14344,36 @@ function enforceDechargePlancher(
   return corrigees;
 }
 
+/**
+ * T-56 — NOMBRE DE TOURS DE LA CORRECTION PAR SEMAINE (fiche 50, idempotence).
+ *
+ * La répartition de l'axe DISCIPLINE est PROPORTIONNELLE : chaque séance de la discipline se
+ * voit demander le même facteur `f = ref / total`. Elle suppose donc que **chaque séance peut
+ * payer** — or une séance ÉPINGLÉE (palier B-17 : la distance EST le stimulus, et le plan l'a
+ * ANNONCÉE) n'en paie AUCUNE part, et les planchers de bloc bornent les autres. Une passe
+ * unique sous-livre alors exactement la part des séances qui ne peuvent pas payer, et la garde
+ * ne converge que par répétition : mesuré, une seconde passe change **22 plans sur 1 074, tous
+ * en `tri/Full`** (`tri/Full/reprise/inter` S25 « Nage seuil (+dist) » 1 225 → 1 100 m, S28
+ * 575 → 225 m — la « Nage continue » épinglée de la même semaine pèse 69 et 84 min et ne bouge
+ * pas d'un mètre). C'est la famille « protégé par le chemin, pas par la borne », dans l'autre
+ * sens : la répartition suppose un payeur là où il y a un protégé.
+ *
+ * On converge donc SUR PLACE, en un nombre de tours BORNÉ et connu — même forme que la
+ * saturation du maillon `structurel` —, et on sort dès qu'un tour ne bouge plus. Quand plus
+ * personne ne peut payer (la séance épinglée dépasse à elle seule la référence), le tour ne
+ * bouge pas, la boucle sort, et le résidu est STRUCTUREL : ce n'est pas un défaut d'arbitrage,
+ * c'est une séance annoncée que la garde n'a pas le droit de raboter — le banc `lotPhysio` la
+ * met d'ailleurs HORS CHAMP et la COMPTE (`epinglees`).
+ *
+ * 8 : DEUX tours de marge au-dessus de la convergence MESURÉE. Balayage du corpus complet à
+ * bornes croissantes, plans changés d'un cran au suivant : 1→2 **22** · 2→3 15 · 3→4 14 ·
+ * 4→5 13 · 5→6 **3** · 6→8 **0**. Le corpus converge donc exactement à **6** — la marge est
+ * posée parce qu'un profil futur pourrait demander un tour de plus, et qu'une borne atteinte
+ * en silence rendrait la garde non idempotente sans que rien ne le dise. Les deux tours de
+ * marge sont mesurés INERTES (N=6 et N=8 rendent le corpus au bit près).
+ */
+const T56_TOURS_MAX = 8;
+
 function enforceRecupSousCharges(plan        , render                         )       {
   const wl = plan.weeks;
   const estCharge = (w        ) => !w.isRecup && w.phase.id !== "taper"
@@ -14416,7 +14446,6 @@ function enforceRecupSousCharges(plan        , render                         ) 
     if (w.phase.id === "peak" && !peakChargeExiste) { exemptes++; continue; }
     const av = voisine(i, -1), ap = voisine(i, +1);
     if (!av && !ap) continue;
-    let touchee = false;
     // ── axe TYPE : la dose d'un type en récup ≤ la meilleure dose du MÊME type chez les
     // charges qui l'encadrent. Un type absent des deux voisines n'a pas de référent : il
     // relève de l'axe DISCIPLINE (déclaré, pas silencieux).
@@ -14445,28 +14474,35 @@ function enforceRecupSousCharges(plan        , render                         ) 
       const n = nomDe(s);
       refT.set(n, Math.max(refT.get(n) || 0, doseDe(s)));
     }
-    for (const d of w.days) for (const s of d.sessions) {
-      if (s.d === "rs" || s.race) continue;
-      const ref = refT.get(nomDe(s));
-      if (ref == null || doseDe(s) <= ref) continue;
-      if (reduire(s, ref)) { types++; touchee = true; }
-    }
-    // ── axe DISCIPLINE : minutes par discipline (legs de brick attribués) ≤ la meilleure
-    // voisine. Réduction PROPORTIONNELLE des séances de la discipline — le même facteur pour
-    // toutes, la structure de la semaine ne change pas.
-    const dR = discMin(w), dAv = av ? discMin(av) : { sw: 0, bk: 0, rn: 0 }, dAp = ap ? discMin(ap) : { sw: 0, bk: 0, rn: 0 };
-    for (const k of ["sw", "bk", "rn"]) {
-      const ref = Math.max(dAv[k] || 0, dAp[k] || 0);
-      if (!(dR[k] > ref + 1)) continue;
-      const f = ref / dR[k];
-      let une = false;
+    // Les références sont INVARIANTES sur les tours : `av` et `ap` sont des semaines de CHARGE,
+    // et la passe ne touche QUE des semaines de décharge — rien de ce qui est lu ici ne bouge.
+    const dAv = av ? discMin(av) : { sw: 0, bk: 0, rn: 0 }, dAp = ap ? discMin(ap) : { sw: 0, bk: 0, rn: 0 };
+    const typesVus = new Set        (), discVues = new Set        ();
+    for (let tour = 0; tour < T56_TOURS_MAX; tour++) {
+      let bouge = false;
       for (const d of w.days) for (const s of d.sessions) {
-        if (s.d !== k || s.race) continue;
-        if (reduire(s, doseDe(s) * f)) une = true;
+        if (s.d === "rs" || s.race) continue;
+        const ref = refT.get(nomDe(s));
+        if (ref == null || doseDe(s) <= ref) continue;
+        if (reduire(s, ref)) { typesVus.add(`${w.num}|${nomDe(s)}`); bouge = true; }
       }
-      if (une) { disciplines++; touchee = true; }
+      // ── axe DISCIPLINE : minutes par discipline (legs de brick attribués) ≤ la meilleure
+      // voisine. Réduction PROPORTIONNELLE des séances de la discipline — le même facteur pour
+      // toutes, la structure de la semaine ne change pas.
+      const dR = discMin(w);
+      for (const k of ["sw", "bk", "rn"]) {
+        const ref = Math.max(dAv[k] || 0, dAp[k] || 0);
+        if (!(dR[k] > ref + 1)) continue;
+        const f = ref / dR[k];
+        for (const d of w.days) for (const s of d.sessions) {
+          if (s.d !== k || s.race) continue;
+          if (reduire(s, doseDe(s) * f)) { discVues.add(`${w.num}|${k}`); bouge = true; }
+        }
+      }
+      if (!bouge) break;
     }
-    if (touchee) semaines++;
+    types += typesVus.size; disciplines += discVues.size;
+    if (typesVus.size || discVues.size) semaines++;
   }
   if (semaines > 0 || exemptes > 0) _o93 = { semaines: (_o93?.semaines || 0) + semaines, types: (_o93?.types || 0) + types, disciplines: (_o93?.disciplines || 0) + disciplines, exemptes: (_o93?.exemptes || 0) + exemptes };
 }

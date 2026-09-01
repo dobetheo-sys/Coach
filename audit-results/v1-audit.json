@@ -1122,7 +1122,7 @@
   "estimatorGapMed": 0,
   "recupHeavier": 0,
   "adjacentHard": 0,
-  "coverage": 0.9996850092804892,
+  "coverage": 0.9996797182175623,
   "nominalSessions": 0,
   "hardViolations": [],
   "softIssues": []
@@ -1157,7 +1157,7 @@
   "estimatorGapMed": 0,
   "recupHeavier": 0,
   "adjacentHard": 0,
-  "coverage": 1.0001584892243738,
+  "coverage": 1.0001533431823157,
   "nominalSessions": 0,
   "hardViolations": [],
   "softIssues": []
@@ -1227,7 +1227,7 @@
   "estimatorGapMed": 0,
   "recupHeavier": 0,
   "adjacentHard": 0,
-  "coverage": 0.9996850092804892,
+  "coverage": 0.9996797182175623,
   "nominalSessions": 0,
   "hardViolations": [],
   "softIssues": []
@@ -1262,7 +1262,7 @@
   "estimatorGapMed": 0,
   "recupHeavier": 0,
   "adjacentHard": 0,
-  "coverage": 1.0001584892243738,
+  "coverage": 1.0001533431823157,
   "nominalSessions": 0,
   "hardViolations": [],
   "softIssues": []
@@ -2382,7 +2382,7 @@
   "estimatorGapMed": 0,
   "recupHeavier": 0,
   "adjacentHard": 0,
-  "coverage": 0.9999012655734477,
+  "coverage": 0.9998238647557133,
   "nominalSessions": 0,
   "hardViolations": [],
   "softIssues": []
@@ -2417,7 +2417,7 @@
   "estimatorGapMed": 0,
   "recupHeavier": 0,
   "adjacentHard": 0,
-  "coverage": 0.9997699069286454,
+  "coverage": 0.9996924867021277,
   "nominalSessions": 0,
   "hardViolations": [],
   "softIssues": []
@@ -2487,7 +2487,7 @@
   "estimatorGapMed": 0,
   "recupHeavier": 0,
   "adjacentHard": 0,
-  "coverage": 0.9999012655734477,
+  "coverage": 0.9998238647557133,
   "nominalSessions": 0,
   "hardViolations": [],
   "softIssues": []
@@ -2522,7 +2522,7 @@
   "estimatorGapMed": 0,
   "recupHeavier": 0,
   "adjacentHard": 0,
-  "coverage": 0.9997699069286454,
+  "coverage": 0.9996924867021277,
   "nominalSessions": 0,
   "hardViolations": [],
   "softIssues": []
@@ -2697,7 +2697,7 @@
   "estimatorGapMed": 0,
   "recupHeavier": 0,
   "adjacentHard": 0,
-  "coverage": 0.9999012655734477,
+  "coverage": 0.9998238647557133,
   "nominalSessions": 0,
   "hardViolations": [],
   "softIssues": []
@@ -2732,7 +2732,7 @@
   "estimatorGapMed": 0,
   "recupHeavier": 0,
   "adjacentHard": 0,
-  "coverage": 0.9997699069286454,
+  "coverage": 0.9996924867021277,
   "nominalSessions": 0,
   "hardViolations": [],
   "softIssues": []
@@ -2802,7 +2802,7 @@
   "estimatorGapMed": 0,
   "recupHeavier": 0,
   "adjacentHard": 0,
-  "coverage": 0.9999012655734477,
+  "coverage": 0.9998238647557133,
   "nominalSessions": 0,
   "hardViolations": [],
   "softIssues": []
@@ -2837,7 +2837,7 @@
   "estimatorGapMed": 0,
   "recupHeavier": 0,
   "adjacentHard": 0,
-  "coverage": 0.9997699069286454,
+  "coverage": 0.9996924867021277,
   "nominalSessions": 0,
   "hardViolations": [],
   "softIssues": []
@@ -2979,7 +2979,7 @@
   "estimatorGapMed": 0,
   "recupHeavier": 0,
   "adjacentHard": 0,
-  "coverage": 0.9997616590794132,
+  "coverage": 0.9997493201215101,
   "nominalSessions": 0,
   "hardViolations": [],
   "softIssues": []
@@ -3084,7 +3084,7 @@
   "estimatorGapMed": 0,
   "recupHeavier": 0,
   "adjacentHard": 0,
-  "coverage": 0.9997616590794132,
+  "coverage": 0.9997493201215101,
   "nominalSessions": 0,
   "hardViolations": [],
   "softIssues": []
@@ -3329,7 +3329,7 @@
   "estimatorGapMed": 0,
   "recupHeavier": 0,
   "adjacentHard": 0,
-  "coverage": 0.9996533459401049,
+  "coverage": 0.9996681925880141,
   "nominalSessions": 0,
   "hardViolations": [],
   "softIssues": []
@@ -3364,7 +3364,7 @@
   "estimatorGapMed": 0,
   "recupHeavier": 0,
   "adjacentHard": 0,
-  "coverage": 0.9997125335501187,
+  "coverage": 0.9997274858560025,
   "nominalSessions": 0,
   "hardViolations": [],
   "softIssues": []
@@ -3434,7 +3434,7 @@
   "estimatorGapMed": 0,
   "recupHeavier": 0,
   "adjacentHard": 0,
-  "coverage": 0.9996533459401049,
+  "coverage": 0.9996681925880141,
   "nominalSessions": 0,
   "hardViolations": [],
   "softIssues": []
@@ -3469,7 +3469,7 @@
   "estimatorGapMed": 0,
   "recupHeavier": 0,
   "adjacentHard": 0,
-  "coverage": 0.9997125335501187,
+  "coverage": 0.9997274858560025,
   "nominalSessions": 0,
   "hardViolations": [],
   "softIssues": []
@@ -3644,7 +3644,7 @@
   "estimatorGapMed": 0,
   "recupHeavier": 0,
   "adjacentHard": 0,
-  "coverage": 0.9996533459401049,
+  "coverage": 0.9996681925880141,
   "nominalSessions": 0,
   "hardViolations": [],
   "softIssues": []
@@ -3679,7 +3679,7 @@
   "estimatorGapMed": 0,
   "recupHeavier": 0,
   "adjacentHard": 0,
-  "coverage": 0.9997125335501187,
+  "coverage": 0.9997274858560025,
   "nominalSessions": 0,
   "hardViolations": [],
   "softIssues": []
@@ -3749,7 +3749,7 @@
   "estimatorGapMed": 0,
   "recupHeavier": 0,
   "adjacentHard": 0,
-  "coverage": 0.9996533459401049,
+  "coverage": 0.9996681925880141,
   "nominalSessions": 0,
   "hardViolations": [],
   "softIssues": []
@@ -3784,7 +3784,7 @@
   "estimatorGapMed": 0,
   "recupHeavier": 0,
   "adjacentHard": 0,
-  "coverage": 0.9997125335501187,
+  "coverage": 0.9997274858560025,
   "nominalSessions": 0,
   "hardViolations": [],
   "softIssues": []
