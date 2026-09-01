@@ -717,30 +717,23 @@ au-dessus.
 > le plus plafonné du corpus — la même population que les 8 autres, déjà rangée en « accident »
 > (O-98). Voisinage d'O-43 (« une sortie calculée ne se relit jamais comme une entrée »), publié.
 
-### O-115 — la trajectoire positionnelle laisse une décharge dépasser sa charge voisine · 🟠 **OUVERT (fiche 48, signalé non corrigé)**
+### O-115 — la trajectoire positionnelle laisse une décharge dépasser sa charge voisine · ✅ **FERMÉ le 01/09/2026 (fiche 50)**
 
-Introduit par la fiche 48 : les plafonds plus permissifs du début de plan laissent une séance de
-semaine de DÉCHARGE dépasser la même séance de la charge voisine — « Endurance facile » 76 min
-contre 66 (vélo), « Footing facile » 38 contre 32 et « Nage récup courte » 33 contre 26 (tri,
-S12). T-56 ne les rattrape pas.
-
-**Trois causes ÉLIMINÉES par neutralisation à facteur unique** : ce n'est pas C29d (neutralisée,
-les quatre régressions du gate restent identiques), pas le plafond de la semaine de récup (mis à
-l'échelle par `RECUP_WEEK_FACTOR` : inchangé — la pièce a été écrite puis RETIRÉE), pas un
-artefact d'échauffement (le critère du gate compare désormais la DOSE DU CORPS, comme T-56).
-
-Aucune violation DURE (`audit:v1` 459 à 0) : c'est un défaut de forme, porté en dette déclarée
-par le gate de monotonie avec son attribution. Le périmètre de la fiche 48 était la trajectoire ;
-ce défaut vit dans une autre passe.
+> ✅ **Même cause qu'O-114, fermé par le même correctif** : la référence de T-56. Les trois causes
+> qu'avait éliminées la fiche 48 à facteur unique (C29d, le plafond de la semaine de récup,
+> l'échauffement) l'étaient à raison — ce qui restait était la DÉFINITION. `MONO-bike-phase` et
+> `MONO-tri-phase` sont verts ; les cas cités par la fiche 48 § 6 (« Endurance facile » 76 contre
+> 66 en vélo, « Footing facile » 38 contre 32 et « Nage récup courte » 33 contre 26 en tri) ne
+> se reproduisent plus. Contre-preuve : remettre `max(av, ap)` les rougit tous les trois.
 
 ```verify
 id: O-115
-quoi: une séance de décharge dépasse la même séance de la charge voisine (vélo et tri)
-attendu: MONO-bike-phase et MONO-tri-phase en dette déclarée
+quoi: une séance de décharge dépasse la même séance de la charge qui la précède (vélo et tri)
+attendu: MONO-bike-phase et MONO-tri-phase verts
 cmd: npm run audit:monotonie
 ```
 
-### O-113 — inversion `vol_max` en VÉLO · 🔴 **CAUSE NOMMÉE le 01/09/2026 (fiche 49) — `sessionScale`, la SECONDE constante de plan**
+### O-113 — inversion `vol_max` en VÉLO · 🔴 **OUVERT — cause NOMMÉE (fiche 49), correctif ÉCRIT, MESURÉ et RETIRÉ (fiche 51)**
 
 > 🔴 **Neutraliser `sessionScale` ferme l'inversion ENTIÈREMENT** (174 = 174 · 172 = 172 ·
 > 170 = 170, contre 192 → 175 et 196 → 177 au moteur intact). C'est la **même FAMILLE qu'O-77** —
@@ -759,12 +752,39 @@ cmd: npm run audit:monotonie
 > **Ampleur** : 15 cellules sur 45 balayées (5 formats × 3 niveaux × 3 volumes récents),
 > 51 semaines inversées, −9 % à −15 %, concentrées à volume récent bas.
 >
-> **Correctif non écrit, et la raison est mesurée** : il faudrait rendre `sessionScale`
-> positionnelle — mais elle multiplie la taille de NAISSANCE de chaque bloc de chaque sport,
-> c'est-à-dire strictement plus que `_capScale` (qui ne touchait qu'un plafond). La fiche 48 a
-> mesuré ce que coûte cette classe de changement : 3 violations DURES et une régression de
-> SÉCURITÉ pour un correctif plus petit. C'est la brique suivante du chantier progression, avec
-> sa propre calibration.
+> **⚠ LE CORRECTIF POSITIONNEL A ÉTÉ ÉCRIT, MESURÉ ET RETIRÉ (fiche 51)** — patch conservé dans
+> `sessionscale-positionnel.patch`. `sessionScaleAtWeek(phases, weeks, wk, plein)` sur le patron
+> de `capScaleAtWeek`, point UNIQUE (le kit porte la valeur, aucun module ne la recalcule ; le
+> trail passe par la même fonction), `plein` ne portant que ce qui reste légitimement
+> multiplicatif — récupération dégradée et facteur de charge blessure/âge, jamais l'enveloppe.
+> **Il FONCTIONNE** : `MONO-bike-vol_max` passe au vert et `audit:v1` reste à 0 sur 459.
+>
+> **Ce qui l'arrête est la CALIBRATION, et elle est DISCONTINUE.** Balayage du départ, profils
+> perdant plus de 20 % de leur pic : 0,40 → **0** (mais 2 violations dures) · 0,50 → 14 (11 dures)
+> · 0,60 → 20 · 0,65 → 19 · 0,68 → **14** · 0,70 → **2** · 0,72 → **40** · 0,75 → 28 · 0,80 → 21 ·
+> 0,90 → 17 · 1,00 → 17. **Un pas de 0,02 fait varier la casse d'un facteur vingt.** Ce n'est pas
+> une courbe de calibration, c'est un tirage : retenir 0,70 serait choisir un numéro de loterie,
+> exactement la faute que la règle 19 nomme.
+>
+> **La cause de la discontinuité est nommée** : la grandeur qui bouge n'est pas la TAILLE des
+> séances mais leur NOMBRE — **33 des 40 perdants à 0,72 perdent des séances**
+> (`swim/ow/confirme/inter` **81 → 58**, −28 % ; `G/tri/Full/vol-recent-bas` pic 716 → 459). La
+> monnaie payée est la FRÉQUENCE, la seule que ce dépôt s'interdit de dépenser
+> (C29/C29b/C29c). Et l'agrégat ne le montre pas : la médiane est à **+0,0 %** à tous les
+> départs — la faute de méthode publiée en fiche 48, reproduite à l'identique si on s'y fie.
+>
+> **Ce que la mesure d'entrée disait déjà, et que la fiche n'anticipait pas** : `sessionScale`
+> n'est pas un artefact positionnel comme `_capScale`, c'est un terme de CAPACITÉ — distribution
+> mesurée sur les 1 074 profils : min **0,150** · p10 0,500 · **médiane 0,700** · p90 0,900 ·
+> **seulement 3,9 % à 1,000**. `capScaleAtWeek` remplaçait un plafond variant de 0,80 à 1,00 ;
+> ici on remplacerait un facteur de taille de NAISSANCE valant 0,15 chez les plus contraints. Le
+> supprimer donne à un nageur débutant des blocs nés à pleine taille pour une semaine minuscule :
+> le point fixe ne peut plus les placer et paie en séances.
+>
+> **Reste à trancher (fondateur)** : ou bien la trajectoire positionnelle est bornée par ce que
+> la semaine peut CONTENIR — mais lire le contenu livré pour borner la naissance est la forme
+> qu'O-43 interdit —, ou bien c'est le RECEVEUR élastique (la sortie longue, R4.1) qu'il faut
+> borner, ce qui déplace le chantier et sort du périmètre de cette fiche.
 
 
 
@@ -781,46 +801,42 @@ attendu: MONO-bike-vol_max en dette déclarée, avec son compte d'inversions
 cmd: npm run audit:monotonie
 ```
 
-### O-114 — inversions de récupération en TRAIL · 🔴 **CAUSE NOMMÉE le 01/09/2026 (fiche 49) — une différence de DÉFINITION, et la portée est bien plus large**
+### O-114 — inversions de récupération en TRAIL · ✅ **FERMÉ le 01/09/2026 (fiche 50)** — la décharge se compare à la charge qui **PRÉCÈDE**
 
-> 🔴 **Ce n'est pas un défaut de périmètre de T-56 : c'est que T-56 et le gate ne mesurent pas la
-> même propriété.** T-56 prend pour référence `max(charge précédente, charge suivante)` — « les
-> charges qui l'ENCADRENT ». Sur un plan qui MONTE, la suivante est la plus grosse : une décharge
-> peut donc peser autant qu'une semaine PAS ENCORE FAITE, et dépasser celle qu'elle est là pour
-> absorber. Le gate de monotonie et l'AUDITEUR (`recupHeavier`) comparent, eux, à la charge qui
-> PRÉCÈDE.
+> ✅ **Décision du fondateur : « précède », pas « encadrent ».** Une décharge existe pour absorber
+> la fatigue accumulée : elle se compare à ce que l'athlète VIENT DE FAIRE. La garde prenait
+> `max(charge précédente, charge suivante)` — sur un plan qui MONTE, la suivante est la plus
+> grosse, et la décharge pouvait légalement peser autant qu'une semaine PAS ENCORE FAITE.
+> L'auditeur (`recupHeavier`) et le gate de monotonie lisaient déjà la précédente : T-56 était
+> la SEULE à ne pas le faire, donc le générateur et l'auditeur ne disaient pas la même chose.
 >
-> **La portée est 30× celle que le gate montrait** : **60 profils trail sur 67 (90 %),
-> 145 inversions**, sur trois types — « Footing récup » 49 · « Marche rapide en montée (bâtons) »
-> 48 · « Back-to-back (sur jambes fatiguées) » 46 — et jusqu'à **124 min en décharge contre 70 en
-> charge (+77 %)**.
+> **Le resserrement avait été écrit et RETIRÉ en fiche 49** (16 résidus — T-56 n'était pas
+> idempotente). La fiche 50 a corrigé l'idempotence D'ABORD, et il est devenu délivrable.
 >
-> **⚠ LE CORRECTIF A ÉTÉ ÉCRIT, MESURÉ, ET RETIRÉ.** Resserrer la référence à la charge précédente
-> ferme les 145 inversions et laisse `audit:v1` vert — mais il **perturbe le point fixe** : le test
-> T-56 du banc `lotPhysio`, qui mesure la MÊME propriété contre `max(av, ap)`, passe de 0 à **16
-> inversions de TYPE résiduelles** (pire : `REEL/tri/70.3` S32 « Nage récup courte » 2 625 pour
-> 2 225). T-56 n'est pas idempotent — une seconde passe inconditionnelle change 23 plans, mesuré
-> au lot du plancher de décharge. **La propriété stricte n'est donc pas délivrable en une passe.**
+> **Mesuré** : `audit:monotonie` passe de 24 verts · 4 dettes à **33 verts · 1 dette ·
+> 0 régression**, et les **SEPT** critères `MONO-*-phase` sont verts — O-114 (trail, 145
+> inversions sur 60 profils) et **O-115** (vélo et tri) avaient la MÊME cause et se ferment
+> ensemble. Volume total livré : médiane **−0,5 %**, pire **−4,1 %**, AUCUN profil au-delà de
+> −10 % ; séances 89 profils en perdent, 41 en gagnent, pire −4 sur 204. Rayon golden
+> **943 profils sur 1 074**. Contre-preuve : remettre `max(av, ap)` rougit exactement les trois
+> critères de phase (vélo, tri, trail).
 >
-> **Ce qui reste à trancher est une DÉFINITION, pas un réglage** : « une décharge ne pèse pas plus
-> que la charge qui PRÉCÈDE » (auditeur, gate) ou « que celles qui l'ENCADRENT » (T-56). Décision
-> d'entraînement, au fondateur. O-115 a la MÊME cause et suit la même décision.
-
-
-
-Trouvé PAR CONSTRUCTION par le gate de monotonie, sur un axe qu'on croyait propre depuis O-93 :
-en trail, cinq types de séance pèsent plus en semaine de DÉCHARGE que dans la semaine de CHARGE
-voisine — « Back-to-back (sur jambes fatiguées) » **92 min en récup contre 80 en charge**,
-« Marche rapide en montée » 90 contre 81, « Footing récup » 40 contre 30.
-
-**Attribué, et c'est ce qui le distingue** : le critère est rouge **avec ET sans** la garde T-56,
-alors que tri, duathlon et swimrun ne rougissent que SANS elle (contre-preuve faite). T-56 agit
-donc bien — elle ne couvre simplement pas ces cas trail. Préexistant, signalé, non corrigé.
+> **Le banc encodait l'ancienne définition, et il l'a dit** : T-56 est passé rouge sur 16
+> « inversions » qui n'étaient pas une différence de SÉVÉRITÉ mais de **PORTÉE** — un type
+> présent uniquement dans la charge SUIVANTE gardait un référent au banc et n'en avait plus pour
+> la passe. Aligné : **16 → 2**.
+>
+> **Les 2 derniers sont STRUCTURELS et publiés** : `B17/tri/M/inter` S6 (charge) porte UN footing
+> de 34′, S7 (décharge) en porte QUATRE de 34′ — 136′ contre 34′. **Par TYPE les doses sont
+> égales** : l'écart ne vient pas des doses mais du NOMBRE de séances, et descendre à 34′ au total
+> demanderait quatre footings de 8 min ou d'en supprimer trois. La FRÉQUENCE serait la seule
+> monnaie, et c'est celle que ce dépôt s'interdit de dépenser. La classe est COMPTÉE dans la ligne
+> « hors champ », jamais tue.
 
 ```verify
 id: O-114
-quoi: en trail, des types de séance pèsent plus en décharge qu'en charge voisine
-attendu: MONO-trail-phase en dette déclarée, 5 inversions publiées
+quoi: en trail, des types de séance pèsent plus en décharge qu'en charge PRÉCÉDENTE
+attendu: MONO-trail-phase vert
 cmd: npm run audit:monotonie
 ```
 

@@ -611,6 +611,60 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**O-114 ET O-115 FERMÉS — la décharge se compare à la charge qui PRÉCÈDE, et l'idempotence
+devait passer d'abord ; O-113 reste OUVERT, son correctif écrit puis RETIRÉ sur une CALIBRATION
+DISCONTINUE** (fiches 50 et 51, 01/09/2026 — voir `syntheses/46-fiches50-51-…`, registre O-114 et
+O-115 fermés, O-113 réécrit) : **T-56 n'était pas idempotente**, mesuré par contre-preuve (dupliquer
+son appel changeait **22 plans sur 1 074, tous en `tri/Full`**). La cause n'était ni la borne ni un
+ordre de passes : l'axe DISCIPLINE répartit la réduction proportionnellement (`f = ref / total`) et
+comptait dans son **DÉNOMINATEUR une séance qu'il n'a pas le droit de réduire** — le palier B-17
+épinglé. La passe sous-livrait exactement la part du protégé et ne convergeait plus que
+GÉOMÉTRIQUEMENT (bornes croissantes : 1→2 **22** · 2→3 15 · 3→4 14 · 4→5 13 · 5→6 3 · 6→8 0 · 8→40
+**4** — la queue ne se termine jamais, parce que le mécanisme est faux, pas lent). **C'est
+« protégé par le chemin, pas par la borne » dans l'autre sens** : d'habitude une protection manque
+et une victime paie deux fois ; ici la protection est correcte et c'est la RÉPARTITION qui suppose
+un payeur là où il y a un protégé. Correctif : le facteur se calcule **sur les payeurs**
+(`discMin(w, true)`), c'est-à-dire la définition que le banc `lotPhysio` mesure déjà (R11.1) —
+mesuré ensuite, **1→2 · 2→3 · 3→4 · 4→8 · 8→40 = 0 plan**, un tour suffit ; contre-prouvé (sans le
+correctif payeur, un appel de plus change **16** plans, avec lui **2**). **La bascule ensuite** :
+l'auditeur (`recupHeavier`) et le gate lisaient déjà la charge PRÉCÉDENTE, T-56 était la seule à
+prendre `max(av, ap)` — donc le générateur et l'auditeur ne disaient pas la même chose. Point
+UNIQUE : les deux axes lisent la même fonction, les avoir écrits deux fois est ce qui a laissé la
+définition diverger sans que rien ne le signale. **`audit:monotonie` 24 verts · 4 dettes → 33 verts
+· 1 dette · 0 régression, les SEPT critères `MONO-*-phase` verts** — O-114 (145 inversions sur 60
+profils trail) et O-115 (vélo, tri) avaient la même cause et se ferment ensemble ; contre-preuve :
+remettre `max(av, ap)` rougit exactement ces trois-là. **Le banc encodait l'ancienne définition et
+il l'a dit** (T-56 rouge sur 16 « inversions ») : différence non de SÉVÉRITÉ mais de **PORTÉE** —
+un type présent seulement dans la charge SUIVANTE gardait un référent au banc et n'en avait plus
+pour la passe ; aligné, **16 → 2**. **Les 2 derniers sont STRUCTURELS et publiés** : `B17/tri/M`
+S6 porte UN footing de 34′, S7 (décharge) en porte QUATRE de 34′ — par TYPE les doses sont ÉGALES,
+l'écart est un écart de FRÉQUENCE, et descendre demanderait quatre footings de 8 min ou d'en
+supprimer trois. Classe COMPTÉE dans la ligne « hors champ ». Volume : médiane **−0,5 %**, pire
+**−4,1 %**, aucun profil au-delà de −10 % ; séances 89 en perdent, 41 en gagnent, pire −4 sur 204.
+Rayon golden **943 sur 1 074**, tous sports.
+**FICHE 51 — `sessionScale` positionnelle : ÉCRITE, MESURÉE, RETIRÉE** (patch
+`sessionscale-positionnel.patch`). Elle FONCTIONNE — `MONO-bike-vol_max` au vert, `audit:v1` 459 à
+0 — et c'est la **calibration** qui l'arrête : profils perdant > 20 % de leur pic selon le départ,
+0,40 → **0** (mais 2 violations dures) · 0,68 → 14 · **0,70 → 2** · **0,72 → 40** · 0,80 → 21 ·
+1,00 → 17. **Un pas de 0,02 fait varier la casse d'un facteur vingt** : ce n'est pas une courbe,
+c'est un tirage, et retenir 0,70 serait choisir un numéro (règle 19). **La cause est nommée** : la
+grandeur qui bouge n'est pas la TAILLE des séances mais leur NOMBRE — **33 des 40 perdants perdent
+des séances** (`swim/ow/confirme/inter` **81 → 58**) —, donc la monnaie payée est la FRÉQUENCE,
+celle que le dépôt s'interdit (C29/C29b/C29c) ; et l'agrégat ne le voit pas (médiane **+0,0 %** à
+tous les départs — la faute de méthode de la fiche 48, reproduite à l'identique si on s'y fie).
+**Ce que la mesure d'entrée disait et que la fiche n'anticipait pas** : `sessionScale` n'est pas un
+artefact positionnel comme `_capScale`, c'est un terme de **CAPACITÉ** — min **0,150** · médiane
+**0,700** · **3,9 % seulement à 1,000** ; le supprimer donne à un nageur débutant des blocs nés à
+pleine taille pour une semaine minuscule. **Trois fautes de mes instruments publiées** : ma
+première pièce a atterri sur le **mauvais `discMin`** (celui de `enforceDechargePlancher`) et ma
+sonde a avalé les `ReferenceError` en « REFUS », rendant « 0 plan changé » — un zéro qui était de
+la vacuité, pas de la convergence (la sonde lève désormais) ; ma première contre-preuve
+d'idempotence mesurait la COMPOSITION et non la passe (le second appel changeait l'état AVANT
+C29d) ; et ma borne « ne pas tenter une coupe qu'un plancher restaurera » a été écrite en deux
+versions, l'abstention (25 inversions) puis le plancher sur la cible (23) — **les deux pires que
+l'état de référence**, retirées. **Batterie 13/13**, `audit:v1` 459 à 0, `lotPhysio` 33 verts ·
+24 rouges attendus · 0 régression.
+
 **O-113 ET O-114 : LES DEUX CAUSES SONT NOMMÉES, AUCUN DES DEUX CORRECTIFS N'EST DÉLIVRABLE
 AUJOURD'HUI — et c'est en cherchant le second qu'un défaut d'ORDRE DE PASSES est tombé**
 (fiche 49, 01/09/2026 — voir `BUGS_OUVERTS.md` « O-113 », « O-114 », « O-116 FERMÉ ») :
