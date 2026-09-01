@@ -14,7 +14,7 @@
  *     qu'une CAP de half — on n'y gère pas, on y lutte.
  */
 import type { V1Session, V1Step } from "../../engine/types.ts";
-import { C21_REPRISE_BRICK_FACTOR, BRICK_TAPER_BIKE_BOUNDS } from "../../engine/constraintMatrix.ts";
+import { C21_REPRISE_BRICK_FACTOR, BRICK_TAPER_BIKE_BOUNDS, CAP_LONG_DUATHLON } from "../../engine/constraintMatrix.ts";
 import { intOf } from "../../generator/renderer.ts";
 import { registerSport, type SessionKit, type PredictKit } from "../registry.ts";
 import { DUA_RUN1, DUA_BIKE, DUA_RUN2, DUA_BIKE_POWER, DUA_BIKE_PREFATIGUE, DUA_TRANSITION } from "./tables.ts";
@@ -119,7 +119,12 @@ export function buildDuathlonSessions(kit: SessionKit): V1Session[] {
       // suffisent en impact — allonger à pied ici serait le meilleur moyen de casser.
       const bl = DUA_BIKE[f] || { lo: 50, hi: 110 };
       S2.push({ d: "bk", long: true, name: "Sortie longue vélo", note: "L'endurance de base se construit ici, sans impact : en duathlon le volume à pied est déjà le facteur limitant. Allure régulière, mange et bois.", det: "",
-        steps: [Object.assign(B(1, PT(Math.round(bl.lo * 1.2), Math.round(bl.hi * 1.6)), "bk.z2"), { bnd: { floor: 45, cap: Math.round(bl.hi * 1.8) } })], ...({ plainBody: true } as object) });
+        // T4-du (fiche 44) — le plafond déclaré du bloc gagnait sur toute autre borne
+        // (blockBounds honore `b.bnd` avant la branche `s.long`), et il valait bl.hi × 1,8 =
+        // 540 min sur un powerman : la sortie longue livrait 443 min (0,94× l'épreuve, quand
+        // le régime T4 d'un effort de 8 h dit ~0,55). Le plafond du sport garde le dernier
+        // mot — déclaré ICI parce que c'est ici que la borne du bloc naît.
+        steps: [Object.assign(B(1, PT(Math.round(bl.lo * 1.2), Math.round(bl.hi * 1.6)), "bk.z2"), { bnd: { floor: 45, cap: Math.min(Math.round(bl.hi * 1.8), CAP_LONG_DUATHLON[f] || 9999) } })], ...({ plainBody: true } as object) });
     }
   } else if (slot === "facileR") {
     // Le créneau libéré par la nage devient une COURSE FACILE — mais elle reste comptée dans

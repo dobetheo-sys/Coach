@@ -14,7 +14,7 @@ import {
   BANDS, C15_BEGINNER_SWIM_SESSION_CAP_M, C21_REPRISE_BRICK_FACTOR, C22_MAX_WEEKLY_GROWTH, SWIM_SESSION_FLOOR_MIN,
   C22_AUDIT_HARD_JUMP, C23_BEGINNER_LONG_RUN_CAP_MIN, C24B_MIN_SWIM_SESSION_BEGINNER_M,
   C24_MIN_SWIM_SESSION_M,
-  BRICK_BIKE_BOUNDS, DOSE_CAP_MIN, CAP_BRICK_RUN, CAP_LONG, CAP_SWIM, R313_TAPER_MAX_VS_PEAK, RECUP_WEEK_FACTOR, O69_DEPART_PLANCHER,
+  BRICK_BIKE_BOUNDS, DOSE_CAP_MIN, CAP_BRICK_RUN, CAP_LONG, CAP_LONG_DUATHLON, CAP_SWIM, R313_TAPER_MAX_VS_PEAK, RECUP_WEEK_FACTOR, O69_DEPART_PLANCHER,
   C13d_QUALITY_MIN_BODY_MIN, C25_RECOVERY_SESSION_CAP_MIN, RACE_EVE_CAP_MIN,
   hardTimeCapMin, weightedHardMin, C26c_HARD_TIME_TOLERANCE, MIN_WEEKS, ALLOC_CIBLE,
   C29D_DECHARGE_DECLENCHEUR, C29D_DECHARGE_CIBLE,
@@ -2847,9 +2847,13 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       return { floor: 8, cap: Math.max(8, Math.round((CAP_BRICK_RUN[fmt] || 70) * brickRF * (b.progCap ?? 1))) };
     }
     if (s.long) {
+      // T4-du (fiche 44) — le duathlon a SA table : ses formats S/M partagent leurs clés avec
+      // le tri dans CAP_LONG, et sa sortie longue vélo était le seul bloc long sans plafond
+      // (443 min livrées sur un powerman — 0,94× l'épreuve là où le régime T4 dit 0,55).
+      const capLongue = (r.profile.sport === "duathlon" ? CAP_LONG_DUATHLON[fmt] : CAP_LONG[fmt]) || 9999;
       if (s.d === "sw") return { floor: 820, cap: CAP_SWIM[fmt] || 4500 };
-      if (s.d === "rn") return { floor: 30, cap: CAP_LONG[fmt] || 9999 };
-      if (s.d === "bk") return { floor: 35, cap: CAP_LONG[fmt] || 9999 };
+      if (s.d === "rn") return { floor: 30, cap: capLongue };
+      if (s.d === "bk") return { floor: 35, cap: capLongue };
     }
     // O-78 (sonde) — `9999` dit « aucune borne déclarée », pas « borne haute ». Sous la sonde
     // structurelle, un bloc sans borne reste à sa taille livrée : on ne mesure pas une capacité

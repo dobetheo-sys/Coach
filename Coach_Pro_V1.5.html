@@ -4277,6 +4277,31 @@ const C21_REPRISE_BRICK_FACTOR = rule("C21", "en reprise, le brick ne mange pas 
 
 /** Plafonds de séance longue / nage par format (R3.4b), et budget implicite du volume. */
 const CAP_LONG                         = { "5k": 74, "10k": 90, semi: 130, marathon: 180, trail: 255, crit: 150, route: 180, clm: 165, cyclo: 240, gravel: 360 };
+/**
+ * Fiche 44, tâche 4 — LA LONGUE DU DUATHLON EST BORNÉE PAR LA DURÉE DE SON ÉPREUVE, au patron
+ * trail T4 (« reproduire la durée de course à l'entraînement est contre-productif », facteur
+ * qui DÉCROÎT avec la durée de l'épreuve). Mesuré : `CAP_LONG` n'avait aucune entrée duathlon —
+ * la sortie longue vélo était le seul bloc `long` sans plafond du sport, et
+ * `G/duathlon/PM/vol-max` livrait 443 min.
+ *
+ * ⚠ LA PRÉMISSE CHIFFRÉE DU CONSTAT EST RÉFUTÉE ET C'EST DIT : la fiche 39 annonçait « ×1,8 la
+ * durée d'épreuve » sur l'ancre « PM ≈ 4 h » — c'était MA mauvaise définition du format. Le PM
+ * du moteur est un Powerman 10/150/30, et son PROPRE prédicteur (profils PW du corpus) donne
+ * 7 h 41-8 h 23 : 443 min vaut 0,94× l'épreuve, pas 1,8. Le défaut réel demeure — un puits
+ * sans borne, et le régime T4 d'un effort de 8 h (ultra : 0,55) dit ~265 min, pas 443.
+ *
+ * Ancres = durée prédite par le MOTEUR × un facteur décroissant, forme T4 :
+ *   S 1 h 06-1 h 11 × ~1,9 → 135 (l'aérobie d'une épreuve courte se construit au-delà d'elle,
+ *   l'idée du facteur kv 1,5) · M 2 h 15-2 h 25 × ~1,4 → 200 · L 3 h 14-3 h 30 × ~1,25 → 250 ·
+ *   PM 7 h 41-8 h 23 × ~0,55 → 265 (le régime ultra de T4). Ordres de grandeur révocables par
+ *   le fondateur, comme O88_NB_ACCELERATIONS. Table SÉPARÉE parce que les formats duathlon S/M
+ *   portent les mêmes clés que le tri dans `CAP_LONG` : une entrée partagée aurait borné le
+ *   tri en silence.
+ */
+const CAP_LONG_DUATHLON                         = rule(
+  "T4-du", "la sortie longue d'un duathlon plafonne par la durée de l'épreuve, jamais un puits sans borne",
+  { S: 135, M: 200, PM: 265, L: 250 },
+);
 const CAP_SWIM                         = { sprint: 1400, demifond: 2000, fond: 3000, ow: 4500, S: 750, M: 1500, "70.3": 1900, Full: 3000 };
 const AVG_SESSION_H                                 = { run: 1.15, bike: 1.3, tri: 1.2 };
 
@@ -9606,7 +9631,12 @@ function buildDuathlonSessions(kit            )              {
       // suffisent en impact — allonger à pied ici serait le meilleur moyen de casser.
       const bl = DUA_BIKE[f] || { lo: 50, hi: 110 };
       S2.push({ d: "bk", long: true, name: "Sortie longue vélo", note: "L'endurance de base se construit ici, sans impact : en duathlon le volume à pied est déjà le facteur limitant. Allure régulière, mange et bois.", det: "",
-        steps: [Object.assign(B(1, PT(Math.round(bl.lo * 1.2), Math.round(bl.hi * 1.6)), "bk.z2"), { bnd: { floor: 45, cap: Math.round(bl.hi * 1.8) } })], ...({ plainBody: true }          ) });
+        // T4-du (fiche 44) — le plafond déclaré du bloc gagnait sur toute autre borne
+        // (blockBounds honore `b.bnd` avant la branche `s.long`), et il valait bl.hi × 1,8 =
+        // 540 min sur un powerman : la sortie longue livrait 443 min (0,94× l'épreuve, quand
+        // le régime T4 d'un effort de 8 h dit ~0,55). Le plafond du sport garde le dernier
+        // mot — déclaré ICI parce que c'est ici que la borne du bloc naît.
+        steps: [Object.assign(B(1, PT(Math.round(bl.lo * 1.2), Math.round(bl.hi * 1.6)), "bk.z2"), { bnd: { floor: 45, cap: Math.min(Math.round(bl.hi * 1.8), CAP_LONG_DUATHLON[f] || 9999) } })], ...({ plainBody: true }          ) });
     }
   } else if (slot === "facileR") {
     // Le créneau libéré par la nage devient une COURSE FACILE — mais elle reste comptée dans
@@ -14719,9 +14749,13 @@ function generatePlan(profile                , opts                             
       return { floor: 8, cap: Math.max(8, Math.round((CAP_BRICK_RUN[fmt] || 70) * brickRF * (b.progCap ?? 1))) };
     }
     if (s.long) {
+      // T4-du (fiche 44) — le duathlon a SA table : ses formats S/M partagent leurs clés avec
+      // le tri dans CAP_LONG, et sa sortie longue vélo était le seul bloc long sans plafond
+      // (443 min livrées sur un powerman — 0,94× l'épreuve là où le régime T4 dit 0,55).
+      const capLongue = (r.profile.sport === "duathlon" ? CAP_LONG_DUATHLON[fmt] : CAP_LONG[fmt]) || 9999;
       if (s.d === "sw") return { floor: 820, cap: CAP_SWIM[fmt] || 4500 };
-      if (s.d === "rn") return { floor: 30, cap: CAP_LONG[fmt] || 9999 };
-      if (s.d === "bk") return { floor: 35, cap: CAP_LONG[fmt] || 9999 };
+      if (s.d === "rn") return { floor: 30, cap: capLongue };
+      if (s.d === "bk") return { floor: 35, cap: capLongue };
     }
     // O-78 (sonde) — `9999` dit « aucune borne déclarée », pas « borne haute ». Sous la sonde
     // structurelle, un bloc sans borne reste à sa taille livrée : on ne mesure pas une capacité

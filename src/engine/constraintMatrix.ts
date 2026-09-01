@@ -454,6 +454,31 @@ export const C21_REPRISE_BRICK_FACTOR = rule("C21", "en reprise, le brick ne man
 
 /** Plafonds de séance longue / nage par format (R3.4b), et budget implicite du volume. */
 export const CAP_LONG: Record<string, number> = { "5k": 74, "10k": 90, semi: 130, marathon: 180, trail: 255, crit: 150, route: 180, clm: 165, cyclo: 240, gravel: 360 };
+/**
+ * Fiche 44, tâche 4 — LA LONGUE DU DUATHLON EST BORNÉE PAR LA DURÉE DE SON ÉPREUVE, au patron
+ * trail T4 (« reproduire la durée de course à l'entraînement est contre-productif », facteur
+ * qui DÉCROÎT avec la durée de l'épreuve). Mesuré : `CAP_LONG` n'avait aucune entrée duathlon —
+ * la sortie longue vélo était le seul bloc `long` sans plafond du sport, et
+ * `G/duathlon/PM/vol-max` livrait 443 min.
+ *
+ * ⚠ LA PRÉMISSE CHIFFRÉE DU CONSTAT EST RÉFUTÉE ET C'EST DIT : la fiche 39 annonçait « ×1,8 la
+ * durée d'épreuve » sur l'ancre « PM ≈ 4 h » — c'était MA mauvaise définition du format. Le PM
+ * du moteur est un Powerman 10/150/30, et son PROPRE prédicteur (profils PW du corpus) donne
+ * 7 h 41-8 h 23 : 443 min vaut 0,94× l'épreuve, pas 1,8. Le défaut réel demeure — un puits
+ * sans borne, et le régime T4 d'un effort de 8 h (ultra : 0,55) dit ~265 min, pas 443.
+ *
+ * Ancres = durée prédite par le MOTEUR × un facteur décroissant, forme T4 :
+ *   S 1 h 06-1 h 11 × ~1,9 → 135 (l'aérobie d'une épreuve courte se construit au-delà d'elle,
+ *   l'idée du facteur kv 1,5) · M 2 h 15-2 h 25 × ~1,4 → 200 · L 3 h 14-3 h 30 × ~1,25 → 250 ·
+ *   PM 7 h 41-8 h 23 × ~0,55 → 265 (le régime ultra de T4). Ordres de grandeur révocables par
+ *   le fondateur, comme O88_NB_ACCELERATIONS. Table SÉPARÉE parce que les formats duathlon S/M
+ *   portent les mêmes clés que le tri dans `CAP_LONG` : une entrée partagée aurait borné le
+ *   tri en silence.
+ */
+export const CAP_LONG_DUATHLON: Record<string, number> = rule(
+  "T4-du", "la sortie longue d'un duathlon plafonne par la durée de l'épreuve, jamais un puits sans borne",
+  { S: 135, M: 200, PM: 265, L: 250 },
+);
 export const CAP_SWIM: Record<string, number> = { sprint: 1400, demifond: 2000, fond: 3000, ow: 4500, S: 750, M: 1500, "70.3": 1900, Full: 3000 };
 export const AVG_SESSION_H: Partial<Record<Sport, number>> = { run: 1.15, bike: 1.3, tri: 1.2 };
 
