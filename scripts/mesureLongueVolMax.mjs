@@ -14,7 +14,7 @@ const { courseDans } = createRequire(import.meta.url)("../bench-dates.cjs");
 
 const BASE = {
   intent: "competition", level: "inter", history: "ancien", dispo: "quotidienne", shift_ok: "non",
-  doubles: "oui", off_days: "non", sex: "H", sleep: "moyen", life_load: "normale", activity: "actif",
+  doubles: "oui", off_days: "non", sex: "H", sleep: "moyen", life_load: "normale",
   injury: "aucune", med_pain: "non", med_dizzy: "non", med_treat: "non", weight_lever: "non",
   age: "30", weight: "85", height: "181", sessions_max: "8",
   race_date: courseDans(43), format: "70.3", terrain: "vallonne",

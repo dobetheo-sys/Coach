@@ -147,7 +147,7 @@ const EXEMPT = {
   // ---- PAR CONCEPTION : elles ne pilotent pas le plan, et c'est écrit ailleurs ----
   training_structure: true, // R14.1 — entrée de la PROJECTION : change ce qu'on ANNONCE, aucune séance
   weight_target: true, // R14.1 §5 — produit une SENSIBILITÉ affichée (frontière du manifeste)
-  weight: true, height: true, activity: true, // N8/N9 — estimation de dépense, jamais une séance
+  weight: true, height: true, // N8/N9 — estimation de dépense, jamais une séance (`activity` retirée du schéma, fiche 44)
   race_cutoff_h: true, // avertissement de barrière horaire dans la PRÉDICTION
   hr_max: true, // repli quand la référence principale manque : avec FTP/allure connues, elle ne sert pas
   gear_test: true, // ne vaut que si des allures EN TENUE ont été saisies — paire testée plus bas
@@ -182,7 +182,7 @@ const REF_SPORT = {
              run_continuous: "oui", gear_test: "oui", css_known: "oui", css: "2:00", pace_known: "oui", pace: "4:50" },
 };
 const COMMUN = { intent: "competition", level: "inter", history: "confirme", injury: "aucune", dispo: "partielle",
-  doubles: "parfois", off_days: "non", sleep: "moyen", life_load: "normale", activity: "actif", sex: "H",
+  doubles: "parfois", off_days: "non", sleep: "moyen", life_load: "normale", sex: "H",
   age: "35", weight: "78", height: "180", vol_max: "10", vol_recent: "7", sessions_max: "6",
   med_pain: "non", med_dizzy: "non", med_treat: "non", weight_lever: "non", shift_ok: "non",
   race_date: (() => { const d = new Date(Date.now() + 40 * 7 * 864e5); d.setUTCDate(d.getUTCDate() + ((7 - d.getUTCDay()) % 7)); return d.toISOString().slice(0, 10); })() };

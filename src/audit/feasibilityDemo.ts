@@ -86,7 +86,7 @@ check("Format inconnu → aucun verdict", assessFeasibility({ ...base, format: "
     sport: "run", format: "marathon", level: "inter", history: "confirme", intent: "competition",
     vol_max: "8", vol_recent: "5", sessions_max: "5", dispo: "partielle", age: "38", sex: "H",
     weight: "72", height: "178", injury: "aucune", off_days: "non", doubles: "non",
-    sleep: "moyen", life_load: "normale", activity: "actif", med_pain: "non", med_dizzy: "non",
+    sleep: "moyen", life_load: "normale", med_pain: "non", med_dizzy: "non",
     med_treat: "non", terrain: "plat", pace: "5:00", pace_known: "oui",
   } as unknown as Parameters<typeof generatePlan>[0];
   const sans = JSON.stringify(generatePlan(profil).plan);

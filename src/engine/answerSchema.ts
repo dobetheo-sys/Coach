@@ -180,7 +180,6 @@ export const ANSWER_SCHEMA: Record<string, FieldSpec> = {
   sex: { ...enumF("ton sexe", ["F", "H", "np"]), nature: "vecue" },
   sleep: { ...enumF("ton sommeil", ["court", "moyen", "bon"]), nature: "vecue" },
   life_load: { ...enumF("ta charge de vie", ["legere", "normale", "lourde"]), nature: "vecue" },
-  activity: { ...enumF("ton activité quotidienne", ["sedentaire", "modere", "actif"]), nature: "vecue" },
   // Le domaine COMPLET, tous sports confondus : ce sont les localisations proposées par le
   // questionnaire (`injuryOpts`). L'UI en montre un sous-ensemble par sport ; le moteur, lui,
   // doit accepter tout ce qui a pu être enregistré — y compris après un changement de sport.

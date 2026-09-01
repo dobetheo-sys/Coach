@@ -13,7 +13,7 @@ const note = (ou, quoi) => { notes.push({ ou, quoi }); console.log("· [" + ou +
 const REPONSES = {
   intent: "competition", level: "inter", history: "confirme", injury: "aucune",
   dispo: "partielle", doubles: "parfois", off_days: "non", shift_ok: "non",
-  sleep: "moyen", life_load: "normale", activity: "actif", sex: "H",
+  sleep: "moyen", life_load: "normale", sex: "H",
   med_pain: "non", med_dizzy: "non", med_treat: "non", weight_lever: "non",
   terrain: "plat", milieu: "bassin", swim_limit: "technique",
   ftp_known: "oui", pace_known: "oui", css_known: "oui",
