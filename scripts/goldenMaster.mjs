@@ -416,6 +416,81 @@ function* profiles() {
     yield { key: ["CYCLE10", sport, format || "-", "datee"].join("/"), sport, a };
   }
 
+  // ---- Passe « DRAPEAUX MÉDICAUX » (fiche 37, 25/08/2026) -------------------------------
+  //
+  // ⚠ ANGLE MORT DE SÉCURITÉ, mesuré par la Phase 1 de l'audit : `med_pain`, `med_dizzy` et
+  // `med_treat` n'apparaissaient dans AUCUN des 1 016 profils. Le drapeau médical est pourtant
+  // le garde-fou le plus dur du moteur — il retire l'intensité partout et son filet au point de
+  // convergence énumère ce qui est PERMIS plutôt que ce qui est interdit. Il était couvert par
+  // le banc de fuzz `audit:v7` (qui a d'ailleurs trouvé un contournement en R16.10) mais par
+  // AUCUNE photo : rien ne figeait le plan qu'un athlète à drapeau reçoit.
+  //
+  // Les quatre variantes sont les trois drapeaux SÉPARÉS plus leur combinaison : le moteur les
+  // agrège en un seul `medHold`, mais photographier les trois séparément est ce qui montrerait
+  // qu'une des trois cesse un jour d'y contribuer. Quatre sports où l'intensité et le volume
+  // pèsent le plus, et le couple (niveau, intention) alterne pour que chaque variante voie le
+  // débutant en plaisir ET le confirmé en compétition.
+  const MED_VARIANTES = [
+    ["pain", { med_pain: "oui", med_dizzy: "non", med_treat: "non" }],
+    ["dizzy", { med_pain: "non", med_dizzy: "oui", med_treat: "non" }],
+    ["treat", { med_pain: "non", med_dizzy: "non", med_treat: "oui" }],
+    ["tous", { med_pain: "oui", med_dizzy: "oui", med_treat: "oui" }],
+  ];
+  const MED_SPORTS = [["tri", "70.3", triExtras], ["run", "semi", () => ({})],
+    ["bike", "route", () => ({})], ["trail", "", trailExtras]];
+  //
+  // ⚠ LE COUPLE (niveau, intention) EST CONSTANT DANS UN SPORT et varie ENTRE sports. Ma
+  // première écriture l'alternait par VARIANTE : deux profils y différaient à la fois par le
+  // drapeau et par le niveau, donc aucune comparaison n'était à facteur unique — si les plans
+  // divergeaient, on ne saurait pas duquel des deux. Ainsi écrit, quatre plans identiques dans
+  // un sport sont un FAIT mesuré (les trois drapeaux s'agrègent en un seul `medHold`), pas un
+  // artefact de fixture.
+  {
+    let i = 0;
+    for (const [sport, format, extras] of MED_SPORTS) {
+      const duo = (i++ % 2) === 0 ? { level: "debutant", intent: "plaisir" } : { level: "inter", intent: "competition" };
+      for (const [nom, flags] of MED_VARIANTES) {
+        const a = { ...base(), format, history: "confirme", ...duo, ...flags, ...extras() };
+        yield { key: ["MED", sport, format || "-", nom, duo.level].join("/"), sport, a };
+      }
+    }
+  }
+
+  // ---- Passe « RÉFÉRENCE INCONNUE » (fiche 37, 25/08/2026) ------------------------------
+  //
+  // ⚠ SECOND ANGLE MORT de la Phase 1 : `ftp_known`, `pace_known` et `css_known` valaient
+  // « oui » sur les 1 016 profils. Le chemin « je ne connais pas ma référence » — celui qui
+  // fait basculer tout le moteur sur les zones de fréquence cardiaque et le ressenti — n'était
+  // photographié par aucun plan. C'est pourtant le cas du DÉBUTANT, c'est-à-dire de la
+  // population que le produit dit servir en premier.
+  //
+  // La valeur mesurée est RETIRÉE en même temps que le drapeau : un athlète qui répond « non »
+  // ne fournit pas de chiffre, et laisser `ftp: 250` derrière un `ftp_known: "non"` testerait
+  // une entrée que le questionnaire ne peut pas produire.
+  //
+  // Pour chaque sport, on balaie les clés qu'il CONSOMME (le vélo n'a pas de CSS, la natation
+  // pas de FTP), une par une puis toutes ensemble — sans quoi on ne verrait pas laquelle des
+  // trois porte la bascule.
+  const SANS_REF = { ftp_known: ["ftp"], pace_known: ["pace"], css_known: ["css"] };
+  const REF_SPORTS = [
+    ["bike", "route", ["ftp_known"], () => ({})],
+    ["run", "semi", ["pace_known"], () => ({})],
+    ["trail", "", ["pace_known"], trailExtras],
+    ["swim", "demifond", ["css_known"], () => ({})],
+    ["tri", "70.3", ["ftp_known", "pace_known", "css_known"], triExtras],
+    ["duathlon", "L", ["ftp_known", "pace_known"], () => ({})],
+    ["swimrun", "series", ["pace_known", "css_known"], swimrunExtras],
+  ];
+  for (const [sport, format, cles, extras] of REF_SPORTS) {
+    const jeux = cles.length > 1 ? [...cles.map((k) => [k]), cles] : [cles];
+    for (const jeu of jeux) {
+      const a = { ...base(), format, history: "confirme", level: "debutant", intent: "finir", ...extras() };
+      for (const k of jeu) { a[k] = "non"; for (const v of SANS_REF[k]) delete a[v]; }
+      const nom = jeu.length === cles.length && cles.length > 1 ? "toutes" : jeu[0].replace("_known", "");
+      yield { key: ["REF", sport, format || "-", nom].join("/"), sport, a };
+    }
+  }
+
   // ---- Passe « ATHLÈTE RÉEL » (O-85 §2, 19/08/2026) -------------------------------------
   //
   // *« Ma configuration — `sessions_max` élevé, `doubles`, 70.3, nage limitante — n'existe dans
@@ -485,7 +560,7 @@ function canon(v) {
 // portent les SEPT sports — le chantier « unité de volume = cycle » ne pouvait valider sa
 // logique propre au cycle que sur 5 profils, soit deux familles. L'épingle monte AVEC sa
 // cause, et le moteur est byte-identique dans ce lot : ce qui bouge est le CORPUS.
-const POPULATION = 1016;
+const POPULATION = 1046;  // +30 (fiche 37) : 16 profils à drapeau médical, 14 à référence inconnue — deux angles morts de la Phase 1
 
 function snapshot() {
   const snap = {};
