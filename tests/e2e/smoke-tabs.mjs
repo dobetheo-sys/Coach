@@ -127,10 +127,18 @@ const edu = await page.evaluate(() => ({
   discs: [...document.querySelectorAll(".edu-disc")].map((b) => b.textContent.trim()),
   sections: document.querySelectorAll(".edu-section").length,
   sources: document.querySelectorAll(".edu-sources-box").length,
+  refs: document.querySelectorAll(".edu-sources-box li").length,
 }));
 ok(JSON.stringify(edu.discs) === JSON.stringify(["Course"]), "profil course seule → une discipline (" + edu.discs.join(" · ") + ")");
 ok(edu.sections >= 4, "la discipline Course rend ses sections (" + edu.sections + ")");
-ok(edu.sources === 1, "le bloc de sources est présent");
+// Le critère portait « exactement UNE boîte » : c'était le compte du jour où il a été écrit,
+// quand toutes les sources vivaient dans une boîte de bas de page. Depuis la refonte des
+// Éducatifs, les sources d'une section vivent DANS la section — 5 boîtes pour 5 sections, et
+// aucune de bas de page. Rien n'est perdu (13 références rendues), c'est la PLACE qui change.
+// Le critère porte donc sur la PROPRIÉTÉ — les sources sont rendues et référencées — et
+// PUBLIE ce qu'il trouve, plutôt que d'épingler un compte qu'une section ajoutée fait bouger.
+ok(edu.sources >= 1 && edu.refs >= 1,
+  "les sources sont rendues (" + edu.sources + " bloc(s), " + edu.refs + " référence(s))");
 // Single-source (R11.1) : `EBV2.eduLibrary` est la MÊME structure que celle dont
 // `swimDrillGlossaryText()` dérive le texte injecté dans les notes « Nage éducatifs »
 // (sessionLibrary.ts) — vérifié au caractère près côté moteur par `npm run golden:verify`

@@ -715,12 +715,52 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   ok(!auj.pred, "R23.7 — …et elles ont bien QUITTÉ 🎯 Aujourd'hui (déplacées, pas dupliquées)");
   await passeCheckin(page);
   await page.waitForTimeout(600);
+  // R24.6 — DEUX MOITIÉS depuis la refonte, et c'est ce qui rend le critère honnête.
+  //
+  // Il n'en portait qu'une : « le graphique porte "tu es ici" ». Or le profil de cette suite
+  // n'a AUCUNE séance validée, et la refonte a décidé qu'un graphique à trois courbes plates
+  // sur zéro se lit comme un échec — il est donc remplacé par sa phrase tant que rien n'est
+  // coché. Le critère mesurait le marqueur sur l'état où le graphique n'existe plus : il
+  // rougissait sur le comportement VOULU. Ré-ancré sur les deux états, chacun avec sa moitié —
+  // l'état vide dit ce qui va s'afficher, l'état nourri porte le marqueur.
+  const vide = await page.evaluate(() => {
+    const t = document.querySelector("#screen").textContent || "";
+    return { phrase: /Rien à tracer encore/.test(t),
+      svg: [...document.querySelectorAll("#screen svg")].some((x) => x.outerHTML.includes("tu es ici")) };
+  });
+  ok(vide.phrase && !vide.svg,
+    "R24.6a — aucune séance validée : la courbe cède la place à sa phrase (pas de tracé plat à zéro)");
+
+  // On coche une séance, et le graphique doit revenir DE LUI-MÊME — sans réglage ni bascule,
+  // c'est la promesse écrite à la branche. Le marqueur de R24.6 se vérifie là, sur l'état où
+  // le graphique existe.
+  const pose = await page.evaluate(async () => {
+    const { S, ebSave } = await import("./js/state.js");
+    S.answers.done = S.answers.done || {};
+    S.answers.done["__temoin-r246__"] = true;
+    ebSave();
+    const { setTab } = await import("./js/ui/tabs.js"); setTab("today");
+    return Object.keys(S.answers.done).length;
+  });
+  await page.waitForTimeout(700);
   const marqueur = await page.evaluate(() => {
     const svg = [...document.querySelectorAll("#screen svg")].find((x) => /tu es ici|Courbe de charge/.test(x.outerHTML));
-    return { svgTrouve: !!svg, iciTexte: !!svg && svg.outerHTML.includes("tu es ici") };
+    return { svgTrouve: !!svg, iciTexte: !!svg && svg.outerHTML.includes("tu es ici"),
+      phrase: /Rien à tracer encore/.test(document.querySelector("#screen").textContent || "") };
   });
-  ok(marqueur.svgTrouve && marqueur.iciTexte,
-    "R24.6 — la courbe de charge marque visuellement « tu es ici » à la semaine courante");
+  ok(marqueur.svgTrouve && marqueur.iciTexte && !marqueur.phrase,
+    "R24.6b — une séance validée : la courbe revient et marque « tu es ici » à la semaine courante"
+    + " (" + pose + " coche(s) posée(s))");
+  // On REND l'état : la coche est un témoin de mesure, pas un fait du profil. Sans ce retrait,
+  // les critères qui suivent liraient un athlète qui a validé une séance — R24.9 lit justement
+  // le jour courant, et c'est ainsi que cette suite se contaminait elle-même.
+  await page.evaluate(async () => {
+    const { S, ebSave } = await import("./js/state.js");
+    delete S.answers.done["__temoin-r246__"];
+    ebSave();
+    const { setTab } = await import("./js/ui/tabs.js"); setTab("today");
+  });
+  await page.waitForTimeout(500);
 
   // R24.9 — la nutrition vit RÉDUITE dans 🎯 Aujourd'hui, sans y avoir son propre onglet.
   // 07/08/2026 — l'onglet dédié n'a pas disparu pour de bon : 🧰 Outils lui redonne un
