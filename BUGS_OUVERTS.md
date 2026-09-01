@@ -700,6 +700,29 @@ séances clés par cycle » est celle du fondateur : **elle n'est écrite nulle 
 dépôt** — si elle fait foi, `quotidienne` est DANS la cible et c'est le schéma de 7 qui est
 au-dessus.
 
+### O-115 — la trajectoire positionnelle laisse une décharge dépasser sa charge voisine · 🟠 **OUVERT (fiche 48, signalé non corrigé)**
+
+Introduit par la fiche 48 : les plafonds plus permissifs du début de plan laissent une séance de
+semaine de DÉCHARGE dépasser la même séance de la charge voisine — « Endurance facile » 76 min
+contre 66 (vélo), « Footing facile » 38 contre 32 et « Nage récup courte » 33 contre 26 (tri,
+S12). T-56 ne les rattrape pas.
+
+**Trois causes ÉLIMINÉES par neutralisation à facteur unique** : ce n'est pas C29d (neutralisée,
+les quatre régressions du gate restent identiques), pas le plafond de la semaine de récup (mis à
+l'échelle par `RECUP_WEEK_FACTOR` : inchangé — la pièce a été écrite puis RETIRÉE), pas un
+artefact d'échauffement (le critère du gate compare désormais la DOSE DU CORPS, comme T-56).
+
+Aucune violation DURE (`audit:v1` 459 à 0) : c'est un défaut de forme, porté en dette déclarée
+par le gate de monotonie avec son attribution. Le périmètre de la fiche 48 était la trajectoire ;
+ce défaut vit dans une autre passe.
+
+```verify
+id: O-115
+quoi: une séance de décharge dépasse la même séance de la charge voisine (vélo et tri)
+attendu: MONO-bike-phase et MONO-tri-phase en dette déclarée
+cmd: npm run audit:monotonie
+```
+
 ### O-113 — résidu d'inversion `vol_max` en VÉLO, hors `_capScale` · 🟠 **OUVERT (fiche 47 T1)**
 
 Le gate de monotonie trouve 10 inversions sur `bike · vol_max` (S1-S3, la séance vélo passe de
@@ -9900,7 +9923,38 @@ Personne ne l'avait prédit — ni le fondateur ni moi n'avions pensé à leur i
 
 ---
 
-## O-77 — la sortie longue RÉTRÉCIT quand le volume demandé AUGMENTE · 🔴 **CAUSE NOMMÉE ET ISOLÉE le 01/09/2026 (fiche 47 T2) — `_capScale` compare une semaine à l'AMBITION du plan**
+## O-77 — la sortie longue RÉTRÉCIT quand le volume demandé AUGMENTE · ✅ **FERMÉ le 01/09/2026 (fiche 48) — le plafond de séance suit la POSITION**
+
+> ✅ `capScaleAtWeek(phases, weeks, wk)` (`constraintMatrix.ts`) remplace la dérivation par
+> `Lw = cible/peakH` : interpolation linéaire du DÉPART au plafond plein, atteint à la première
+> semaine de PIC. Patron `swimSessionCapAtWeek` (O-56). **Cas de référence : la longue de S1 vaut
+> 80 min à `vol_max` 9 comme à 13 — écart 0** (avant : 82 puis 51). Le gate de monotonie passe
+> `MONO-tri-vol_max` ET `MONO-swimrun-history` de dette déclarée à VERT.
+>
+> **⚠ Le DÉPART a été choisi par mesure, et la valeur évidente était fausse.** Reprendre le
+> plancher de clamp de l'ancienne formule (0,40) fait s'effondrer trois profils — jusqu'à −52 %
+> de pic — et met `audit:v1` à **3 violations DURES** : des plafonds bas en début de plan font
+> des semaines petites, et C22 (+10 %/sem) propage la famine jusqu'au pic. Balayé :
+>
+> ```
+> départ   audit:v1   ancre O-69   volume corpus   longue S1 (9 h et 13 h)
+> 0,40      3 DURES     19 / 47      116 310 h            40 min
+> 0,60      (non testé) 15 / 47      117 212 h            60 min
+> 0,80      0           15 / 47      117 735 h            80 min   ← retenu
+> (avant)   0           15 / 47      116 669 h        82 puis 51 min
+> ```
+>
+> **0,80 est la plus petite valeur balayée qui rende `audit:v1` vert ET l'ancre O-69 à son compte
+> d'avant le lot.** Conséquence à connaître : la trajectoire est plate (0,80 → 1,00), le plafond
+> de séance devient un GARDE-FOU plus qu'un moteur de progression — celle-ci vient de la courbe
+> C22 et des trajectoires propres des modules (`prog`, `progCap`).
+>
+> **Trouvé en chemin, et corrigé : une borne `hard` ne cédait pas par le haut mais cédait par le
+> bas.** Le brick d'affûtage du tri sortait à 19 min pour un plancher AUDITÉ C21c de 30, parce
+> qu'en décharge `plancherDeDignite` fait céder le plancher au plafond (O-82) — la borne tenait
+> par la VALEUR du facteur d'échelle, pas par elle-même. `bnd.hard` protège désormais les deux
+> côtés, et la borne du brick d'affûtage est déclarée `hard`.
+
 
 > 🔴 **LA CAUSE EST `_capScale` (`planGenerator.ts:3341`), et elle est prouvée par neutralisation
 > à facteur unique.** Le plafond de séance de la semaine est mis à l'échelle par

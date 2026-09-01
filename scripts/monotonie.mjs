@@ -130,8 +130,15 @@ const franchi = (av, ap) => ap < av - 5 && ap < av * 0.92;
  * `_capScale` (fiche 47, tâche 2).
  */
 const DETTES = {
-  "MONO-tri-vol_max": "O-77 — cause NOMMÉE (fiche 47) : `_capScale` dérive de `Lw = cible/peakH`, une position RELATIVE. Neutralisé, l'inversion disparaît (et change de signe : −31 → +8 min).",
-  "MONO-swimrun-history": "O-77 — MÊME racine sur un AUTRE axe : `history` déplace `peakH` par les plafonds, donc `Lw`, donc `_capScale`. Ferme entièrement sous `_capScale = 1`. C'est la trouvaille du banc : le défaut n'est pas propre à `vol_max`, il vit sur TOUTE entrée qui déplace le pic.",
+  // FICHE 48 — deux inversions de POSITION introduites par la trajectoire positionnelle, et
+  // attribuées par élimination : ce n'est ni C29d (neutralisé : 4 régressions inchangées), ni le
+  // plafond de la semaine de récup (mis à l'échelle par RECUP_WEEK_FACTOR : inchangé), ni un
+  // artefact d'échauffement (le critère compare désormais la DOSE DU CORPS, comme T-56). Les
+  // plafonds plus permissifs du début de plan laissent une séance de décharge dépasser la même
+  // séance de la charge voisine, et T-56 ne la rattrape pas. Signalées, non corrigées — le
+  // périmètre de la fiche 48 est la trajectoire, et ce défaut vit dans une autre passe.
+  "MONO-bike-phase": "O-115 (NOUVEAU, fiche 48) — « Endurance facile » 76 min en décharge contre 66 en charge voisine. Introduit par la trajectoire positionnelle ; T-56 ne le ferme pas.",
+  "MONO-tri-phase": "O-115 (NOUVEAU, fiche 48) — « Footing facile » et « Nage récup courte » dépassent leur charge voisine en S12. Même cause.",
   "MONO-trail-phase": "O-114 (NOUVEAU, trouvé par ce banc) — 5 inversions de type en trail que T-56 ne ferme PAS : « Back-to-back » 92 min en récup contre 80 en charge, « Marche rapide en montée » 90 contre 81. PRÉEXISTANT et attribué : le critère est rouge AVEC et SANS la garde T-56, alors que tri/duathlon/swimrun rougissent seulement sans elle (contre-preuve faite). Signalé, non corrigé (fiche 47 §4).",
   "MONO-bike-vol_max": "O-77 pour 7 inversions sur 10 (fermées sous `_capScale = 1`) · O-113 pour les 3 restantes — un résidu d'environ −9 % qui survit à la neutralisation, cause NON identifiée, signalée sans être corrigée (fiche 47 §4).",
 };
@@ -194,8 +201,15 @@ for (const sport of Object.keys(PAR_SPORT)) {
     const bad = []; const ws = p.weeks ?? [];
     const parDisc = (w) => { const m = {}; for (const d of w.days) for (const s of d.sessions) {
       if (s.d === "rs" || s.race) continue; m[s.d] = (m[s.d] || 0) + (s.min || 0); } return m; };
+    // ⚠ LA GRANDEUR EST CELLE DE LA GARDE, pas la mienne. Première écriture : `s.min`, le total
+    // de la séance — échauffement et retour au calme compris. T-56, qui DÉTIENT cette propriété,
+    // compare la DOSE DU CORPS. Deux grandeurs pour une propriété, c'est R11.1 commis dans le
+    // banc qui surveille R11.1 : le gate signalait « récup 38 > charge 32 » sur des séances dont
+    // le corps était plus petit en récup — l'écart venait de l'échauffement.
+    const doseDe = (s) => (s.steps || []).filter((st) => st.role === "body")
+      .reduce((t, st) => t + (st.reps || 1) * (st.durationMin || 0), 0);
     const parType = (w) => { const m = {}; for (const d of w.days) for (const s of d.sessions) {
-      if (s.d === "rs" || s.race) continue; m[s.name] = Math.max(m[s.name] || 0, s.min || 0); } return m; };
+      if (s.d === "rs" || s.race) continue; m[s.name] = Math.max(m[s.name] || 0, doseDe(s)); } return m; };
     for (let i = 1; i < ws.length; i++) {
       if (!ws[i].isRecup || ws[i - 1].isRecup || ws[i - 1].phase?.id === "taper") continue;
       const dR = parDisc(ws[i]), dC = parDisc(ws[i - 1]);

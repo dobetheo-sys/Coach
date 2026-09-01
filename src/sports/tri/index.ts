@@ -421,7 +421,7 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
         // Le PLANCHER du leg vélo est la borne basse AUDITÉE (C21c), pas une fraction d'elle :
         // sinon la décroissance d'affûtage descend la séance sous ce que la spec exige, et le
         // générateur produit ce que l'auditeur refuse. Même discipline que C21b en charge.
-        { role: "body", leg: "bike", durationMin: PT(tb.lo, Math.round(tb.hi * rf)), zone: "bk.z2", intensity: intOf("bk.z2") as unknown as string, bnd: { floor: tb.lo, cap: tb.hi } } as V1Step,
+        { role: "body", leg: "bike", durationMin: PT(tb.lo, Math.round(tb.hi * rf)), zone: "bk.z2", intensity: intOf("bk.z2") as unknown as string, bnd: { floor: tb.lo, cap: tb.hi, hard: true } } as V1Step,
         { role: "body", leg: "run", durationMin: PT(tr.lo, Math.round(tr.hi * rf)), d: "rn", bnd: { floor: Math.max(5, Math.round(tr.lo * 0.6)), cap: tr.hi } } as V1Step,
       ], ...( { runInj } as object) });
     } else {

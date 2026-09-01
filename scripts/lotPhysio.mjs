@@ -1148,7 +1148,13 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 // bit près) — le garde lisait un min() brut sur tous les plafonds, il lit désormais l'ARGMIN
 // PUBLIÉ (la grandeur que la carte affiche) ; les 35 profils sortis du compte étaient des cas
 // où un plafond que le livré réfute passait sous le pic sans être nommé par le produit.
-const SCEAU_ATTENDU = { S1: 4, S4: 348, S5: 191 };
+// FICHE 48 — la trajectoire POSITIONNELLE du plafond de séance (`capScaleAtWeek`) fait DESCENDRE
+// les trois compteurs, et c'est la lecture juste : S1 4 → 2 · S4 348 → 323 · S5 191 → 169. Le
+// plafond ne dépend plus de l'ambition déclarée, donc moins de semaines livrent une séance qui
+// dépasse la sortie longue de sa discipline (S4/I14) et moins de plans culminent à une valeur
+// qu'aucun maillon R20.2 ne déclare (S5). Un cliquet qui BAISSE se ré-épingle comme un cliquet
+// qui monte : sinon la prochaine hausse passerait sous l'ancien seuil sans être vue.
+const SCEAU_ATTENDU = { S1: 2, S4: 323, S5: 169 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;
@@ -1471,9 +1477,16 @@ T("T-36", "vert", "ce qui est prescrit répond aux contraintes de l'athlète (ju
   };
 });
 
+// FICHE 48 — LA HAUSSE EST RÉELLE ET ELLE EST LA RAISON D'ÊTRE DE CE CLIQUET : la trajectoire
+// positionnelle part à 0,80 au lieu de tomber au plancher de clamp, donc le nageur débutant en
+// reprise n'a plus des séances écrasées dès la semaine 1 — pic 1,1 → 1,7 h (fond) et 1,1 → 1,3 h
+// (sprint), fréquence 5 → 6 jours. C'est la population que la fiche 46 avait signalée comme la
+// plus mal servie (fenêtre de nage plate), et le golden le confirme : `swim/demifond/ancien/
+// debutant` gagne 124 % de pic. Ré-épinglé — le cliquet existe pour que cette hausse soit VUE,
+// pas pour l'interdire.
 const PRESCRIT_ATTENDU = {
-  "fond/reprise/debutant": { pic: 1.1, jours: 5 },
-  "sprint/reprise/debutant": { pic: 1.1, jours: 5 },
+  "fond/reprise/debutant": { pic: 1.7, jours: 6 },
+  "sprint/reprise/debutant": { pic: 1.3, jours: 6 },
 };
 T("T-35", "vert", "le pic livré et la fréquence de nage sont épinglés — une hausse ne peut pas être silencieuse", () => {
   const base = { sessions_max: "6", dispo: "quotidienne", doubles: "non", age: "35", sex: "H",
@@ -2056,7 +2069,11 @@ T("T-50", "vert", "PROPRIÉTÉ — la bande d'allure affichée se redérive du p
 // retrait des quatre zones et la graduation d'âge, eux, ne déplacent ni l'un ni l'autre. Les
 // profils tri à blessure de la population voient un jour de la discipline en cause converti,
 // ce qui rend +8 min de VO2 et +150 m de nage seuil au pic. La POPULATION est inchangée (206).
-const PIC_ATTENDU = { vo2Min: 8876, seuilM: 444401, profils: 206 };
+// FICHE 48 — ré-épinglé avec sa cause : la trajectoire positionnelle relève le plafond de séance
+// du début de plan, la nage seuil en récupère 7 579 m sur la population (444 401 → 451 980) et le
+// VO2 gagne 20 min (8 876 → 8 896). La composition ne s'inverse pas — C26c continue de faire
+// céder le VO2 devant la nage seuil, c'est l'AMPLEUR qui bouge, pas le sens.
+const PIC_ATTENDU = { vo2Min: 8896, seuilM: 451980, profils: 206 };
 T("T-48", "vert", "la composition du PIC en tri est épinglée : le VO2 a cédé, la nage seuil a gagné (C26c)", () => {
   let vo2 = 0, seuil = 0, profils = 0;
   for (const { key, plan } of goldenAvecMoteur()) {

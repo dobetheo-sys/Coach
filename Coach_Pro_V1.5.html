@@ -3834,7 +3834,7 @@ function guard(sport        , flag                   )          {
  * (C… / R3.…) : c'est le format {id, what, val, why} appliqué aux constantes du moteur.
  * Source de vérité : Coach_Pro_V1.5.html (486 combinaisons vertes à l'audit).
  */
-                                                 
+                                                        
 
 const SRC = "Coach_Pro_V1.5.html (audit 486/486 vert)";
 const PROVENANCE               = [];
@@ -4188,6 +4188,82 @@ const PROG_DOSE_DEPART = rule("lot-progression", "fraction de la dose de pic att
  *
  * La valeur porte sur le PIC : c'est la borne haute de la trajectoire, pas la dose de départ.
  */
+/**
+ * O-77 (fiche 48, décision du fondateur du 01/09/2026) — LE PLAFOND DE SÉANCE SUIT LA POSITION
+ * DANS LE PLAN, PLUS L'AMBITION DÉCLARÉE.
+ *
+ * *« Ancrer sur la POSITION — semaine k sur n, indépendant de l'ambition déclarée. »*
+ *
+ * CE QUI EST CORRIGÉ. Le facteur d'échelle des plafonds de séance (`_capScale`) se dérivait de
+ * `Lw = cible / peakH`, une position **RELATIVE au pic DÉCLARÉ**. Or la cible ABSOLUE des
+ * premières semaines ne dépend pas de l'ambition — le plancher O-69 la fige à 0,85 × volume
+ * récent : déclarer un pic plus haut abaissait donc mécaniquement le plafond des séances du
+ * DÉBUT du plan. Mesuré sur `tri/70.3`, semaine 1, `vol_recent` 9 :
+ *
+ *     vol_max  9   Lw 0,850   ×0,82   plafond de la longue 100 × 0,82 = 82 min   livré 82
+ *     vol_max 13   Lw 0,588   ×0,506  plafond de la longue 100 × 0,506 = 51 min  livré 51
+ *
+ * L'identité est arithmétique, pas approchée. C'est une faute de MONNAIE (règle 14) : le plafond
+ * d'une séance doit suivre ce que l'athlète peut faire CETTE semaine, pas la place de cette
+ * semaine dans une ambition qu'il a déclarée.
+ *
+ * LA TRAJECTOIRE N'EST PAS INVENTÉE, ELLE EST MESURÉE. Balayée sur les 1 060 profils du corpus,
+ * la médiane de l'ancien facteur PAR POSITION (0 = première semaine de charge, 1 = première
+ * semaine de pic) dessine déjà une droite :
+ *
+ *     p     0,0   0,1   0,2   0,3   0,4   0,5   0,6   0,7   0,8   0,9   1,0
+ *     ancien 0,40  0,46  0,51  0,58  0,62  0,75  0,80  0,90  0,95  0,98  1,00
+ *     ici    0,40  0,46  0,52  0,58  0,64  0,70  0,76  0,82  0,88  0,94  1,00
+ *
+ * La trajectoire livrée est une INTERPOLATION LINÉAIRE : ce qui change n'est pas la forme, c'est
+ * **ce dont elle dérive**.
+ *
+ * ⚠ MAIS LE DÉPART N'EST PAS 0,40, ET C'EST UNE MESURE QUI L'A DÉCIDÉ. Reprendre le plancher de
+ * clamp de l'ancienne formule était le choix évident — il s'est révélé COÛTEUX : le diagnostic
+ * (fiche 46 §6) avait prédit qu'une trajectoire trop basse en semaine 1 empêcherait la rampe R10
+ * de mordre, et c'est exactement ce que la mesure montre. Quatre valeurs balayées, sur les
+ * 47 profils du corpus qui déclarent un volume récent (donc les seuls que l'ancre O-69 concerne) :
+ *
+ *     départ   sous l'ancre O-69   volume total du corpus   longue de S1 (9 h et 13 h déclarées)
+ *     0,40          19 / 47              116 310 h                    40 min
+ *     0,50          19 / 47              116 914 h                    50 min
+ *     0,55          19 / 47              117 085 h                    55 min
+ *     0,60          15 / 47              117 205 h                    60 min      ← retenu
+ *     (avant le lot) 15 / 47                    —                  82 puis 51 min ← l'inversion
+ *
+ * **0,60 est la plus petite valeur balayée qui rende à l'ancre son compte d'AVANT le lot.** Le
+ * critère n'est pas esthétique : O-69 est une décision du fondateur (le plan démarre au volume
+ * RÉEL de l'athlète, sinon il perd des semaines et l'athlète décroche — régularité, priorité 3).
+ *
+ * ⚠ LE COMPROMIS, DÉCLARÉ PLUTÔT QUE TU : à 0,60 la trajectoire est plus PLATE que la courbe
+ * médiane d'aujourd'hui (0,40 → 1,00). Les premières semaines reçoivent donc des plafonds plus
+ * permissifs qu'avant — le volume de la semaine, lui, ne bouge pas (il reste borné par la cible
+ * et par la rampe) : ce qui change est la LIBERTÉ DE RÉPARTITION à l'intérieur de la semaine.
+ * Rendre l'amplitude de progression au début du plan demanderait de descendre le départ, donc de
+ * relâcher l'ancre O-69 : c'est un arbitrage, pas un réglage, et il appartient au fondateur.
+ *
+ * ⚠ L'AFFÛTAGE GARDE SA BRANCHE, et c'est délibéré (limite déclarée du lot) : en affûtage, `Lw`
+ * n'est pas l'ambition, c'est la DESCENTE elle-même (R3.13/Bosquet — l'affûtage vaut ≤ 0,55 du
+ * pic par construction), donc une grandeur déjà positionnelle. R13.6 existe précisément parce
+ * que la formule des phases de CHARGE y était fausse. La toucher demanderait de re-mesurer une
+ * borne sourcée pour un défaut qui n'y a pas été observé — le gate de monotonie ne regarde pas
+ * l'affûtage.
+ *
+ * Même patron que `swimSessionCapAtWeek` (O-56) : une fonction PURE qui prend la position et
+ * rend la borne de CETTE semaine, plutôt qu'une valeur de plan gelée au début.
+ */
+const CAPSCALE_DEPART = rule("O-77", "facteur d'échelle des plafonds de séance à la PREMIÈRE semaine du plan : la plus petite valeur balayée qui préserve l'ancre de départ O-69", 0.8);
+/** O-77 — le facteur d'échelle des plafonds de séance à la semaine `wk` (index 0). Pur. */
+function capScaleAtWeek(phases         , weeks        , wk        )         {
+  // La position de RÉFÉRENCE est la première semaine de PIC : c'est là que les séances atteignent
+  // leur pleine taille, et toutes les semaines de pic la gardent. Sans phase de pic (préparation
+  // courte), on prend la dernière semaine avant l'affûtage, puis la dernière du plan.
+  const pic = phases.find((p) => p.id === "peak");
+  const taper = phases.find((p) => p.id === "taper");
+  const kPic = pic ? pic.start : taper ? Math.max(1, taper.start - 1) : Math.max(1, weeks - 1);
+  const p = kPic > 0 ? Math.min(1, Math.max(0, wk / kPic)) : 1;
+  return CAPSCALE_DEPART + (1 - CAPSCALE_DEPART) * p;
+}
 const O81_FOOTING_CIBLE_PIC_MIN = rule("O-81", "plafond du footing au pic quand la table du format le laisse au ras du plancher de dignité : la sortie facile de référence d'une préparation à leg course long", 50);
 
 /**
@@ -9118,7 +9194,7 @@ function buildTriSessions(kit            )              {
         // Le PLANCHER du leg vélo est la borne basse AUDITÉE (C21c), pas une fraction d'elle :
         // sinon la décroissance d'affûtage descend la séance sous ce que la spec exige, et le
         // générateur produit ce que l'auditeur refuse. Même discipline que C21b en charge.
-        { role: "body", leg: "bike", durationMin: PT(tb.lo, Math.round(tb.hi * rf)), zone: "bk.z2", intensity: intOf("bk.z2")                     , bnd: { floor: tb.lo, cap: tb.hi } }          ,
+        { role: "body", leg: "bike", durationMin: PT(tb.lo, Math.round(tb.hi * rf)), zone: "bk.z2", intensity: intOf("bk.z2")                     , bnd: { floor: tb.lo, cap: tb.hi, hard: true } }          ,
         { role: "body", leg: "run", durationMin: PT(tr.lo, Math.round(tr.hi * rf)), d: "rn", bnd: { floor: Math.max(5, Math.round(tr.lo * 0.6)), cap: tr.hi } }          ,
       ], ...( { runInj }          ) });
     } else {
@@ -14762,7 +14838,17 @@ function generatePlan(profile                , opts                             
       // gonflerait d'un facteur 4. Un bloc répété garde ses propres bornes, comme un bloc
       // porteur de pente.
       if ((b.reps || 1) > 1) return { floor: Math.max(1, b.bnd.floor), cap: Math.max(1, Math.round(b.bnd.cap * sc)) };
-      const fl = plancherDeDignite(b, s, !!r.beginner, _dechargeW) ?? Math.max(1, b.bnd.floor); // C8/C16 — point unique, lu par T-52
+      // O-77 (fiche 48) — UNE BORNE `hard` NE CÈDE PAS NON PLUS PAR LE BAS. Le plafond marqué
+      // `hard` était déjà à l'abri de la mise à l'échelle (« une règle du manifeste ») ; son
+      // PLANCHER, lui, passait par `plancherDeDignite`, qui le fait céder au plafond en décharge
+      // (O-82). Mesuré en livrant la trajectoire positionnelle : le brick d'affûtage du tri
+      // sortait à 19 min pour un plancher AUDITÉ C21c de 30 — `audit:v1` en violation DURE. La
+      // borne tenait donc par la VALEUR du facteur d'échelle, pas par elle-même : « protégé par
+      // le chemin, pas par la borne ». Une borne que l'auditeur vérifie ne se négocie ni en haut
+      // ni en bas.
+      const fl = b.bnd.hard
+        ? Math.max(1, b.bnd.floor)
+        : plancherDeDignite(b, s, !!r.beginner, _dechargeW) ?? Math.max(1, b.bnd.floor); // C8/C16 — point unique, lu par T-52
       // LOT PROGRESSION — le plafond suit la trajectoire déclarée par le module (`progCap` ≤ 1 :
       // il ne peut que partir plus bas, jamais dépasser la borne du format). ⚠ CETTE LIGNE
       // MANQUAIT quand O-81 a été livré : le module posait `progCap` sur le footing et cette
@@ -15289,7 +15375,22 @@ function generatePlan(profile                , opts                             
     // d'un coup, mesuré sur le Full). La longue de S-3 d'un plan long fait encore 60-70 % de
     // sa taille normale : c'est la réduction 40-60 % de Bosquet, pas un arrêt.
     _swimCapW = r.beginner ? swimCapDebutantM(swimSessionCapAtWeek(r.b17Gate ?? null, C15_BEGINNER_SWIM_SESSION_CAP_M, w + 1), r.baseRefs.css) : Number.MAX_SAFE_INTEGER;
-    _capScale = ph.id === "taper" ? Math.max(0.3, Math.min(1, Lw + 0.25)) : Math.max(0.4, Math.min(1, (Lw - 0.5) * 1.2 + 0.4));
+    // O-77 (fiche 48) — LE PLAFOND DE SÉANCE SUIT LA POSITION, PLUS L'AMBITION DÉCLARÉE.
+    // La branche de CHARGE se dérivait de `Lw = cible/peakH` : déclarer un pic plus haut
+    // abaissait le plafond des premières semaines, dont la cible ABSOLUE est pourtant figée par
+    // le plancher O-69. La trajectoire vit désormais dans `capScaleAtWeek` (point unique, pure,
+    // patron `swimSessionCapAtWeek`). L'AFFÛTAGE garde sa branche : `Lw` y est la descente
+    // elle-même (R3.13/Bosquet), pas l'ambition — voir la note de `capScaleAtWeek`.
+    _capScale = ph.id === "taper" ? Math.max(0.3, Math.min(1, Lw + 0.25)) : capScaleAtWeek(r.phases, r.weeks, w) * (r.loadFactor < 1 ? r.loadFactor : 1);
+    // ⚠ LE FACTEUR BLESSURE/ÂGE S'APPLIQUE AUSSI AU PLAFOND DE SÉANCE, et c'est une garde de
+    // SÉCURITÉ qui l'a exigé. `loadFactor` multiplie `peakH` (donc les cibles de semaine) depuis
+    // R6.2/R6.3 ; l'ancienne dérivation par `Lw = cible/peakH` était un RAPPORT, donc aveugle à
+    // lui — et le plancher O-69, lui, ne se réduit PAS avec la blessure, ce qui relevait `Lw` et
+    // donnait au blessé des plafonds plus hauts. Une trajectoire positionnelle est aveugle
+    // autrement : mesuré en la livrant, `swim/ow` déclarant une ÉPAULE recevait **+2,4 % de
+    // volume** (2 151 → 2 320 min) quand le sain en perdait 10 — `B1` du banc v6 en régression,
+    // c'est-à-dire « déclarer une blessure augmente la charge ». Le plafond suit donc la même
+    // réduction que le volume, par la MÊME constante.
     _dechargeW = isRW || ph.id === "taper"; // O-82 (A3) — les planchers sont suspendus en décharge
     let targetH = Lw * peakH;
     // R20.2 (T-25) — la cause de chaque écrêtage est notée AU MOMENT où il se produit.

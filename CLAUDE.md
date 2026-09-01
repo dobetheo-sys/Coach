@@ -611,6 +611,45 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**FICHE 48 livrée — O-77 est FERMÉE : le plafond de séance suit la POSITION, plus l'ambition
+déclarée** (décision du fondateur, 01/09/2026 — voir `syntheses/44-fiche48-…`, registre O-77
+fermé, **O-115** ouvert) : `capScaleAtWeek(phases, weeks, wk)` (point unique, pure, patron
+`swimSessionCapAtWeek` d'O-56) remplace la dérivation par `Lw = cible/peakH`. **Cas de référence :
+la longue de S1 vaut 80 min à `vol_max` 9 comme à 13 — écart 0** (avant : 82 puis 51) ; le gate de
+monotonie passe `MONO-tri-vol_max` ET `MONO-swimrun-history` de dette déclarée à **VERT**.
+**Deux prémisses de la fiche rectifiées avant d'écrire** : aucun module de sport ne lit
+`_capScale` (variable LOCALE, lue en UN point, `blockBounds`), et elle reste le TRANSPORT — ce
+qui change est sa DÉRIVATION. **La trajectoire est mesurée, pas inventée** : l'ancien facteur par
+position rend déjà 0,40 → 1,00 (médiane de S1 = 0,400, le plancher du clamp). **⚠ Mais le DÉPART
+évident était FAUX** : reprendre 0,40 met `audit:v1` à **3 violations DURES** et fait tomber le
+pic d'une fixture de **499 à 266 min** — des plafonds bas tôt font des semaines petites, et C22
+propage la famine jusqu'au pic (le risque prédit par le diagnostic, en pire : il ne s'arrête pas à
+la semaine 1). Balayé : 0,40 → 3 dures · 0,60 → 0 dure mais ancre dégradée · **0,80 → 0 dure,
+ancre O-69 à son compte de référence (15/47), volume corpus +0,9 %**. Compromis déclaré : à 0,80
+la trajectoire est PLATE, le plafond devient un garde-fou plus qu'un moteur de progression.
+**Faute de méthode publiée** : j'ai calibré sur l'ancre R10 sans avoir mesuré le volume de
+RÉFÉRENCE — et l'agrégat (+0,3 %) cachait que 3 profils sur 1 060 perdaient > 20 % de pic, très
+exactement les trois qui violaient l'auditeur. **Trouvé et corrigé en chemin** : une borne `hard`
+était protégée par le HAUT mais cédait par le BAS — le brick d'affûtage sortait à 19 min pour un
+plancher AUDITÉ C21c de 30, parce qu'en décharge `plancherDeDignite` fait céder le plancher au
+plafond (O-82) ; la borne tenait par la VALEUR du facteur d'échelle, pas par elle-même. **O-115
+signalé non corrigé** (périmètre) : la trajectoire laisse une séance de décharge dépasser sa
+charge voisine (vélo, tri) — trois causes ÉLIMINÉES à facteur unique (C29d · plafond de récup,
+pièce écrite puis RETIRÉE · échauffement), et cette dernière a corrigé mon banc (le critère
+comparait `s.min` quand T-56 compare la DOSE DU CORPS — R11.1 dans le banc qui surveille R11.1).
+Rayon golden **877/1074, tous sports** ; 4 pics perdent > 20 %, 12 en gagnent > 20 %.
+**La batterie a trouvé une régression de SÉCURITÉ, et c'est le correctif de fond du lot** : `B1`
+(v6) rouge — sur `swim/ow`, déclarer une ÉPAULE donnait **+2,4 % de volume** quand le sain en
+perdait 10, le signe inversé. Cause structurelle : `loadFactor` multiplie `peakH` depuis R6.2/R6.3,
+l'ancienne dérivation par un RAPPORT y était aveugle mais le plancher O-69 relevait `Lw` chez le
+blessé ; une trajectoire purement positionnelle lui donne les mêmes plafonds qu'au sain. Le facteur
+s'applique donc AUSSI au plafond de séance. ⚠ Marge publiée : le blessé est désormais à **+1,3 %**
+du sain (seuil 2 %) contre **−14,4 %** avant le lot — la garde passe, la marge s'est amincie.
+Quatre cliquets ré-épinglés avec cause : **C30-A** 69 → 83/85/90 (la longue atteint la durée de
+course, les trois convergeant vers le plafond de FORMAT) · **T-27** S1 4→2, S4 348→323, S5 191→169
+(ils DESCENDENT) · **T-35** pic du nageur débutant 1,1 → 1,7 h, 5 → 6 jours · **T-48** nage seuil
++7 579 m. **Batterie 13/13.**
+
 **FICHE 47 livrée — le gate de monotonie, et la cause d'O-77 enfin NOMMÉE** (01/09/2026 — voir
 `syntheses/43-fiche47-…`, registre O-77 réécrit, **O-113** et **O-114** ouverts) : **T2** — la
 bisection converge en trois neutralisations à facteur unique. Le diff complet du `ReasonedPlan`

@@ -16,7 +16,7 @@ import {
   C24_MIN_SWIM_SESSION_M,
   BRICK_BIKE_BOUNDS, DOSE_CAP_MIN, CAP_BRICK_RUN, CAP_LONG, CAP_LONG_DUATHLON, CAP_SWIM, R313_TAPER_MAX_VS_PEAK, RECUP_WEEK_FACTOR, O69_DEPART_PLANCHER,
   C13d_QUALITY_MIN_BODY_MIN, C25_RECOVERY_SESSION_CAP_MIN, RACE_EVE_CAP_MIN,
-  hardTimeCapMin, weightedHardMin, C26c_HARD_TIME_TOLERANCE, MIN_WEEKS, ALLOC_CIBLE, ALLOC_CIBLE_PALIERS, allocCibleDe,
+  hardTimeCapMin, weightedHardMin, C26c_HARD_TIME_TOLERANCE, MIN_WEEKS, ALLOC_CIBLE, ALLOC_CIBLE_PALIERS, allocCibleDe, capScaleAtWeek,
   C29D_DECHARGE_DECLENCHEUR, C29D_DECHARGE_CIBLE,
 } from "../engine/constraintMatrix.ts";
 import { TrainingReasoningEngine } from "../engine/reasoningEngine.ts";
@@ -2811,7 +2811,17 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       // gonflerait d'un facteur 4. Un bloc répété garde ses propres bornes, comme un bloc
       // porteur de pente.
       if ((b.reps || 1) > 1) return { floor: Math.max(1, b.bnd.floor), cap: Math.max(1, Math.round(b.bnd.cap * sc)) };
-      const fl = plancherDeDignite(b, s, !!r.beginner, _dechargeW) ?? Math.max(1, b.bnd.floor); // C8/C16 — point unique, lu par T-52
+      // O-77 (fiche 48) — UNE BORNE `hard` NE CÈDE PAS NON PLUS PAR LE BAS. Le plafond marqué
+      // `hard` était déjà à l'abri de la mise à l'échelle (« une règle du manifeste ») ; son
+      // PLANCHER, lui, passait par `plancherDeDignite`, qui le fait céder au plafond en décharge
+      // (O-82). Mesuré en livrant la trajectoire positionnelle : le brick d'affûtage du tri
+      // sortait à 19 min pour un plancher AUDITÉ C21c de 30 — `audit:v1` en violation DURE. La
+      // borne tenait donc par la VALEUR du facteur d'échelle, pas par elle-même : « protégé par
+      // le chemin, pas par la borne ». Une borne que l'auditeur vérifie ne se négocie ni en haut
+      // ni en bas.
+      const fl = b.bnd.hard
+        ? Math.max(1, b.bnd.floor)
+        : plancherDeDignite(b, s, !!r.beginner, _dechargeW) ?? Math.max(1, b.bnd.floor); // C8/C16 — point unique, lu par T-52
       // LOT PROGRESSION — le plafond suit la trajectoire déclarée par le module (`progCap` ≤ 1 :
       // il ne peut que partir plus bas, jamais dépasser la borne du format). ⚠ CETTE LIGNE
       // MANQUAIT quand O-81 a été livré : le module posait `progCap` sur le footing et cette
@@ -3338,7 +3348,22 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     // d'un coup, mesuré sur le Full). La longue de S-3 d'un plan long fait encore 60-70 % de
     // sa taille normale : c'est la réduction 40-60 % de Bosquet, pas un arrêt.
     _swimCapW = r.beginner ? swimCapDebutantM(swimSessionCapAtWeek(r.b17Gate ?? null, C15_BEGINNER_SWIM_SESSION_CAP_M, w + 1), r.baseRefs.css) : Number.MAX_SAFE_INTEGER;
-    _capScale = ph.id === "taper" ? Math.max(0.3, Math.min(1, Lw + 0.25)) : Math.max(0.4, Math.min(1, (Lw - 0.5) * 1.2 + 0.4));
+    // O-77 (fiche 48) — LE PLAFOND DE SÉANCE SUIT LA POSITION, PLUS L'AMBITION DÉCLARÉE.
+    // La branche de CHARGE se dérivait de `Lw = cible/peakH` : déclarer un pic plus haut
+    // abaissait le plafond des premières semaines, dont la cible ABSOLUE est pourtant figée par
+    // le plancher O-69. La trajectoire vit désormais dans `capScaleAtWeek` (point unique, pure,
+    // patron `swimSessionCapAtWeek`). L'AFFÛTAGE garde sa branche : `Lw` y est la descente
+    // elle-même (R3.13/Bosquet), pas l'ambition — voir la note de `capScaleAtWeek`.
+    _capScale = ph.id === "taper" ? Math.max(0.3, Math.min(1, Lw + 0.25)) : capScaleAtWeek(r.phases, r.weeks, w) * (r.loadFactor < 1 ? r.loadFactor : 1);
+    // ⚠ LE FACTEUR BLESSURE/ÂGE S'APPLIQUE AUSSI AU PLAFOND DE SÉANCE, et c'est une garde de
+    // SÉCURITÉ qui l'a exigé. `loadFactor` multiplie `peakH` (donc les cibles de semaine) depuis
+    // R6.2/R6.3 ; l'ancienne dérivation par `Lw = cible/peakH` était un RAPPORT, donc aveugle à
+    // lui — et le plancher O-69, lui, ne se réduit PAS avec la blessure, ce qui relevait `Lw` et
+    // donnait au blessé des plafonds plus hauts. Une trajectoire positionnelle est aveugle
+    // autrement : mesuré en la livrant, `swim/ow` déclarant une ÉPAULE recevait **+2,4 % de
+    // volume** (2 151 → 2 320 min) quand le sain en perdait 10 — `B1` du banc v6 en régression,
+    // c'est-à-dire « déclarer une blessure augmente la charge ». Le plafond suit donc la même
+    // réduction que le volume, par la MÊME constante.
     _dechargeW = isRW || ph.id === "taper"; // O-82 (A3) — les planchers sont suspendus en décharge
     let targetH = Lw * peakH;
     // R20.2 (T-25) — la cause de chaque écrêtage est notée AU MOMENT où il se produit.

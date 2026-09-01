@@ -17,10 +17,10 @@ le nombre d'alertes et le score, écarts-types 5,6 à 10,6 — les moyennes se r
 aucune ne se cite seule comme un effet.
 | Sport | n | Ratio pic (méd) | p10–p90 | Pics >1.4 | Pics <0.5 | Sem. hors bande | Taper vs pic (méd) | Récup+lourde | Longue >55% | Sans volume/plan | Couverture | Score STRUCTUREL moyen |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| tri | 108 | 0.98 | 0.92–1.00 | 0 | 0 | 0 | 0.43 | 0 | 2 | 0.0 | 100% | 95 |
-| run | 108 | 0.98 | 0.94–0.99 | 0 | 0 | 0 | 0.47 | 0 | 0 | 0.0 | 100% | 99 |
-| bike | 135 | 0.99 | 0.97–1.00 | 0 | 0 | 0 | 0.44 | 0 | 0 | 0.0 | 100% | 99 |
-| swim | 108 | 0.97 | 0.91–1.00 | 0 | 0 | 0 | 0.50 | 0 | 0 | 0.0 | 100% | 98 |
+| tri | 108 | 0.98 | 0.94–1.00 | 0 | 0 | 0 | 0.40 | 0 | 0 | 0.0 | 100% | 99 |
+| run | 108 | 0.98 | 0.94–1.00 | 0 | 0 | 0 | 0.46 | 0 | 0 | 0.0 | 100% | 99 |
+| bike | 135 | 0.99 | 0.99–1.00 | 0 | 0 | 0 | 0.43 | 0 | 0 | 0.0 | 100% | 99 |
+| swim | 108 | 0.97 | 0.90–0.99 | 0 | 0 | 0 | 0.48 | 0 | 1 | 0.0 | 100% | 99 |
 
 ## Règles d'acceptation (spec « audit 2 »)
 
@@ -32,8 +32,8 @@ aucune ne se cite seule comme un effet.
 
 ## Règles du manifeste (note.md)
 
-- Saut >+10% de la courbe déclarée entre semaines de charge : **40** combinaisons en échec
-- Saut >+25% de volume réel (métrique audit) : **0** en échec (sauts +15–25% tolérés comme bruit de métrique : 6 combos concernés)
+- Saut >+10% de la courbe déclarée entre semaines de charge : **13** combinaisons en échec
+- Saut >+25% de volume réel (métrique audit) : **0** en échec (sauts +15–25% tolérés comme bruit de métrique : 0 combos concernés)
 - Deux longues CAP consécutives : **0** en échec
 - Sortie longue CAP >3h pour un débutant : **0** en échec
 - Séance piscine <750m pour un non-débutant : **0** en échec
@@ -44,7 +44,7 @@ Recoupement d'estimateurs : écart médian |nos minutes − s.min du générateu
 
 ## Pires cas (ratio pic le plus extrême par sport)
 
-- **tri** : S/reprise/debutant/finir → ratio 0.89 (déclaré 3.2h, prescrit 2.9h), longue 34%
+- **tri** : S/reprise/inter/competition → ratio 0.88 (déclaré 2.6h, prescrit 2.3h), longue 46%
 - **run** : 5k/confirme/debutant/competition → ratio 0.88 (déclaré 3.0h, prescrit 2.6h), longue 40%
-- **bike** : route/confirme/debutant/competition → ratio 0.97 (déclaré 10.0h, prescrit 9.8h), longue 30%
-- **swim** : demifond/ancien/debutant/competition → ratio 0.83 (déclaré 0.8h, prescrit 0.7h), longue 35%
+- **bike** : cyclo/reprise/debutant/competition → ratio 0.97 (déclaré 10.0h, prescrit 9.8h), longue 41%
+- **swim** : demifond/confirme/debutant/competition → ratio 0.80 (déclaré 0.7h, prescrit 0.6h), longue 56%

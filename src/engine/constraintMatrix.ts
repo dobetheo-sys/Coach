@@ -5,7 +5,7 @@
  * (C… / R3.…) : c'est le format {id, what, val, why} appliqué aux constantes du moteur.
  * Source de vérité : Coach_Pro_V1.5.html (486 combinaisons vertes à l'audit).
  */
-import type { Sport, History } from "./types.ts";
+import type { Sport, History, Phase } from "./types.ts";
 import { ANSWER_SCHEMA } from "./answerSchema.ts";
 
 export interface Provenance {
@@ -365,6 +365,82 @@ export const PROG_DOSE_DEPART = rule("lot-progression", "fraction de la dose de 
  *
  * La valeur porte sur le PIC : c'est la borne haute de la trajectoire, pas la dose de départ.
  */
+/**
+ * O-77 (fiche 48, décision du fondateur du 01/09/2026) — LE PLAFOND DE SÉANCE SUIT LA POSITION
+ * DANS LE PLAN, PLUS L'AMBITION DÉCLARÉE.
+ *
+ * *« Ancrer sur la POSITION — semaine k sur n, indépendant de l'ambition déclarée. »*
+ *
+ * CE QUI EST CORRIGÉ. Le facteur d'échelle des plafonds de séance (`_capScale`) se dérivait de
+ * `Lw = cible / peakH`, une position **RELATIVE au pic DÉCLARÉ**. Or la cible ABSOLUE des
+ * premières semaines ne dépend pas de l'ambition — le plancher O-69 la fige à 0,85 × volume
+ * récent : déclarer un pic plus haut abaissait donc mécaniquement le plafond des séances du
+ * DÉBUT du plan. Mesuré sur `tri/70.3`, semaine 1, `vol_recent` 9 :
+ *
+ *     vol_max  9   Lw 0,850   ×0,82   plafond de la longue 100 × 0,82 = 82 min   livré 82
+ *     vol_max 13   Lw 0,588   ×0,506  plafond de la longue 100 × 0,506 = 51 min  livré 51
+ *
+ * L'identité est arithmétique, pas approchée. C'est une faute de MONNAIE (règle 14) : le plafond
+ * d'une séance doit suivre ce que l'athlète peut faire CETTE semaine, pas la place de cette
+ * semaine dans une ambition qu'il a déclarée.
+ *
+ * LA TRAJECTOIRE N'EST PAS INVENTÉE, ELLE EST MESURÉE. Balayée sur les 1 060 profils du corpus,
+ * la médiane de l'ancien facteur PAR POSITION (0 = première semaine de charge, 1 = première
+ * semaine de pic) dessine déjà une droite :
+ *
+ *     p     0,0   0,1   0,2   0,3   0,4   0,5   0,6   0,7   0,8   0,9   1,0
+ *     ancien 0,40  0,46  0,51  0,58  0,62  0,75  0,80  0,90  0,95  0,98  1,00
+ *     ici    0,40  0,46  0,52  0,58  0,64  0,70  0,76  0,82  0,88  0,94  1,00
+ *
+ * La trajectoire livrée est une INTERPOLATION LINÉAIRE : ce qui change n'est pas la forme, c'est
+ * **ce dont elle dérive**.
+ *
+ * ⚠ MAIS LE DÉPART N'EST PAS 0,40, ET C'EST UNE MESURE QUI L'A DÉCIDÉ. Reprendre le plancher de
+ * clamp de l'ancienne formule était le choix évident — il s'est révélé COÛTEUX : le diagnostic
+ * (fiche 46 §6) avait prédit qu'une trajectoire trop basse en semaine 1 empêcherait la rampe R10
+ * de mordre, et c'est exactement ce que la mesure montre. Quatre valeurs balayées, sur les
+ * 47 profils du corpus qui déclarent un volume récent (donc les seuls que l'ancre O-69 concerne) :
+ *
+ *     départ   sous l'ancre O-69   volume total du corpus   longue de S1 (9 h et 13 h déclarées)
+ *     0,40          19 / 47              116 310 h                    40 min
+ *     0,50          19 / 47              116 914 h                    50 min
+ *     0,55          19 / 47              117 085 h                    55 min
+ *     0,60          15 / 47              117 205 h                    60 min      ← retenu
+ *     (avant le lot) 15 / 47                    —                  82 puis 51 min ← l'inversion
+ *
+ * **0,60 est la plus petite valeur balayée qui rende à l'ancre son compte d'AVANT le lot.** Le
+ * critère n'est pas esthétique : O-69 est une décision du fondateur (le plan démarre au volume
+ * RÉEL de l'athlète, sinon il perd des semaines et l'athlète décroche — régularité, priorité 3).
+ *
+ * ⚠ LE COMPROMIS, DÉCLARÉ PLUTÔT QUE TU : à 0,60 la trajectoire est plus PLATE que la courbe
+ * médiane d'aujourd'hui (0,40 → 1,00). Les premières semaines reçoivent donc des plafonds plus
+ * permissifs qu'avant — le volume de la semaine, lui, ne bouge pas (il reste borné par la cible
+ * et par la rampe) : ce qui change est la LIBERTÉ DE RÉPARTITION à l'intérieur de la semaine.
+ * Rendre l'amplitude de progression au début du plan demanderait de descendre le départ, donc de
+ * relâcher l'ancre O-69 : c'est un arbitrage, pas un réglage, et il appartient au fondateur.
+ *
+ * ⚠ L'AFFÛTAGE GARDE SA BRANCHE, et c'est délibéré (limite déclarée du lot) : en affûtage, `Lw`
+ * n'est pas l'ambition, c'est la DESCENTE elle-même (R3.13/Bosquet — l'affûtage vaut ≤ 0,55 du
+ * pic par construction), donc une grandeur déjà positionnelle. R13.6 existe précisément parce
+ * que la formule des phases de CHARGE y était fausse. La toucher demanderait de re-mesurer une
+ * borne sourcée pour un défaut qui n'y a pas été observé — le gate de monotonie ne regarde pas
+ * l'affûtage.
+ *
+ * Même patron que `swimSessionCapAtWeek` (O-56) : une fonction PURE qui prend la position et
+ * rend la borne de CETTE semaine, plutôt qu'une valeur de plan gelée au début.
+ */
+export const CAPSCALE_DEPART = rule("O-77", "facteur d'échelle des plafonds de séance à la PREMIÈRE semaine du plan : la plus petite valeur balayée qui préserve l'ancre de départ O-69", 0.8);
+/** O-77 — le facteur d'échelle des plafonds de séance à la semaine `wk` (index 0). Pur. */
+export function capScaleAtWeek(phases: Phase[], weeks: number, wk: number): number {
+  // La position de RÉFÉRENCE est la première semaine de PIC : c'est là que les séances atteignent
+  // leur pleine taille, et toutes les semaines de pic la gardent. Sans phase de pic (préparation
+  // courte), on prend la dernière semaine avant l'affûtage, puis la dernière du plan.
+  const pic = phases.find((p) => p.id === "peak");
+  const taper = phases.find((p) => p.id === "taper");
+  const kPic = pic ? pic.start : taper ? Math.max(1, taper.start - 1) : Math.max(1, weeks - 1);
+  const p = kPic > 0 ? Math.min(1, Math.max(0, wk / kPic)) : 1;
+  return CAPSCALE_DEPART + (1 - CAPSCALE_DEPART) * p;
+}
 export const O81_FOOTING_CIBLE_PIC_MIN = rule("O-81", "plafond du footing au pic quand la table du format le laisse au ras du plancher de dignité : la sortie facile de référence d'une préparation à leg course long", 50);
 
 /**

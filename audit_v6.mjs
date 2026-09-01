@@ -921,15 +921,22 @@ test("C30-A", "C30 + C30b allongent la sortie longue des coureurs LENTS — les 
     ["semi", "inter", "8:30", "8", 130], ["semi", "avance", "7:00", "8", 130],
     ["semi", "avance", "8:30", "8", 130],
     // ceux que C30b ajoute — la moitié du gain de ce chapitre est là
-    ["10k", "debutant", "7:00", "6", 90], ["10k", "inter", "7:00", "8", 69],
-    ["10k", "inter", "8:30", "8", 79], ["10k", "avance", "5:45", "8", 69],
+    ["10k", "debutant", "7:00", "6", 90], ["10k", "inter", "7:00", "8", 83],
+    ["10k", "inter", "8:30", "8", 79], ["10k", "avance", "5:45", "8", 85],
     ["semi", "debutant", "7:00", "6", 130], ["semi", "debutant", "8:30", "6", 130],
     // …et LE COUREUR RAPIDE, qui n'est plus un témoin immobile — O-21 l'a bougé, pas C30b.
     // Ces trois-là ne doivent RIEN à la spécificité (leur cible est déjà atteinte) : ils
     // montent parce que le remplissage d'I14b rend enfin à la sortie longue les minutes que
     // le plafond de libellé lui avait prises. Gardés ici, avec cette raison, plutôt que
     // retirés — c'est la seule façon de voir qu'un même chiffre a DEUX causes possibles.
-    ["10k", "inter", "4:30", "8", 69], ["5k", "inter", "8:30", "8", 66],
+    // HUITIÈME ÉTAT — fiche 48, la trajectoire POSITIONNELLE du plafond de séance (01/09/2026).
+    // `capScaleAtWeek` remplace la dérivation par `Lw = cible/peakH` : le plafond des premières
+    // semaines ne dépend plus de l'ambition déclarée, et il PART plus haut (0,80). Trois profils
+    // `10k` à 8 h montent — **69 → 83 · 69 → 85 · 69 → 90** — et c'est la direction que C30
+    // existe pour servir : la sortie longue d'un coureur atteint enfin la durée de sa course.
+    // Les trois convergent vers 90, le plafond de format : ce n'est plus la règle qui borne,
+    // c'est la table. Ré-épinglés avec leur cause, jamais exemptés.
+    ["10k", "inter", "4:30", "8", 90], ["5k", "inter", "8:30", "8", 66],
     ["semi", "inter", "4:30", "8", 130], ["marathon", "inter", "4:30", "8", 180],
   ];
   // SEPTIÈME ÉTAT — O-69, le volume récent devient un PLANCHER (18/08/2026). Le départ du
