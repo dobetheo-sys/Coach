@@ -7,6 +7,7 @@
 import type { ReasonedPlan, V1Day, V1Session, V1Step } from "../engine/types.ts";
 import { buildSessions, type SessionCtx } from "./sessionLibrary.ts";
 import { guard, sportModule } from "../sports/registry.ts";
+import { disciplinesInterdites, R6_PAIN_CONTRAINDICATION } from "../engine/constraintMatrix.ts";
 import { intOf, renderSess, type Refs, type HrZones } from "./renderer.ts";
 import { readCycle, weekIsLateLuteal } from "../engine/cycleModel.ts";
 // Import circulaire assumé (planGenerator importe buildDays) : IS_QUALITY_ZONE n'est lu qu'à
@@ -464,6 +465,9 @@ export function buildDays(r: ReasonedPlan, refs: Refs, hz: HrZones): GenDay[] {
   applyDisciplineCoverage(r, days, refs, hz, ctx);
   applySwimFrequency(r, days, refs, hz, ctx);
   applyVo2Coverage(r, days, refs, hz, ctx);
+  // R6.1b (fiche 39) — APRÈS la couverture des disciplines et la fréquence de nage : ces deux
+  // passes REMETTENT la discipline qu'on vient de retirer. Onzième fois que l'ordre décide.
+  applyContraindicationCap(r, days, refs, hz, ctx);
   applyWeeklyVariety(r, days, refs, hz, ctx);
   // R13.3 (suite) — le garde de polarisation REPASSE après les passes qui ajoutent des séances :
   // la couverture et la fréquence de nage installent une « Nage seuil » (sw.css) qu'il n'a
@@ -514,6 +518,162 @@ function applyVo2Coverage(r: ReasonedPlan, days: GenDay[], refs: Refs, hz: HrZon
       cand.sessions = buildSessions(ctx, "dur1" as Parameters<typeof buildSessions>[1], cand.phaseId, cand.prog || 0, cand.week);
       for (const s of cand.sessions) if (s.steps && s.steps.length) renderSess(s, refs, hz, r.baseRefs);
     }
+  }
+}
+
+/**
+ * R6.1b (fiche 39, 25/08/2026) — UNE CONTRE-INDICATION RETIRE UN JOUR DE LA DISCIPLINE, PARTOUT.
+ *
+ * ⚠ LE DÉFAUT QU'ELLE FERME, mesuré sur le corpus : `R6_PAIN_CONTRAINDICATION` déclare depuis
+ * R6.1 que « une douleur de charge se traite en RETIRANT la contrainte », et la seule passe qui
+ * traduisait cette déclaration en actes — `applyRunImpactCap` — ne cape QUE la course à pied,
+ * et seulement pour les quatre sports qui déclarent son garde. Conséquences mesurées :
+ *
+ *   · en TRIATHLON, quatre zones aux interdictions DIFFÉRENTES (`course`, `genou`, `dos`, `cou`)
+ *     produisaient exactement le même mix, au centième près — et deux d'entre elles livraient
+ *     PLUS de la discipline qu'elles interdisent (course 34,9 % → 42,4 %) ;
+ *   · `dos` (interdit le vélo) et `cou` (interdit nage ET vélo) n'ont JAMAIS rien retiré, dans
+ *     aucun sport : il n'existait aucun plafond de fréquence pour le vélo ni pour la nage.
+ *
+ * ⚠ ET DÉCLARER LE GARDE `runImpactCap` POUR LE TRI EST INERTE — mesuré avant d'écrire cette
+ * passe : le mix ne bouge pas d'un centième. Le plafond de jours d'appui ne mord pas là où la
+ * discipline n'occupe déjà que trois ou quatre jours.
+ *
+ * LE GESTE, ET IL N'EST PAS INVENTÉ : **une zone fragile retire UN jour de la discipline qu'elle
+ * interdit, par semaine.** C'est exactement ce que le moteur fait déjà pour l'impact —
+ * `reasoningEngine.ts:394` : `if (inj.impact) maxRunDays = Math.max(3, maxRunDays - 1)`. On
+ * reprend son geste au lieu d'inventer une part cible, et on l'étend aux disciplines qui n'en
+ * avaient aucun.
+ *
+ * LE PLANCHER : une discipline que l'ÉPREUVE demande ne descend jamais sous un jour par semaine
+ * — le manifeste range la santé avant la performance, mais retirer entièrement la natation d'un
+ * plan de triathlon ne soigne pas l'épaule, ça produit un plan qui n'est plus une préparation.
+ * Une discipline hors épreuve (le vélo d'un coureur) peut, elle, tomber à zéro.
+ *
+ * LA SUBSTITUTION passe par `buildSessions` — le point d'entrée unique qui connaît `medHold` et
+ * `noVo2` (leçon R4.0) — et prend la première séance dont la discipline est PRÉFÉRÉE par la
+ * table. Si le module n'en offre aucune, le jour passe OFF plutôt que de garder la séance
+ * contre-indiquée.
+ */
+function applyContraindicationCap(r: ReasonedPlan, days: GenDay[], refs: Refs, hz: HrZones, ctx: SessionCtx): void {
+  // `epaule` EST DANS LA TABLE ET RESTE HORS DE CETTE PASSE — sur ordre de la fiche 39 (§1.4)
+  // et pour la raison qui la motive : la charge d'épaule a DÉJÀ son mécanisme, O-85, un plafond
+  // hebdomadaire de mètres qui cliquette sur le livré et se lève avec la position. Empiler un
+  // retrait de JOURS sur un plafond de VOLUME, c'est deux règles qui paient la même zone sans
+  // se voir — mesuré, la part de nage d'un 70.3 tombait de 21,4 % à 5,6 % pour un athlète qui
+  // doit nager 1,9 km le jour J. Deuxième chemin interdit (R11.1).
+  const AVEC_MECANISME_DEDIE = new Set(["epaule"]);
+  const zones = (r.inj?.list || []).filter((z) => !AVEC_MECANISME_DEDIE.has(z));
+  if (!zones.length) return;
+  const interdites = disciplinesInterdites(zones);
+  if (!interdites.length) return;
+  const mod = sportModule(r.profile.sport as string);
+  const duSport = new Set<string>(mod.disciplines as string[]);
+  // ON SUBSTITUE, ON NE SUPPRIME PAS — et la cible est une discipline DE L'ÉPREUVE.
+  //
+  // Ma première écriture retirait le jour (« OFF (zone fragile) ») quand aucune séance
+  // préférée ne sortait du créneau. Mesuré sur le banc v7 : en swimrun, `pied` faisait
+  // tomber `S-NOVO2` (garde-fou à ZÉRO) et `S-LONGSWIM`, parce que la semaine perdait du
+  // volume, le garde de polarisation reconvertissait alors la séance de NAGE de qualité en
+  // footing facile, et le plan finissait avec PLUS de course et zéro nage continue — l'inverse
+  // exact de l'intention. Une passe qui retire de la charge en laisse arbitrer les
+  // conséquences par les passes d'aval : elle doit donc rendre un jour ÉQUIVALENT, pas un trou.
+  const preferees: string[] = [];
+  for (const z of zones)
+    for (const d of R6_PAIN_CONTRAINDICATION[z]?.prefer || [])
+      if (!interdites.includes(d) && duSport.has(d) && !preferees.includes(d)) preferees.push(d);
+  // Monodiscipline : il n'y a rien vers quoi basculer. La contre-indication y est portée par
+  // `applyRunImpactCap` (jours d'appui) — deuxième chemin interdit (R11.1), on ne double pas.
+  if (mod.disciplines.length < 2 || !preferees.length) return;
+  let retires = 0;
+  // UN JOUR PAR SEMAINE, TOTAL — pas un par discipline interdite. `genou` en interdit DEUX
+  // (course et vélo) : sans ce compteur, une seule zone retirait deux jours à la même semaine,
+  // et le geste cessait d'être celui qu'on a repris (`maxRunDays - 1`).
+  for (let w = 1; w <= r.weeks; w++) {
+    const wd = days.filter((d) => d.week === w);
+    // PAS DANS L'AFFÛTAGE — et la raison n'est pas le confort, c'est que la conversion y est
+    // DÉFAITE puis payée quand même. Mesuré sur un duathlon PM à 3 séances : la passe convertit
+    // un jour de la semaine 38, la décroissance d'affûtage (R3.13) reconstruit ensuite ce jour
+    // en course — la protection a disparu — mais la semaine a changé de répartition, et le
+    // « Rappel race-pace » qui pesait 26 min en pèse 212 (garde-fou U-DOSE du banc v7, budget
+    // ZÉRO). Une passe dont l'effet est annulé et dont l'effet de bord persiste ne doit pas
+    // tourner là. La contre-indication tient sur toute la construction ; les une à trois
+    // dernières semaines gardent la forme que l'affûtage leur donne.
+    if (wd[0]?.phaseId === "taper") continue;
+    let budgetSemaine = 1;
+    for (const disc of interdites) {
+      if (budgetSemaine <= 0) break;
+      // LE PORTEUR SE COMPTE COMME L'AUDITEUR LE COMPTE : un brick porte SES DEUX disciplines
+      // (`audit_v7` fait `s.d === "bk" || s.d === "br"`). Ne compter que `s.d === disc` faisait
+      // croire le plancher satisfait alors que le dernier jour « pur » venait de partir —
+      // mesuré par le check `D-DISC` du banc v7, qui refuse une semaine de charge sans une de
+      // ses disciplines. Générateur et auditeur comptent la même chose (O-36).
+      const porte = (d: GenDay) => d.sessions.some((s) => !s.race && (s.d === disc || (s.d === "br" && (disc === "rn" || disc === "bk"))));
+      const tous = wd.filter(porte);
+      const porteurs = wd.filter((d) => !d.forced && porte(d) && !d.sessions.some((s) => s.race)
+        && d.sessions.some((s) => s.d === disc)); // on ne retire jamais un BRICK : il porte deux disciplines
+      // Le plancher : 1 si l'épreuve demande cette discipline, 0 sinon — compté sur TOUS les
+      // porteurs, brick compris.
+      const plancher = duSport.has(disc) ? 1 : 0;
+      let aRetirer = Math.min(budgetSemaine, tous.length - Math.max(plancher, tous.length - 1), porteurs.length);
+      if (aRetirer <= 0) continue;
+      budgetSemaine -= aRetirer;
+      // On retire d'abord le jour FACILE le plus léger : la qualité et la longue portent la
+      // spécificité, et le plancher les protège de toute façon.
+      const ordre = [...porteurs].sort((a, b) => {
+        const q = (d: GenDay) => (d.charge === "facile" ? 0 : d.slot === "durLong" ? 2 : 1);
+        if (q(a) !== q(b)) return q(a) - q(b);
+        const m = (d: GenDay) => d.sessions.reduce((t, s) => t + (s.min || 0), 0);
+        return m(a) - m(b);
+      });
+      for (const d of ordre) {
+        if (aRetirer <= 0) break;
+        // Le créneau qui PRODUIT la discipline visée est celui que la couverture des
+        // disciplines emploie déjà (`applyDisciplineCoverage`) : nage → `facile2`, le reste
+        // → `facileR`. Une seule table de correspondance créneau ↔ discipline dans le moteur.
+        // R5.5 ne vise QUE la qualité (« jamais deux fois la même séance de QUALITÉ par
+        // semaine »). L'appliquer à tout rendait la passe muette en swimrun, où le créneau
+        // facile ne produit qu'un nom (« Footing facile », « Nage récup + technique ») :
+        // mesuré, zéro conversion sur les treize zones. Deux séances faciles homonymes dans
+        // une semaine, c'est ce qu'écrit n'importe quel plan — et `applyWeeklyVariety`, qui
+        // tourne juste après, existe pour les différencier.
+        const estQualite = (x: V1Session) => (x.steps || []).some((st) => IS_QUALITY_ZONE(String(st.zone || "")));
+        const deja = new Set(wd.flatMap((x) => x.sessions.filter(estQualite).map((y) => y.name)));
+        let pick: V1Session | undefined;
+        for (const cible of preferees) {
+          // Le VÉLO passe par le cross-training, comme dans la couverture des disciplines : le
+          // créneau facile de course ne produit jamais de séance vélo (mesuré — `pick` restait
+          // introuvable et la passe était INERTE sur les huit zones qui interdisent la course).
+          if (cible === "bk") {
+            const sess = crossTrainingSession(r, false, false);
+            sess.name = "Endurance vélo (zone fragile)";
+            sess.note = "Cette sortie remplace un jour de la discipline qui charge la zone que tu as déclarée. Le vélo garde la filière aérobie sans l'impact ni la contrainte de cette zone.";
+            renderSess(sess, refs, hz, r.baseRefs);
+            pick = sess; break;
+          }
+          // `slotIdx` fait varier la VARIANTE que la bibliothèque produit : sans lui, le créneau
+          // rendait la séance DÉJÀ posée dans la semaine et le doublon la faisait échouer.
+          for (let rang = 0; rang < 3 && !pick; rang++) {
+            const built = buildSessions(ctx, (cible === "sw" ? "facile2" : "facileR") as Parameters<typeof buildSessions>[1], d.phaseId, d.prog || 0, d.week, rang);
+            const cand = built.find((x) => x.d === cible && !x.race && !(estQualite(x) && deja.has(x.name)));
+            if (cand) pick = cand;
+          }
+          if (pick) break;
+        }
+        if (!pick) continue; // rien à mettre à la place : on garde le jour tel quel
+        if (pick.steps && pick.steps.length) renderSess(pick, refs, hz, r.baseRefs);
+        d.charge = "facile"; d.slot = (pick.d === "sw" ? "facile2" : "facileR");
+        d.sessions = [pick];
+        aRetirer--; retires++;
+      }
+    }
+  }
+  if (retires > 0) {
+    r.decisions.push({
+      id: "R6.1b", what: "Zone fragile : la discipline en cause recule",
+      val: retires + " jour(s) de " + interdites.join("/") + " converti(s) en " + preferees.join("/") + " sur la préparation",
+      why: "Tu as déclaré " + zones.join(", ") + ". Une douleur de charge se traite en RETIRANT la contrainte, pas en la réduisant : le plan convertit un jour par semaine de la ou des disciplines qui sollicitent cette zone en une discipline qui l'épargne — il ne le laisse jamais vide, la semaine garde sa charge. Il n'en retire jamais la dernière quand ton épreuve la demande — un plan sans elle ne serait plus une préparation. Un avis médical reste la vraie réponse : aucune substitution ne remplace un diagnostic.",
+    });
   }
 }
 

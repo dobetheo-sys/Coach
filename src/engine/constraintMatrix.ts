@@ -821,6 +821,23 @@ export const R6_PAIN_CONTRAINDICATION: Record<string, PainContra> = rule(
     epaule: { forbid: ["sw"], prefer: ["bk", "rn"] },
     dos: { forbid: ["bk"], prefer: ["sw"] },
     cou: { forbid: ["sw", "bk"], prefer: ["rn"] },
+    // QUATRE ZONES AJOUTÉES (fiche 39, 25/08/2026) — elles étaient PROPOSÉES à l'athlète par
+    // `ANSWER_SCHEMA.injury` et n'avaient AUCUNE entrée ici : mesuré, quelqu'un qui déclarait
+    // une aponévrosite plantaire gardait 100 % de course à pied. Chacune est calquée sur une
+    // zone DÉJÀ câblée, jamais inventée :
+    //
+    //   · `cheville` et `fascia` — chargées à chaque appui, exactement comme `pied` : même
+    //     `forbid`, même `prefer`. L'aponévrose plantaire et la cheville sont les deux
+    //     structures qui encaissent la réception ;
+    //   · `quadriceps` — le quadriceps est le frein EXCENTRIQUE de la course et de la
+    //     descente ; le module trail le dit déjà (« prudence excentrique si impact fragile »,
+    //     `sports/trail`). Le vélo le sollicite en concentrique, donc il reste préféré ;
+    //   · `velo` — la SYMÉTRIQUE de `course`, qui existait seule. Deux valeurs construites sur
+    //     le même modèle (« j'ai mal quand je… »), une seule était branchée.
+    cheville: { forbid: ["rn"], prefer: ["sw", "bk"] },
+    fascia: { forbid: ["rn"], prefer: ["sw", "bk"] },
+    quadriceps: { forbid: ["rn"], prefer: ["sw", "bk"] },
+    velo: { forbid: ["bk"], prefer: ["sw", "rn"] },
   },
 );
 
@@ -841,6 +858,27 @@ export const R6_AGE_LOAD = rule(
   {
     mineur: { maxAge: 17, volFactor: 0.7, allowVo2: false },
     master: { minAge: 60, volFactor: 0.85, recupEvery: 3 },
+    // FICHE 39 (25/08/2026) — UN PALIER DE PLUS DE CHAQUE CÔTÉ, ET SA JUSTIFICATION EST DITE.
+    //
+    // Mesuré : les deux facteurs étaient PLATS sur tout leur domaine. Un athlète de 100 ans
+    // recevait exactement le même plan qu'un de 60 (pic 5,03 h, 114 min de VO2max), un enfant
+    // de 10 ans exactement le même qu'un de 17. Le schéma accepte 10 à 100 ; le moteur ne
+    // distinguait que deux frontières.
+    //
+    // ⚠ AUCUNE RÉFÉRENCE EXTERNE N'EXISTE DANS CE DÉPÔT POUR L'ÂGE ET LA CHARGE — vérifié :
+    // `R6.3` porte sa justification interne et aucune citation, contrairement à Bosquet,
+    // Riegel, Coggan, Martin, Nielsen ou Plews ailleurs dans ce fichier. **On n'invente donc
+    // pas une formule continue.** On réapplique le PAS QUI EXISTE DÉJÀ : le moteur a retenu
+    // ×0,85 pour le premier palier master, on prend le même une seconde fois (0,85² ≈ 0,72) ;
+    // idem côté mineur (0,70² ≈ 0,49, arrondi à 0,50). C'est la construction la plus prudente
+    // disponible sans source : elle ne crée aucun nombre neuf, elle répète celui qui a été
+    // arbitré.
+    //
+    // Les DEUX seuils (13 et 75 ans) sont des ordres de grandeur RÉVOCABLES par le fondateur,
+    // au même titre que `O88_NB_ACCELERATIONS`. Ils sont posés au milieu de l'intervalle que
+    // le palier existant laissait plat (10-17 et 60-100).
+    mineur2: { maxAge: 13, volFactor: 0.5 },
+    master2: { minAge: 75, volFactor: 0.72 },
   },
 );
 
@@ -857,6 +895,19 @@ export interface InjuryInfo {
   lumbar: boolean;
   cervical: boolean;
 }
+/** R11.1 — « cette zone interdit-elle cette discipline ? », lu dans la table et nulle part
+ * ailleurs. Le seul point qui traduit une zone fragile en discipline contre-indiquée. */
+export function zoneInterdit(zone: string, discipline: string): boolean {
+  return (R6_PAIN_CONTRAINDICATION[zone]?.forbid || []).includes(discipline);
+}
+
+/** R11.1 — les disciplines contre-indiquées par l'ensemble des zones déclarées. */
+export function disciplinesInterdites(zones: string[]): string[] {
+  const out = new Set<string>();
+  for (const z of zones) for (const d of R6_PAIN_CONTRAINDICATION[z]?.forbid || []) out.add(d);
+  return [...out];
+}
+
 export function readInjuries(raw: unknown): InjuryInfo {
   const list = (Array.isArray(raw) ? raw.join(",") : String(raw ?? ""))
     .split(",").map((s) => s.trim()).filter((x) => x && x !== "aucune");
@@ -867,8 +918,14 @@ export function readInjuries(raw: unknown): InjuryInfo {
     // COMPTE comme une blessure d'impact. Elle ne l'était que dans `impactAny` (renfo/plio) :
     // le plafond de jours d'appui, qui lit `impact`, l'ignorait donc — un duathlète déclarant
     // « ça tire quand je cours » recevait autant d'appuis qu'un athlète sain.
-    impact: list.some((x) => ["tibia", "genou", "pied", "hanche", "course"].includes(x)),
-    impactAny: list.some((x) => ["tibia", "genou", "pied", "hanche", "course"].includes(x)),
+    //
+    // R11.1 (fiche 39, 25/08/2026) — LA LISTE EST DÉRIVÉE DE LA TABLE, PLUS RECOPIÉE. Elle
+    // était écrite en dur ici — `["tibia","genou","pied","hanche","course"]` — c'est-à-dire
+    // exactement l'ensemble des zones dont `R6_PAIN_CONTRAINDICATION` interdit `rn`. Deux
+    // sources pour le même fait, et elles avaient divergé : les zones ajoutées au domaine
+    // d'`injury` sans être ajoutées ici étaient invisibles au plafond de jours d'appui.
+    impact: list.some((x) => zoneInterdit(x, "rn")),
+    impactAny: list.some((x) => zoneInterdit(x, "rn")),
     shoulder: list.includes("epaule"),
     lumbar: list.includes("dos"),
     cervical: list.includes("cou"),

@@ -309,12 +309,14 @@ export class TrainingReasoningEngine {
     const master = ageN >= R6_AGE_LOAD.master.minAge;
     let ageFactor = 1;
     if (minor) {
-      ageFactor = R6_AGE_LOAD.mineur.volFactor;
-      D("R6.3", "Athlète mineur (" + ageN + " ans)", "volume ×" + R6_AGE_LOAD.mineur.volFactor + ", aucune VO2max", "Ces plans sont calibrés pour des adultes : en dessous de 18 ans, la charge (surtout les VO2max répétés) doit être encadrée — le plan est réduit et sans VO2max, l'encadrement humain reste nécessaire");
+      // FICHE 39 — le second palier : sous 14 ans, le pas de l'ado est réappliqué une fois.
+      ageFactor = ageN <= R6_AGE_LOAD.mineur2.maxAge ? R6_AGE_LOAD.mineur2.volFactor : R6_AGE_LOAD.mineur.volFactor;
+      D("R6.3", "Athlète mineur (" + ageN + " ans)", "volume ×" + ageFactor + ", aucune VO2max", "Ces plans sont calibrés pour des adultes : en dessous de 18 ans, la charge (surtout les VO2max répétés) doit être encadrée — le plan est réduit et sans VO2max, l'encadrement humain reste nécessaire");
       warnings.push("Ces plans sont calibrés pour des adultes. En dessous de 18 ans, la charge (surtout les VO2max répétés) doit être encadrée par un entraîneur : le plan est réduit de 30% et ne contient aucune séance VO2max — mais il ne remplace pas un encadrement humain.");
     } else if (master) {
-      ageFactor = R6_AGE_LOAD.master.volFactor;
-      D("R6.3", "Athlète master (" + ageN + " ans)", "volume ×" + R6_AGE_LOAD.master.volFactor + ", récup /3 semaines", "La capacité d'encaissement se maintient avec l'âge, la vitesse de récupération baisse : on récupère plus souvent, on charge un peu moins");
+      // FICHE 39 — le second palier : à partir de 75 ans, le pas du master est réappliqué.
+      ageFactor = ageN >= R6_AGE_LOAD.master2.minAge ? R6_AGE_LOAD.master2.volFactor : R6_AGE_LOAD.master.volFactor;
+      D("R6.3", "Athlète master (" + ageN + " ans)", "volume ×" + ageFactor + ", récup /3 semaines", "La capacité d'encaissement se maintient avec l'âge, la vitesse de récupération baisse : on récupère plus souvent, on charge un peu moins");
     }
     const loadFactor = injFactor * ageFactor;
 

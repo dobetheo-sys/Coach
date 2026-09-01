@@ -1162,18 +1162,37 @@ const FORMATS_BY_SPORT                           = {
  * limite physiologique — les formats courts restent ouverts et protégés par R6.3, qui reste
  * le bon outil pour la charge.
  */
+// FICHE 39 (25/08/2026) — LA TABLE ÉTAIT INCOMPLÈTE, ET SON CRITÈRE IMPLICITE EST MESURABLE.
+//
+// Mesuré : un enfant de 10 ans pouvait générer un plan de SEMI-MARATHON (12 semaines, 4,52 h de
+// pic) — le refus ne couvrait que Full, 70.3, marathon et PM. En rangeant les formats par leur
+// durée MINIMALE de préparation (`MIN_WEEKS`, table déjà calibrée), le critère implicite de
+// cette table se lit : **les quatre formats bornés sont exactement ceux à `MIN_WEEKS ≥ 16`**
+// (Full 36 · PM 24 · 70.3 20 · marathon 16). Quatre formats du même rang n'y étaient pas :
+// `bike/gravel` 16, `duathlon/L` 16, `swimrun/series` 20, `swimrun/championship` 30. Les
+// ajouter n'invente rien — ça rend la table cohérente avec ce qu'elle appliquait déjà.
+//
+// ⚠ LE SEMI EST UN CAS À PART, et il est ajouté SUR DEMANDE EXPLICITE du fondateur : à
+// `MIN_WEEKS = 12`, il est SOUS ce critère. L'ajouter abaisse donc le seuil implicite de 16 à
+// 12 semaines — ce qui pose mécaniquement la question pour les CINQ autres formats du même
+// rang, non ajoutés ici faute de validation : `tri/M`, `bike/route`, `swim/fond`,
+// `duathlon/M`, `swimrun/sprint` (tous à 12). À trancher, pas à étendre en silence.
 const AGE_MINI_FORMAT                                         = {
   tri: { Full: 18, "70.3": 18 },
-  run: { marathon: 18 },
-  duathlon: { PM: 18 },
+  run: { marathon: 18, semi: 18 },
+  duathlon: { PM: 18, L: 18 },
+  bike: { gravel: 18 },
+  swimrun: { championship: 18, series: 18 },
 };
 /** Trail : la règle porte sur la DISTANCE, pas sur un format (le trail n'en a pas). */
 const AGE_MINI_TRAIL_KM = 50;
 /** Le format immédiatement accessible, pour ne jamais refuser sans proposer. */
 const REPLI_FORMAT                                         = {
   tri: { Full: "M ou 70.3 à 18 ans", "70.3": "S ou M" },
-  run: { marathon: "10 km ou semi-marathon" },
-  duathlon: { PM: "S, M ou L" },
+  run: { marathon: "10 km", semi: "5 km ou 10 km" },
+  duathlon: { PM: "S ou M", L: "S ou M" },
+  bike: { gravel: "un critérium ou une route" },
+  swimrun: { championship: "une expérience ou un sprint", series: "une expérience ou un sprint" },
 };
 
 /**
@@ -2848,6 +2867,23 @@ const R6_PAIN_CONTRAINDICATION                             = rule(
     epaule: { forbid: ["sw"], prefer: ["bk", "rn"] },
     dos: { forbid: ["bk"], prefer: ["sw"] },
     cou: { forbid: ["sw", "bk"], prefer: ["rn"] },
+    // QUATRE ZONES AJOUTÉES (fiche 39, 25/08/2026) — elles étaient PROPOSÉES à l'athlète par
+    // `ANSWER_SCHEMA.injury` et n'avaient AUCUNE entrée ici : mesuré, quelqu'un qui déclarait
+    // une aponévrosite plantaire gardait 100 % de course à pied. Chacune est calquée sur une
+    // zone DÉJÀ câblée, jamais inventée :
+    //
+    //   · `cheville` et `fascia` — chargées à chaque appui, exactement comme `pied` : même
+    //     `forbid`, même `prefer`. L'aponévrose plantaire et la cheville sont les deux
+    //     structures qui encaissent la réception ;
+    //   · `quadriceps` — le quadriceps est le frein EXCENTRIQUE de la course et de la
+    //     descente ; le module trail le dit déjà (« prudence excentrique si impact fragile »,
+    //     `sports/trail`). Le vélo le sollicite en concentrique, donc il reste préféré ;
+    //   · `velo` — la SYMÉTRIQUE de `course`, qui existait seule. Deux valeurs construites sur
+    //     le même modèle (« j'ai mal quand je… »), une seule était branchée.
+    cheville: { forbid: ["rn"], prefer: ["sw", "bk"] },
+    fascia: { forbid: ["rn"], prefer: ["sw", "bk"] },
+    quadriceps: { forbid: ["rn"], prefer: ["sw", "bk"] },
+    velo: { forbid: ["bk"], prefer: ["sw", "rn"] },
   },
 );
 
@@ -2868,6 +2904,27 @@ const R6_AGE_LOAD = rule(
   {
     mineur: { maxAge: 17, volFactor: 0.7, allowVo2: false },
     master: { minAge: 60, volFactor: 0.85, recupEvery: 3 },
+    // FICHE 39 (25/08/2026) — UN PALIER DE PLUS DE CHAQUE CÔTÉ, ET SA JUSTIFICATION EST DITE.
+    //
+    // Mesuré : les deux facteurs étaient PLATS sur tout leur domaine. Un athlète de 100 ans
+    // recevait exactement le même plan qu'un de 60 (pic 5,03 h, 114 min de VO2max), un enfant
+    // de 10 ans exactement le même qu'un de 17. Le schéma accepte 10 à 100 ; le moteur ne
+    // distinguait que deux frontières.
+    //
+    // ⚠ AUCUNE RÉFÉRENCE EXTERNE N'EXISTE DANS CE DÉPÔT POUR L'ÂGE ET LA CHARGE — vérifié :
+    // `R6.3` porte sa justification interne et aucune citation, contrairement à Bosquet,
+    // Riegel, Coggan, Martin, Nielsen ou Plews ailleurs dans ce fichier. **On n'invente donc
+    // pas une formule continue.** On réapplique le PAS QUI EXISTE DÉJÀ : le moteur a retenu
+    // ×0,85 pour le premier palier master, on prend le même une seconde fois (0,85² ≈ 0,72) ;
+    // idem côté mineur (0,70² ≈ 0,49, arrondi à 0,50). C'est la construction la plus prudente
+    // disponible sans source : elle ne crée aucun nombre neuf, elle répète celui qui a été
+    // arbitré.
+    //
+    // Les DEUX seuils (13 et 75 ans) sont des ordres de grandeur RÉVOCABLES par le fondateur,
+    // au même titre que `O88_NB_ACCELERATIONS`. Ils sont posés au milieu de l'intervalle que
+    // le palier existant laissait plat (10-17 et 60-100).
+    mineur2: { maxAge: 13, volFactor: 0.5 },
+    master2: { minAge: 75, volFactor: 0.72 },
   },
 );
 
@@ -2884,6 +2941,19 @@ const R6_AGE_LOAD = rule(
                   
                     
  
+/** R11.1 — « cette zone interdit-elle cette discipline ? », lu dans la table et nulle part
+ * ailleurs. Le seul point qui traduit une zone fragile en discipline contre-indiquée. */
+function zoneInterdit(zone        , discipline        )          {
+  return (R6_PAIN_CONTRAINDICATION[zone]?.forbid || []).includes(discipline);
+}
+
+/** R11.1 — les disciplines contre-indiquées par l'ensemble des zones déclarées. */
+function disciplinesInterdites(zones          )           {
+  const out = new Set        ();
+  for (const z of zones) for (const d of R6_PAIN_CONTRAINDICATION[z]?.forbid || []) out.add(d);
+  return [...out];
+}
+
 function readInjuries(raw         )             {
   const list = (Array.isArray(raw) ? raw.join(",") : String(raw ?? ""))
     .split(",").map((s) => s.trim()).filter((x) => x && x !== "aucune");
@@ -2894,8 +2964,14 @@ function readInjuries(raw         )             {
     // COMPTE comme une blessure d'impact. Elle ne l'était que dans `impactAny` (renfo/plio) :
     // le plafond de jours d'appui, qui lit `impact`, l'ignorait donc — un duathlète déclarant
     // « ça tire quand je cours » recevait autant d'appuis qu'un athlète sain.
-    impact: list.some((x) => ["tibia", "genou", "pied", "hanche", "course"].includes(x)),
-    impactAny: list.some((x) => ["tibia", "genou", "pied", "hanche", "course"].includes(x)),
+    //
+    // R11.1 (fiche 39, 25/08/2026) — LA LISTE EST DÉRIVÉE DE LA TABLE, PLUS RECOPIÉE. Elle
+    // était écrite en dur ici — `["tibia","genou","pied","hanche","course"]` — c'est-à-dire
+    // exactement l'ensemble des zones dont `R6_PAIN_CONTRAINDICATION` interdit `rn`. Deux
+    // sources pour le même fait, et elles avaient divergé : les zones ajoutées au domaine
+    // d'`injury` sans être ajoutées ici étaient invisibles au plafond de jours d'appui.
+    impact: list.some((x) => zoneInterdit(x, "rn")),
+    impactAny: list.some((x) => zoneInterdit(x, "rn")),
     shoulder: list.includes("epaule"),
     lumbar: list.includes("dos"),
     cervical: list.includes("cou"),
@@ -3693,12 +3769,14 @@ class TrainingReasoningEngine {
     const master = ageN >= R6_AGE_LOAD.master.minAge;
     let ageFactor = 1;
     if (minor) {
-      ageFactor = R6_AGE_LOAD.mineur.volFactor;
-      D("R6.3", "Athlète mineur (" + ageN + " ans)", "volume ×" + R6_AGE_LOAD.mineur.volFactor + ", aucune VO2max", "Ces plans sont calibrés pour des adultes : en dessous de 18 ans, la charge (surtout les VO2max répétés) doit être encadrée — le plan est réduit et sans VO2max, l'encadrement humain reste nécessaire");
+      // FICHE 39 — le second palier : sous 14 ans, le pas de l'ado est réappliqué une fois.
+      ageFactor = ageN <= R6_AGE_LOAD.mineur2.maxAge ? R6_AGE_LOAD.mineur2.volFactor : R6_AGE_LOAD.mineur.volFactor;
+      D("R6.3", "Athlète mineur (" + ageN + " ans)", "volume ×" + ageFactor + ", aucune VO2max", "Ces plans sont calibrés pour des adultes : en dessous de 18 ans, la charge (surtout les VO2max répétés) doit être encadrée — le plan est réduit et sans VO2max, l'encadrement humain reste nécessaire");
       warnings.push("Ces plans sont calibrés pour des adultes. En dessous de 18 ans, la charge (surtout les VO2max répétés) doit être encadrée par un entraîneur : le plan est réduit de 30% et ne contient aucune séance VO2max — mais il ne remplace pas un encadrement humain.");
     } else if (master) {
-      ageFactor = R6_AGE_LOAD.master.volFactor;
-      D("R6.3", "Athlète master (" + ageN + " ans)", "volume ×" + R6_AGE_LOAD.master.volFactor + ", récup /3 semaines", "La capacité d'encaissement se maintient avec l'âge, la vitesse de récupération baisse : on récupère plus souvent, on charge un peu moins");
+      // FICHE 39 — le second palier : à partir de 75 ans, le pas du master est réappliqué.
+      ageFactor = ageN >= R6_AGE_LOAD.master2.minAge ? R6_AGE_LOAD.master2.volFactor : R6_AGE_LOAD.master.volFactor;
+      D("R6.3", "Athlète master (" + ageN + " ans)", "volume ×" + ageFactor + ", récup /3 semaines", "La capacité d'encaissement se maintient avec l'âge, la vitesse de récupération baisse : on récupère plus souvent, on charge un peu moins");
     }
     const loadFactor = injFactor * ageFactor;
 
@@ -8617,6 +8695,7 @@ function swimrunPrereqBlock(a                                                   
 
 
 
+
 // Import circulaire assumé (planGenerator importe buildDays) : IS_QUALITY_ZONE n'est lu qu'à
 // l'exécution, jamais à l'initialisation du module — même motif que la porte médicale.
 
@@ -9072,6 +9151,9 @@ function buildDays(r              , refs      , hz         )           {
   applyDisciplineCoverage(r, days, refs, hz, ctx);
   applySwimFrequency(r, days, refs, hz, ctx);
   applyVo2Coverage(r, days, refs, hz, ctx);
+  // R6.1b (fiche 39) — APRÈS la couverture des disciplines et la fréquence de nage : ces deux
+  // passes REMETTENT la discipline qu'on vient de retirer. Onzième fois que l'ordre décide.
+  applyContraindicationCap(r, days, refs, hz, ctx);
   applyWeeklyVariety(r, days, refs, hz, ctx);
   // R13.3 (suite) — le garde de polarisation REPASSE après les passes qui ajoutent des séances :
   // la couverture et la fréquence de nage installent une « Nage seuil » (sw.css) qu'il n'a
@@ -9122,6 +9204,162 @@ function applyVo2Coverage(r              , days          , refs      , hz       
       cand.sessions = buildSessions(ctx, "dur1"                                       , cand.phaseId, cand.prog || 0, cand.week);
       for (const s of cand.sessions) if (s.steps && s.steps.length) renderSess(s, refs, hz, r.baseRefs);
     }
+  }
+}
+
+/**
+ * R6.1b (fiche 39, 25/08/2026) — UNE CONTRE-INDICATION RETIRE UN JOUR DE LA DISCIPLINE, PARTOUT.
+ *
+ * ⚠ LE DÉFAUT QU'ELLE FERME, mesuré sur le corpus : `R6_PAIN_CONTRAINDICATION` déclare depuis
+ * R6.1 que « une douleur de charge se traite en RETIRANT la contrainte », et la seule passe qui
+ * traduisait cette déclaration en actes — `applyRunImpactCap` — ne cape QUE la course à pied,
+ * et seulement pour les quatre sports qui déclarent son garde. Conséquences mesurées :
+ *
+ *   · en TRIATHLON, quatre zones aux interdictions DIFFÉRENTES (`course`, `genou`, `dos`, `cou`)
+ *     produisaient exactement le même mix, au centième près — et deux d'entre elles livraient
+ *     PLUS de la discipline qu'elles interdisent (course 34,9 % → 42,4 %) ;
+ *   · `dos` (interdit le vélo) et `cou` (interdit nage ET vélo) n'ont JAMAIS rien retiré, dans
+ *     aucun sport : il n'existait aucun plafond de fréquence pour le vélo ni pour la nage.
+ *
+ * ⚠ ET DÉCLARER LE GARDE `runImpactCap` POUR LE TRI EST INERTE — mesuré avant d'écrire cette
+ * passe : le mix ne bouge pas d'un centième. Le plafond de jours d'appui ne mord pas là où la
+ * discipline n'occupe déjà que trois ou quatre jours.
+ *
+ * LE GESTE, ET IL N'EST PAS INVENTÉ : **une zone fragile retire UN jour de la discipline qu'elle
+ * interdit, par semaine.** C'est exactement ce que le moteur fait déjà pour l'impact —
+ * `reasoningEngine.ts:394` : `if (inj.impact) maxRunDays = Math.max(3, maxRunDays - 1)`. On
+ * reprend son geste au lieu d'inventer une part cible, et on l'étend aux disciplines qui n'en
+ * avaient aucun.
+ *
+ * LE PLANCHER : une discipline que l'ÉPREUVE demande ne descend jamais sous un jour par semaine
+ * — le manifeste range la santé avant la performance, mais retirer entièrement la natation d'un
+ * plan de triathlon ne soigne pas l'épaule, ça produit un plan qui n'est plus une préparation.
+ * Une discipline hors épreuve (le vélo d'un coureur) peut, elle, tomber à zéro.
+ *
+ * LA SUBSTITUTION passe par `buildSessions` — le point d'entrée unique qui connaît `medHold` et
+ * `noVo2` (leçon R4.0) — et prend la première séance dont la discipline est PRÉFÉRÉE par la
+ * table. Si le module n'en offre aucune, le jour passe OFF plutôt que de garder la séance
+ * contre-indiquée.
+ */
+function applyContraindicationCap(r              , days          , refs      , hz         , ctx            )       {
+  // `epaule` EST DANS LA TABLE ET RESTE HORS DE CETTE PASSE — sur ordre de la fiche 39 (§1.4)
+  // et pour la raison qui la motive : la charge d'épaule a DÉJÀ son mécanisme, O-85, un plafond
+  // hebdomadaire de mètres qui cliquette sur le livré et se lève avec la position. Empiler un
+  // retrait de JOURS sur un plafond de VOLUME, c'est deux règles qui paient la même zone sans
+  // se voir — mesuré, la part de nage d'un 70.3 tombait de 21,4 % à 5,6 % pour un athlète qui
+  // doit nager 1,9 km le jour J. Deuxième chemin interdit (R11.1).
+  const AVEC_MECANISME_DEDIE = new Set(["epaule"]);
+  const zones = (r.inj?.list || []).filter((z) => !AVEC_MECANISME_DEDIE.has(z));
+  if (!zones.length) return;
+  const interdites = disciplinesInterdites(zones);
+  if (!interdites.length) return;
+  const mod = sportModule(r.profile.sport          );
+  const duSport = new Set        (mod.disciplines            );
+  // ON SUBSTITUE, ON NE SUPPRIME PAS — et la cible est une discipline DE L'ÉPREUVE.
+  //
+  // Ma première écriture retirait le jour (« OFF (zone fragile) ») quand aucune séance
+  // préférée ne sortait du créneau. Mesuré sur le banc v7 : en swimrun, `pied` faisait
+  // tomber `S-NOVO2` (garde-fou à ZÉRO) et `S-LONGSWIM`, parce que la semaine perdait du
+  // volume, le garde de polarisation reconvertissait alors la séance de NAGE de qualité en
+  // footing facile, et le plan finissait avec PLUS de course et zéro nage continue — l'inverse
+  // exact de l'intention. Une passe qui retire de la charge en laisse arbitrer les
+  // conséquences par les passes d'aval : elle doit donc rendre un jour ÉQUIVALENT, pas un trou.
+  const preferees           = [];
+  for (const z of zones)
+    for (const d of R6_PAIN_CONTRAINDICATION[z]?.prefer || [])
+      if (!interdites.includes(d) && duSport.has(d) && !preferees.includes(d)) preferees.push(d);
+  // Monodiscipline : il n'y a rien vers quoi basculer. La contre-indication y est portée par
+  // `applyRunImpactCap` (jours d'appui) — deuxième chemin interdit (R11.1), on ne double pas.
+  if (mod.disciplines.length < 2 || !preferees.length) return;
+  let retires = 0;
+  // UN JOUR PAR SEMAINE, TOTAL — pas un par discipline interdite. `genou` en interdit DEUX
+  // (course et vélo) : sans ce compteur, une seule zone retirait deux jours à la même semaine,
+  // et le geste cessait d'être celui qu'on a repris (`maxRunDays - 1`).
+  for (let w = 1; w <= r.weeks; w++) {
+    const wd = days.filter((d) => d.week === w);
+    // PAS DANS L'AFFÛTAGE — et la raison n'est pas le confort, c'est que la conversion y est
+    // DÉFAITE puis payée quand même. Mesuré sur un duathlon PM à 3 séances : la passe convertit
+    // un jour de la semaine 38, la décroissance d'affûtage (R3.13) reconstruit ensuite ce jour
+    // en course — la protection a disparu — mais la semaine a changé de répartition, et le
+    // « Rappel race-pace » qui pesait 26 min en pèse 212 (garde-fou U-DOSE du banc v7, budget
+    // ZÉRO). Une passe dont l'effet est annulé et dont l'effet de bord persiste ne doit pas
+    // tourner là. La contre-indication tient sur toute la construction ; les une à trois
+    // dernières semaines gardent la forme que l'affûtage leur donne.
+    if (wd[0]?.phaseId === "taper") continue;
+    let budgetSemaine = 1;
+    for (const disc of interdites) {
+      if (budgetSemaine <= 0) break;
+      // LE PORTEUR SE COMPTE COMME L'AUDITEUR LE COMPTE : un brick porte SES DEUX disciplines
+      // (`audit_v7` fait `s.d === "bk" || s.d === "br"`). Ne compter que `s.d === disc` faisait
+      // croire le plancher satisfait alors que le dernier jour « pur » venait de partir —
+      // mesuré par le check `D-DISC` du banc v7, qui refuse une semaine de charge sans une de
+      // ses disciplines. Générateur et auditeur comptent la même chose (O-36).
+      const porte = (d        ) => d.sessions.some((s) => !s.race && (s.d === disc || (s.d === "br" && (disc === "rn" || disc === "bk"))));
+      const tous = wd.filter(porte);
+      const porteurs = wd.filter((d) => !d.forced && porte(d) && !d.sessions.some((s) => s.race)
+        && d.sessions.some((s) => s.d === disc)); // on ne retire jamais un BRICK : il porte deux disciplines
+      // Le plancher : 1 si l'épreuve demande cette discipline, 0 sinon — compté sur TOUS les
+      // porteurs, brick compris.
+      const plancher = duSport.has(disc) ? 1 : 0;
+      let aRetirer = Math.min(budgetSemaine, tous.length - Math.max(plancher, tous.length - 1), porteurs.length);
+      if (aRetirer <= 0) continue;
+      budgetSemaine -= aRetirer;
+      // On retire d'abord le jour FACILE le plus léger : la qualité et la longue portent la
+      // spécificité, et le plancher les protège de toute façon.
+      const ordre = [...porteurs].sort((a, b) => {
+        const q = (d        ) => (d.charge === "facile" ? 0 : d.slot === "durLong" ? 2 : 1);
+        if (q(a) !== q(b)) return q(a) - q(b);
+        const m = (d        ) => d.sessions.reduce((t, s) => t + (s.min || 0), 0);
+        return m(a) - m(b);
+      });
+      for (const d of ordre) {
+        if (aRetirer <= 0) break;
+        // Le créneau qui PRODUIT la discipline visée est celui que la couverture des
+        // disciplines emploie déjà (`applyDisciplineCoverage`) : nage → `facile2`, le reste
+        // → `facileR`. Une seule table de correspondance créneau ↔ discipline dans le moteur.
+        // R5.5 ne vise QUE la qualité (« jamais deux fois la même séance de QUALITÉ par
+        // semaine »). L'appliquer à tout rendait la passe muette en swimrun, où le créneau
+        // facile ne produit qu'un nom (« Footing facile », « Nage récup + technique ») :
+        // mesuré, zéro conversion sur les treize zones. Deux séances faciles homonymes dans
+        // une semaine, c'est ce qu'écrit n'importe quel plan — et `applyWeeklyVariety`, qui
+        // tourne juste après, existe pour les différencier.
+        const estQualite = (x           ) => (x.steps || []).some((st) => IS_QUALITY_ZONE(String(st.zone || "")));
+        const deja = new Set(wd.flatMap((x) => x.sessions.filter(estQualite).map((y) => y.name)));
+        let pick                       ;
+        for (const cible of preferees) {
+          // Le VÉLO passe par le cross-training, comme dans la couverture des disciplines : le
+          // créneau facile de course ne produit jamais de séance vélo (mesuré — `pick` restait
+          // introuvable et la passe était INERTE sur les huit zones qui interdisent la course).
+          if (cible === "bk") {
+            const sess = crossTrainingSession(r, false, false);
+            sess.name = "Endurance vélo (zone fragile)";
+            sess.note = "Cette sortie remplace un jour de la discipline qui charge la zone que tu as déclarée. Le vélo garde la filière aérobie sans l'impact ni la contrainte de cette zone.";
+            renderSess(sess, refs, hz, r.baseRefs);
+            pick = sess; break;
+          }
+          // `slotIdx` fait varier la VARIANTE que la bibliothèque produit : sans lui, le créneau
+          // rendait la séance DÉJÀ posée dans la semaine et le doublon la faisait échouer.
+          for (let rang = 0; rang < 3 && !pick; rang++) {
+            const built = buildSessions(ctx, (cible === "sw" ? "facile2" : "facileR")                                       , d.phaseId, d.prog || 0, d.week, rang);
+            const cand = built.find((x) => x.d === cible && !x.race && !(estQualite(x) && deja.has(x.name)));
+            if (cand) pick = cand;
+          }
+          if (pick) break;
+        }
+        if (!pick) continue; // rien à mettre à la place : on garde le jour tel quel
+        if (pick.steps && pick.steps.length) renderSess(pick, refs, hz, r.baseRefs);
+        d.charge = "facile"; d.slot = (pick.d === "sw" ? "facile2" : "facileR");
+        d.sessions = [pick];
+        aRetirer--; retires++;
+      }
+    }
+  }
+  if (retires > 0) {
+    r.decisions.push({
+      id: "R6.1b", what: "Zone fragile : la discipline en cause recule",
+      val: retires + " jour(s) de " + interdites.join("/") + " converti(s) en " + preferees.join("/") + " sur la préparation",
+      why: "Tu as déclaré " + zones.join(", ") + ". Une douleur de charge se traite en RETIRANT la contrainte, pas en la réduisant : le plan convertit un jour par semaine de la ou des disciplines qui sollicitent cette zone en une discipline qui l'épargne — il ne le laisse jamais vide, la semaine garde sa charge. Il n'en retire jamais la dernière quand ton épreuve la demande — un plan sans elle ne serait plus une préparation. Un avis médical reste la vraie réponse : aucune substitution ne remplace un diagnostic.",
+    });
   }
 }
 

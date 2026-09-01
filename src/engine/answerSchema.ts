@@ -108,18 +108,37 @@ export const FORMATS_BY_SPORT: Record<string, string[]> = {
  * limite physiologique — les formats courts restent ouverts et protégés par R6.3, qui reste
  * le bon outil pour la charge.
  */
+// FICHE 39 (25/08/2026) — LA TABLE ÉTAIT INCOMPLÈTE, ET SON CRITÈRE IMPLICITE EST MESURABLE.
+//
+// Mesuré : un enfant de 10 ans pouvait générer un plan de SEMI-MARATHON (12 semaines, 4,52 h de
+// pic) — le refus ne couvrait que Full, 70.3, marathon et PM. En rangeant les formats par leur
+// durée MINIMALE de préparation (`MIN_WEEKS`, table déjà calibrée), le critère implicite de
+// cette table se lit : **les quatre formats bornés sont exactement ceux à `MIN_WEEKS ≥ 16`**
+// (Full 36 · PM 24 · 70.3 20 · marathon 16). Quatre formats du même rang n'y étaient pas :
+// `bike/gravel` 16, `duathlon/L` 16, `swimrun/series` 20, `swimrun/championship` 30. Les
+// ajouter n'invente rien — ça rend la table cohérente avec ce qu'elle appliquait déjà.
+//
+// ⚠ LE SEMI EST UN CAS À PART, et il est ajouté SUR DEMANDE EXPLICITE du fondateur : à
+// `MIN_WEEKS = 12`, il est SOUS ce critère. L'ajouter abaisse donc le seuil implicite de 16 à
+// 12 semaines — ce qui pose mécaniquement la question pour les CINQ autres formats du même
+// rang, non ajoutés ici faute de validation : `tri/M`, `bike/route`, `swim/fond`,
+// `duathlon/M`, `swimrun/sprint` (tous à 12). À trancher, pas à étendre en silence.
 export const AGE_MINI_FORMAT: Record<string, Record<string, number>> = {
   tri: { Full: 18, "70.3": 18 },
-  run: { marathon: 18 },
-  duathlon: { PM: 18 },
+  run: { marathon: 18, semi: 18 },
+  duathlon: { PM: 18, L: 18 },
+  bike: { gravel: 18 },
+  swimrun: { championship: 18, series: 18 },
 };
 /** Trail : la règle porte sur la DISTANCE, pas sur un format (le trail n'en a pas). */
 export const AGE_MINI_TRAIL_KM = 50;
 /** Le format immédiatement accessible, pour ne jamais refuser sans proposer. */
 const REPLI_FORMAT: Record<string, Record<string, string>> = {
   tri: { Full: "M ou 70.3 à 18 ans", "70.3": "S ou M" },
-  run: { marathon: "10 km ou semi-marathon" },
-  duathlon: { PM: "S, M ou L" },
+  run: { marathon: "10 km", semi: "5 km ou 10 km" },
+  duathlon: { PM: "S ou M", L: "S ou M" },
+  bike: { gravel: "un critérium ou une route" },
+  swimrun: { championship: "une expérience ou un sprint", series: "une expérience ou un sprint" },
 };
 
 /**
