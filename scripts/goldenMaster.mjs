@@ -530,17 +530,28 @@ function* profiles() {
   // acceptation), 12 sur un trail de 62 km (au-dessus de `AGE_MINI_TRAIL_KM = 50`). Un refus
   // typé est une sortie du moteur comme une autre — le corpus le photographie déjà pour
   // `mineur`, et c'est ce qui rend un assouplissement futur visible.
+  //
+  // O-112 (fiche 40, 01/09/2026) — LE SEUIL TRAIL DESCEND DE 50 À 42 KM, ET AUCUN PROFIL DU
+  // CORPUS NE POUVAIT LE VOIR. Tous les profils trail du golden courent 62 km, c'est-à-dire
+  // au-dessus de l'ANCIEN seuil comme du nouveau : `golden:verify` rendait donc **0 écart** —
+  // le résultat attendu, et indiscernable d'une photo qui ne regarde pas. Deux profils de plus
+  // encadrent la nouvelle frontière à 45 km : 17 ans (refus typé) et 18 ans (plan). C'est la
+  // règle « un zéro a besoin de sa population » appliquée à un seuil qu'on vient de déplacer.
+  const trail45 = () => ({ ...trailExtras(), race_distance_km: "45", race_dplus_m: "2100" });
   const AGE_CAS = [
     ["run", "semi", ["12", "16", "17", "60", "80", "100"], () => ({})],
     ["run", "marathon", ["17", "18"], () => ({})],
     ["bike", "route", ["12", "100"], () => ({})],
     ["trail", "", ["12"], trailExtras],
+    // Le trail n'a pas de FORMAT (la distance est une réponse libre) : l'étiquette de clé est
+    // donc portée à part, sinon elle atterrirait dans `a.format` et le schéma la refuserait.
+    ["trail", "", ["17", "18"], trail45, "45km"],
   ];
-  for (const [sport, format, ages, extras] of AGE_CAS) {
+  for (const [sport, format, ages, extras, etiquette] of AGE_CAS) {
     for (const age of ages) {
       const a = { ...base(), format, history: "confirme", level: "inter", intent: "finir",
         age, ...extras() };
-      yield { key: ["AGE", sport, format || "-", age].join("/"), sport, a };
+      yield { key: ["AGE", sport, etiquette || format || "-", age].join("/"), sport, a };
     }
   }
 
@@ -636,7 +647,7 @@ function canon(v) {
 // portent les SEPT sports — le chantier « unité de volume = cycle » ne pouvait valider sa
 // logique propre au cycle que sur 5 profils, soit deux familles. L'épingle monte AVEC sa
 // cause, et le moteur est byte-identique dans ce lot : ce qui bouge est le CORPUS.
-const POPULATION = 1069;  // +30 (fiche 37) : 16 profils à drapeau médical, 14 à référence inconnue — deux angles morts de la Phase 1
+const POPULATION = 1071;  // +2 (fiche 40, O-112) : un trail de 45 km à 17 et à 18 ans, de part et d'autre du nouveau seuil `AGE_MINI_TRAIL_KM = 42` — sans eux, « 0 écart » ne prouvait rien (tous les trails du corpus courent 62 km, au-dessus de l'ancien seuil comme du nouveau)
 
 function snapshot() {
   const snap = {};

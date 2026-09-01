@@ -2952,8 +2952,18 @@ const AGE_MINI_FORMAT                                         = {
   bike: { gravel: 18 },
   swimrun: { championship: 18, series: 18 },
 };
-/** Trail : la règle porte sur la DISTANCE, pas sur un format (le trail n'en a pas). */
-const AGE_MINI_TRAIL_KM = 50;
+/**
+ * Trail : la règle porte sur la DISTANCE, pas sur un format (le trail n'en a pas).
+ *
+ * O-112 (fiche 40, 01/09/2026) — **50 → 42, décision du fondateur, pour aligner le trail sur le
+ * marathon.** Le seuil de 50 km laissait un trail de 42 km générable dès 16 ans quand
+ * `run/marathon` — la même distance, avec MOINS de dénivelé et MOINS de temps d'effort — est
+ * fermé jusqu'à 18. Deux grandeurs construites sur le même modèle, une seule bornée : c'est la
+ * famille d'asymétrie que la fiche 39 venait de fermer sur `course`/`velo`, retrouvée un cran
+ * plus loin. Le repli proposé à l'athlète en DÉRIVE (« jusqu'à 41 km ») : il n'y a pas de
+ * second nombre à tenir à jour.
+ */
+const AGE_MINI_TRAIL_KM = 42;
 /** Le format immédiatement accessible, pour ne jamais refuser sans proposer. */
 const REPLI_FORMAT                                         = {
   tri: { Full: "M ou 70.3 à 18 ans", "70.3": "S ou M" },

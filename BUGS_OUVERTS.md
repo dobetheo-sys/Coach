@@ -36,36 +36,44 @@ assumés entre deux règles, les chantiers humains, et les entrées de registre 
 
 ## §1 — Défauts ouverts, par gravité
 
-### O-112 — un trail de 42 km est ouvert à 16 ans quand le marathon est fermé à 18 · 🟠
+### O-112 FERMÉ — le seuil trail est aligné sur le marathon (50 → 42 km) · ✅
 
-**Mesuré** (fiche 39, 01/09/2026, `syntheses/37-zones-fragiles-age.md` §Tâche 3) — balayage des
-23 formats du moteur × âges 16/17/18.
+**Ouvert** en fiche 39 (balayage des 23 formats × âges 16/17/18), **fermé** en fiche 40 sur
+décision du fondateur — voir `syntheses/38-o112-trail-42km.md`.
 
-`AGE_MINI_FORMAT` (R15.7-C) a été étendu par la fiche 39 et couvre désormais le semi, le
-marathon, `tri/70.3`, `tri/Full`, `duathlon/PM`, `duathlon/L`, `bike/gravel`,
-`swimrun/series` et `swimrun/championship`. Le trail, lui, n'est pas borné par un FORMAT mais
-par une DISTANCE : `AGE_MINI_TRAIL_KM = 50`.
+`AGE_MINI_FORMAT` (R15.7-C) borne des FORMATS ; le trail n'en a pas, il est borné par une
+DISTANCE, `AGE_MINI_TRAIL_KM`. À 50 km, un trail de 42 km était générable dès 16 ans quand
+`run/marathon` — même distance, moins de dénivelé, moins de temps d'effort — est fermé jusqu'à
+18. Deux grandeurs construites sur le même modèle, une seule bornée : la famille d'asymétrie que
+la fiche 39 venait de fermer sur `course`/`velo`, retrouvée un cran plus loin.
+
+Mesuré avant / après, à profil identique (`inter`, 8 h/sem, D+ 1 800 m) :
 
 ```
-trail 42 km · 16 ans  →  plan généré
-run/marathon (42,195 km) · 16 ans  →  refus typé « format ouvert à 16 ans »
+km    16 ans (avant → après)      17 ans (avant → après)      18 ans (avant → après)
+41    plan 5,07 h  →  plan 5,07   plan 5,07 h  →  plan 5,07   plan 7,17 h  →  plan 7,17
+42    plan 5,07 h  →  REFUS ÂGE   plan 5,07 h  →  REFUS ÂGE   plan 7,17 h  →  plan 7,17
+45    plan 5,07 h  →  REFUS ÂGE   plan 5,07 h  →  REFUS ÂGE   plan 7,15 h  →  plan 7,15
+49    plan 5,07 h  →  REFUS ÂGE   plan 5,07 h  →  REFUS ÂGE   plan 7,22 h  →  plan 7,22
+50    REFUS ÂGE    →  REFUS ÂGE   REFUS ÂGE    →  REFUS ÂGE   plan 7,22 h  →  plan 7,22
 ```
 
-Même distance, plus de dénivelé, un temps d'effort plus long — et l'un passe, l'autre non.
-C'est exactement la famille de l'asymétrie `course`/`velo` que la même fiche vient de fermer :
-deux grandeurs construites sur le même modèle, une seule bornée.
+La colonne 18 ans est **identique au centième** : aucun adulte n'est touché. Le repli proposé
+dans le refus se DÉRIVE de la constante (« des distances plus courtes (jusqu'à 41 km) ») — il
+n'y a pas de second nombre à tenir à jour.
 
-**NON CORRIGÉ : c'est une décision de VALEUR.** Le seuil de 50 km a été arbitré une fois ;
-l'abaisser à 42 aligne le trail sur le marathon, mais ferme aussi tout ce qui est entre 42 et
-50 km. Proposition au fondateur : `AGE_MINI_TRAIL_KM = 42`.
+**Le golden ne pouvait pas voir ce changement** : ses profils trail courent tous 62 km, donc
+au-dessus de l'ancien seuil comme du nouveau, et `golden:verify` rendait **0 écart** — le
+résultat attendu, indiscernable d'une photo qui ne regarde pas. Deux profils encadrent
+désormais la frontière (`AGE/trail/45km/17` refus typé · `AGE/trail/45km/18` plan de
+22 semaines), **1069 → 1071**.
 
 ```verify
 id: O-112
-quoi: un trail de 42 km reste générable à 16 ans
-attendu: la constante vaut 50 (donc 42 km passe) — si elle a changé, l'entrée est fermée
+quoi: le seuil d'âge du trail est aligné sur le marathon
+attendu: AGE_MINI_TRAIL_KM vaut 42 — s'il remonte, l'asymétrie avec run/marathon revient
 cmd: grep -n "AGE_MINI_TRAIL_KM = " src/engine/answerSchema.ts
 ```
-
 
 ### O-100 SCINDÉ — deux inversions sous un numéro, une seule est un défaut · 🔴 **§1b CONFIRMÉ**
 

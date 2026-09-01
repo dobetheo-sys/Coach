@@ -601,6 +601,20 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**O-112 FERMÉ — le seuil d'âge du trail passe de 50 à 42 km, et le golden ne pouvait pas voir le
+changement** (fiche 40, 01/09/2026, décision du fondateur — voir `syntheses/38-o112-trail-42km.md`) :
+la borne âge × format (R15.7-C) travaille sur des FORMATS pour les six autres sports ; le trail n'en
+a pas et se borne par une DISTANCE. À 50 km, **un trail de 42 km était générable dès 16 ans** quand
+`run/marathon` — même distance, moins de dénivelé, moins de temps d'effort — est fermé jusqu'à 18.
+Mesuré à profil identique : la bande **[42, 50) bascule en refus typé à 16 et 17 ans**, sous 42 km
+le plan est rendu à l'identique, et la **colonne 18 ans est inchangée au centième** sur les neuf
+distances balayées. Le repli du message se DÉRIVE de la constante (« jusqu'à 41 km ») : pas de
+second nombre à tenir à jour. **`golden:verify` rendait 0 écart et ne prouvait rien** — les 68
+profils trail du corpus courent tous 62 km, au-dessus de l'ancien seuil comme du nouveau : un zéro
+indiscernable de la vacuité. Deux profils encadrent désormais la frontière (`AGE/trail/45km/17`
+refus typé · `/18` plan de 22 semaines), **1069 → 1071**, diff `hashes.json` **+2 lignes, 0
+modification**. `audit:v1` 459 à 0, **batterie 12/12**.
+
 **LA CONTRE-INDICATION DE DISCIPLINE AGIT ENFIN EN MULTISPORT — et mes deux premières écritures
 ont été arrêtées par des garde-fous à budget ZÉRO** (fiche 39, 01/09/2026 — voir
 `syntheses/37-zones-fragiles-age.md`, passe **R6.1b**, ticket **O-112**) : mesuré sur un

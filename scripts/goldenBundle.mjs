@@ -49,7 +49,7 @@ console.log("GOLDEN — la SOURCE contre le BUNDLE, même corpus, même canonisa
 // ── Passe 1 : la SOURCE ───────────────────────────────────────────────────────────────────
 const refSrc = globalThis.EBV2;
 if (!refSrc) { console.error("✖ EBV2 absent après l'import de bridge.ts"); process.exit(2); }
-const POPULATION = 1069;  // un zéro a besoin de sa population — 1046 depuis les passes MED et REF (25/08/2026), voir goldenMaster.mjs
+const POPULATION = 1071;  // un zéro a besoin de sa population — 1071 depuis les deux profils trail 45 km d'O-112 (fiche 40), voir goldenMaster.mjs
 const t0 = Date.now();
 const A = snapshot();
 if (A.n !== POPULATION) {
