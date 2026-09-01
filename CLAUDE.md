@@ -601,6 +601,40 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**FICHE 44 livrée — dix tâches en une passe, chacune mesurée avant/après, quatre prémisses
+réfutées en chemin** (autonomie accordée au lot, 01/09/2026 — voir `syntheses/41-fiche44-…`,
+`BUGS_OUVERTS.md` mis à jour sur O-77/O-97/O-100b/O-101/O-102/O-105) : **T1** — le nageur
+débutant sans CSS récupère son plan : le plafond de séance suit le TEMPS quand la fenêtre en
+mètres est dégénérée (`swimCapDebutantM`, règle 14 confirmée ; première écriture non cadrée
+retirée le jour même — 86 rapides à 1 325 m) ; `D5` (v6) et `T-41` (lotPhysio), énoncés dans
+l'ancienne unité, réécrits sur la propriété avec leur jumeau de sensibilité, contre-prouvés
+par `casser`. **T4** — `CAP_LONG_DUATHLON {S 135 · M 200 · PM 265 · L 250}` : la longue vélo du
+Powerman tombait de 443 à **240 min**, et la prémisse de la fiche (« ×1,8 l'épreuve ») était
+FAUSSE — le PM prédit 7 h 41-8 h 23, 443 min = 0,94× ; le `bnd` DÉCLARÉ gagnant sur `blockBounds`,
+la borne vit à la déclaration du module. Rayon 153, tous duathlon. **T5** — `ALLOC_CIBLE_PALIERS`
+sur l'enveloppe DÉCLARÉE (jamais le livré — forme O-43 refusée) : <9 h 40/35/25 · 9-13 h
+45/32/23 · ≥13 h 50/30/20 ; **aucun profil du corpus n'atteint 13 h** (méd 8,0), le palier de la
+cible unique était vide ; écart vélo 8,1 → 3,9 pts, la nage S'ÉLOIGNE (5,3 → 8,3) et c'est la
+lecture honnête. Signal O-56 : 30/66 débutants tri ont une fenêtre de nage PLATE. **T6/O-102** —
+le sens tranché « l'étiquette suit le contenu », les DEUX correctifs moteur réfutés par la mesure
+avant d'écrire (ré-étiqueter tôt → `applyAntiCollage` convertit ~1 500 nages seuil ; tard →
+2 939 violations dures d'adjacence), la prémisse « la courbe lit l'étiquette » réfutée ; livré :
+`chargeLivree`, descripteur T-16c au seuil C13d, lu par la grille, l'export et le bilan de
+semaine (médiane 30 min de dur sous « facile »). **O-100b FERMÉ** (mécanisme retiré le 25/08,
+confirmé à la main — règle 17) · **O-101 réévalué** (l'objection du médecin demeure, ouverture au
+fondateur). **T7** — le plafond structurel se dit même quand un autre maillon borne (237 profils) ;
+trouvé en mesurant : « Tu doubles déjà » s'affichait FAUX hors tri — gaté par `doublesAddVolume`.
+**T8/O-97** — mesuré : 5 profils sur 1 060, borner serait inerte 5/5 — informer suffit, pas de
+couplage. **T9/O-105 FERMÉ** — `s5IdentiteR202` lit l'argmin PUBLIÉ ; S5 226 → 191 (instrument,
+plans intacts), golden 0 écart. **T10/O-77** — l'inversion est VIVANTE : la médiane (82→93→93)
+était un faux vert de règle 21, par semaine S1-S7 tombent de 82 à **51 min** ; piste « fréquence »
+réfutée (8 = 8 séances) ; cause nommée : `sessionScale` est une constante de PLAN dérivée de
+l'enveloppe (fin de rampe appliquée à la semaine 1, règle 20, 4ᵉ inversion de monotonie) —
+correctif POSITIONNEL au lot progression, non forcé. **Les 3 régressions lotPhysio de la batterie
+attribuées par worktree-par-commit** (1 060 scellés à chaque point) : S4 +3 = T3 · S5 −1 = T1,
++2 = T4 · T2/T5/T6/T7 inertes ; T-29 = mon propre catch muet, remplacé. Cliquets S4 348 · S5 191,
+ré-épinglés avec cause.
+
 **LES TROIS PRIORITÉS SÉCURITÉ DE LA PHASE 2, EN UNE PASSE — O-111 fermé (et sa reproduction
 dépendait du CALENDRIER), le plafond de dur suit l'âge, le plancher de décharge C29d existe**
 (fiche 42, 01/09/2026 — voir `syntheses/40-trois-priorites-securite.md`, commits `f0e92b1` ·

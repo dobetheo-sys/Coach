@@ -38,7 +38,32 @@ for (const vm of ["9", "11", "13"]) {
 // UN ZÉRO A BESOIN DE SA POPULATION : le verdict ne vaut que si les trois enveloppes ont produit
 // une mesure. Trois plans sans sortie longue rendraient « pas d'inversion », c'est-à-dire vert.
 if (medianes.length < 3) { console.error("\n✖ population insuffisante — le verdict n'a pas de base"); process.exit(1); }
-const inverse = medianes[medianes.length - 1] < medianes[0];
+// RÈGLE 21 (fiche 44 T10, 01/09/2026) — LA MÉDIANE ÉTAIT UN FAUX VERT : une propriété qui varie
+// avec la POSITION se mesure PAR POSITION d'abord. Mesuré le jour où la médiane est passée
+// verte (82 → 93 → 93) : par semaine, S1-S7 tombent de 82 à 51 min (−31) pendant que la fin de
+// plan monte — l'agrégat additionnait les deux et concluait « pas d'inversion ». La cause est
+// nommée au ticket : `sessionScale` (reasoningEngine) est une constante de PLAN dérivée de
+// l'enveloppe déclarée — une valeur de fin de rampe appliquée à la semaine 1 (règle 20) ; les
+// blocs de qualité naissent gros, la rampe `vol_recent` épingle le total, la longue élastique
+// absorbe. Le compte de séances, lui, ne bouge pas (8 = 8 : la piste « fréquence » du ticket
+// est RÉFUTÉE).
+const parSemaine = (vm) => {
+  const plan = globalThis.EBV2.buildPlan("tri", { ...BASE, vol_max: vm, vol_recent: "9" });
+  const out = {};
+  for (const w of plan.weeks) for (const d of w.days) for (const s of d.sessions)
+    if (s.name === "Sortie longue CAP") out[w.num] = Math.round(s.min || 0);
+  return out;
+};
+const bas = parSemaine("9"), haut = parSemaine("13");
+let baisse = 0, comparables = 0; const ex = [];
+for (const k of Object.keys(bas)) {
+  if (haut[k] == null) continue;
+  comparables++;
+  if (haut[k] < bas[k] - 5) { baisse++; if (ex.length < 3) ex.push("S" + k + " : " + bas[k] + " → " + haut[k]); }
+}
+if (!comparables) { console.error("\n✖ aucune semaine comparable — le verdict n'a pas de base"); process.exit(1); }
+const inverse = medianes[medianes.length - 1] < medianes[0] || baisse > 0;
 console.log("\n" + (inverse
-  ? "✖ INVERSION : déclarer plus de volume RACCOURCIT la sortie longue (" + medianes[0] + " → " + medianes[medianes.length - 1] + " min)"
-  : "✓ pas d'inversion sur l'axe vol_max (" + medianes.join(" → ") + " min)"));
+  ? "✖ INVERSION : déclarer plus de volume RACCOURCIT la sortie longue sur " + baisse + " semaine(s) sur "
+    + comparables + " (" + ex.join(" · ") + ") — médianes " + medianes.join(" → ") + " min"
+  : "✓ pas d'inversion sur l'axe vol_max (médianes " + medianes.join(" → ") + " min · 0 semaine en baisse sur " + comparables + ")"));

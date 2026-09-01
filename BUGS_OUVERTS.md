@@ -92,7 +92,14 @@ l'échauffement se paie deux fois au lieu de sept. Ce n'est pas une inversion à
 un fait à ÉNONCER — personne ne comprend qu'en déclarant plus de jours il obtient moins
 d'heures si la carte ne l'explique pas. **Reclassé : ce n'est plus un défaut de monotonie.**
 
-#### O-100b — `semaine` > `quotidienne` : l'hypothèse d'artefact est RÉFUTÉE · 🔴 **VRAI DÉFAUT**
+#### O-100b — `semaine` > `quotidienne` · ✅ **FERMÉ le 01/09/2026 (fiche 44 T6) — le mécanisme a été RETIRÉ, confirmé à la main**
+
+> ✅ Règle 17 appliquée : le retrait du cycle de 10 jours (25/08) a retiré le MÉCANISME de
+> l'inversion — `semaine` et `quotidienne` rendent aujourd'hui le MÊME plan (12,32 h de pic,
+> densités §G identiques : 1,68 dures/7 j des deux côtés, espacement médian 7 j). Confirmé sur
+> les §F/§G/§H de `mesure:doublage`, pas sur un grep muet. Le défaut de DENSITÉ que ce ticket
+> portait est résolu par le retrait ; ce qui suit reste l'historique.
+
 
 Sept jours dans les deux cas ; `semaine` = « tous les jours, contraint », `quotidienne` =
 « tous les jours, libre ». Une réponse plus permissive, **même nombre de jours**, moins de
@@ -421,7 +428,14 @@ attendu: p.start / p.end lus comme numéro de semaine dans weekBuilder
 cmd: grep -n "Math.floor(i / 7)" src/generator/weekBuilder.ts
 ```
 
-### O-105 — `s5IdentiteR202` recalcule un `min()` brut au lieu de lire l'argmin publié · 🟠 **OUVERT**
+### O-105 — `s5IdentiteR202` recalcule un `min()` brut au lieu de lire l'argmin publié · ✅ **FERMÉ le 01/09/2026 (fiche 44 T9)**
+
+> ✅ Le garde lit l'ARGMIN PUBLIÉ (`_r202.argmin`), et signale un argmin absent du record comme
+> violation à part. S5 226 → 191, ré-épinglé avec sa cause (changement d'INSTRUMENT, plans
+> intacts au bit près) : les 35 profils sortis du compte étaient des cas où un plafond que le
+> livré réfute passait sous le pic sans être nommé par le produit. Lot calme vérifié : golden
+> 0 écart, v1/v6/lotPhysio immobiles.
+
 
 Ouvert par le lot O-78 (24/08/2026), diagnostic déjà écrit — fiche 24 §4, aucune investigation
 nouvelle nécessaire.
@@ -686,7 +700,25 @@ séances clés par cycle » est celle du fondateur : **elle n'est écrite nulle 
 dépôt** — si elle fait foi, `quotidienne` est DANS la cible et c'est le schéma de 7 qui est
 au-dessus.
 
-### O-102 — `facile2` est étiqueté `facile` et livre du DUR un jour sur trois · 🟠 **OUVERT**
+### O-102 — `facile2` étiqueté `facile` livre du DUR un jour sur trois · ✅ **TRAITÉ le 01/09/2026 (fiche 44 T6) — l'étiquette LIVRÉE suit le contenu, les deux correctifs moteur RÉFUTÉS par la mesure**
+
+> ✅ Le sens est tranché : **l'étiquette suit le contenu**, sur la seule surface où l'athlète
+> la lit. Trois mesures ont décidé de la forme AVANT d'écrire : (1) la prémisse « l'étiquette
+> alimente la courbe de volume » est RÉFUTÉE — la courbe est en minutes, aveugle à l'étiquette ;
+> ses vrais lecteurs sont l'élection de victimes, l'espacement, l'auditeur et l'AFFICHAGE.
+> (2) Ré-étiqueter PENDANT la construction livre les jours de nage seuil à `applyAntiCollage`
+> (« deux durs adjacents → le second redevient facile ») : ~1 500 nages seuil converties en
+> repli — la prédiction « la nage est la victime par défaut » exécutée par le correctif.
+> (3) Ré-étiqueter APRÈS le point fixe fait naître **2 939 paires « jours durs adjacents »**
+> (violation DURE de l'auditeur) sur 175 profils. Livré : `chargeLivree` (descripteur
+> post-convergence, T-16c), posé sur tout jour `facile` portant ≥ C13d (8 min) de travail dur
+> — jamais l'inverse (« dur » du schéma = séance CLÉ, mesure:t61) — lu par la grille
+> Plan/Semaine, le document exporté et le bilan de semaine (la part de FACILE cessait d'y
+> compter la nage seuil : médiane 30 min de dur sous l'étiquette). 204 profils, 2 020 jours,
+> plans byte-identiques hors le champ ; contre-preuve : passe neutralisée → golden 204 écarts.
+> Le résidu de FOND (la machinerie d'élection/espacement reste aveugle au dur de `facile2`)
+> est un chantier de construction, pas d'étiquette — à arbitrer avec le lot progression.
+
 
 Trouvé par le §4 de `mesure:t61` — l'inverse, que personne n'avait mesuré :
 
@@ -716,12 +748,23 @@ pas. Famille T-40, sur la surface décision.
 
 ```verify
 id: O-100b-fenetre-10j
-quoi: l'inversion semaine > quotidienne survit à la mesure sur 10 jours
-attendu: la propriété est publiée par le script (18,63 h contre 16,38 h au 22/08/2026)
+quoi: FERMÉ — semaine et quotidienne rendent le même plan depuis le retrait du cycle de 10 jours
+attendu: le §F publie des pics IDENTIQUES pour les deux dispos (12,32 h / 18,63 h sur 10 j au 01/09/2026 — si les deux lignes divergent à nouveau, le ticket rouvre)
 cmd: npm run mesure:doublage
 ```
 
-### O-101 — `doubles` est demandée à TOUS les sports et n'agit qu'en triathlon · 🟠 **OUVERT**
+### O-101 — `doubles` est demandée à TOUS les sports et n'agit qu'en triathlon · 🟡 **RÉÉVALUÉ le 01/09/2026 (fiche 44 T6/T7) — la moitié « informer » est LIVRÉE, l'ouverture du doublage course reste au fondateur**
+
+> 🟡 La condition du conseil (« le doublage course reste fermé tant qu'O-100b n'est pas
+> réparé ») est LEVÉE — O-100b est fermé par le retrait du cycle, densité confirmée intacte.
+> Mais l'objection du médecin (impact ×2 le même jour = le levier le plus blessogène) est
+> INDÉPENDANTE de ce défaut et demeure : priorité 2 (prévention) contre priorité 5
+> (performance), l'ouverture est une décision produit du fondateur, pas un correctif. La
+> moitié « rien ne le dit » est livrée (T7) : le marathonien qui déclare 14 h lit désormais
+> « pic à 11,5 h — ce qui borne, c'est le nombre de séances » + « Sur ce sport, doubler ne
+> changerait rien » (la phrase « Tu doubles déjà », FAUSSE hors tri, est corrigée dans le même
+> lot — la branche exige le guard `doublesAddVolume`).
+
 
 Mesuré : `run/marathon` et `bike/gravel` rendent le MÊME plan au centième sous `non`,
 `parfois` et `oui`. Le guard `doublesAddVolume` n'est déclaré qu'en tri.
@@ -744,8 +787,8 @@ qui n'a jamais été énoncé, et il est plus grave que la plage du champ `vol_m
 
 ```verify
 id: O-101-doubles-inerte
-quoi: doubles non/parfois/oui rendent le même pic hors triathlon
-attendu: run et bike identiques aux trois réponses (le script publie les valeurs)
+quoi: doubles non/parfois/oui rendent le même pic hors triathlon (l'inertie DEMEURE tant que le fondateur n'a pas ouvert le doublage course)
+attendu: run et bike identiques aux trois réponses (le script publie les valeurs) — et la carte R20.2 ne dit plus « Tu doubles déjà » hors tri (T7)
 cmd: npm run mesure:doublage
 ```
 
@@ -9824,7 +9867,22 @@ Personne ne l'avait prédit — ni le fondateur ni moi n'avions pensé à leur i
 
 ---
 
-## O-77 — la sortie longue RÉTRÉCIT quand le volume demandé AUGMENTE (inversion sur l'axe `vol_max`)
+## O-77 — la sortie longue RÉTRÉCIT quand le volume demandé AUGMENTE (inversion sur l'axe `vol_max`) · 🔴 **CAUSE NOMMÉE le 01/09/2026 (fiche 44 T10) — correctif au lot progression**
+
+> 🔴 **La médiane était un FAUX VERT de règle 21** : sur le moteur courant elle rend
+> 82 → 93 → 93 (« pas d'inversion ») pendant que, PAR SEMAINE, S1-S7 tombent de 82 à 51 min
+> (−31) — 10 semaines sur 25 en baisse, la fin de plan monte, l'agrégat additionne les deux.
+> L'instrument (`mesure:longue-volmax`) mesure désormais par position. **La piste du ticket
+> (« plus de séances ») est RÉFUTÉE** : 8 séances des deux côtés, total S1 quasi égal
+> (455 vs 440 min). La cause est la COMPOSITION : `sessionScale`
+> (`reasoningEngine.ts:355`) est une **constante de PLAN** dérivée de l'enveloppe déclarée —
+> une valeur de fin de rampe appliquée à la semaine 1 (règle 20, quatrième inversion de
+> monotonie après I13/niveau, O-21/allure, O-93/phase) ; à `vol_max` 13 les blocs de qualité
+> naissent gros (sweetspot 74 → 92, force 65 → 85), la rampe `vol_recent` épingle le total de
+> la semaine, et la longue — le seul gros bloc élastique de sa discipline — absorbe. Le
+> correctif est un dimensionnement POSITIONNEL des séances (la trajectoire du lot
+> progression), pas un réglage local — non forcé ici, conformément à la fiche.
+
 
 Trouvé en instrumentant le lot vélo, **PRÉEXISTANT** (mesuré identique avec et sans les pièces).
 Profil 70.3, 43 semaines, `vol_recent: 9`, seul `vol_max` varie :
@@ -9847,7 +9905,7 @@ fréquence gagne. À mesurer avant d'écrire quoi que ce soit.
 
 ```verify
 id: O-77
-quoi: la sortie longue d'un 70.3 rétrécit quand vol_max monte (82 → 62 min)
+quoi: la sortie longue d'un 70.3 rétrécit quand vol_max monte — PAR SEMAINE (règle 21 : la médiane le cache, S1-S7 82 → 51 min au 01/09/2026)
 attendu: /INVERSION : déclarer plus de volume RACCOURCIT/
 cmd: npm run mesure:longue-volmax
 ```
@@ -11650,7 +11708,17 @@ attendu: /pic 11\.1[0-9] h · cible 11\.2 · sonde 11\.2/
 cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const{profiles}=await import('./scripts/goldenMaster.mjs');let r;for(const p of profiles())if(p.key.startsWith('REEL'))r=p;const P=globalThis.EBV2.buildPlan(r.sport,r.a);const wM=w=>w.days.reduce((t,d)=>t+d.sessions.reduce((u,s)=>u+(s.race?0:(s.min||0)),0),0);const ch=P.weeks.filter(w=>!w.isRecup&&w.phase?.id!=='taper'&&w.phase?.id!=='race');const pic=ch.reduce((a,b)=>wM(b)>=wM(a)?b:a);const v=(P._v2?.decisions||[]).find(x=>x.id==='V2.1');console.log('pic '+(wM(pic)/60).toFixed(2)+' h · cible '+pic.vol_declared+' · sonde '+String(v?.val||'').replace(/h.*/,''));"
 ```
 
-## O-97 · Le budget de séances ANNONCÉ n'est pas borné par le calendrier · 🔴 **OUVERT — mesuré, non corrigé**
+## O-97 · Le budget de séances ANNONCÉ n'est pas borné par le calendrier · 🟡 **MESURÉ le 01/09/2026 (fiche 44 T8) — le correctif structurel n'est PAS justifié, informer suffit**
+
+> 🟡 Mesure d'entrée demandée par le ticket, faite sur les 1 060 : **5 profils** annoncent un
+> prescrit au-dessus du maximum calendaire (tous des fixtures `vol-max` extrêmes — prescrit
+> 9-12 pour un calendrier à 7, dépassement max 5), et borner le prescrit serait INERTE sur le
+> plan dans **5 cas sur 5** (le livré est partout sous le max calendaire, `applySessionBudget`
+> ne mordrait pas différemment). Le couplage schéma → raisonneur que le ticket redoutait n'est
+> donc pas payé pour 5 fixtures : la surface athlète est couverte par le couple O-87
+> (« N prescrites — ta semaine la plus fournie en livre M ») et la ligne T7 sur le plafond
+> structurel. Reste ouvert comme défaut d'esthétique du prescrit, sans priorité.
+
 
 §4 du document (20/08/2026). La carte annonce « 11 séances par semaine prescrites » (`min(12
 déclarées, 13,5 h ÷ 1,2)`) alors que **la structure de la semaine en interdit plus de 10** :
