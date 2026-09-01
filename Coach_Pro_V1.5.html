@@ -17340,13 +17340,19 @@ function s4LongueEstLaPlusLongue(plan        )           {
  * comptage, en baisse de 608 depuis B-02) : rang DÉCLARÉ, suivi en O-35 / O-36.
  */
 function s5IdentiteR202(plan        )           {
-  const r = (plan                                                   )._r202;
+  // O-105 (fiche 44 T9) — LE GARDE LIT L'ARGMIN PUBLIÉ, jamais un min() brut recalculé : deux
+  // computations de « le maillon qui borne » libres de diverger sont la forme R11.1 que ce
+  // dépôt refuse partout ailleurs, et le min() brut mesurait une grandeur que le produit
+  // n'affiche pas (la garde d'observation du moteur écarte les plafonds que le livré réfute).
+  const r = (plan                                                                                 )._r202;
   const pic = (plan                        ).volPeak;
   if (!r?.plafonds?.length || typeof pic !== "number") return [];
-  const actifs = r.plafonds.map((p) => p.livre).filter((v)              => typeof v === "number");
-  if (!actifs.length) return [];
-  const min = Math.min(...actifs);
-  return Math.abs(min - pic) > 0.1 ? ["min(plafonds) = " + min.toFixed(2) + " h ≠ pic livré " + pic.toFixed(2) + " h"] : [];
+  const argmin = r.plafonds.find((p) => p.id === r.argmin);
+  if (!argmin || typeof argmin.livre !== "number")
+    return ["argmin publié (" + String(r.argmin) + ") absent des plafonds du record"];
+  return Math.abs(argmin.livre - pic) > 0.1
+    ? ["plafond publié (" + String(r.argmin) + ") = " + argmin.livre.toFixed(2) + " h ≠ pic livré " + pic.toFixed(2) + " h"]
+    : [];
 }
 
 /**

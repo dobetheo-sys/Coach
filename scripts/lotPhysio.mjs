@@ -1144,7 +1144,11 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 // dépasse la sortie longue de sa discipline — rang déclaré, I14) · S5 224 → 226 vient de T4
 // (la borne CAP_LONG_DUATHLON retire du pic ce qu'aucun maillon R20.2 ne déclare — la moitié
 // ouverte d'O-35, sur 2 profils duathlon) · T5/T6/T7 immobiles (descripteurs, vérifié).
-const SCEAU_ATTENDU = { S1: 4, S4: 348, S5: 226 };
+// T9/O-105 : S5 226 → 191 est un changement d'INSTRUMENT, pas de moteur (plans inchangés au
+// bit près) — le garde lisait un min() brut sur tous les plafonds, il lit désormais l'ARGMIN
+// PUBLIÉ (la grandeur que la carte affiche) ; les 35 profils sortis du compte étaient des cas
+// où un plafond que le livré réfute passait sous le pic sans être nommé par le produit.
+const SCEAU_ATTENDU = { S1: 4, S4: 348, S5: 191 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;
