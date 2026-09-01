@@ -17,6 +17,7 @@ import {
   BRICK_BIKE_BOUNDS, DOSE_CAP_MIN, CAP_BRICK_RUN, CAP_LONG, CAP_SWIM, R313_TAPER_MAX_VS_PEAK, RECUP_WEEK_FACTOR, O69_DEPART_PLANCHER,
   C13d_QUALITY_MIN_BODY_MIN, C25_RECOVERY_SESSION_CAP_MIN, RACE_EVE_CAP_MIN,
   hardTimeCapMin, weightedHardMin, C26c_HARD_TIME_TOLERANCE, MIN_WEEKS, ALLOC_CIBLE,
+  C29D_DECHARGE_DECLENCHEUR, C29D_DECHARGE_CIBLE,
 } from "../engine/constraintMatrix.ts";
 import { TrainingReasoningEngine } from "../engine/reasoningEngine.ts";
 import { renderSess, stepMeters, stepWorkMin, zoneSpeedRatio, type PaceRefs, type Refs } from "./renderer.ts";
@@ -1920,7 +1921,27 @@ export function reconcileDeclaredVolume(
   // la durée/distance des blocs continus ensuite, jamais un bloc ÉPINGLÉ (B-17), jamais la
   // FRÉQUENCE (C29 : on réduit le volume, pas les jours), et vise l'ÉGALITÉ avec la meilleure
   // voisine — une récup égale à sa charge voisine est déjà le maximum défendable.
-  enforceRecupSousCharges(plan, render);
+  // C29d — AVANT la passe T-56 : le plancher pose, T-56 garde le dernier mot sur tout excès.
+  // Puis le COUPLE se rejoue une fois : T-56 peut faire retomber une décharge sous le seuil
+  // qu'elle vient de franchir (mesuré, PW/tri/M S39 : 133' au passage de C29d, 85' après la
+  // coupe T-56 — la semaine redevenait une interruption dans le dos du plancher). Une garantie
+  // vérifiée avant la passe qui la casse ne vérifie que l'avant-dernier état — la leçon payée
+  // douze fois dans ce dépôt, appliquée en posant la paire, bornée à UNE reprise.
+  {
+    const ctxC29d = { disciplines: ctx?.disciplines, mainDiscipline: ctx?.mainDiscipline, beginner: ctx?.beginner, refs: ctx?.refs };
+    let rendus = enforceDechargePlancher(plan, ctxC29d, render);
+    enforceRecupSousCharges(plan, render); // l'appel historique — UNE fois pour tout plan
+    // Le rattrapage : T-56 peut faire retomber une décharge sous le seuil (mesuré, PW/tri/M
+    // S39 : 133' au passage de C29d, 85' après la coupe). Le re-rabotage T-56 n'a lieu QUE si
+    // ce rattrapage a posé quelque chose : un second passage inconditionnel changeait 23 plans
+    // que C29d n'a jamais touchés (T-56 n'est pas idempotent sur les longs tri/Full — chaque
+    // passage rabote un peu plus), et le rayon du plancher doit être le sien, pas celui d'une
+    // double application d'une autre passe.
+    const rattrapage = enforceDechargePlancher(plan, ctxC29d, render);
+    if (rattrapage > 0) enforceRecupSousCharges(plan, render);
+    rendus += rattrapage;
+    if (rendus > 0) warnings.push("C29d — " + rendus + " jour(s) facile(s) rendu(s) à des semaines de décharge qui étaient tombées sous le quart de leurs voisines : une décharge se fait par le contenu (volume réduit, tout facile), pas par l'interruption.");
+  }
   // …et la garantie A− se REJOUE : O-93 peut réduire la semaine qui précède une course A−,
   // ce qui invalide le « ≤ 60 % de la précédente » posé plus haut (mesuré : R23.18-D à 63 %).
   enforceMiniTaperAMoins(plan, render);
@@ -2046,6 +2067,194 @@ function enforceMiniTaperAMoins(plan: V1Plan, render?: (s: V1Session) => void): 
  * O-93 — la passe anti-inversion des décharges. Voir le commentaire à son point d'appel (après
  * le point fixe C22) pour l'arbitrage et la mesure ; ici la mécanique seule.
  */
+/**
+ * C29d (fiche 42) — LE PLANCHER DE DÉCHARGE : une récup sous le quart de ses voisines devient
+ * une décharge PAR LE CONTENU (≥ la moitié des voisines, 100 % facile).
+ *
+ * Voir la justification et le déclencheur dans `constraintMatrix.ts` (C29D_*). Mécanique,
+ * calquée sur C29c (« on rend des jours au point fixe ») et BORNÉE PAR LES RÉFÉRENCES T-56
+ * PAR CONSTRUCTION — la passe tourne juste avant `enforceRecupSousCharges`, qui rabote de
+ * toute façon tout excès qu'elle créerait (défense en profondeur, pas une excuse) :
+ *
+ *   1. GROSSIR les séances faciles existantes — jamais une qualité, jamais un bloc épinglé,
+ *      jamais une course — chacune bornée par la dose du MÊME type chez les voisines de
+ *      charge (l'axe TYPE de T-56, dans sa monnaie : mètres en nage, minutes ailleurs) ;
+ *   2. AJOUTER des jours faciles sur les jours OFF non forcés, dans la discipline qui a le
+ *      plus de marge sous sa référence T-56 (axe DISCIPLINE). La séance ajoutée porte un nom
+ *      ABSENT des voisines (l'axe TYPE n'a alors pas de référent, c'est l'axe DISCIPLINE qui
+ *      borne — le critère T-56 le déclare lui-même). En nage elle est en MÈTRES et respecte
+ *      le plancher piscine C24/C24b : une nage en minutes serait un objet étranger au sport.
+ *
+ * Ce qu'on ne touche JAMAIS : un jour déclaré indisponible (`forced`), une semaine de course,
+ * l'affûtage (sa décroissance est R3.13), et le contenu dur — le plancher se paie en facile,
+ * c'est sa définition.
+ */
+function enforceDechargePlancher(
+  plan: V1Plan,
+  ctx?: { disciplines?: string[]; mainDiscipline?: string; beginner?: boolean; refs?: { cssSecPer100m: number; thrPaceSecPerKm: number } },
+  render?: (s: V1Session) => void,
+): number {
+  const wl = plan.weeks;
+  const wMin = (w: V1Week) => w.days.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.min || 0), 0), 0);
+  const estCharge = (w: V1Week) => !w.isRecup && w.phase.id !== "taper"
+    && !w.days.some((d) => d.sessions.some((s) => s.race));
+  const voisine = (i: number, pas: number): V1Week | null => {
+    for (let j = i + pas; j >= 0 && j < wl.length; j += pas) if (estCharge(wl[j])) return wl[j];
+    return null;
+  };
+  const nomDe = (s: V1Session) => String(s.name || "").replace(/\s*\((matin|midi|soir)\)\s*/g, "").trim();
+  const doseDe = (s: V1Session) => s.d === "sw"
+    ? (s.steps || []).reduce((v, st) => v + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0)
+    : (s.steps || []).filter((st) => st.role === "body").reduce((v, st) => v + (st._min || 0), 0);
+  const discMin = (w: V1Week) => {
+    const t: Record<string, number> = { sw: 0, bk: 0, rn: 0 };
+    for (const d of w.days) for (const s of d.sessions) {
+      if (s.d === "rs" || s.race) continue;
+      if (s.d in t) t[s.d] += s.min || 0;
+      else for (const st of s.steps || []) { const leg = st.leg === "bike" ? "bk" : st.leg === "run" ? "rn" : null; if (leg) t[leg] += st._min || 0; }
+    }
+    return t;
+  };
+  let corrigees = 0;
+  for (let i = 0; i < wl.length; i++) {
+    const w = wl[i];
+    if (!w.isRecup || w.phase.id === "taper") continue;
+    if (w.days.some((d) => d.sessions.some((s) => s.race))) continue;
+    const vs = [voisine(i, -1), voisine(i, +1)].filter((x): x is V1Week => !!x);
+    if (!vs.length) continue;
+    const V = vs.reduce((t, x) => t + wMin(x), 0) / vs.length;
+    if (!(V > 0) || wMin(w) >= V * C29D_DECHARGE_DECLENCHEUR) continue;
+    const cible = Math.round(V * C29D_DECHARGE_CIBLE);
+    // Références T-56 : par type (max dose du même nom) et par discipline (max minutes).
+    const refT = new Map<string, number>();
+    const refD: Record<string, number> = { sw: 0, bk: 0, rn: 0 };
+    for (const vw of vs) {
+      const dm = discMin(vw);
+      for (const k of ["sw", "bk", "rn"]) refD[k] = Math.max(refD[k], dm[k] || 0);
+      for (const d of vw.days) for (const s of d.sessions) {
+        if (s.d === "rs" || s.race) continue;
+        refT.set(nomDe(s), Math.max(refT.get(nomDe(s)) || 0, doseDe(s)));
+      }
+    }
+    // ── 1. Grossir l'existant, sous la référence de TYPE.
+    for (const d of w.days) {
+      if (wMin(w) >= cible) break;
+      for (const s of d.sessions) {
+        if (wMin(w) >= cible) break;
+        if (s.d === "rs" || s.race) continue;
+        if ((s.steps || []).some((st) => IS_QUALITY_ZONE(String(st.zone || "")) || st.bnd?.pinned)) continue;
+        const ref = refT.get(nomDe(s));
+        if (ref == null) continue; // type sans référent : on ne grossit pas à l'aveugle
+        const cur = doseDe(s);
+        if (cur >= ref) continue;
+        // L'axe DISCIPLINE borne aussi la croissance : grossir chaque footing sous sa
+        // référence de TYPE peut porter le TOTAL de la discipline au-dessus du sien — mesuré,
+        // T-56 rabotait alors derrière et la semaine retombait (90' de course pour une
+        // référence à 30'). Les deux axes se respectent AVANT d'écrire, pas après.
+        const dNow = discMin(w);
+        const margeDisc = s.d in refD ? Math.max(0, (refD[s.d] || 0) - (dNow[s.d] || 0)) : Infinity;
+        if (margeDisc < 3) continue;
+        const fDisc = 1 + margeDisc / Math.max(1, s.min || 1);
+        const f = Math.min(ref / Math.max(1, cur), fDisc, (cible - wMin(w) + (s.min || 0)) / Math.max(1, s.min || 1));
+        if (f <= 1.02) continue;
+        for (const st of s.steps || []) {
+          if (st.role !== "body") continue;
+          if (st.distanceM != null && (st.reps || 1) === 1) st.distanceM = Math.round((st.distanceM * f) / 25) * 25;
+          else if (st.durationMin != null && (st.reps || 1) === 1) st.durationMin = Math.round(st.durationMin * f);
+        }
+        if (render) render(s);
+      }
+    }
+    // ── 2. Ajouter des jours faciles sur les OFF non forcés, discipline la plus en marge.
+    // La FRÉQUENCE de la décharge ne dépasse pas celle de ses voisines : on rend des jours,
+    // on ne rend pas une semaine plus remplie que les semaines de charge qui l'encadrent.
+    const joursActifs = (x: V1Week) => x.days.filter((d) => d.sessions.some((s2) => s2.d !== "rs" && (s2.min || 0) > 0)).length;
+    const plafondJours = Math.max(...vs.map(joursActifs));
+    const duSport = new Set(ctx?.disciplines || [ctx?.mainDiscipline || "rn"]);
+    // Tolérance PROPORTIONNELLE (règle 14) : 10 minutes absolues valaient 28 % d'une cible de
+    // 36' — la boucle s'arrêtait aux deux tiers du chemin sur les petites semaines.
+    for (let garde = 0; garde < 4 && wMin(w) + Math.max(3, cible * 0.05) < cible && joursActifs(w) < plafondJours; garde++) {
+      const jour = w.days.find((d) => !(d as { forced?: boolean }).forced
+        && d.sessions.every((s) => s.d === "rs" && !(s.min || 0))
+        && !/Repos \/ mobilité/.test(String(d.sessions[0]?.name || "")));
+      if (!jour) break;
+      const cur = discMin(w);
+      const cand = ["bk", "rn", "sw"].filter((k) => duSport.has(k))
+        .map((k) => ({ k, marge: (refD[k] || 0) - (cur[k] || 0) }))
+        .sort((a, b) => b.marge - a.marge)[0];
+      if (!cand || cand.marge < 15) break; // plus de marge légale : on s'arrête, T-56 gagne
+      const manque = cible - wMin(w);
+      let sx: V1Session;
+      if (cand.k === "sw") {
+        // En MÈTRES, plancher piscine respecté (C24b débutant 600, C24 sinon 750).
+        const css = ctx?.refs?.cssSecPer100m || 130;
+        const plancherM = ctx?.beginner ? 600 : 750;
+        const vise = Math.max(plancherM, Math.min(Math.round((manque * 60 / css) * 100 / 25) * 25, Math.round((cand.marge * 60 / css) / 25) * 25));
+        if (vise * (css / 60) / 100 > cand.marge + 5) break; // même le plancher dépasserait la marge T-56
+        sx = { d: "sw", name: "Nage souple (décharge)", det: "",
+          note: "Semaine de décharge : ce volume-là est strictement facile. Il maintient les sensations d'eau sans rien coûter — une décharge qui descend trop bas n'est plus une décharge, c'est une coupure.",
+          steps: [{ role: "body", distanceM: vise, zone: "sw.easy" } as V1Step] };
+      } else {
+        const dz = cand.k === "bk" ? "bk.z2" : "rn.easy";
+        const dur = Math.max(20, Math.min(40, Math.round(manque), Math.round(cand.marge)));
+        sx = { d: cand.k as "rn", name: cand.k === "bk" ? "Vélo souple (décharge)" : "Footing souple (décharge)", det: "",
+          note: "Semaine de décharge : sortie strictement facile. Le volume descend, la régularité reste — une décharge qui tombe à quelques minutes n'entretient plus rien.",
+          steps: [{ role: "body", durationMin: dur, zone: dz } as V1Step] };
+      }
+      (jour as { charge?: string }).charge = "facile";
+      (jour as { slot?: string }).slot = "facileR";
+      jour.sessions = [sx];
+      if (render) render(sx);
+      corrigees++;
+    }
+    // ── 2b. CONVERTIR quand ni la croissance ni l'ajout n'ont de marge — le patron R6.1b.
+    // Mesuré sur tri/70.3 : la récup a DÉJÀ autant de jours actifs que ses voisines et ses
+    // disciplines rn/sw sont au taquet de leur référence T-56 (30' pour 30'), pendant que le
+    // VÉLO a 204' de marge et ZÉRO séance. Le seul geste légal est de convertir un jour
+    // minuscule vers la discipline en marge : la fréquence ne bouge pas, le total monte,
+    // aucun axe T-56 n'est franchi. On ne convertit jamais la DERNIÈRE séance d'une
+    // discipline (une décharge de tri qui perd toute sa nage n'est plus une décharge de tri).
+    for (let garde = 0; garde < 3 && wMin(w) + Math.max(3, cible * 0.05) < cible; garde++) {
+      const cur2 = discMin(w);
+      const cible2 = ["bk", "rn", "sw"].filter((k) => duSport.has(k))
+        .map((k) => ({ k, marge: (refD[k] || 0) - (cur2[k] || 0) }))
+        .sort((a2, b2) => b2.marge - a2.marge)[0];
+      if (!cible2 || cible2.marge < 25) break;
+      // La victime : la plus petite séance facile non épinglée d'une AUTRE discipline qui en
+      // garde au moins une après conversion.
+      const compte: Record<string, number> = {};
+      for (const d of w.days) for (const s2 of d.sessions) if (s2.d !== "rs" && !s2.race) compte[s2.d] = (compte[s2.d] || 0) + 1;
+      const victimes = w.days.flatMap((d) => d.sessions.map((s2) => ({ d, s2 })))
+        .filter(({ s2 }) => s2.d !== "rs" && !s2.race && s2.d !== cible2.k && (compte[s2.d] || 0) > 1
+          && !(s2.steps || []).some((st) => IS_QUALITY_ZONE(String(st.zone || "")) || st.bnd?.pinned))
+        .sort((a2, b2) => (a2.s2.min || 0) - (b2.s2.min || 0));
+      const v0 = victimes[0];
+      if (!v0) break;
+      const manque2 = cible - wMin(w) + (v0.s2.min || 0);
+      let sx2: V1Session;
+      if (cible2.k === "sw") {
+        const css = ctx?.refs?.cssSecPer100m || 130;
+        const plancherM = ctx?.beginner ? 600 : 750;
+        const vise = Math.max(plancherM, Math.min(Math.round((manque2 * 60 / css) * 100 / 25) * 25, Math.round((cible2.marge * 60 / css) / 25) * 25));
+        if (vise * (css / 60) / 100 > cible2.marge + 5) break;
+        sx2 = { d: "sw", name: "Nage souple (décharge)", det: "",
+          note: "Semaine de décharge : ce volume-là est strictement facile. Il maintient les sensations d'eau sans rien coûter — une décharge qui descend trop bas n'est plus une décharge, c'est une coupure.",
+          steps: [{ role: "body", distanceM: vise, zone: "sw.easy" } as V1Step] };
+      } else {
+        const dz2 = cible2.k === "bk" ? "bk.z2" : "rn.easy";
+        const dur2 = Math.max(20, Math.min(45, Math.round(manque2), Math.round(cible2.marge)));
+        sx2 = { d: cible2.k as "rn", name: cible2.k === "bk" ? "Vélo souple (décharge)" : "Footing souple (décharge)", det: "",
+          note: "Semaine de décharge : sortie strictement facile. Le volume descend, la régularité reste — une décharge qui tombe à quelques minutes n'entretient plus rien.",
+          steps: [{ role: "body", durationMin: dur2, zone: dz2 } as V1Step] };
+      }
+      v0.d.sessions = [sx2];
+      if (render) render(sx2);
+      corrigees++;
+    }
+  }
+  return corrigees;
+}
+
 function enforceRecupSousCharges(plan: V1Plan, render?: (s: V1Session) => void): void {
   const wl = plan.weeks;
   const estCharge = (w: V1Week) => !w.isRecup && w.phase.id !== "taper"

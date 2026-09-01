@@ -686,6 +686,28 @@ export function easyShareFloor(weeklyMin: number, ctx?: EasyFloorCtx): number {
 export const C25_RECOVERY_SESSION_CAP_MIN = rule("C25", "une séance dont l'intention est la récupération ne dépasse pas 60 min", 60);
 
 /**
+ * C29d (fiche 42, conseil d'experts §2.3) — UNE DÉCHARGE SOUS LE QUART DE SES VOISINES N'EST
+ * PLUS UNE DÉCHARGE, C'EST UNE INTERRUPTION.
+ *
+ * Mesuré sur le corpus entier : 70 semaines de récup sur 58 profils livraient 0,12 à 0,25 de
+ * leurs semaines de charge adjacentes — 30 minutes entre deux semaines de 250, une seule
+ * séance de 14 min chez tous les nageurs débutants. On y perd les adaptations de la semaine
+ * sans le bénéfice d'un vrai repos, et la reprise derrière est un à-coup de ×4 à ×8 que C22
+ * ne voit pas (il saute les décharges, par construction). La résolution du débat
+ * médecin/physiologiste : la décharge se fait par le CONTENU — un volume d'au moins la moitié
+ * des voisines, 100 % facile — et la mesure d'entrée a montré ce volume constructible sur les
+ * 70 semaines (capacité calendaire 1,5 à 2 × la cible partout).
+ *
+ * LE DÉCLENCHEUR (0,25) N'EST PAS LA POLITIQUE GÉNÉRALE. La distribution corpus est continue
+ * au-dessus (médiane tri 0,49 ; un plancher à 0,5 toucherait 462 profils, à 0,35 il en
+ * toucherait 138) : où doit vivre le plancher sur ce continuum est un arbitrage du fondateur,
+ * publié avec ses chiffres à la fiche 42. Ce filet-ci attrape la CLASSE du constat — ce qui
+ * n'est pas une décharge du tout — et rien d'autre.
+ */
+export const C29D_DECHARGE_DECLENCHEUR = rule("C29d", "en dessous du quart des voisines, la récup n'est plus une décharge : le filet se déclenche", 0.25);
+export const C29D_DECHARGE_CIBLE = rule("C29d", "la décharge par le contenu vise la moitié des voisines, 100 % facile (résolution du débat fiche 41 §2.3)", 0.5);
+
+/**
  * C13e — L'ÉCHAUFFEMENT N'EST JAMAIS PLUS LONG QUE LE CORPS DE SÉANCE. Invariant DUR, sur les
  * six sports et dans les deux unités (minutes en course/vélo/trail, mètres en bassin). Une
  * séance dont l'échauffement pèse plus que le travail n'est pas une séance : c'est un footing
