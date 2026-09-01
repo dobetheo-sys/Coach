@@ -707,7 +707,14 @@ export function reconcileDeclaredVolume(
   // semaine de CHARGE. L'affûtage, lui, a pour objet même de raccourcir : une sortie longue
   // d'affûtage EST une sortie longue réduite. On réduit donc les corps sans se laisser arrêter
   // par `bnd.floor`, jusqu'à un plancher d'affûtage explicite, et la fréquence ne cède qu'après.
-  {
+  // Fiche 44, tâche 3 — CE BLOC EST UNE FONCTION PARCE QU'IL SE REJOUE. Mesuré à la trace sur
+  // G/trail/-/measured-bas : l'affûtage était borné ici contre un pic à 611 min (cap 336,
+  // tenu exactement), puis `enforceC22Final` rabotait les semaines de pic à 429 min APRÈS —
+  // le cap avait été calculé contre un pic qui n'existe plus, et la première semaine
+  // d'affûtage livrait 0,78 du pic pour une borne Bosquet à 0,55. Une garantie vérifiée avant
+  // la passe qui l'invalide ne vérifie que l'avant-dernier état : le rejeu est le patron
+  // standard de ce point de convergence (C28, C30b, O-93, C29d…).
+  const enforceTaperSousPic = () => {
     const TAPER_BODY_FLOOR_MIN = 10;
     const peakNR = plan.weeks.filter((w) => w.phase.id === "peak" && !w.isRecup).map(weekMinOf);
     const peakAny = plan.weeks.filter((w) => w.phase.id === "peak").map(weekMinOf);
@@ -764,7 +771,8 @@ export function reconcileDeclaredVolume(
         victim.sessions = [{ d: "rs", name: "OFF (affûtage)", det: "repos — la dernière semaine pèse au plus 60 % du pic : c'est ce qui te met frais sur la ligne", steps: [], min: 0 }];
       }
     }
-  }
+  };
+  enforceTaperSousPic();
 
   // R23.18 — LE MINI-AFFÛTAGE A− MORD SUR LE PLAN LIVRÉ. Le facteur posé sur `wk.vol` au
   // moment de l'insertion de course est INERTE — mesuré : 201 min livrées dans la semaine A−
@@ -1898,6 +1906,11 @@ export function reconcileDeclaredVolume(
   // n'empêche de descendre — et qui doit lire les doses FINALES des charges voisines pour
   // comparer honnêtement, règle 15).
   for (let p = 0; p < 3 && enforceC22Final(); p++);
+  // Fiche 44, tâche 3 — LA GARANTIE R3.13 SE REJOUE APRÈS LE DERNIER CLAMP : C22-final vient
+  // peut-être de faire descendre le pic, et l'affûtage doit être ≤ 0,55 du pic LIVRÉ, pas d'un
+  // pic intermédiaire. Le rejeu ne peut rien rouvrir : il ne fait que RÉDUIRE des semaines
+  // d'affûtage, que C22-final ignore (il ne lit que les semaines de charge).
+  enforceTaperSousPic();
 
   // O-93 (arbitrage du fondateur, 19/08/2026) — L'INVERSION DES DÉCHARGES : AUCUNE SEMAINE DE
   // RÉCUP NE PORTE, POUR UN TYPE OU UNE DISCIPLINE, UNE DOSE SUPÉRIEURE AUX CHARGES ADJACENTES.
