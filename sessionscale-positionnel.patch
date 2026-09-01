@@ -1,0 +1,85 @@
+diff --git a/src/engine/constraintMatrix.ts b/src/engine/constraintMatrix.ts
+index 9fad5c8..28f66ef 100644
+--- a/src/engine/constraintMatrix.ts
++++ b/src/engine/constraintMatrix.ts
+@@ -441,6 +441,33 @@ export function capScaleAtWeek(phases: Phase[], weeks: number, wk: number): numb
+   const p = kPic > 0 ? Math.min(1, Math.max(0, wk / kPic)) : 1;
+   return CAPSCALE_DEPART + (1 - CAPSCALE_DEPART) * p;
+ }
++export const SESSIONSCALE_DEPART = rule("O-113", "facteur d'échelle de la TAILLE DE NAISSANCE des blocs à la première semaine du plan — valeur en cours de calibration (fiche 51)", 0.8);
++
++/**
++ * O-113 (fiche 51) — LE FACTEUR DE TAILLE DE NAISSANCE DES BLOCS À LA SEMAINE `wk` (index 0).
++ * Pur.
++ *
++ * Même patron que `capScaleAtWeek` (O-77, fiche 48) et que `swimSessionCapAtWeek` (O-56) : la
++ * POSITION dans le plan, jamais l'ambition DÉCLARÉE. `plein` porte ce qui reste légitimement
++ * multiplicatif — récupération dégradée (sommeil court, charge de vie) et facteur de charge
++ * blessure/âge —, jamais le rapport à l'enveloppe déclarée, qui est précisément la cause
++ * d'O-113.
++ */
++export function sessionScaleAtWeek(phases: Phase[], weeks: number, wk: number, plein: number): number {
++  const pic = phases.find((p) => p.id === "peak");
++  const taper = phases.find((p) => p.id === "taper");
++  const kPic = pic ? pic.start : taper ? Math.max(1, taper.start - 1) : Math.max(1, weeks - 1);
++  const p = kPic > 0 ? Math.min(1, Math.max(0, wk / kPic)) : 1;
++  return (SESSIONSCALE_DEPART + (1 - SESSIONSCALE_DEPART) * p) * plein;
++}
++
++/** O-113 — ce qui reste multiplicatif dans la taille de naissance : la SÉCURITÉ, jamais l'ambition. */
++export function sessionScalePlein(r: { volLimits?: { recup?: number }; loadFactor?: number }): number {
++  const recup = r.volLimits?.recup ?? 1;
++  const lf = typeof r.loadFactor === "number" && r.loadFactor < 1 ? r.loadFactor : 1;
++  return recup * lf;
++}
++
+ export const O81_FOOTING_CIBLE_PIC_MIN = rule("O-81", "plafond du footing au pic quand la table du format le laisse au ras du plancher de dignité : la sortie facile de référence d'une préparation à leg course long", 50);
+ 
+ /**
+diff --git a/src/generator/sessionLibrary.ts b/src/generator/sessionLibrary.ts
+index 372a0e9..80963d7 100644
+--- a/src/generator/sessionLibrary.ts
++++ b/src/generator/sessionLibrary.ts
+@@ -9,6 +9,7 @@ import { intOf, recoveryMinutes } from "./renderer.ts";
+ import { medicalZone } from "../engine/medicalHold.ts";
+ import { swimDrillGlossaryText } from "../engine/eduLibrary.ts";
+ import { sportModule, type Rec, type SessionKit } from "../sports/registry.ts";
++import { sessionScaleAtWeek, sessionScalePlein } from "../engine/constraintMatrix.ts";
+ // Import des modules de sport pour leur EFFET DE BORD (enregistrement dans le registre).
+ // Un seul endroit dans le projet connaît la liste des sports : celui-ci.
+ import "../sports/run/index.ts";
+@@ -63,7 +64,10 @@ export function buildSessions(ctx: SessionCtx, slot: Slot, phase: string, prog:
+   const beginner = r.beginner;
+   const medHold = r.medHold;
+   const dbl = r.dbl;
+-  const sessionScale = r.sessionScale;
++  // O-113 (fiche 51) — la taille de NAISSANCE des blocs suit la POSITION dans le plan, pas la
++  // seule ambition déclarée. Point UNIQUE : le kit porte la valeur, aucun module de sport ne la
++  // recalcule (le trail passe par `buildTrailSessions`, qui appelle la même fonction).
++  const sessionScale = sessionScaleAtWeek(r.phases, r.weeks, weekNum - 1, sessionScalePlein(r));
+   const inj = r.inj; // R6 (audit v6) — lecture UNIQUE des blessures, plus de motif dupliqué
+   const noVo2 = r.noVo2; // R6.3 — mineur : la VO2max n'est jamais générée, l'alternative seuil/tempo prend le relais
+   const _plioOK = lvl !== "debutant" && !finisher && !inj.impactAny;
+diff --git a/src/generator/trailLibrary.ts b/src/generator/trailLibrary.ts
+index 403a743..3019477 100644
+--- a/src/generator/trailLibrary.ts
++++ b/src/generator/trailLibrary.ts
+@@ -14,6 +14,7 @@ import type { ReasonedPlan, V1Session, V1Step } from "../engine/types.ts";
+ import { T5_HIKE_SHARE, T7_REHEARSAL, returnMinutes, type TrailCategory } from "../engine/trailModel.ts";
+ import { intOf } from "./renderer.ts";
+ import { medicalZone } from "../engine/medicalHold.ts";
++import { sessionScaleAtWeek, sessionScalePlein } from "../engine/constraintMatrix.ts";
+ 
+ type Slot = "dur1" | "dur2" | "durLong" | "facileR" | "facile2" | "recup" | "off";
+ 
+@@ -41,7 +42,9 @@ export function buildTrailSessions(r: ReasonedPlan, slot: Slot, phase: string, p
+   const S2: V1Session[] = [];
+   const inj = r.inj;
+   const beginner = r.beginner;
+-  const scale = r.sessionScale;
++  // O-113 (fiche 51) — même point unique que `sessionLibrary` : la taille de naissance suit la
++  // POSITION dans le plan, jamais la seule ambition déclarée.
++  const scale = sessionScaleAtWeek(r.phases, r.weeks, weekNum - 1, sessionScalePlein(r));
+   const P = (lo: number, hi: number) => Math.max(1, Math.round((lo + (hi - lo) * prog) * scale));
+   // Part de la cible verticale hebdo allouée à CETTE séance (le générateur ajuste ensuite)
+   const upShare = (f: number) => Math.max(50, Math.round((vert.dplusPeak * f * (0.55 + 0.45 * prog)) / 10) * 10);

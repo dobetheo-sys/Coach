@@ -14347,32 +14347,51 @@ function enforceDechargePlancher(
 /**
  * T-56 — NOMBRE DE TOURS DE LA CORRECTION PAR SEMAINE (fiche 50, idempotence).
  *
- * La répartition de l'axe DISCIPLINE est PROPORTIONNELLE : chaque séance de la discipline se
- * voit demander le même facteur `f = ref / total`. Elle suppose donc que **chaque séance peut
- * payer** — or une séance ÉPINGLÉE (palier B-17 : la distance EST le stimulus, et le plan l'a
- * ANNONCÉE) n'en paie AUCUNE part, et les planchers de bloc bornent les autres. Une passe
- * unique sous-livre alors exactement la part des séances qui ne peuvent pas payer, et la garde
- * ne converge que par répétition : mesuré, une seconde passe change **22 plans sur 1 074, tous
- * en `tri/Full`** (`tri/Full/reprise/inter` S25 « Nage seuil (+dist) » 1 225 → 1 100 m, S28
- * 575 → 225 m — la « Nage continue » épinglée de la même semaine pèse 69 et 84 min et ne bouge
- * pas d'un mètre). C'est la famille « protégé par le chemin, pas par la borne », dans l'autre
- * sens : la répartition suppose un payeur là où il y a un protégé.
+ * DIAGNOSTIC MESURÉ : la garde n'était PAS idempotente — dupliquer son appel changeait
+ * **22 plans sur 1 074, tous en `tri/Full`**. La cause n'était ni la borne ni un ordre de
+ * passes : l'axe DISCIPLINE répartit la réduction PROPORTIONNELLEMENT (`f = ref / total`) et
+ * comptait dans son DÉNOMINATEUR une séance qu'il n'a pas le droit de réduire — le palier B-17
+ * ÉPINGLÉ. Une passe sous-livrait donc exactement la part du protégé, et la garde ne convergeait
+ * plus que GÉOMÉTRIQUEMENT : mesuré, `tri/Full/reprise/inter` S25 porte une « Nage continue —
+ * 3 050 m d'affilée » de 69 min qui ne bouge pas d'un mètre pendant que « Nage seuil (+dist) »
+ * paie seule, 1 225 → 1 100 m au deuxième passage, 575 → 225 m en S28. Bornes croissantes :
+ * 1→2 22 plans · 2→3 15 · 3→4 14 · 4→5 13 · 5→6 3 · 6→8 0 · 8→40 **4** — la queue ne se
+ * termine jamais proprement, parce que le mécanisme est faux, pas lent.
  *
- * On converge donc SUR PLACE, en un nombre de tours BORNÉ et connu — même forme que la
- * saturation du maillon `structurel` —, et on sort dès qu'un tour ne bouge plus. Quand plus
- * personne ne peut payer (la séance épinglée dépasse à elle seule la référence), le tour ne
- * bouge pas, la boucle sort, et le résidu est STRUCTUREL : ce n'est pas un défaut d'arbitrage,
- * c'est une séance annoncée que la garde n'a pas le droit de raboter — le banc `lotPhysio` la
- * met d'ailleurs HORS CHAMP et la COMPTE (`epinglees`).
+ * CORRECTIF : le facteur se calcule SUR LES PAYEURS (`discMin(w, true)`), c'est-à-dire la
+ * définition que le banc `lotPhysio` mesure déjà — le palier annoncé est HORS CHAMP côté récup,
+ * référence normale côté charge (R11.1 : une seule définition). Mesuré ensuite : **1→2 · 2→3 ·
+ * 3→4 · 4→8 · 8→40 = 0 plan** — UN tour suffit, la garde est idempotente.
  *
- * 8 : DEUX tours de marge au-dessus de la convergence MESURÉE. Balayage du corpus complet à
- * bornes croissantes, plans changés d'un cran au suivant : 1→2 **22** · 2→3 15 · 3→4 14 ·
- * 4→5 13 · 5→6 **3** · 6→8 **0**. Le corpus converge donc exactement à **6** — la marge est
- * posée parce qu'un profil futur pourrait demander un tour de plus, et qu'une borne atteinte
- * en silence rendrait la garde non idempotente sans que rien ne le dise. Les deux tours de
- * marge sont mesurés INERTES (N=6 et N=8 rendent le corpus au bit près).
+ * 4 : la boucle est CONSERVÉE avec une marge, parce que la réduction agit sur la dose du CORPS
+ * pendant que la référence se compte en minutes de SÉANCE (l'échauffement ne rétrécit pas) —
+ * une configuration future peut demander un second tour. Les trois tours de marge sont mesurés
+ * INERTES sur le corpus.
  */
-const T56_TOURS_MAX = 8;
+const T56_TOURS_MAX = 4;
+
+/**
+ * T-56 — LA RÉFÉRENCE D'UNE SEMAINE DE DÉCHARGE : LA CHARGE QUI LA **PRÉCÈDE** (fiche 50).
+ *
+ * *« Une décharge existe pour absorber la fatigue accumulée. »* Elle se compare donc à ce que
+ * l'athlète VIENT DE FAIRE — jamais à ce qu'il n'a pas encore fait. La garde comparait au
+ * `max(av, ap)`, « les charges qui l'ENCADRENT » : sur un plan qui MONTE, la charge SUIVANTE est
+ * la plus grosse, et la décharge pouvait légalement peser autant qu'une semaine à venir, donc
+ * dépasser celle qu'elle est là pour absorber. Mesuré (fiche 49) : **60 profils trail sur 67
+ * (90 %), 145 inversions**, jusqu'à « Back-to-back » à 124 min en décharge contre 70 en charge
+ * (+77 %). L'AUDITEUR (`recupHeavier`) et le gate de monotonie comparaient déjà à la précédente :
+ * la garde en était la seule à ne pas le faire, donc le générateur et l'auditeur ne disaient pas
+ * la même chose (R11.1).
+ *
+ * Décision du fondateur, fiche 50. Le resserrement avait été écrit et RETIRÉ en fiche 49 parce
+ * qu'il laissait 16 inversions de TYPE résiduelles — T-56 n'était pas idempotente ; la fiche 50
+ * a corrigé l'idempotence D'ABORD (voir `T56_TOURS_MAX`), et le resserrement devient délivrable.
+ *
+ * Point UNIQUE : les DEUX axes (type et discipline) lisent cette fonction. Les avoir écrits deux
+ * fois est ce qui a permis à la définition de diverger de celle de l'auditeur sans que rien ne
+ * le signale.
+ */
+const REFERENCES = (av               , ap               )                    => [av];
 
 function enforceRecupSousCharges(plan        , render                         )       {
   const wl = plan.weeks;
@@ -14388,10 +14407,17 @@ function enforceRecupSousCharges(plan        , render                         ) 
   const doseDe = (s           ) => s.d === "sw"
     ? (s.steps || []).reduce((v, st) => v + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0)
     : (s.steps || []).filter((st) => st.role === "body").reduce((v, st) => v + (st._min || 0), 0);
-  const discMin = (w        ) => {
+  // Une séance ÉPINGLÉE (palier B-17 : la distance EST le stimulus, et le plan l'a ANNONCÉE)
+  // est HORS CHAMP côté récup — c'est un TEST, qui se place précisément dans une semaine
+  // allégée, et la passe n'a pas le droit de le raboter. C'est déjà la définition que le banc
+  // `lotPhysio` (T-56) mesure : on la reprend ici pour n'en avoir qu'UNE (R11.1). Côté VOISINE
+  // de charge, la séance compte comme référence normalement.
+  const estEpinglee = (s           ) => (s.steps || []).some((st) => st.bnd?.pinned);
+  const discMin = (w        , sansEpinglees          ) => {
     const t                         = { sw: 0, bk: 0, rn: 0 };
     for (const d of w.days) for (const s of d.sessions) {
       if (s.d === "rs" || s.race) continue;
+      if (sansEpinglees && estEpinglee(s)) continue;
       if (s.d in t) t[s.d] += s.min || 0;
       else for (const st of s.steps || []) { const leg = st.leg === "bike" ? "bk" : st.leg === "run" ? "rn" : null; if (leg) t[leg] += st._min || 0; }
     }
@@ -14469,14 +14495,14 @@ function enforceRecupSousCharges(plan        , render                         ) 
     // ne pèse pas plus que la charge qui PRÉCÈDE » (auditeur, gate) ou « que celles qui
     // l'ENCADRENT » (ici) — et c'est une décision d'entraînement, pas un réglage.
     const refT = new Map                ();
-    for (const vw of [av, ap]) if (vw) for (const d of vw.days) for (const s of d.sessions) {
+    for (const vw of REFERENCES(av, ap)) if (vw) for (const d of vw.days) for (const s of d.sessions) {
       if (s.d === "rs" || s.race) continue;
       const n = nomDe(s);
       refT.set(n, Math.max(refT.get(n) || 0, doseDe(s)));
     }
     // Les références sont INVARIANTES sur les tours : `av` et `ap` sont des semaines de CHARGE,
     // et la passe ne touche QUE des semaines de décharge — rien de ce qui est lu ici ne bouge.
-    const dAv = av ? discMin(av) : { sw: 0, bk: 0, rn: 0 }, dAp = ap ? discMin(ap) : { sw: 0, bk: 0, rn: 0 };
+    const refsD = REFERENCES(av, ap).map((vw) => (vw ? discMin(vw) : { sw: 0, bk: 0, rn: 0 }));
     const typesVus = new Set        (), discVues = new Set        ();
     for (let tour = 0; tour < T56_TOURS_MAX; tour++) {
       let bouge = false;
@@ -14489,13 +14515,17 @@ function enforceRecupSousCharges(plan        , render                         ) 
       // ── axe DISCIPLINE : minutes par discipline (legs de brick attribués) ≤ la meilleure
       // voisine. Réduction PROPORTIONNELLE des séances de la discipline — le même facteur pour
       // toutes, la structure de la semaine ne change pas.
-      const dR = discMin(w);
+      const dR = discMin(w, true);
       for (const k of ["sw", "bk", "rn"]) {
-        const ref = Math.max(dAv[k] || 0, dAp[k] || 0);
+        const ref = Math.max(0, ...refsD.map((x) => x[k] || 0));
         if (!(dR[k] > ref + 1)) continue;
+        // Le facteur se calcule SUR LES PAYEURS, jamais sur le total : compter dans le
+        // dénominateur une séance qu'on n'a pas le droit de réduire fait sous-livrer la passe
+        // d'exactement sa part, et la garde ne converge plus que par répétition (fiche 50 —
+        // 22 plans changeaient à la seconde passe, tous en tri/Full).
         const f = ref / dR[k];
         for (const d of w.days) for (const s of d.sessions) {
-          if (s.d !== k || s.race) continue;
+          if (s.d !== k || s.race || estEpinglee(s)) continue;
           if (reduire(s, doseDe(s) * f)) { discVues.add(`${w.num}|${k}`); bouge = true; }
         }
       }
