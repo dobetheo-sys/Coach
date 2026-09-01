@@ -205,40 +205,34 @@ attendu: la liste littérale use10, sans alternance de gabarit
 cmd: grep -c "cycleNum" src/generator/weekBuilder.ts
 ```
 
-### O-111 — le `det` écrit à la main d'une COURSE est réécrit par un re-rendu aval · 🔴 **OUVERT — préexistant, révélé par le retrait du cycle (25/08/2026)**
+### O-111 FERMÉ — le `det` d'une séance `race` est un texte d'auteur, jamais un rendu · ✅ **FERMÉ le 01/09/2026 (fiche 42) — et la reproduction dépendait du CALENDRIER**
 
-Le jour d'une course intermédiaire porte un `det` AUTEUR (`planGenerator.ts:4098-4106`) : pour une
-A−, *« Objectif A− : tu la cours POUR DE VRAI. Départ contrôlé, première moitié retenue… »*.
-**Il n'arrive pas jusqu'à l'athlète** : un re-rendu aval (`renderSess`) reconstruit le `det` depuis
-les `steps` et la `note`, et le livré vaut
+Correctif : `renderSess` garde le `det` existant de toute séance `race` (`renderer.ts`, une
+garde en fin de rendu) ; `min` reste recalculé ; une séance `race` SANS det recevrait le rendu
+générique — on ne laisse jamais un texte vide au nom d'une protection. `R23.18-A` repassé à
+`expect: "pass"` dans le commit du correctif (75 verts · 0 régression).
 
-```
-"36min — 💡 Course A- placée à sa vraie date — la semaine est allégée autour."
-```
+**Ce que la fermeture a trouvé, et qui vaut plus que le correctif** : la reproduction du défaut
+était **dépendante du calendrier**, prouvé par élimination — la fixture EXACTE du banc, rejouée
+le 01/09 contre les moteurs `6de90de` (avant le retrait du cycle), `85e341e` (le commit qui a
+posé l'expect:fail) et `ec7c4d1`, rend le texte d'auteur **intact les trois fois**, alors que le
+25/08 elle le perdait de façon documentée (le `det` écrasé est cité verbatim ci-dessous dans
+l'historique du ticket). Même code, même fixture, autre jour, autre verdict : famille R20.7. Le
+banc n'a rien vu passer parce qu'un `expect:"fail"` qui se met à passer s'affiche comme une
+dette (« · ») — indiscernable d'un défaut vivant sans re-mesure (règle 17). **La garde rend la
+promesse indépendante du calendrier, et c'est son vrai titre** : le chemin destructeur existe,
+il n'était simplement pas atteignable depuis la date du 01/09.
 
-**PRÉEXISTANT, prouvé par expérience à facteur unique** : la même fixture en `dispo: "semaine"`
-perd déjà le texte sur le moteur d'AVANT le retrait. Le critère `R23.18-A` du banc v6 était vert
-par **accident de couverture** — la fixture de base du banc déclarait `dispo: quotidienne` +
-`shift_ok: oui`, donc elle tournait sous le cycle de 10 jours, le seul régime où ce jour n'était
-pas re-rendu. **Le défaut touchait donc déjà la majorité des athlètes** ; le retrait l'a rendu
-visible au banc, il ne l'a pas créé.
-
-C'est la famille U9/O-88 : un texte qui ne dit pas ce qu'il annonce. Ici il ne dit RIEN de ce que
-l'auteur avait écrit — l'athlète lit « la semaine est allégée autour » à la place de la consigne
-de course.
-
-**Correctif proposé, en UN point (R11.1)** : `renderSess` ne réécrit jamais le `det` d'une séance
-`race`. Le code l'argumente déjà deux lignes plus bas — *« Une course ne porte PAS de zone
-d'entraînement : ce n'est pas une séance dosée, c'est un événement »* — et la même raison vaut
-pour son texte. **Non appliqué dans ce lot** : mélanger un correctif de rendu à un retrait de
-mécanisme rendrait l'attribution impossible. `R23.18-A` porte `expect: "fail"` avec cette raison,
-à repasser à `"pass"` DANS le commit qui corrige.
+**Couverture ajoutée** : les 135 profils datés du corpus portaient tous une « 🏁 Course A » à
+steps VIDES — jamais re-rendue, donc aveugle au défaut comme au correctif (`golden:verify`
+rendait 0 écart des deux côtés). Trois profils `RACES/run/marathon/{a-moins,b,c}` photographient
+désormais les textes d'auteur des trois priorités intermédiaires (1071 → 1074).
 
 ```verify
 id: O-111-det-course-reecrit
-quoi: le det écrit à la main d'une course est réécrit par renderSess
-attendu: le texte « POUR DE VRAI » existe dans le générateur mais pas dans le livré
-cmd: grep -c "POUR DE VRAI" src/generator/planGenerator.ts
+quoi: le det d'auteur d'une course intermédiaire arrive jusqu'au livré
+attendu: la garde `if (s.race && s.det) return s.det;` existe dans renderSess
+cmd: grep -c "if (s.race && s.det) return s.det;" src/generator/renderer.ts
 ```
 
 ### O-110 — `npm run casser` : deux mutations sur le MÊME fichier s'écrasaient en silence · ✅ **FERMÉ le 25/08/2026 (corrigé dans le lot qui l'a trouvé)**

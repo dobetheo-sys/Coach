@@ -601,6 +601,40 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**LES TROIS PRIORITÉS SÉCURITÉ DE LA PHASE 2, EN UNE PASSE — O-111 fermé (et sa reproduction
+dépendait du CALENDRIER), le plafond de dur suit l'âge, le plancher de décharge C29d existe**
+(fiche 42, 01/09/2026 — voir `syntheses/40-trois-priorites-securite.md`, commits `f0e92b1` ·
+T2 · T3) : **(1) O-111** — `renderSess` garde le `det` d'auteur de toute séance `race` (la seule
+consigne de pacing de sécurité du plan : « Départ contrôlé, première moitié retenue… ») ;
+`R23.18-A` repasse à `pass`. La contre-preuve a trouvé mieux que le correctif : la fixture
+exacte du banc, rejouée contre TROIS moteurs d'avant (dont celui qui a posé l'expect:fail),
+rend le texte intact le 01/09 alors qu'elle le perdait le 25/08 — **la reproduction dépendait du
+jour** (famille R20.7), un expect:fail devenu vert s'affichant comme une dette (règle 17). La
+garde rend la promesse indépendante du calendrier ; 3 profils `RACES/*` photographient les
+textes des priorités A−/B/C (le corpus n'en avait AUCUNE — ses 135 séances race sont des
+Course A à steps vides, aveugles au défaut comme au correctif). **(2)** `hardTimeCapMin` applique
+au MINEUR le facteur déjà arbitré pour le volume (×0,7, ×0,5 sous 14 ans — jamais un nombre
+neuf) : un duathlète de 16 ans passait de 65 min pondérées de dur/semaine (plafond adulte 66) à
+**42 = exactement 60 × 0,7** ; l'âge entre par le ctx du point fixe ET par AuditOpts (O-36, cinq
+fichiers, une formule) ; golden 2 écarts, zéro adulte ; le master n'est PAS modulé (son levier
+est la cadence de récup, résolution du conseil). **(3) C29d** — la mesure d'entrée du débat §2.3
+a répondu corpus entier : **70 semaines de récup sur 58 profils à 0,12-0,25 des voisines**
+(29 en natation débutante — plus large que le constat tri), toutes constructibles à ≥ 0,5×
+100 % facile. La passe (patron C29c, bornée par les références T-56 PAR CONSTRUCTION : type,
+discipline, fréquence) grossit, ajoute, et CONVERTIT un jour minuscule vers la discipline en
+marge (patron R6.1b — la récup tri collait à ses références rn/sw pendant que le vélo avait
+204′ de marge et zéro séance) ; le couple C29d/T-56 se rejoue une fois, re-rabotage CONDITIONNEL
+(un second T-56 inconditionnel changeait 23 plans jamais touchés — rayon 81 → 58, exactement les
+58 du constat). Livré : **58/70 semaines à ≥ 0,40 · 12 entre 0,25 et 0,40 (bornes T-56 et
+structure weekend, publiées une à une) · ZÉRO sous 0,25** — la classe interruption est fermée ;
+contre-prouvé dans les deux sens (neutralisée → 0,12/0,18/0,24 reviennent). **Le déclencheur
+(0,25) n'est pas la politique générale** : la distribution est continue au-dessus (médiane tri
+0,49 · un plancher à 0,5 toucherait 462 profils, à 0,35 : 138) — l'arbitrage du continuum reste
+au fondateur, chiffres publiés. Trois fautes de mes écritures publiées (tolérance absolue sur
+petites cibles — règle 14 ; croissance légale sur l'axe TYPE et illégale sur l'axe DISCIPLINE ;
+déclencheur aveugle à l'état mid-pipeline). Golden 1074, batterie **12/12** (cliquets immobiles),
+`audit:v1` 459 à 0, `audit:sensibilite` vert.
+
 **O-112 FERMÉ — le seuil d'âge du trail passe de 50 à 42 km, et le golden ne pouvait pas voir le
 changement** (fiche 40, 01/09/2026, décision du fondateur — voir `syntheses/38-o112-trail-42km.md`) :
 la borne âge × format (R15.7-C) travaille sur des FORMATS pour les six autres sports ; le trail n'en
