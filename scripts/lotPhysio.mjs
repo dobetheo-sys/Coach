@@ -1137,7 +1137,14 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 // aucune S4. Ce qui reste est le MOTEUR, et il est minuscule et attribué à facteur unique :
 // S4 346 → 345 vient de la dérivation d'`impact` (les zones `cheville`/`fascia`/`quadriceps`
 // comptent enfin comme blessure d'appui), S5 224 → 225 vient de R6.1b.
-const SCEAU_ATTENDU = { S1: 4, S4: 345, S5: 225 };
+// Fiche 44, ré-épinglage attribué à FACTEUR UNIQUE (worktree par commit, 1 060 scellés à
+// chaque point — le zéro a sa population) : S5 225 → 224 vient de T1 (le plafond de séance du
+// nageur débutant converti en TEMPS aligne une identité T-25) · T2 (activity) INERTE, mesuré ·
+// S4 345 → 348 vient de T3 (l'affûtage rejoué après C22-final déplace 3 semaines où une séance
+// dépasse la sortie longue de sa discipline — rang déclaré, I14) · S5 224 → 226 vient de T4
+// (la borne CAP_LONG_DUATHLON retire du pic ce qu'aucun maillon R20.2 ne déclare — la moitié
+// ouverte d'O-35, sur 2 profils duathlon) · T5/T6/T7 immobiles (descripteurs, vérifié).
+const SCEAU_ATTENDU = { S1: 4, S4: 348, S5: 226 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;
@@ -1649,8 +1656,13 @@ T("T-41", "vert", "le plafond de séance de nage suit la capacité DÉMONTRÉE e
     if (vrai[0] > 1100) bad.push(`${fmt} · 400 m · SEMAINE 1 : séance de ${vrai[0]} m — la protection a sauté`);
     if (inconnu[0] > 1100) bad.push(`${fmt} · « je ne sais pas » · SEMAINE 1 : ${inconnu[0]} m — la protection a sauté`);
     // (2) « je ne sais pas » ne projette JAMAIS : sans mesure, il n'y a rien à projeter (D3).
+    // Fiche 44 T1 (règle 14) : le plafond du débutant vit désormais en TEMPS — au CSS de la
+    // fixture (2:10 = le repli), 850 m « de référence » valent ~34 min d'eau ≈ 1 400 m. Le
+    // seuil de CE critère suit l'unité (1 100 → 1 475 = 1 400 + la même marge CAP_SWIM) ; la
+    // PROPRIÉTÉ ne bouge pas : l'inconnu reste au plafond STATIQUE équivalent-temps, seule la
+    // déclaration mesurée fait PROGRESSER la borne (branche 3, sensibilité).
     const maxInc = Math.max(...inconnu), maxVrai = Math.max(...vrai);
-    if (maxInc > 1100) bad.push(`${fmt} · « je ne sais pas » projette jusqu'à ${maxInc} m — l'inconnu n'est pas une capacité`);
+    if (maxInc > 1400) bad.push(`${fmt} · « je ne sais pas » projette jusqu'à ${maxInc} m — l'inconnu n'est pas une capacité`);
     // (3) SENSIBILITÉ à mi-plan — la capacité déclarée doit départager.
     const mi = Math.floor(vrai.length / 2), fin = Math.max(mi + 1, Math.min(vrai.length, mi + Math.ceil(vrai.length / 4)));
     const pic = (l) => (l.length ? Math.max(...l.slice(mi, fin), 0) : 0);

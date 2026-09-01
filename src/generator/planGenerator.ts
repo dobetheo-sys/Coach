@@ -5010,7 +5010,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
                   ? " — tu as répondu « parfois » aux doubles, et le moteur n'en place que si tu réponds « oui »."
                   : " : passe « journées à 2 séances » sur « oui » au Profil.")
                 + " À toi de juger si ton quotidien le permet : deux séances mal récupérées valent moins qu'une bien faite."
-              : r.dbl
+              : r.dbl && guard(a.sport as string, "doublesAddVolume")
                 ? " Tu doubles déjà : au-delà, ce sont les durées maximales de séance qui bornent, et les allonger encore les transformerait en autre chose que ce qu'elles visent."
                 : " Sur ce sport, doubler ne changerait rien : les séances sont uniques par jour et bornées par leur objectif.");
       }
@@ -5046,7 +5046,9 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         let _durMin = 0;
         for (const sx of d.sessions) {
           if (sx.d === "rs" || sx.race) continue;
-          try { _durMin += intensitySplit(sx as never).hardMin || 0; } catch { /* séance sans steps rendus */ }
+          // pas de try/catch : `intensitySplit` traite lui-même la séance sans steps (compte
+          // facile, prudence) — un catch muet ici serait la forme que T-29 balaie et refuse.
+          _durMin += intensitySplit(sx as never).hardMin || 0;
         }
         if (_durMin >= C13d_QUALITY_MIN_BODY_MIN) (d as { chargeLivree?: string }).chargeLivree = "dur";
       }
@@ -5198,6 +5200,24 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
                     ? "Ton plan démarre bas parce que ton enveloppe déclarée (" + h(_volMaxDecl) + "/sem) est sous ton volume récent (" + h(volRecent) + "/sem) : le moteur suit ton choix — si cette enveloppe a changé, corrige-la au Profil."
                     : "";
             if (choix) why += " " + choix;
+          }
+        }
+        // T7 (fiche 44 — O-99 réserve 2 · O-100a · O-101, résolution du conseil : informer
+        // plutôt que brider) — QUAND L'ENVELOPPE DÉCLARÉE DÉPASSE LE PLAFOND STRUCTUREL, LA
+        // CARTE LE DIT MÊME QUAND UN AUTRE MAILLON BORNE AUJOURD'HUI. Le cas argmin=structurel
+        // était déjà couvert (val + pourquoi) ; sans cette ligne, l'athlète dont l'argmin est
+        // la courbe ou l'historique découvrait le plafond structurel sans explication le jour
+        // où ces maillons se lèvent — le marathonien à 14 h déclarées doit lire « le moteur
+        // n'ira pas au-delà de ~9,8 h, et pourquoi » (O-101). Jamais sous protection santé :
+        // le plafond y vient de la protection, pas de la structure, et le dire « structurel »
+        // serait faux.
+        {
+          const structP = plafonds.find((p) => p.id === "structurel");
+          const structNomme = minP.id === "structurel" && !(domF && domF.retire > minP.retire);
+          if (structP && Number.isFinite(structP.livre) && !structNomme && !sante && _haut - structP.livre > 0.5) {
+            why += " Et derrière ce maillon, un plafond STRUCTUREL t'attend : cette semaine-là ne peut pas livrer plus de ~"
+              + h(structP.livre) + "/sem (" + nSess + " séances, chacune bornée par son objectif) — ton enveloppe déclarée ("
+              + h(L.declared) + ") le dépasse, et ce n'est pas un réglage à trouver.";
           }
         }
         r.decisions.push({
