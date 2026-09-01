@@ -109,7 +109,11 @@ function bilanSemaine(w) {
     if (s.d === "rs") return;
     total++;
     const fait = !!(S.answers.done && S.answers.done[w.num + "|" + d.jour + "|" + si]);
-    const facile = d.charge === "facile" || d.charge === "recup";
+    // O-102 — l'étiquette LIVRÉE (chargeLivree, moteur) : un jour `facile2` portant une nage
+    // seuil ne compte plus ses minutes dans la part de FACILE — la semaine était comptée plus
+    // facile qu'elle n'est, sur la seule surface où l'athlète lit ce compte.
+    const et = d.chargeLivree || d.charge;
+    const facile = et === "facile" || et === "recup";
     if (fait) { faites++; minFait += s.min || 0; if (facile) minFacileFait += s.min || 0; }
     minutes += s.min || 0;
     if (facile) minFacile += s.min || 0;

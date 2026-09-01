@@ -71,6 +71,12 @@ export interface GenDay extends V1Day {
   cyc?: number;
   jc?: number;
   wasHard?: boolean;
+  /** O-102 (fiche 44 T6) — étiquette LIVRÉE : posée par le générateur APRÈS le point fixe quand
+   *  un jour `facile` porte ≥ C13d (8 min) de travail dur (nage seuil sur `facile2`). Elle
+   *  n'ESCALADE que facile → dur, jamais l'inverse (« dur » du schéma = séance CLÉ, spec
+   *  tranchée par mesure:t61) ; `charge` reste la vérité de la MACHINERIE (élection de
+   *  victimes, espacement, auditeur), celle-ci est la vérité de l'ATHLÈTE. */
+  chargeLivree?: "dur";
   swapped?: boolean;
   date?: string;
   phase?: { id: string; weeks: number; start: number };

@@ -427,14 +427,28 @@ test("D4", "Semaine de récup jamais plus chargée que la dernière semaine de c
   return { ok: bad.length === 0, detail: `${bad.length} cas : ${bad.slice(0, 3).join(" ; ")}` };
 });
 
-test("D5", "C15 : nage débutant ≤ 850 m par séance", "pass", () => {
+// D5 — RÉÉCRIT (fiche 44 T1, 01/09/2026) : le plafond de séance du nageur débutant vit
+// désormais en TEMPS (règle 14) — « 850 m » n'était que sa projection au CSS d'un nageur
+// rapide, et l'appliquer en mètres à un lent rendait sa fenêtre dégénérée (plafond ≈ plancher
+// de 20 min d'eau : le pic du débutant sans CSS s'effondrait de 56 %). Le moteur convertit
+// (`swimCapDebutantM`) : rapide → 850 m EXACTS (le plafond du fondateur ne bouge pas), lent ou
+// CSS inconnu (repli 130 s/100 m) → la même borne en temps, ~34 min d'eau ≈ 1 400 m plafond.
+// L'ancien critère « ≤ 850 m partout » encodait la faute d'unité que la fiche a corrigée —
+// réécrit sur la propriété, avec sa moitié SENSIBILITÉ (jumeau : un critère d'invariance seul
+// serait satisfait par un plafond gelé n'importe où).
+test("D5", "C15 : séance nage débutant ≤ équivalent-temps du plafond (850 m rapide · ≤ 1400 m au repli CSS)", "pass", () => {
   const bad = [];
   for (const sport of ["tri", "swim"])
     for (const format of FORMATS[sport]) {
       const p = build(sport, { format, level: "debutant", history: "reprise", swim_limit: "technique" });
       sessionsOf(p).forEach(({ s, w }) => {
         const m = swimMeters(s);
-        if (s.d === "sw" && m > 850) bad.push(`${sport}/${format} S${w.num} ${m}m`);
+        if (s.d === "sw" && m > 1400) bad.push(`${sport}/${format} S${w.num} ${m}m`);
+      });
+      const pf = build(sport, { format, level: "debutant", history: "reprise", swim_limit: "technique", css_known: "oui", css: "1:25" });
+      sessionsOf(pf).forEach(({ s, w }) => {
+        const m = swimMeters(s);
+        if (s.d === "sw" && m > 850) bad.push(`rapide ${sport}/${format} S${w.num} ${m}m`);
       });
     }
   return { ok: bad.length === 0, detail: `${bad.length} séance(s) : ${bad.slice(0, 3).join(" ; ")}` };

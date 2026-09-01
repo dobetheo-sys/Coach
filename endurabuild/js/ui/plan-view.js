@@ -184,7 +184,7 @@ function downloadPlan(){
     rows+='<div class="w"><div class="wh"><b>Semaine '+w.num+'</b> · '+w.phase.nom+rt+' · '+w.vol+'h'+(w.isRecup?" (récup)":"")+'</div><div class="g">';
     w.days.forEach(d=>{
       const s=d.sessions.map(x=>(DISC[x.d]?DISC[x.d].ic:"")+" <b>"+x.name+"</b>"+(x.det?" — "+x.det:"")).join("<br>");
-      rows+='<div class="d '+d.charge+'"><div class="dh">'+d.jour+'</div>'+s+'</div>';
+      rows+='<div class="d '+(d.chargeLivree||d.charge)+'"><div class="dh">'+d.jour+'</div>'+s+'</div>';
     });
     rows+='</div></div>';
   });

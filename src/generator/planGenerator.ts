@@ -5028,6 +5028,29 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         }
       }
 
+      // O-102 (fiche 44 T6) — L'ÉTIQUETTE LIVRÉE SUIT LE CONTENU, SUR LA SEULE SURFACE OÙ
+      // L'ATHLÈTE LA LIT. Les deux correctifs MOTEUR ont été écrits en pensée et RÉFUTÉS par la
+      // mesure avant d'être écrits en code : ré-étiqueter PENDANT la construction livre les
+      // jours de nage seuil à `applyAntiCollage` (« deux durs adjacents → le second redevient
+      // facile » : ~1 500 nages seuil converties en repli — la prédiction « la nage est la
+      // victime par défaut » exécutée par le correctif) ; ré-étiqueter APRÈS fait naître
+      // 2 939 paires « jours durs adjacents », violation DURE de l'auditeur, sur 175 profils.
+      // Et la prémisse du ticket (« l'étiquette alimente la courbe de volume ») est réfutée :
+      // la courbe est en minutes, aveugle à l'étiquette — ses vrais lecteurs sont l'élection
+      // de victimes, l'espacement, l'auditeur et l'AFFICHAGE. Seul le dernier ment à l'athlète.
+      // D'où ce descripteur (après convergence, T-16c) : `chargeLivree = "dur"` sur tout jour
+      // `facile` portant ≥ C13d de travail dur — le seuil du moteur lui-même, celui sous lequel
+      // une séance de qualité est déclassée. Jamais l'inverse (« dur » = séance CLÉ, mesure:t61).
+      for (const w of plan.weeks) for (const d of w.days) {
+        if (d.charge !== "facile") continue;
+        let _durMin = 0;
+        for (const sx of d.sessions) {
+          if (sx.d === "rs" || sx.race) continue;
+          try { _durMin += intensitySplit(sx as never).hardMin || 0; } catch { /* séance sans steps rendus */ }
+        }
+        if (_durMin >= C13d_QUALITY_MIN_BODY_MIN) (d as { chargeLivree?: string }).chargeLivree = "dur";
+      }
+
       // C1 (LOT VOLUME + RÉPARTITION, 20/08/2026) — LA RÉPARTITION SE PUBLIE : CIBLE ET LIVRÉ,
       // ÉTIQUETÉS (gabarit O-87). Elle est calculée APRÈS le point fixe, sur le plan LIVRÉ, parce
       // que c'est un DESCRIPTEUR — le mettre dans la boucle le ferait participer à ce qu'il
