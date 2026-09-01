@@ -1124,7 +1124,11 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 // inconnue). `S4` 340 → 342 et `S5` 211 → 216 montent avec la POPULATION, pas avec une
 // régression, et la preuve est la plus forte possible : **`src/` est byte-identique** dans ce
 // lot (`git diff --stat src/` vide). Le moteur n'a pas bougé, seul le corpus a grandi.
-const SCEAU_ATTENDU = { S1: 4, S4: 342, S5: 216 };
+// CORPUS ÉLARGI (fiche 38, 25/08/2026) — +23 profils (8 zones fragiles, 11 âges aux extrêmes,
+// 4 FC max). `S4` 342 → 346 et `S5` 216 → 231 montent avec la POPULATION : 1 063 plans scellés
+// au lieu de 1 042. **`src/` est byte-identique dans ce lot** (`git diff --stat src/` vide) —
+// le moteur n'a pas bougé d'une ligne, seul le corpus a grandi.
+const SCEAU_ATTENDU = { S1: 4, S4: 346, S5: 231 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;
@@ -2018,7 +2022,11 @@ T("T-50", "vert", "PROPRIÉTÉ — la bande d'allure affichée se redérive du p
 // +4 `REF/tri`. Le VO2 monte de 288 min, soit ~72 par profil `REF` — les quatre `MED/tri` n'en
 // apportent AUCUNE, le drapeau médical retirant toute la qualité (mesuré : 0 min sur les 16).
 // `src/` byte-identique : c'est la population, pas le moteur.
-const PIC_ATTENDU = { vo2Min: 8688, seuilM: 432376, profils: 203 };
+// CORPUS ÉLARGI (fiche 38) — la population tri passe de 203 à 206 : les trois profils
+// `INJ/tri` (`course`, `velo`, `cou`). Ils portent une blessure déclarée, donc un volume réduit
+// de ~13 %, et ils ajoutent quand même 180 min de VO2 et 11 875 m de nage seuil au total du
+// corpus. `src/` byte-identique : c'est la population, pas le moteur.
+const PIC_ATTENDU = { vo2Min: 8868, seuilM: 444251, profils: 206 };
 T("T-48", "vert", "la composition du PIC en tri est épinglée : le VO2 a cédé, la nage seuil a gagné (C26c)", () => {
   let vo2 = 0, seuil = 0, profils = 0;
   for (const { key, plan } of goldenAvecMoteur()) {

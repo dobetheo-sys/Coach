@@ -491,6 +491,82 @@ function* profiles() {
     }
   }
 
+  // ---- Passe « ZONES FRAGILES » (fiche 38, 25/08/2026) ----------------------------------
+  //
+  // ⚠ Le domaine d'`injury` compte 13 valeurs ; le corpus n'en portait que 5 (`tibia`, `genou`,
+  // `epaule`, `dos`, et le couple `tibia,genou`). Or `R6_PAIN_CONTRAINDICATION` associe à
+  // certaines zones des disciplines INTERDITES : chaque zone non couverte est une règle de
+  // contre-indication qu'aucune photo ne fige.
+  //
+  // Le sport est choisi pour que la contre-indication soit OBSERVABLE : `cou` interdit la nage
+  // ET le vélo, donc seul un multisport peut montrer ce qu'il en reste ; `course` interdit la
+  // course à pied, ce qui ne se voit que là où d'autres disciplines existent. Les zones sans
+  // entrée dans la table (`velo`, `quadriceps`, `cheville`, `fascia`) sont incluses
+  // DÉLIBÉRÉMENT : leur absence de la table est un fait à photographier, pas à supposer.
+  const INJ_CAS = [
+    ["pied", "run", "semi", () => ({})],
+    ["hanche", "run", "semi", () => ({})],
+    ["fascia", "run", "semi", () => ({})],
+    ["cheville", "trail", "", trailExtras],
+    ["quadriceps", "trail", "", trailExtras],
+    ["course", "tri", "70.3", triExtras],
+    ["velo", "tri", "70.3", triExtras],
+    ["cou", "tri", "70.3", triExtras],
+  ];
+  for (const [zone, sport, format, extras] of INJ_CAS) {
+    const a = { ...base(), format, history: "confirme", level: "inter", intent: "competition",
+      injury: zone, ...extras() };
+    yield { key: ["INJ", sport, format || "-", zone].join("/"), sport, a };
+  }
+
+  // ---- Passe « ÂGE AUX EXTRÊMES » (fiche 38, 25/08/2026) ---------------------------------
+  //
+  // ⚠ Le domaine va de 10 à 100 ; le corpus ne portait que 16, 35 et 62. Trois garde-fous
+  // distincts s'y jouent et aucun n'était photographié à sa frontière : la borne de format du
+  // mineur (`AGE_MINI_FORMAT` — 18 ans pour un marathon, un 70.3 ou un Full), la borne de
+  // l'estimation énergétique (16 ans, O-16) et le facteur master (60 ans, `R6_AGE_LOAD`).
+  //
+  // Les DEUX côtés de chaque frontière sont pris : 17 et 18 sur marathon (refus puis
+  // acceptation), 12 sur un trail de 62 km (au-dessus de `AGE_MINI_TRAIL_KM = 50`). Un refus
+  // typé est une sortie du moteur comme une autre — le corpus le photographie déjà pour
+  // `mineur`, et c'est ce qui rend un assouplissement futur visible.
+  const AGE_CAS = [
+    ["run", "semi", ["12", "16", "17", "60", "80", "100"], () => ({})],
+    ["run", "marathon", ["17", "18"], () => ({})],
+    ["bike", "route", ["12", "100"], () => ({})],
+    ["trail", "", ["12"], trailExtras],
+  ];
+  for (const [sport, format, ages, extras] of AGE_CAS) {
+    for (const age of ages) {
+      const a = { ...base(), format, history: "confirme", level: "inter", intent: "finir",
+        age, ...extras() };
+      yield { key: ["AGE", sport, format || "-", age].join("/"), sport, a };
+    }
+  }
+
+  // ---- Passe « FC MAX » (fiche 38, 25/08/2026) -------------------------------------------
+  //
+  // ⚠ `hr_max` était absente des 1 046 profils, y compris des 14 profils `REF` de la fiche 37 —
+  // ceux-là mêmes qui basculent sur les zones cardiaques faute de référence sportive. Le
+  // « repli du repli » n'était donc jamais exercé : le moteur estime alors la FC max par
+  // l'âge (`reasoningEngine.ts:34`), et rien ne figeait ce que ça produit.
+  //
+  // Trois profils déclarent une FC max AVEC la référence sportive inconnue — c'est le cas où
+  // les zones cardiaques pilotent vraiment les consignes — et un quatrième la déclare avec les
+  // références connues, pour voir si elle change quelque chose quand elle n'est pas nécessaire.
+  const HR_CAS = [
+    ["run", "semi", { pace_known: "non" }, ["pace"], "sans-allure"],
+    ["bike", "route", { ftp_known: "non" }, ["ftp"], "sans-ftp"],
+    ["trail", "", { pace_known: "non" }, ["pace"], "sans-allure"],
+    ["run", "semi", {}, [], "refs-connues"],
+  ];
+  for (const [sport, format, flags, suppr, nom] of HR_CAS) {
+    const a = { ...base(), format, history: "confirme", level: "inter", intent: "finir",
+      hr_max: "185", ...flags, ...(sport === "trail" ? trailExtras() : {}) };
+    for (const k of suppr) delete a[k];
+    yield { key: ["HRMAX", sport, format || "-", nom].join("/"), sport, a };
+  }
+
   // ---- Passe « ATHLÈTE RÉEL » (O-85 §2, 19/08/2026) -------------------------------------
   //
   // *« Ma configuration — `sessions_max` élevé, `doubles`, 70.3, nage limitante — n'existe dans
@@ -560,7 +636,7 @@ function canon(v) {
 // portent les SEPT sports — le chantier « unité de volume = cycle » ne pouvait valider sa
 // logique propre au cycle que sur 5 profils, soit deux familles. L'épingle monte AVEC sa
 // cause, et le moteur est byte-identique dans ce lot : ce qui bouge est le CORPUS.
-const POPULATION = 1046;  // +30 (fiche 37) : 16 profils à drapeau médical, 14 à référence inconnue — deux angles morts de la Phase 1
+const POPULATION = 1069;  // +30 (fiche 37) : 16 profils à drapeau médical, 14 à référence inconnue — deux angles morts de la Phase 1
 
 function snapshot() {
   const snap = {};
