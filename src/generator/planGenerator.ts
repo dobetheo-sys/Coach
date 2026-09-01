@@ -16,7 +16,7 @@ import {
   C24_MIN_SWIM_SESSION_M,
   BRICK_BIKE_BOUNDS, DOSE_CAP_MIN, CAP_BRICK_RUN, CAP_LONG, CAP_LONG_DUATHLON, CAP_SWIM, R313_TAPER_MAX_VS_PEAK, RECUP_WEEK_FACTOR, O69_DEPART_PLANCHER,
   C13d_QUALITY_MIN_BODY_MIN, C25_RECOVERY_SESSION_CAP_MIN, RACE_EVE_CAP_MIN,
-  hardTimeCapMin, weightedHardMin, C26c_HARD_TIME_TOLERANCE, MIN_WEEKS, ALLOC_CIBLE,
+  hardTimeCapMin, weightedHardMin, C26c_HARD_TIME_TOLERANCE, MIN_WEEKS, ALLOC_CIBLE, ALLOC_CIBLE_PALIERS, allocCibleDe,
   C29D_DECHARGE_DECLENCHEUR, C29D_DECHARGE_CIBLE,
 } from "../engine/constraintMatrix.ts";
 import { TrainingReasoningEngine } from "../engine/reasoningEngine.ts";
@@ -5037,7 +5037,11 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       // (≥ 5 points sur une discipline) : une carte qui commente une répartition conforme est du
       // bruit, et le canal `warnings` de R11.2 dit d'informer, pas de bavarder.
       {
-        const cible = ALLOC_CIBLE[a.sport as string];
+        // C1b (fiche 44 T5) : la cible se choisit sur l'enveloppe DÉCLARÉE (vol_max), jamais
+        // sur le pic livré — sélectionner sur le livré referait O-43 (la cible suivrait le
+        // livré, l'écart publié rétrécirait quand le moteur sous-livre).
+        const _volDeclH = parseFloat(String(a.vol_max ?? ""));
+        const cible = allocCibleDe(a.sport as string, Number.isFinite(_volDeclH) ? _volDeclH : undefined);
         if (cible) {
           const part: Record<string, number> = { sw: 0, bk: 0, rn: 0 };
           for (const w of plan.weeks) for (const d of w.days) for (const sx of d.sessions) {
@@ -5060,7 +5064,17 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
                 id: "allocation",
                 what: "Répartition entre les trois disciplines",
                 val: ordre.map((k) => NOM[k] + " " + Math.round(100 * part[k] / tot) + " % (visé " + Math.round(100 * (cible[k] ?? 0)) + ")").join(" · "),
-                why: "La cible vient du partage du temps de ta COURSE, corrigé pour la natation — la technique se perd par la fréquence, pas par le volume, donc on nage plus que sa part de chrono. Ce que tu lis est ce que ton plan livre : l'écart vient de la structure de ta semaine (combien de créneaux portent quelle discipline), pas d'un réglage — le forcer reviendrait à prendre des minutes sous des planchers de séance qui existent pour te protéger.",
+                why: "La cible correspond à ton enveloppe déclarée ("
+                  + (() => {
+                    const ps = ALLOC_CIBLE_PALIERS[a.sport as string];
+                    if (!ps || !Number.isFinite(_volDeclH)) return "non renseignée — cible pleine";
+                    const i = ps.findIndex((px) => _volDeclH < px.maxH);
+                    const k = i < 0 ? ps.length - 1 : i;
+                    if (k === 0) return "moins de " + ps[0].maxH + " h/sem";
+                    if (!Number.isFinite(ps[k].maxH)) return ps[k - 1].maxH + " h/sem et plus";
+                    return ps[k - 1].maxH + " à " + ps[k].maxH + " h/sem";
+                  })()
+                  + ") : elle vient du partage du temps de ta COURSE, corrigé pour la natation — la technique se perd par la fréquence, pas par le volume, donc on nage plus que sa part de chrono. Ce que tu lis est ce que ton plan livre : l'écart vient de la structure de ta semaine (combien de créneaux portent quelle discipline), pas d'un réglage — le forcer reviendrait à prendre des minutes sous des planchers de séance qui existent pour te protéger.",
               });
             }
           }
@@ -5080,7 +5094,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       // et le message nomme la DISCIPLINE la plus basse et ce que la semaine peut porter — le
       // canal `warnings` de R11.2 dit d'informer, pas de bavarder (O-17).
       {
-        const disciplines = (ALLOC_CIBLE[a.sport as string] ? ["sw", "bk", "rn"] : []) as string[];
+        const disciplines = (ALLOC_CIBLE_PALIERS[a.sport as string] || ALLOC_CIBLE[a.sport as string] ? ["sw", "bk", "rn"] : []) as string[];
         if (disciplines.length) {
           const NOMD: Record<string, string> = { bk: "vélo", rn: "course", sw: "natation" };
           let pireDisc = "", pireN = Infinity, sousCible = 0, sousDur = 0, charges = 0;

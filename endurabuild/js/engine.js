@@ -2462,6 +2462,49 @@ const ALLOC_CIBLE                                                     = {
   tri: rule("C1", "répartition visée du temps d'entraînement en triathlon (décision du fondateur, cohérente avec le partage du temps de course)", { bk: 0.50, rn: 0.30, sw: 0.20 }),
 };
 /**
+ * C1b (fiche 44 T5, décision du fondateur, 01/09/2026) — LA CIBLE DEVIENT UNE TABLE PAR PALIER
+ * D'ENVELOPPE DÉCLARÉE, ET LES CIBLES SONT DÉCLARÉES À L'AVANCE (résolution du conseil §2.4).
+ *
+ * L'axe de sélection est `vol_max`, l'enveloppe que l'athlète DÉCLARE — jamais le pic livré.
+ * Sélectionner sur le livré a été REFUSÉ explicitement : c'est la forme O-43 (« la cible suit le
+ * livré ») — quand le moteur sous-livre, la cible basculerait de palier et l'écart publié
+ * rétrécirait précisément au moment où il devrait crier. L'objection du physiologiste (§2.4) —
+ * « la valeur de 50/30/20 est justement de MONTRER qu'à 6-8 h on n'y est pas » — reste servie :
+ * un athlète qui déclare 14 h et reçoit 9,4 h garde la cible du palier 13 h+ et lit l'écart.
+ *
+ * LES CIBLES VIENNENT D'UNE ARITHMÉTIQUE DE FRÉQUENCE, PAS DU CORPUS (règle 12 vérifiable à
+ * l'œil : le corpus livre méd. nage 15 % · vélo 42 % · course 45 %, aucune cible n'y ressemble).
+ * Le principe : la nage se paie en COÛT FIXE de fréquence (la technique vit dans la fréquence —
+ * 2 à 4 séances de ~40 min quel que soit le volume), le vélo est la discipline ÉLASTIQUE (sa
+ * séance-clé s'allonge avec l'enveloppe, sans impact), la course est bornée par l'IMPACT.
+ *   ≥ 13 h : 50/30/20 — la cible du fondateur, dont la réserve mesurée dit qu'elle TIENT là
+ *            (20 % = 2,6 h = 4 × 39 min ✓).
+ *   9-13 h : 45/32/23 — la nage garde 3-4 × ~40 min (à 9 h : 23 % = 2,07 h = 3 × 41 ✓ ;
+ *            à 11,2 h : 2,6 h = 4 × 39 ✓ — exactement le cas que la réserve déclarait intenable
+ *            à 20 %), le vélo cède les points.
+ *   < 9 h  : 40/35/25 — le coût fixe de la nage pèse plus lourd (à 7 h : 25 % = 1,75 h =
+ *            2-3 séances tenables, le plancher de fréquence à DEUX reste servi), et la sortie
+ *            longue vélo est de toute façon bornée par le créneau, pas par la part.
+ *
+ * Les frontières (9, 13) : 13 vient de la réserve mesurée du 20/08 (« la part de 20 % ne tient
+ * qu'à partir de ~13 h ») ; 9 est le point où 23 % redescend sous 3 × 40 min de nage.
+ * `ALLOC_CIBLE` (C1) reste la cible du palier supérieur — l'aspiration du fondateur, inchangée.
+ */
+const ALLOC_CIBLE_PALIERS                                                                                = {
+  tri: rule("C1b", "répartition visée par palier d'enveloppe DÉCLARÉE (vol_max) : cibles posées à l'avance par arithmétique de fréquence, jamais dérivées du livré", [
+    { maxH: 9, cible: { bk: 0.40, rn: 0.35, sw: 0.25 } },
+    { maxH: 13, cible: { bk: 0.45, rn: 0.32, sw: 0.23 } },
+    { maxH: Infinity, cible: { bk: 0.50, rn: 0.30, sw: 0.20 } },
+  ]),
+};
+/** C1b — la cible du sport pour une enveloppe déclarée (h/sem). Sans déclaration lisible, l'aspiration pleine (palier supérieur). */
+function allocCibleDe(sport        , declaredH                    )                                     {
+  const paliers = ALLOC_CIBLE_PALIERS[sport];
+  if (!paliers) return ALLOC_CIBLE[sport];
+  const h = declaredH != null && Number.isFinite(declaredH) && declaredH > 0 ? declaredH : Infinity;
+  return (paliers.find((p) => h < p.maxH) ?? paliers[paliers.length - 1]).cible;
+}
+/**
  * O-88 (constat du fondateur sur son plan réel, 19/08/2026) — LE NOMBRE D'ACCÉLÉRATIONS EST
  * BORNÉ EN ABSOLU, JAMAIS DÉRIVÉ DE LA LONGUEUR DU BLOC.
  *
@@ -15171,7 +15214,11 @@ function generatePlan(profile                , opts                             
       // (≥ 5 points sur une discipline) : une carte qui commente une répartition conforme est du
       // bruit, et le canal `warnings` de R11.2 dit d'informer, pas de bavarder.
       {
-        const cible = ALLOC_CIBLE[a.sport          ];
+        // C1b (fiche 44 T5) : la cible se choisit sur l'enveloppe DÉCLARÉE (vol_max), jamais
+        // sur le pic livré — sélectionner sur le livré referait O-43 (la cible suivrait le
+        // livré, l'écart publié rétrécirait quand le moteur sous-livre).
+        const _volDeclH = parseFloat(String(a.vol_max ?? ""));
+        const cible = allocCibleDe(a.sport          , Number.isFinite(_volDeclH) ? _volDeclH : undefined);
         if (cible) {
           const part                         = { sw: 0, bk: 0, rn: 0 };
           for (const w of plan.weeks) for (const d of w.days) for (const sx of d.sessions) {
@@ -15194,7 +15241,17 @@ function generatePlan(profile                , opts                             
                 id: "allocation",
                 what: "Répartition entre les trois disciplines",
                 val: ordre.map((k) => NOM[k] + " " + Math.round(100 * part[k] / tot) + " % (visé " + Math.round(100 * (cible[k] ?? 0)) + ")").join(" · "),
-                why: "La cible vient du partage du temps de ta COURSE, corrigé pour la natation — la technique se perd par la fréquence, pas par le volume, donc on nage plus que sa part de chrono. Ce que tu lis est ce que ton plan livre : l'écart vient de la structure de ta semaine (combien de créneaux portent quelle discipline), pas d'un réglage — le forcer reviendrait à prendre des minutes sous des planchers de séance qui existent pour te protéger.",
+                why: "La cible correspond à ton enveloppe déclarée ("
+                  + (() => {
+                    const ps = ALLOC_CIBLE_PALIERS[a.sport          ];
+                    if (!ps || !Number.isFinite(_volDeclH)) return "non renseignée — cible pleine";
+                    const i = ps.findIndex((px) => _volDeclH < px.maxH);
+                    const k = i < 0 ? ps.length - 1 : i;
+                    if (k === 0) return "moins de " + ps[0].maxH + " h/sem";
+                    if (!Number.isFinite(ps[k].maxH)) return ps[k - 1].maxH + " h/sem et plus";
+                    return ps[k - 1].maxH + " à " + ps[k].maxH + " h/sem";
+                  })()
+                  + ") : elle vient du partage du temps de ta COURSE, corrigé pour la natation — la technique se perd par la fréquence, pas par le volume, donc on nage plus que sa part de chrono. Ce que tu lis est ce que ton plan livre : l'écart vient de la structure de ta semaine (combien de créneaux portent quelle discipline), pas d'un réglage — le forcer reviendrait à prendre des minutes sous des planchers de séance qui existent pour te protéger.",
               });
             }
           }
@@ -15214,7 +15271,7 @@ function generatePlan(profile                , opts                             
       // et le message nomme la DISCIPLINE la plus basse et ce que la semaine peut porter — le
       // canal `warnings` de R11.2 dit d'informer, pas de bavarder (O-17).
       {
-        const disciplines = (ALLOC_CIBLE[a.sport          ] ? ["sw", "bk", "rn"] : [])            ;
+        const disciplines = (ALLOC_CIBLE_PALIERS[a.sport          ] || ALLOC_CIBLE[a.sport          ] ? ["sw", "bk", "rn"] : [])            ;
         if (disciplines.length) {
           const NOMD                         = { bk: "vélo", rn: "course", sw: "natation" };
           let pireDisc = "", pireN = Infinity, sousCible = 0, sousDur = 0, charges = 0;
