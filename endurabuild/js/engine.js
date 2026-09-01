@@ -4615,6 +4615,18 @@ function renderSess(s                   , refs      , hz         , baseRefs     
   // propageaient dans les totaux hebdo, le cap vol_max (422 vs 420 observé) et les
   // vérifications de progression. L'arrondi appartient au calcul, pas à l'affichage.
   s.min = Math.round(steps.reduce((t, x) => t + (x._min || 0), 0));
+  // O-111 — LE `det` D'UNE SÉANCE `race` EST UN TEXTE D'AUTEUR, JAMAIS UN RENDU.
+  //
+  // Une course intermédiaire porte sa consigne écrite à la main (« Départ contrôlé, première
+  // moitié retenue… », planGenerator « insertion-course ») — la SEULE consigne de sécurité de
+  // pacing du plan. Ce re-rendu la remplaçait par « 36min — 💡 Course A- placée à sa vraie
+  // date » : l'athlète perdait l'instruction de retenue le jour où elle compte. La raison est
+  // déjà écrite au point d'insertion : une course n'est pas une séance dosée, c'est un
+  // ÉVÉNEMENT — et elle vaut pour son texte comme pour ses zones. `min` reste recalculé
+  // (mêmes steps, même somme) ; seul le texte d'auteur est intouchable. Si une séance `race`
+  // arrivait ici SANS det, elle recevrait le rendu générique — on ne laisse jamais un texte
+  // vide au nom d'une protection.
+  if (s.race && s.det) return s.det;
   s.det = det;
   return det;
 }

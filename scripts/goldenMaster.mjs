@@ -227,6 +227,19 @@ function* profiles() {
       yield { key: ["J", sport, format || "-", JOURS[k]].join("/"), sport, a };
     }
   }
+  // ---- Passe « courses intermédiaires » (O-111, fiche 42) -------------------
+  // ANGLE MORT MESURÉ EN FERMANT O-111 : les 135 profils datés portent tous une « 🏁 Course A »
+  // à steps VIDES — jamais re-rendue, donc son texte d'auteur survivait déjà. Les priorités
+  // A−/B/C, elles, portent UN step et passaient par le re-rendu qui écrasait la consigne de
+  // pacing : le corpus ne pouvait voir NI le défaut NI le correctif (`golden:verify` rendait
+  // 0 écart des deux côtés — un zéro indiscernable de la vacuité, même leçon que le seuil
+  // trail de la fiche 40). Trois profils, un par priorité intermédiaire.
+  for (const [label, prio, extra] of [["a-moins", "A-", { race1_format: "semi" }], ["b", "B", {}], ["c", "C", {}]]) {
+    const a = { ...base(), format: "marathon", history: "confirme", level: "inter", intent: "competition",
+      plan_start: RACE_PASS_START, race_date: RACE_PASS_DATES[6],
+      races: "oui", race1_date: "2027-04-18", race1_prio: prio, ...extra };
+    yield { key: ["RACES", "run", "marathon", label].join("/"), sport: "run", a };
+  }
   // ---- Passe « volume et extrapolation » (R14 P5) --------------------------
   // MÊME ANGLE MORT, UN CRAN PLUS BAS. La passe ci-dessus fige `vol_max` au profil de base
   // (10 h/sem) — qui est très exactement l'ancrage où l'exposant de Riegel vaut 1,06, sa
@@ -647,7 +660,7 @@ function canon(v) {
 // portent les SEPT sports — le chantier « unité de volume = cycle » ne pouvait valider sa
 // logique propre au cycle que sur 5 profils, soit deux familles. L'épingle monte AVEC sa
 // cause, et le moteur est byte-identique dans ce lot : ce qui bouge est le CORPUS.
-const POPULATION = 1071;  // +2 (fiche 40, O-112) : un trail de 45 km à 17 et à 18 ans, de part et d'autre du nouveau seuil `AGE_MINI_TRAIL_KM = 42` — sans eux, « 0 écart » ne prouvait rien (tous les trails du corpus courent 62 km, au-dessus de l'ancien seuil comme du nouveau)
+const POPULATION = 1074;  // +3 (fiche 42, O-111) : une course intermédiaire par priorité A−/B/C — sans eux le corpus ne voyait ni le défaut ni le correctif ; +2 (fiche 40, O-112) : un trail de 45 km à 17 et à 18 ans, de part et d'autre du nouveau seuil `AGE_MINI_TRAIL_KM = 42` — sans eux, « 0 écart » ne prouvait rien (tous les trails du corpus courent 62 km, au-dessus de l'ancien seuil comme du nouveau)
 
 function snapshot() {
   const snap = {};

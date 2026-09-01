@@ -1582,7 +1582,10 @@ const _r2318 = (raceOffset, over) => {
 // aujourd'hui tout le monde. Correctif proposé au ticket : `renderSess` ne réécrit jamais le
 // `det` d'une séance `race` — le code dit déjà deux lignes plus bas qu'une course « n'est pas
 // une séance dosée, c'est un événement ». À passer à "pass" DANS LE COMMIT qui le corrige.
-test("R23.18-A", "A− à ≥4 semaines : vraie course A−, 2 jours de récup, décision nommée", "fail", () => {
+// O-111 FERMÉ (fiche 42, 01/09/2026) — `renderSess` ne réécrit plus le `det` d'une séance
+// `race` : le texte d'auteur (« POUR DE VRAI… ») arrive désormais jusqu'à l'athlète, et ce
+// critère redevient un garde-fou permanent (expect basculé DANS le commit du correctif).
+test("R23.18-A", "A− à ≥4 semaines : vraie course A−, 2 jours de récup, décision nommée", "pass", () => {
   const r = _r2318(42, { race1_format: "semi" });
   const okNom = r.day && /Course A−/.test(r.day.sx.name);
   const okDet = r.day && /POUR DE VRAI/i.test(r.day.sx.det || "");
