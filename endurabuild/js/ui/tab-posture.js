@@ -26,7 +26,8 @@ import { S, $, esc, fmtDay, ebSave, todayISO } from "../state.js";
 import { ouvrirPointage } from "./posture-pointage.js";
 import { ouvrirReglages } from "./posture-velo.js";
 import { ouvrirResultats, POIDS_NEUTRES } from "./posture-resultats.js";
-import { souplesseHTML, typeEssaiHTML, relectureHTML, feedbackHTML, ZONES } from "./posture-etapes.js";
+import { souplesseHTML, typeEssaiHTML, relectureHTML, feedbackHTML, provisoireHTML, tendanceHTML, ZONES } from "./posture-etapes.js";
+import { etalonnageHTML, echelleCmParPx } from "./posture-etalonnage.js";
 import { ETAPES } from "./posture-repere.js";
 
 /** Le nombre d'essais qui rend un bilan comparable. Il vient du moteur porté
@@ -161,6 +162,8 @@ export function renderTabPosture() {
   if (S.postureVue === "type") return renderEcran(typeEssaiHTML(numeroProchainEssai(), postureState().session), brancherType);
   if (S.postureVue === "relecture") return renderEcran(relectureHTML(_enCours && _enCours.aperçu), brancherRelecture);
   if (S.postureVue === "feedback") return renderEcran(feedbackHTML(_feedback, contexteSortie()), brancherFeedback);
+  if (S.postureVue === "tendance") return renderEcran(tendanceHTML(bilansArchives()));
+  if (S.postureVue === "etalonnage") return renderEcran(etalonnageHTML(etalState()), brancherEtalonnage);
   const st = postureState();
   const phase = phaseDe(st);
   const s = st.session || {};
@@ -200,6 +203,9 @@ export function renderTabPosture() {
     // Un bilan terminé n'a pas encore son écran de résultats (2e) : on le DIT, on n'avale pas
     // le tap. La règle d'interaction du handoff vaut aussi pour un bouton qui n'agit pas.
     if (phase === "termine") { S.postureVue = "resultats"; return renderTabPosture(); }
+    // 3e — DEUX essais suffisent à montrer un provisoire, et à dire ce qu'un troisième
+    // apporterait. Le CTA reste « reprendre » : le provisoire s'atteint par la ligne de la
+    // liste, pas en détournant l'action principale.
     // Un bilan déjà entamé n'a plus rien à préparer : on repart sur l'essai suivant. Refaire
     // passer par le préparatif à chaque reprise serait redemander ce qu'on sait déjà.
     if (phase === "encours") { S.postureVue = "type"; return renderTabPosture(); }
@@ -540,6 +546,57 @@ function brancherFeedback() {
     ebSave();
     _feedback = {};
     S.postureVue = "accueil";
+    renderTabPosture();
+  };
+}
+
+
+function bilansArchives() {
+  const st = postureState();
+  return (st.history || []).map((h) => ({
+    date: h.date, confort: h.confort, aero: h.aero,
+    confortLo: h.confortLo, confortHi: h.confortHi, aeroLo: h.aeroLo, aeroHi: h.aeroHi,
+    resume: h.resume,
+  }));
+}
+
+/** 3e — LE RÉSULTAT PROVISOIRE. Il ne se calcule pas à part : c'est `runEngine` qui rend les
+ *  scores, et `validateTrial` qui a déjà calculé les `margins` — la distance de chaque angle à
+ *  son seuil, que rien n'affichait jusqu'ici. */
+export function provisoireDepuis(trials, profile, poids) {
+  const E = globalThis.EBV2 && globalThis.EBV2.postureEngine;
+  if (!E || trials.length !== 2) return null;
+  // Le moteur exige trois essais valides pour une frontière ; sur deux, on note chacun et on
+  // prend le meilleur compromis à la main — sans jamais fabriquer de fourchette.
+  const notes = trials.map((t) => {
+    const v = E.validateTrial(t.angles, profile, t.deltas && t.deltas.hasAeroBars);
+    return { t, v };
+  }).filter((x) => x.v.valid);
+  if (!notes.length) return null;
+  return notes;
+}
+
+
+/* ============================================================
+   3b — L'ÉTALONNAGE
+   ============================================================
+   La longueur du repère se MÉMORISE d'un essai à l'autre (c'est en général le même objet) —
+   comportement repris du dépôt d'origine, qui la rangeait dans sa propre clé `localStorage`.
+   Ici elle vit dans l'état du bilan, comme le reste. */
+function etalState() {
+  const p = S.answers.posture || {};
+  return { longueurCm: p.refLengthCm == null ? 40 : p.refLengthCm, a: null, b: null };
+}
+
+function brancherEtalonnage() {
+  const inp = $("poEtalLong");
+  if (!inp) return;
+  inp.onchange = () => {
+    const v = inp.value === "" ? null : Number(inp.value);
+    if (v !== null && (!Number.isFinite(v) || v <= 0)) return;
+    const p = S.answers.posture || (S.answers.posture = { session: null, history: [] });
+    p.refLengthCm = v;
+    ebSave();
     renderTabPosture();
   };
 }

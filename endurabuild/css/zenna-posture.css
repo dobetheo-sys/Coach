@@ -651,3 +651,66 @@ body.theme-zenna #screen .pe-echelle {
   display: flex; justify-content: space-between; padding: 10px 18px 0;
   font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint);
 }
+
+/* ============================================================
+   3e · 3c
+   ============================================================ */
+body.theme-zenna #screen .pe-badge {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--zn-gold);
+  border: 1px solid var(--zn-gold); border-radius: 100px; padding: 4px 9px;
+}
+body.theme-zenna #screen .pe-arg {
+  display: flex; align-items: flex-start; gap: 12px; min-height: 56px; padding: 13px 0;
+  border-bottom: 1px solid var(--zn-filet);
+}
+body.theme-zenna #screen .po-liste .pe-arg:last-child { border-bottom: 0; }
+body.theme-zenna #screen .pe-arg-p {
+  width: 8px; height: 8px; border-radius: 2px; flex: 0 0 auto; margin-top: 5px;
+}
+body.theme-zenna #screen .pe-arg-p.gain { background: var(--zn-good); }
+body.theme-zenna #screen .pe-arg-p.vigilance { background: var(--zn-gold); }
+
+body.theme-zenna #screen .pe-graphe { padding: 12px 10px; }
+body.theme-zenna #screen .pe-svg { width: 100%; height: auto; display: block; }
+body.theme-zenna #screen .pe-grille { stroke: var(--zn-filet); stroke-width: 1; }
+/* L'AIRE est la fourchette, la LIGNE est la valeur. Tracer les valeurs seules ferait lire une
+   progression là où les deux bandes se recouvrent — c'est l'écart connu de `TrendChart` (§7)
+   qu'on ne reproduit pas ici. */
+body.theme-zenna #screen .pe-aire-conf { fill: var(--zn-orange); opacity: .22; }
+body.theme-zenna #screen .pe-aire-aero { fill: var(--zn-good); opacity: .2; }
+body.theme-zenna #screen .pe-l-conf { fill: none; stroke: var(--zn-orange); stroke-width: 2.5; stroke-linejoin: round; }
+body.theme-zenna #screen .pe-l-aero { fill: none; stroke: var(--zn-good); stroke-width: 2.5; stroke-linejoin: round; }
+body.theme-zenna #screen .pe-pt-conf { fill: var(--zn-orange); }
+body.theme-zenna #screen .pe-pt-aero { fill: var(--zn-good); }
+body.theme-zenna #screen .pe-legende {
+  display: flex; gap: 14px; padding: 10px 18px 0;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint2);
+}
+body.theme-zenna #screen .pe-legende span::before {
+  content: ""; display: inline-block; width: 9px; height: 3px; border-radius: 2px;
+  margin-right: 5px; vertical-align: middle;
+}
+body.theme-zenna #screen .pe-legende .l-conf::before { background: var(--zn-orange); }
+body.theme-zenna #screen .pe-legende .l-aero::before { background: var(--zn-good); }
+body.theme-zenna #screen .pe-legende .l-sens::before { background: var(--zn-border); height: 9px; }
+body.theme-zenna #screen .pe-duo {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-lg);
+  color: var(--zn-text); flex: 0 0 auto; margin-right: 8px;
+}
+
+/* 3g — la silhouette de référence : le mécanisme est là, la donnée n'y est pas encore (voir
+   `SILHOUETTE_REF`). Ces règles ne peignent donc rien aujourd'hui, et c'est voulu — l'écrire
+   maintenant évite qu'on invente une seconde apparence le jour où le tracé arrivera. */
+body.theme-zenna #screen .pt-ref { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .5; pointer-events: none; }
+body.theme-zenna #screen .pt-ref polyline {
+  fill: none; stroke: var(--zn-good); stroke-width: 1.1; stroke-dasharray: 3 2.5;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+body.theme-zenna #screen .pt-ref-pt {
+  position: absolute; width: 9px; height: 9px; border-radius: 50%;
+  border: 1.5px dashed var(--zn-good); transform: translate(-50%, -50%);
+  opacity: .5; pointer-events: none;
+}
+/* 3b */
+body.theme-zenna #screen .pe-etal { margin: 0 14px; }

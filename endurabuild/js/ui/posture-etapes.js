@@ -212,3 +212,128 @@ export function feedbackHTML(etat, contexte) {
 }
 
 const sec = (t) => '<div class="po-sec espace"><span>' + esc(t) + "</span><i></i></div>";
+
+/* ============================================================
+   3e — LE RÉSULTAT PROVISOIRE, DÈS DEUX ESSAIS
+   ============================================================
+   Variante de 2e quand il n'y a que deux essais. Son intérêt n'est pas de montrer un score
+   plus tôt : c'est de dire ce qu'un TROISIÈME apporterait, en s'appuyant sur `margins` —
+   la distance de chaque angle à son seuil, que `validateTrial` calcule depuis toujours et que
+   RIEN n'affichait. « Ta hanche est à 1° du plancher » est une information qui existait déjà.
+
+   ⚠ SANS FOURCHETTE. Les bornes de sensibilité se lisent contre une cohorte ; sur deux essais
+   elles diraient une précision qu'on n'a pas. On montre les scores nus et on annonce le
+   provisoire — c'est la même règle que P7/P8 ailleurs dans le dépôt. */
+export function provisoireHTML(scored, margins) {
+  const m = margins || {};
+  const serres = Object.entries(m)
+    .filter(([, v]) => Number.isFinite(v) && v >= 0 && v <= 5)
+    .sort((a, b) => a[1] - b[1]);
+  const MOT = { hip_floor: "ta hanche", trunk_min: "ton tronc", trunk_max: "ton tronc",
+    knee_min: "ton genou", knee_max: "ton genou", wrist: "ton poignet" };
+  return '<div class="po-head">'
+    + '<button type="button" class="po-retour" id="poRetour">‹ Position</button>'
+    + '<span class="pe-badge">provisoire</span></div>'
+    + '<div class="po-hero">'
+    + '<div class="po-hero-top"><span class="po-eyebrow">Le meilleur des deux</span>'
+    + '<span class="po-eyebrow faible">essai ' + esc(scored.trial_id) + "</span></div>"
+    + '<div class="po-hero-titre">Selle ' + Math.round(scored.deltas.saddleHeightMm)
+    + "<br>drop " + Math.round(scored.deltas.dropMm) + "</div>"
+    + '<div class="pr-scores"><div class="pr-score"><b>' + Math.round(scored.comfort_score)
+    + "</b><span>confort</span></div>"
+    + '<div class="pr-score"><b>' + Math.round(scored.aero_score) + "</b><span>aéro</span></div></div>"
+    + '<div class="po-hero-pied">Tu peux rouler avec dès maintenant. Les fourchettes de '
+    + "sensibilité arrivent au troisième essai — sur deux, elles diraient une précision qu’on "
+    + "n’a pas.</div></div>"
+    + sec("Ce qu’un 3ᵉ essai apporterait")
+    + '<div class="po-liste">'
+    + argument("gain", "Une frontière au lieu d’un duel",
+      "À deux, on compare ; à trois, on peut dire qu’un réglage n’est dominé par aucun autre.")
+    + argument("gain", "Les fourchettes de sensibilité",
+      "Elles disent à quel point le score dépend de réglages que la littérature ne tranche pas.")
+    // Le troisième argument sort de `margins` quand il a quelque chose à dire, et disparaît
+    // sinon : un gabarit à trois lignes qui en invente une est pire que deux lignes vraies.
+    + (serres.length
+      ? argument("vigilance", (MOT[serres[0][0]] || "un de tes angles").replace(/^t/, "T")
+        + " est à " + Math.round(serres[0][1]) + "° de son seuil",
+        "Un réglage un peu plus marqué le ferait sortir. Un troisième essai dirait de quel côté.")
+      : "")
+    + "</div>"
+    + '<div class="po-cta-zone" style="margin-top:20px">'
+    + '<button type="button" class="po-cta" id="poTroisieme">Ajouter un 3ᵉ essai · 3 min</button>'
+    + '<div class="po-cta-note"><span>ou garde celui-ci</span> <b>et reviens plus tard</b></div></div>'
+    + '<div class="po-espaceur"></div>';
+}
+
+function argument(type, titre, texte) {
+  return '<div class="pe-arg"><i class="pe-arg-p ' + type + '" aria-hidden="true"></i>'
+    + '<span class="po-ligne-txt"><span class="po-ligne-titre">' + esc(titre) + "</span>"
+    + '<span class="po-ligne-meta">' + esc(texte) + "</span></span></div>";
+}
+
+/* ============================================================
+   3c — HISTORIQUE ET TENDANCE
+   ============================================================
+   Le graphe montre la FOURCHETTE en aire et la valeur en ligne. C'est la seule forme qui ne
+   ment pas : tracer les valeurs seules ferait lire une progression là où les deux fourchettes
+   se recouvrent — le défaut que `TrendChart` porte encore côté dépôt (« affiche les scores en
+   point unique, pas en bandes », écart connu §7). */
+export function tendanceHTML(bilans) {
+  const b = (bilans || []).filter((x) => x && Number.isFinite(x.confort));
+  if (b.length < 2) {
+    return '<div class="po-head">'
+      + '<button type="button" class="po-retour" id="poRetour">‹ Position</button></div>'
+      + '<div class="load-card"><div class="load-title">Pas encore de tendance</div>'
+      + '<div class="load-sub" style="margin-top:7px">Il faut deux bilans pour qu’une courbe '
+      + "veuille dire quelque chose. Tu en as " + b.length + ".</div></div>";
+  }
+  const dConf = Math.round(b[b.length - 1].confort - b[0].confort);
+  const dAero = Math.round(b[b.length - 1].aero - b[0].aero);
+  return '<div class="po-head">'
+    + '<button type="button" class="po-retour" id="poRetour">‹ Position</button>'
+    + '<span class="po-etape">' + b.length + " bilans</span></div>"
+    + '<div class="po-hero"><div class="po-hero-top">'
+    + '<span class="po-eyebrow">Depuis ton premier bilan</span></div>'
+    + '<div class="po-hero-titre">' + (dAero >= 0 ? "+" : "") + dAero + " d’aéro,<br>"
+    + (Math.abs(dConf) <= 3 ? "confort tenu" : (dConf >= 0 ? "+" : "") + dConf + " de confort") + "</div>"
+    + '<div class="po-hero-pied">La bande autour de chaque courbe est la sensibilité du score, '
+    + "pas une marge d’erreur de mesure.</div></div>"
+    + '<div class="po-creux pe-graphe">' + grapheSVG(b) + "</div>"
+    + '<div class="pe-legende"><span class="l-conf">confort</span>'
+    + '<span class="l-aero">aéro</span><span class="l-sens">sensibilité</span></div>'
+    + sec("Tes bilans")
+    + '<div class="po-liste">' + b.slice().reverse().map((x) =>
+      '<div class="po-ligne"><div class="po-ligne-txt">'
+      + '<div class="po-ligne-titre">' + esc(fmtDay(x.date)) + "</div>"
+      + '<div class="po-ligne-meta">' + esc(x.resume || "") + "</div></div>"
+      + '<span class="pe-duo">' + Math.round(x.confort) + " / " + Math.round(x.aero) + "</span>"
+      + '<span class="po-chevron">›</span></div>').join("") + "</div>"
+    + '<div class="po-mentions">Tes retours après sortie changent la <b>pondération du confort</b> '
+    + "des bilans suivants — jamais celle d’un score déjà affiché.</div>"
+    + '<div class="po-espaceur"></div>';
+}
+
+function grapheSVG(b) {
+  const W = 300, H = 140, PX = 8, PY = 12;
+  const x = (i) => PX + (i / Math.max(1, b.length - 1)) * (W - 2 * PX);
+  const y = (v) => H - PY - (Math.max(0, Math.min(100, v)) / 100) * (H - 2 * PY);
+  const aire = (lo, hi) =>
+    b.map((p, i) => x(i).toFixed(1) + "," + y(lo(p)).toFixed(1)).join(" ")
+    + " " + b.slice().reverse().map((p, i) => x(b.length - 1 - i).toFixed(1) + "," + y(hi(p)).toFixed(1)).join(" ");
+  const ligne = (f) => b.map((p, i) => x(i).toFixed(1) + "," + y(f(p)).toFixed(1)).join(" ");
+  const pts = (f, cls) => b.map((p, i) =>
+    '<circle cx="' + x(i).toFixed(1) + '" cy="' + y(f(p)).toFixed(1) + '" r="3.5" class="' + cls + '"/>').join("");
+  const lo = (k) => (p) => (Number.isFinite(p[k + "Lo"]) ? p[k + "Lo"] : p[k]);
+  const hi = (k) => (p) => (Number.isFinite(p[k + "Hi"]) ? p[k + "Hi"] : p[k]);
+  return '<svg viewBox="0 0 ' + W + " " + H + '" class="pe-svg" role="img"'
+    + ' aria-label="Évolution du confort et de l’aéro sur ' + b.length + ' bilans">'
+    + [25, 50, 75].map((v) =>
+      '<line x1="' + PX + '" y1="' + y(v).toFixed(1) + '" x2="' + (W - PX)
+      + '" y2="' + y(v).toFixed(1) + '" class="pe-grille"/>').join("")
+    + '<polygon points="' + aire(lo("confort"), hi("confort")) + '" class="pe-aire-conf"/>'
+    + '<polygon points="' + aire(lo("aero"), hi("aero")) + '" class="pe-aire-aero"/>'
+    + '<polyline points="' + ligne((p) => p.confort) + '" class="pe-l-conf"/>'
+    + '<polyline points="' + ligne((p) => p.aero) + '" class="pe-l-aero"/>'
+    + pts((p) => p.confort, "pe-pt-conf") + pts((p) => p.aero, "pe-pt-aero")
+    + "</svg>";
+}

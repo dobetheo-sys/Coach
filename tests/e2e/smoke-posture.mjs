@@ -470,6 +470,63 @@ ok(/2 zones sur 4 renseignées/.test(t3.fb.t),
 ok(/deux sorties de suite/.test(t3.fb.t) && /jamais rétroactif/.test(t3.fb.t),
   "§10j — 3d : la règle de recalibration est DITE, et sa non-rétroactivité aussi");
 
+// ── §11 — 3e, 3c, 3b, 3g. Les quatre derniers écrans, et deux d'entre eux portent leur
+// limite : 3b ne calcule pas la surface (segmentation bloquée par la CSP) et 3g n'a pas son
+// tracé de référence. Les critères mesurent que la limite est DITE et non contournée.
+const t3b = await page.evaluate(async () => {
+  const M = await import("./js/ui/posture-etapes.js");
+  const E = await import("./js/ui/posture-etalonnage.js");
+  const P = await import("./js/ui/posture-pointage.js");
+  const hote = document.querySelector("#screen");
+  const lire = (h) => { hote.innerHTML = h; return hote.textContent; };
+
+  // 3e — la troisième ligne sort de `margins`, et disparaît quand il n'a rien à dire.
+  const scored = { trial_id: "02", comfort_score: 72, aero_score: 81,
+    deltas: { saddleHeightMm: 750, dropMm: 145 } };
+  const avecMarge = lire(M.provisoireHTML(scored, { hip_floor: 1, trunk_min: 40 }));
+  const sansMarge = lire(M.provisoireHTML(scored, { hip_floor: 40, trunk_min: 40 }));
+
+  // 3c — deux bilans minimum, sinon on le dit.
+  const tend = lire(M.tendanceHTML([
+    { date: "2026-07-04", confort: 66, aero: 64, confortLo: 62, confortHi: 70, aeroLo: 60, aeroHi: 68, resume: "3 essais" },
+    { date: "2026-09-01", confort: 72, aero: 81, confortLo: 68, confortHi: 76, aeroLo: 78, aeroHi: 84, resume: "3 essais" }]));
+  hote.innerHTML = M.tendanceHTML([{ date: "2026-09-01", confort: 72, aero: 81 }]);
+  const tendUn = hote.textContent;
+  hote.innerHTML = M.tendanceHTML([
+    { date: "a", confort: 66, aero: 64, confortLo: 62, confortHi: 70, aeroLo: 60, aeroHi: 68 },
+    { date: "b", confort: 72, aero: 81, confortLo: 68, confortHi: 76, aeroLo: 78, aeroHi: 84 }]);
+  const aires = hote.querySelectorAll(".pe-aire-conf, .pe-aire-aero").length;
+  const lignes = hote.querySelectorAll(".pe-l-conf, .pe-l-aero").length;
+
+  const etal = lire(E.etalonnageHTML({ longueurCm: 40, a: { x: 10, y: 10 }, b: { x: 210, y: 10 } }));
+  hote.innerHTML = "";
+  return { avecMarge, sansMarge, tend, tendUn, aires, lignes, etal,
+    proche: E.echelleCmParPx({ x: 10, y: 10 }, { x: 22, y: 12 }, 40),
+    bonne: E.echelleCmParPx({ x: 10, y: 10 }, { x: 210, y: 10 }, 40),
+    distMin: E.DIST_MIN_PX,
+    silDispo: P.silhouetteDisponible("pmh"), silSVG: P.silhouetteSVG("pmh", ["main", "poignet"]) };
+});
+ok(/hanche est à 1° de son seuil/i.test(t3b.avecMarge) && !/de son seuil/.test(t3b.sansMarge),
+  "§11a — 3e : le 3ᵉ argument sort de `margins` (affiché nulle part jusqu'ici) et DISPARAÎT "
+  + "quand il n'a rien à dire");
+ok(!/–/.test(t3b.avecMarge.split("confort")[0].slice(-14)) && /précision qu’on n’a pas/.test(t3b.avecMarge),
+  "§11b — 3e : les scores sont nus, et l'absence de fourchette est EXPLIQUÉE");
+ok(t3b.aires === 2 && t3b.lignes === 2,
+  "§11c — 3c : la fourchette est une AIRE et la valeur une ligne (" + t3b.aires + " aires, "
+  + t3b.lignes + " lignes) — des valeurs seules feraient lire une progression là où les bandes "
+  + "se recouvrent");
+ok(/Pas encore de tendance/.test(t3b.tendUn) && /\+17 d’aéro/.test(t3b.tend),
+  "§11d — 3c : un seul bilan ne fait pas une courbe, et la synthèse est dérivée");
+ok(!t3b.bonne.ok === false && t3b.bonne.cmParPx.toFixed(2) === "0.20"
+  && !t3b.proche.ok && /trop proches/.test(t3b.proche.motif) && t3b.distMin === 20,
+  "§11e — 3b : le garde-fou des 20 px natifs est CONSERVÉ et motivé (12 px refusés, 200 px → "
+  + (t3b.bonne.ok ? t3b.bonne.cmParPx.toFixed(4) : "?") + " cm/px)");
+ok(/n’est pas encore calculée ici/.test(t3b.etal),
+  "§11f — 3b : la surface frontale n'est pas fabriquée, son absence est dite");
+ok(t3b.silDispo === false && t3b.silSVG === "",
+  "§11g — 3g : sans tracé annoté par un fitter, l'interrupteur N'EXISTE PAS — une silhouette "
+  + "dessinée au jugé produirait le décalage qu'elle corrige");
+
 ok(errs.length === 0, "aucune erreur JS (" + errs.length + (errs.length ? " : " + errs[0] : "") + ")");
 
 await browser.close();

@@ -282,3 +282,38 @@ function squelette(o, etape, st) {
     + '<button type="button" class="pt-valider"></button></div>'
     + '<div class="pt-aide"></div></div></div>';
 }
+
+/* ============================================================
+   3g — LA SILHOUETTE DE RÉFÉRENCE
+   ============================================================
+   Elle répond au retour terrain « les critères sont très précis, j'ai dû tricher un peu pour
+   aligner les points » : on compare à un cycliste type au lieu de deviner.
+
+   ⚠ LE MÉCANISME EST LÀ, LA DONNÉE N'Y EST PAS, ET C'EST DÉLIBÉRÉ. Le handoff est explicite
+   dans sa section Assets : le tracé doit être « dérivé d'une photo réelle annotée par un
+   fitter plutôt que dessiné à l'estime ». Or une silhouette dessinée au jugé produirait
+   EXACTEMENT le décalage qu'elle est censée corriger — l'athlète alignerait ses points sur une
+   erreur, avec la confiance en plus. Tant que `SILHOUETTE_REF` est vide, l'interrupteur
+   n'existe pas : proposer un repère absent serait pire que ne rien proposer.
+
+   Quand la donnée arrivera : une entrée par étape, `{ nom: [x, y] }` en fraction du cadre, et
+   le paragraphe de consigne devra dire que **les cercles indiquent une ZONE, pas une cible** —
+   sans cette phrase, la silhouette redevient la faute qu'elle corrige. */
+export const SILHOUETTE_REF = {};
+
+export function silhouetteDisponible(etape) {
+  const s = SILHOUETTE_REF[etape];
+  return !!(s && Object.keys(s).length);
+}
+
+export function silhouetteSVG(etape, noms) {
+  const s = SILHOUETTE_REF[etape];
+  if (!s) return "";
+  const pts = noms.map((n) => s[n]).filter(Boolean);
+  if (pts.length < 2) return "";
+  return '<svg class="pt-ref" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">'
+    + '<polyline points="' + pts.map((p) => (p[0] * 100).toFixed(1) + "," + (p[1] * 100).toFixed(1)).join(" ")
+    + '"/></svg>'
+    + pts.map((p) => '<span class="pt-ref-pt" style="left:' + (p[0] * 100).toFixed(1)
+      + "%;top:" + (p[1] * 100).toFixed(1) + '%"></span>').join("");
+}
