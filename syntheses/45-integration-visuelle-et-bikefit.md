@@ -211,3 +211,90 @@ sont inertes **par construction**, et c'est vérifié plutôt que supposé (`src
 Et un rappel qui n'est pas une décision : le bouton **« Mettre à jour le paiement »** est un
 point de branchement, pas un parcours de paiement — le README du paquet le dit, et il ne doit
 pas partir en service tel quel.
+
+---
+
+## §9 — Le handoff « bilan posture », et pourquoi sa palette n'a pas été reprise
+
+Troisième paquet de la session (`design_handoff_bilan_posture_zenna` : un README de 349
+lignes, une référence de design de 18 cadres, 15 captures). Ce n'est pas du code : la
+référence est un prototype HTML à styles inline, et son README le dit — *« pas du code de
+production à copier »*.
+
+**Sa prémisse porteuse est fausse, et elle décide de tout le reste.** Il annonce
+*« l'environnement existant de Zenna (React + Tailwind, d'après `src/index.css` du repo
+Bikefiting) »* : c'est le stack du dépôt **Bikefitting**, déduit de son propre CSS, pas celui
+de Zenna. La PWA sert **45 modules ES sans étape de construction**. Les écrans se recréent, ils
+ne se transposent pas.
+
+### La palette de la référence est celle de Zenna, à un cheveu près — et c'est le problème
+
+Le README annonce des jetons *« repris du système Zenna courant »*. Mesuré sur les 39 couleurs
+distinctes du fichier de design :
+
+| | nombre | occurrences |
+|---|---|---|
+| **déjà un jeton `--zn-*`** | 13 | 243 |
+| **quasi-doublon d'un jeton** (distance < 45/442) | **23** | 400 |
+| réellement nouvelles | **3** | 71 |
+
+Les quasi-doublons sont indiscernables à l'œil : `#111417` contre `--zn-surface` `#111318`
+est à **1** sur 442, `#262a30` contre `--zn-border` `#26292f` à **1**, `#22262b` contre
+`--zn-track-bg` à **2**, `#08090a` contre `--zn-on-accent` à **2**. Et la référence porte
+**les deux palettes à la fois** : `#ff3d00` (le jeton) y côtoie `#f2481b` (65 occurrences).
+
+Les reprendre littéralement créerait une seconde palette dans le produit — ce que `check:spec`
+et `check:tokens` existent pour empêcher — et ferait déborder un cliquet à saturation. Elles
+sont donc **routées sur les jetons** ; `zenna-posture.css` porte **zéro littéral**, et son
+plafond au cliquet **naît à 0** au lieu de photographier une dette.
+
+### ⚠ Et l'un des trois gris nouveaux ne passe pas le seuil AA
+
+`#6d737a`, qui porte les eyebrows de section (9 px, capitales) et les chevrons, mesure
+**4,38:1 sur `--zn-bg`** et **3,88:1 sur `--zn-surface`**. Le seuil AA est 4,5. Éclairci à
+teinte constante jusqu'au premier palier qui passe des DEUX côtés : `#787f86`, **5,18** et
+**4,58**. Contre-prouvé — remettre le gris de la référence fait rougir §5 de la garde avec
+ses six textes fautifs et leurs ratios.
+
+**C'est la deuxième fois dans la même session**, après le `#e63946` du paquet précédent, et par
+le même chemin : un cliquet de littéraux qui refuse une couleur nouvelle, et la couleur se
+révèle sous le seuil. Le cliquet ne mesure pas le contraste — il oblige seulement à REGARDER
+chaque couleur qui entre, et c'est ce qui suffit.
+
+### La typographie réintroduit exactement ce que R16.8 a retiré
+
+168 déclarations en demi-pixels (**9,5 ×76 · 10,5 ×31 · 11,5 ×22 · 12,5 ×39**) et **6 à 8 px**,
+sous le plancher que `smoke-typo` garde. R16.8 avait précisément supprimé cette famille —
+« 21 tailles distinctes dont quatre sous le pixel (7,5 / 8,5 / 11,5 / 12,5) ». Chaque taille est
+rabattue sur le palier `--fs-*` le plus proche. (Les 6 valeurs à 8 px se répartissent 3 dans le
+tour 1, qui n'est pas à implémenter, et **3 dans le tour 2**, qui l'est.)
+
+Sans conséquence, mais noté : le README fait venir Poppins, Inter et IBM Plex Mono de Google
+Fonts quand `font-src 'self'` les veut locales — ce sont **exactement** les trois polices que
+la PWA embarque déjà.
+
+### Ce qui est livré : le socle et l'écran 2a
+
+`tab-posture.js` + `zenna-posture.css` + une ligne dans `tab-outils.js`. Trois états (aucun
+bilan · en cours · terminé), l'état dans `SHARED_KEYS` (un bilan de position décrit l'athlète,
+pas un plan — la raison d'`educatifs`), `pendingTrial` non persisté comme le dépôt d'origine
+l'a décidé.
+
+**Ce module ne calcule rien.** Le moteur porté (`src/bikefit/`, 56 tests) n'entre pas dans le
+bundle servi ; l'y faire entrer est une décision de bundling qui n'appartient pas à un écran de
+liste.
+
+Trois décisions de rendu qui ne viennent pas de la référence : l'état vide **n'affiche pas
+« 0 / 3 »** (reprocher à qui n'a pas commencé, c'est U1) · le creux des essais n'existe que
+s'il y a des essais · le CTA **dit** que le parcours arrive au lot suivant plutôt que
+d'absorber le tap en silence, ce que la règle d'interaction du handoff interdit elle-même.
+
+Et **aucune seconde cascade n'est posée** : `znPlay` fait déjà le stagger plafonné et le repli
+`prefers-reduced-motion`. En poser une ici serait exactement le double mouvement que le §3 du
+brief signale sur l'onglet Semaine.
+
+**Garde `smoke-posture.mjs`** (28ᵉ suite, 12 assertions) sur des propriétés et non des valeurs,
+**contre-prouvée trois fois sur trois** : gris de la référence remis → §5 rouge avec ses six
+textes ; orange posé en dur → §3 rouge (`rgb(255,61,0) → rgb(255,61,0)`, la couleur ne descend
+plus) ; entrée du registre retirée → §1 rouge deux fois.
+
