@@ -211,14 +211,26 @@ vérificateur ne sait pas comparer à son `attendu`. C'est la **règle 17** dans
 « un `grep` qui ne trouve plus son motif se lit comme un défaut réparé » — commise dans le bloc
 écrit la veille pour la documenter. À corriger au prochain passage sur le registre.
 
-**(b) `registry:check` range en « ne reproduit plus » tous les tickets FERMÉS**, ce qui est son
-comportement correct mais rend sa sortie difficile à lire : il ne distingue pas « fermé, donc ne
-reproduit plus » de « ouvert, mais le bloc ne sait plus le voir ». Sur **62 des 151 blocs joués**
-(l'exécution complète est longue et n'a pas été menée à son terme ici — elle rejoue des gates qui
-tournent déjà en CI, ce pourquoi elle est hors CI) : **39 reproduisent · 19 ne reproduisent plus ·
-4 commandes en échec**, dont au moins un faux négatif confirmé à la main (O-117). Un tri par
-statut DÉCLARÉ du ticket rendrait l'outil lisible en un coup d'œil — aujourd'hui il faut relire
-chaque ligne en sachant déjà si le ticket est fermé.
+**(b) `registry:check` a été mené à son terme, et il rend 6 blocs en échec.** Bilan complet :
+**149 blocs joués · 106 reproduisent · 37 ne reproduisent plus · 6 commandes en échec**
+(`O-109-piste1-retiree`, `O-105-min-brut`, `O-103-derive`, `alternance-facile2`, `O-45`, `O-69`).
+Les « ne reproduisent plus » sont pour l'essentiel des tickets FERMÉS — comportement correct de
+l'outil, mais il ne distingue pas « fermé, donc ne reproduit plus » de « ouvert, mais le bloc ne
+sait plus le voir ». Un tri par statut DÉCLARÉ du ticket le rendrait lisible en un coup d'œil.
+
+⚠ **Correction d'un chiffre que j'avais publié.** Une première version de ce rapport annonçait
+« 39 / 19 / 4 sur 62 blocs » : c'était une exécution PARTIELLE prise pour le tout. Les nombres
+ci-dessus sont ceux du run complet.
+
+**(c) Le bloc `verify` d'O-69 échoue, et sa propre trace le contredit.** Il imprime
+`S1@13h=9.1 S1@6h=6.5`, dont le lecteur tire un ratio de 1,40 — exactement le seuil exigé. Les
+valeurs réelles sont **9,1 et 6,5333**, soit **1,3929**. **L'arrondi de la ligne de preuve masque
+que le critère échoue.** Le fond n'est pas cassé : le plancher O-69 fait son travail (la semaine 1
+passe de 6,5 h à 9,1 h quand la déclaration passe de 6 h à 13 h) ; c'est le SEUIL qui est épinglé
+0,7 % trop haut. C'est le miroir de la faute nommée en T-38 v1 — un critère satisfait par une
+valeur posée sur sa borne —, ici dans l'autre sens : **un critère qui rate sa borne d'un cheveu,
+sous une trace arrondie qui affirme le contraire.** À réancrer sur la PROPRIÉTÉ (« la semaine 1
+suit la déclaration récente ») plutôt que sur un ratio au centième.
 
 ---
 
