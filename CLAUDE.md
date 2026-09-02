@@ -611,6 +611,54 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**O-113 FERMÉ — la sortie longue cesse d'être le RÉCEPTEUR ÉLASTIQUE du plan, et la mesure
+d'entrée a trouvé bien pire que le ticket** (fiche 52, 02/09/2026 — voir
+`syntheses/47-fiche52-…`, registre O-113 fermé, **O-117** ouvert, passe
+`abaisserLongueVersPart`, constante `PART_LONGUE_MAX`) : décision du fondateur — borner le
+RÉCEPTEUR plutôt que `sessionScale` (fiche 51, retirée sur une calibration discontinue payée en
+fréquence). R4.1 route la croissance de volume vers les blocs FACILES, à raison ; mais le plus
+gros d'entre eux est la sortie longue, et quand les blocs de qualité naissent petits (enveloppe
+déclarée basse) toute la croissance atterrit sur elle — **l'athlète le plus modeste reçoit la
+plus grosse longue**. **La mesure d'entrée dépasse le ticket** : la longue pèse une **médiane de
+42 % de la semaine en vélo** (p90 52,4 · max 67,2), 46 % en duathlon, 40 % en trail, et **69 % des
+semaines de charge vélo dépassent 35 %** ; le cas extrême du corpus, `G/run/marathon/vol-min`
+(2 h/semaine), livre une longue à **78 % de la semaine à côté d'un footing de SIX minutes** —
+qu'aucun des 13 gates ne voyait. **Deux prémisses de la fiche rectifiées par la mesure** :
+l'ancre du duathlon ne se transpose pas (le questionnaire ne demande **aucune distance en vélo**,
+donc pas de durée d'épreuve prédite), et la longue vélo **n'est pas un puits sans borne** — à
+`vol_max` 9 elle est EXACTEMENT à son plafond (192 = 240 × 0,80), à 13 elle est EN DESSOUS (175),
+pour un volume hebdomadaire **identique** (456 min des deux côtés) : l'inversion est une
+RÉPARTITION, pas un manque de volume. **L'ancre est celle que les tables portent déjà sans le
+dire** : rapporté au volume UTILE du format, `CAP_LONG` vaut 20,6 % (5 km) · 25,0 % (marathon) ·
+30,4 % (trail) · 26,7 % (cyclo) · 30,0 % (gravel) — une bande de 20 à 30 % qui monte avec la durée
+du format ; `PART_LONGUE_MAX = 0,40` applique cette logique à la semaine RÉELLEMENT prescrite,
+délibérément plus permissive. **⚠ Une BORNE a été écrite dans `blockBounds` et RETIRÉE** : elle
+ferme O-113 et laisse `audit:v1` vert, mais une borne ne peut pas être neutre en volume — la
+semaine rétrécissait et **73 profils perdaient des séances** (jusqu'à −6,2 %), la monnaie
+interdite. La pièce livrée est une **REDISTRIBUTION**, miroir exact de C30b : les minutes retirées
+à la longue sont rendues aux séances faciles de la même semaine, receveuses bornées par la
+nouvelle taille de la longue (sinon I14 se rouvre — borne active sur 9 profils, contre-prouvée) ;
+neutralité TRACÉE, `bike/gravel` S6 **407 → 440 → 407**. **Calibration monotone et lisible**
+(contrairement à la fiche 51) — profils touchés / séances perdues / pire volume : 0,32 →
+293/27/−13,9 % · 0,35 → 220/7/−11,3 % · 0,38 → 176/28/−9,0 % · **0,40 → 157/34/−7,3 %** · 0,45 →
+69/45/−3,0 % · 0,50 → 10/0/−0,1 % ; O-113 se ferme à **≤ 0,40**, reste ouvert à ≥ 0,45, 0 violation
+dure partout, et 0,40 est la plus PERMISSIVE qui ferme. **Résidu PUBLIÉ, pas tu** : 34 profils
+perdent **exactement une** séance (tous en vélo, sur des plans de ~90 : −1,1 %), 2 en gagnent une,
+volume médian **+0,00 %**, pire −7,3 % sur `bike/gravel` — et l'instrumentation dit que **ce n'est
+pas la passe** (elle est neutre ; l'écart naît entre deux appels de `reconcileDeclaredVolume`,
+dans une passe aval qui réagit). `T-60` reste vert : aucune discipline ne tombe à zéro. Sans
+commune mesure avec la fiche 51 (81 → 58 séances, −28 %), d'où la livraison plutôt que le retrait.
+**Trouvé en chemin — O-117** : `CAP_LONG` est **MORTE pour la sortie longue**, les modules course
+et vélo portant chacun leur propre table `durCaps` aux mêmes valeurs, et le `bnd` déclaré gagnant
+dans `blockBounds` avant la seule branche qui lit `CAP_LONG` — deux sources pour une borne (R11.1),
+dont une que personne n'exécute. **Deux hypothèses à moi RÉFUTÉES et retirées** : mesurer ce que
+les receveuses ont réellement reçu, puis mesurer la neutralité sur la semaine livrée — les deux
+correctes par construction, les deux rendant un corpus IDENTIQUE au bit près.
+**`audit:monotonie` 28 verts · 0 dette · 0 régression — le registre du gate est VIDE pour la
+première fois**, batterie **13/13**, `audit:v1` 459 à 0, `lotPhysio` 33 verts · 24 rouges attendus
+· 0 régression, golden recapturé **327 profils sur 1 074** (run 109 · bike 94 · duathlon 92 ·
+trail 32).
+
 **O-114 ET O-115 FERMÉS — la décharge se compare à la charge qui PRÉCÈDE, et l'idempotence
 devait passer d'abord ; O-113 reste OUVERT, son correctif écrit puis RETIRÉ sur une CALIBRATION
 DISCONTINUE** (fiches 50 et 51, 01/09/2026 — voir `syntheses/46-fiches50-51-…`, registre O-114 et

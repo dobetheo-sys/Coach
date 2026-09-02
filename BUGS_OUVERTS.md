@@ -733,72 +733,80 @@ attendu: MONO-bike-phase et MONO-tri-phase verts
 cmd: npm run audit:monotonie
 ```
 
-### O-113 — inversion `vol_max` en VÉLO · 🔴 **OUVERT — cause NOMMÉE (fiche 49), correctif ÉCRIT, MESURÉ et RETIRÉ (fiche 51)**
+### O-113 — inversion `vol_max` en VÉLO · ✅ **FERMÉ le 02/09/2026 (fiche 52)** — la sortie longue cesse d'être le récepteur élastique
 
-> 🔴 **Neutraliser `sessionScale` ferme l'inversion ENTIÈREMENT** (174 = 174 · 172 = 172 ·
-> 170 = 170, contre 192 → 175 et 196 → 177 au moteur intact). C'est la **même FAMILLE qu'O-77** —
-> une constante de PLAN dérivée de l'enveloppe déclarée, appliquée dès la semaine 1 (règle 20) —
-> mais un **porteur différent** : en tri, O-77 était portée par `_capScale` et `sessionScale`
-> avait été explicitement RÉFUTÉE (fiche 47) ; en vélo c'est l'inverse. Le même défaut de
-> conception a donc deux carriers selon le sport.
+> ✅ **Décision du fondateur : borner le RÉCEPTEUR, pas `sessionScale`** (la fiche 51 avait été
+> retirée sur une calibration discontinue payée en fréquence). R4.1 route la croissance de volume
+> vers les blocs FACILES — à raison —, et le plus gros d'entre eux est la sortie longue : quand
+> les blocs de qualité naissent petits (enveloppe déclarée basse), toute la croissance atterrit
+> sur elle, et **l'athlète le plus modeste reçoit la plus grosse longue**.
 >
-> **Le total de la SEMAINE est identique** (456 = 456, 457 = 456, 459 = 458) : c'est une
-> REDISTRIBUTION. À enveloppe déclarée basse les blocs naissent petits, la boucle doit faire
-> croître la semaine pour atteindre sa cible, et la croissance atterrit sur le receveur élastique
-> (R4.1) — la sortie longue. À enveloppe haute les blocs naissent gros, aucune croissance n'est
-> nécessaire, et la longue reste à sa taille de naissance. Ce n'est donc pas que le déclarant
-> ambitieux est affamé : c'est que le déclarant modeste est GONFLÉ.
+> **La mesure d'entrée dépasse le ticket** : la longue pèse une **médiane de 42 % de la semaine
+> en vélo** (p10 27,8 · p90 52,4 · max 67,2), 46 % en duathlon, 40 % en trail, 35 % en course, et
+> **69 % des semaines de charge vélo dépassent 35 %**. Cas extrême du corpus,
+> `G/run/marathon/vol-min` (2 h/semaine) : longue à **78 % de la semaine** à côté d'un **footing
+> de six minutes**. Aucun des 13 gates ne le voyait.
 >
-> **Ampleur** : 15 cellules sur 45 balayées (5 formats × 3 niveaux × 3 volumes récents),
-> 51 semaines inversées, −9 % à −15 %, concentrées à volume récent bas.
+> **Deux prémisses de la fiche rectifiées par la mesure.** (1) L'ancre du duathlon ne se
+> transpose pas : le questionnaire ne demande **aucune distance en vélo**
+> (`race_distance_km` n'est requis qu'en trail), donc il n'existe pas de durée d'épreuve prédite.
+> (2) La longue vélo **n'est pas un puits sans borne** : à `vol_max` 9 elle est EXACTEMENT à son
+> plafond (192 = 240 × 0,80), à 13 elle est EN DESSOUS (175) — à volume hebdomadaire IDENTIQUE
+> (456 min des deux côtés). L'inversion est une RÉPARTITION, pas un manque de volume.
 >
-> **⚠ LE CORRECTIF POSITIONNEL A ÉTÉ ÉCRIT, MESURÉ ET RETIRÉ (fiche 51)** — patch conservé dans
-> `sessionscale-positionnel.patch`. `sessionScaleAtWeek(phases, weeks, wk, plein)` sur le patron
-> de `capScaleAtWeek`, point UNIQUE (le kit porte la valeur, aucun module ne la recalcule ; le
-> trail passe par la même fonction), `plein` ne portant que ce qui reste légitimement
-> multiplicatif — récupération dégradée et facteur de charge blessure/âge, jamais l'enveloppe.
-> **Il FONCTIONNE** : `MONO-bike-vol_max` passe au vert et `audit:v1` reste à 0 sur 459.
+> **L'ancre est celle que les tables portent déjà sans le dire** : rapporté au volume UTILE du
+> format, `CAP_LONG` vaut 20,6 % (5 km) · 24,1 % (semi) · 25,0 % (marathon) · 30,4 % (trail) ·
+> 27,8 % (crit) · 26,7 % (cyclo) · 30,0 % (gravel) — une bande de 20 à 30 % qui monte avec la
+> durée du format. `PART_LONGUE_MAX = 0,40` applique cette logique à la semaine RÉELLEMENT
+> prescrite, délibérément plus permissive : on retire le puits, on ne redessine pas la
+> périodisation.
 >
-> **Ce qui l'arrête est la CALIBRATION, et elle est DISCONTINUE.** Balayage du départ, profils
-> perdant plus de 20 % de leur pic : 0,40 → **0** (mais 2 violations dures) · 0,50 → 14 (11 dures)
-> · 0,60 → 20 · 0,65 → 19 · 0,68 → **14** · 0,70 → **2** · 0,72 → **40** · 0,75 → 28 · 0,80 → 21 ·
-> 0,90 → 17 · 1,00 → 17. **Un pas de 0,02 fait varier la casse d'un facteur vingt.** Ce n'est pas
-> une courbe de calibration, c'est un tirage : retenir 0,70 serait choisir un numéro de loterie,
-> exactement la faute que la règle 19 nomme.
+> **⚠ Une BORNE a été écrite dans `blockBounds` et RETIRÉE** : elle ferme O-113 et laisse
+> `audit:v1` vert, mais une borne ne peut pas être neutre en volume — la semaine rétrécissait et
+> **73 profils perdaient des séances** (jusqu'à −6,2 %), la monnaie interdite. La pièce livrée est
+> une **REDISTRIBUTION**, miroir exact de C30b : les minutes retirées à la longue sont rendues aux
+> séances faciles de la même semaine, receveuses bornées par la nouvelle taille de la longue
+> (sinon I14 se rouvre — borne active sur 9 profils, contre-prouvée). Neutralité tracée :
+> `bike/gravel` S6 **407 → 440 → 407**.
 >
-> **La cause de la discontinuité est nommée** : la grandeur qui bouge n'est pas la TAILLE des
-> séances mais leur NOMBRE — **33 des 40 perdants à 0,72 perdent des séances**
-> (`swim/ow/confirme/inter` **81 → 58**, −28 % ; `G/tri/Full/vol-recent-bas` pic 716 → 459). La
-> monnaie payée est la FRÉQUENCE, la seule que ce dépôt s'interdit de dépenser
-> (C29/C29b/C29c). Et l'agrégat ne le montre pas : la médiane est à **+0,0 %** à tous les
-> départs — la faute de méthode publiée en fiche 48, reproduite à l'identique si on s'y fie.
+> **Calibration monotone et lisible** (contrairement à la fiche 51) — profils touchés / séances
+> perdues / pire volume : 0,32 → 293/27/−13,9 % · 0,35 → 220/7/−11,3 % · 0,38 → 176/28/−9,0 % ·
+> **0,40 → 157/34/−7,3 %** · 0,45 → 69/45/−3,0 % · 0,50 → 10/0/−0,1 %. O-113 se ferme à **≤ 0,40**
+> et reste ouvert à ≥ 0,45 ; 0 violation dure partout ; 0,40 est la plus PERMISSIVE qui ferme.
 >
-> **Ce que la mesure d'entrée disait déjà, et que la fiche n'anticipait pas** : `sessionScale`
-> n'est pas un artefact positionnel comme `_capScale`, c'est un terme de CAPACITÉ — distribution
-> mesurée sur les 1 074 profils : min **0,150** · p10 0,500 · **médiane 0,700** · p90 0,900 ·
-> **seulement 3,9 % à 1,000**. `capScaleAtWeek` remplaçait un plafond variant de 0,80 à 1,00 ;
-> ici on remplacerait un facteur de taille de NAISSANCE valant 0,15 chez les plus contraints. Le
-> supprimer donne à un nageur débutant des blocs nés à pleine taille pour une semaine minuscule :
-> le point fixe ne peut plus les placer et paie en séances.
->
-> **Reste à trancher (fondateur)** : ou bien la trajectoire positionnelle est bornée par ce que
-> la semaine peut CONTENIR — mais lire le contenu livré pour borner la naissance est la forme
-> qu'O-43 interdit —, ou bien c'est le RECEVEUR élastique (la sortie longue, R4.1) qu'il faut
-> borner, ce qui déplace le chantier et sort du périmètre de cette fiche.
-
-
-
-Le gate de monotonie trouve 10 inversions sur `bike · vol_max` (S1-S3, la séance vélo passe de
-197 à 121 min quand l'enveloppe déclarée monte de 9 à 13 h). Neutraliser `_capScale` en ferme
-**7 sur 10** — les 3 restantes survivent, autour de **−9 %** (200 → 183, 192 → 175, 196 → 177).
-Cause NON identifiée : elle n'est ni `_capScale`, ni `sessionScale` (déjà réfutée sur l'axe).
-Signalé sans être corrigé, comme la fiche le demande. Le gate le porte en dette déclarée.
+> **Résidu PUBLIÉ** : 34 profils perdent **exactement une** séance (tous en vélo, sur des plans de
+> ~90 : −1,1 %), 2 en gagnent une ; volume médian **+0,00 %**, pire −7,3 % sur `bike/gravel`.
+> Tracé : **ce n'est pas la passe** — elle est neutre, l'écart naît entre deux appels de
+> `reconcileDeclaredVolume`, dans une passe aval qui réagit. `T-60` (plancher de fréquence) reste
+> vert, 0 régression : aucune discipline ne tombe à zéro. Sans commune mesure avec la fiche 51
+> (81 → 58 séances, −28 %) — d'où la livraison plutôt que le retrait.
 
 ```verify
 id: O-113
-quoi: un résidu d'inversion vol_max subsiste en vélo après neutralisation de _capScale
-attendu: MONO-bike-vol_max en dette déclarée, avec son compte d'inversions
+quoi: la sortie longue vélo grossit quand l'enveloppe déclarée baisse
+attendu: MONO-bike-vol_max vert, registre du gate VIDE
 cmd: npm run audit:monotonie
+```
+
+### O-117 — `CAP_LONG` est MORTE pour la sortie longue · 🟠 **OUVERT (fiche 52, signalé non corrigé)**
+
+Trouvé en cherchant où poser la borne d'O-113. `CAP_LONG` (`constraintMatrix.ts`) déclare des
+plafonds de sortie longue pour les 10 formats de course et de vélo — et **aucun n'agit** : les
+modules `src/sports/run/index.ts` et `src/sports/bike/index.ts` portent chacun leur propre table
+`durCaps`, aux mêmes valeurs, posée en `bnd` déclaré ; or le `bnd` déclaré gagne dans
+`blockBounds` **avant** la branche `s.long`, seule lectrice de `CAP_LONG`. Deux sources pour une
+même borne (R11.1), dont une que personne n'exécute — la forme exacte du défaut que ce dépôt
+appelle « un correctif qu'on croit avoir ».
+
+Non corrigé ici : le périmètre de la fiche 52 était la part, et faire dériver `durCaps.hi` de
+`CAP_LONG` demande de vérifier les cinq ajustements que les modules appliquent par-dessus
+(débutant C23, blessures pied/hanche, spécificité C30).
+
+```verify
+id: O-117
+quoi: CAP_LONG est doublée par les tables durCaps des modules course et vélo
+attendu: le motif `durCaps` existe dans les deux modules avec les valeurs de CAP_LONG
+cmd: grep -c "durCaps = " src/sports/run/index.ts src/sports/bike/index.ts
 ```
 
 ### O-114 — inversions de récupération en TRAIL · ✅ **FERMÉ le 01/09/2026 (fiche 50)** — la décharge se compare à la charge qui **PRÉCÈDE**
