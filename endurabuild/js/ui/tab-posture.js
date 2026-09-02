@@ -22,7 +22,9 @@
 //
 // `pendingTrial` N'EST PAS PERSISTÉ : décision du dépôt d'origine (§6 de son handoff), reprise
 // telle quelle. Un essai en cours de saisie n'est pas un essai.
-import { S, $, esc, fmtDay } from "../state.js";
+import { S, $, esc, fmtDay, ebSave, todayISO } from "../state.js";
+import { ouvrirPointage } from "./posture-pointage.js";
+import { ETAPES } from "./posture-repere.js";
 
 /** Le nombre d'essais qui rend un bilan comparable. Il vient du moteur porté
  *  (`validateSession` refuse sous 3) — on ne le redécide pas ici, on le nomme. */
@@ -148,6 +150,9 @@ function sectionHTML(titre, compte) {
 }
 
 export function renderTabPosture() {
+  // Le sous-onglet porte plusieurs écrans ; la vue vit sur `S` et NON dans l'état persisté —
+  // revenir sur l'outil doit ramener à son accueil, pas rouvrir l'écran qu'on avait quitté.
+  if (S.postureVue === "preparatif") return renderPreparatif();
   const st = postureState();
   const phase = phaseDe(st);
   const s = st.session || {};
@@ -184,8 +189,141 @@ export function renderTabPosture() {
   // faire. Un bouton qui absorbe le tap en silence est le défaut que le handoff interdit.
   const b = $("poCta");
   if (b) b.onclick = () => {
-    const n = $("poCta").nextElementSibling;
-    if (n) n.innerHTML = '<span>Le parcours de mesure arrive au prochain lot —</span> '
-      + '<b>' + (phase === "termine" ? "écran résultats" : "écran préparatif") + '</b>';
+    // Un bilan terminé n'a pas encore son écran de résultats (2e) : on le DIT, on n'avale pas
+    // le tap. La règle d'interaction du handoff vaut aussi pour un bouton qui n'agit pas.
+    if (phase === "termine") {
+      const n = b.nextElementSibling;
+      if (n) n.innerHTML = '<span>L’écran de résultats arrive au prochain lot —</span> '
+        + "<b>tes essais sont enregistrés</b>";
+      return;
+    }
+    S.postureVue = "preparatif";
+    renderTabPosture();
   };
+}
+
+/* ============================================================
+   2b — LE PRÉPARATIF
+   ============================================================
+   Le mur de texte devient cinq lignes à cocher. La checklist est ÉPHÉMÈRE et non persistée
+   (le handoff le précise) : elle sert à préparer la séance de mesure, pas à décrire l'athlète.
+   Le mode de guidage, lui, EST persisté — il pilote le pointage à chaque essai. */
+const PREPARATIF = [
+  ["Un support pour poser le téléphone", "Trépied, étagère, pile de livres. Mains libres obligatoire."],
+  ["Le vélo stable", "Home-trainer de préférence, sinon calé à l’arrêt."],
+  ["Un repère de longueur connue", "La largeur de ton cintre suffit. Il servira à convertir les pixels en centimètres."],
+  ["3 à 4 m de recul, lumière correcte", "De quoi te voir en entier de profil. Pas de contre-jour."],
+  ["De la place au sol pour t’allonger", "Pour le test de souplesse, avant de monter sur le vélo."],
+];
+
+let _coches = [];
+
+const COCHE_SVG = '<svg viewBox="0 0 20 20" width="14" height="14" fill="none" '
+  + 'stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" '
+  + 'aria-hidden="true"><path d="M4 10.5l4 4 8-9"></path></svg>';
+
+function renderPreparatif() {
+  const st = postureState();
+  const mode = (S.answers.posture && S.answers.posture.guidanceMode) || "beginner";
+  let html = '<div class="po-head">'
+    + '<button type="button" class="po-retour" id="poRetour">‹ Outils · Position</button>'
+    + '<span class="po-etape">étape 0 / 3</span></div>'
+    + '<div class="po-hero-nu"><div class="po-eyebrow" style="color:var(--zn-faint)">Avant de commencer</div>'
+    + "<h2>Dix minutes,<br>seul avec ton vélo</h2>"
+    + "<p>Un test de souplesse au sol, puis trois réglages de vélo filmés. À la fin, tu sais "
+    + "lequel te fait gagner de l’aéro sans te coûter du confort.</p></div>";
+
+  html += sectionHTML("Coche ce que tu as sous la main");
+  html += '<div class="po-liste">' + PREPARATIF.map((it, k) =>
+    '<button type="button" class="po-check" data-coche="' + k + '" aria-pressed="'
+    + (_coches[k] ? "true" : "false") + '">'
+    + '<span class="po-case">' + COCHE_SVG + "</span>"
+    + '<span class="po-check-txt"><span class="po-check-lab">' + esc(it[0]) + "</span>"
+    + '<span class="po-check-exp">' + esc(it[1]) + "</span></span></button>").join("") + "</div>";
+
+  html += sectionHTML("Combien on te guide", "");
+  html += '<div class="po-modes">'
+    + '<button type="button" class="po-mode" data-mode="beginner" aria-pressed="' + (mode === "beginner") + '">'
+    + "<b>Première fois</b><span>Chaque point d’articulation est montré et expliqué avant d’être placé.</span></button>"
+    + '<button type="button" class="po-mode" data-mode="expert" aria-pressed="' + (mode === "expert") + '">'
+    + "<b>J’ai l’habitude</b><span>Six points d’un coup, consignes repliées.</span></button></div>";
+
+  html += '<div class="po-mentions">Tout est calculé sur ton téléphone, aucune image n’est '
+    + "envoyée. Le bilan ne remplace pas un bikefitter : arrête un mouvement s’il tire ou fait mal.</div>";
+
+  // Le pied : le CTA n'est JAMAIS désactivé — cocher est une aide, pas une condition. Ce qui
+  // manque est écrit dessous, et le compte se dérive des cases, jamais d'un texte figé.
+  const manque = PREPARATIF.length - _coches.filter(Boolean).length;
+  html += '<div class="po-cta-zone" style="margin-top:22px">'
+    + '<button type="button" class="po-cta" id="poCta2">Commencer par la souplesse</button>'
+    + '<div class="po-cta-note">' + (manque === 0
+      ? "<b>Tout est prêt</b>"
+      : "<span>" + manque + " case" + (manque > 1 ? "s" : "") + " non cochée"
+        + (manque > 1 ? "s" : "") + " —</span> <b>tu peux commencer quand même</b>")
+    + "</div></div>";
+  html += '<div class="po-espaceur"></div>';
+
+  $("screen").innerHTML = html;
+
+  $("screen").querySelectorAll("[data-coche]").forEach((b) => {
+    b.onclick = () => { const k = +b.dataset.coche; _coches[k] = !_coches[k]; renderPreparatif(); };
+  });
+  $("screen").querySelectorAll("[data-mode]").forEach((b) => {
+    b.onclick = () => {
+      const p = S.answers.posture || (S.answers.posture = { session: null, history: [] });
+      p.guidanceMode = b.dataset.mode;
+      ebSave();
+      renderPreparatif();
+    };
+  });
+  $("poRetour").onclick = () => { S.postureVue = "accueil"; renderTabPosture(); };
+  $("poCta2").onclick = () => demanderImage("aslr", st);
+}
+
+/* ============================================================
+   L'IMAGE À POINTER
+   ============================================================
+   Le parcours complet du handoff passe par une VIDÉO dont on choisit deux images (le sélecteur
+   d'image est son propre écran, absent de ce lot). En attendant, on demande une image fixe —
+   et on le DIT, plutôt que d'ouvrir un sélecteur de vidéo qui ne saurait pas en extraire une
+   image. L'URL est révoquée quand le pointage se termine ou s'annule : c'est le cycle de vie
+   des blob URLs que le dépôt d'origine documente (§6e de son handoff), et le point où il a
+   déjà cassé une fois. */
+function demanderImage(etape, st) {
+  const inp = document.createElement("input");
+  inp.type = "file";
+  inp.accept = "image/*";
+  inp.onchange = () => {
+    const f = inp.files && inp.files[0];
+    if (!f) return;
+    const url = URL.createObjectURL(f);
+    lancerPointage(etape, url, st);
+  };
+  inp.click();
+}
+
+function lancerPointage(etape, url, st) {
+  const mode = (S.answers.posture && S.answers.posture.guidanceMode) || "beginner";
+  const fermer = () => { URL.revokeObjectURL(url); S.postureVue = "accueil"; renderTabPosture(); };
+  ouvrirPointage({
+    hote: $("screen"),
+    imageUrl: url,
+    etape,
+    titreRetour: "Position",
+    expert: mode === "expert",
+    onAnnuler: fermer,
+    onTermine: (r) => {
+      // Le moteur peut être absent (bundle non chargé) : on le dit plutôt que de ranger une
+      // mesure vide sous un nom qui promet un angle.
+      if (r.angles && r.angles.angle != null) {
+        const p = S.answers.posture || (S.answers.posture = { session: null, history: [] });
+        p.session = p.session || { trials: [] };
+        p.session.aslrAngle = r.angles.angle;
+        p.session.aslrTestedAt = todayISO();
+        p.session.updatedAt = todayISO();
+        ebSave();
+      }
+      fermer();
+    },
+  });
 }

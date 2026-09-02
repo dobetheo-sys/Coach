@@ -133,6 +133,101 @@ const sousAA = await page.evaluate(() => {
 });
 ok(sousAA.length === 0, "§5 — aucun texte sous le seuil AA" + (sousAA.length ? " — " + sousAA.join(" | ") : ""));
 
+// ── §6 — 2b, LE PRÉPARATIF. Sa règle est écrite dans le handoff : « le bouton n'est jamais
+// désactivé ici — cocher est une aide, pas une condition ». Le critère porte donc sur les DEUX
+// moitiés : le bouton agit toujours, ET ce qui manque est dit.
+await rendre(null);
+await page.evaluate(() => document.querySelector("#poCta").click());
+await page.waitForTimeout(200);
+const prep = await page.evaluate(() => {
+  const c = [...document.querySelectorAll("[data-coche]")];
+  const cta = document.querySelector("#poCta2");
+  return { cases: c.length, coches: c.filter((b) => b.getAttribute("aria-pressed") === "true").length,
+    ctaActif: !!cta && !cta.disabled, note: (cta && cta.nextElementSibling.textContent) || "",
+    modes: [...document.querySelectorAll("[data-mode]")].map((b) => b.dataset.mode) };
+});
+ok(prep.cases === 5, "§6a — cinq lignes à cocher (" + prep.cases + ")");
+ok(prep.ctaActif && /5 cases non cochées/.test(prep.note),
+  "§6b — le CTA n'est PAS désactivé, et ce qui manque est écrit : « " + prep.note.trim() + " »");
+ok(prep.modes.join() === "beginner,expert", "§6c — les deux modes de guidage sont proposés");
+
+// La ligne d'état se DÉRIVE des cases : on en coche deux, elle doit dire trois. Un texte figé
+// passerait le critère précédent et mentirait à la première coche.
+const apres2 = await page.evaluate(() => {
+  document.querySelector('[data-coche="0"]').click();
+  document.querySelector('[data-coche="1"]').click();
+  return { presse: document.querySelectorAll('[data-coche][aria-pressed="true"]').length,
+    note: document.querySelector("#poCta2").nextElementSibling.textContent };
+});
+ok(apres2.presse === 2 && /3 cases non cochées/.test(apres2.note),
+  "§6d — la ligne d'état se dérive des cases (2 cochées → « " + apres2.note.trim() + " »)");
+
+// Le mode est PERSISTÉ (il pilote le pointage à chaque essai), la checklist ne l'est pas
+// (elle prépare une séance, elle ne décrit pas l'athlète).
+const persist = await page.evaluate(async () => {
+  document.querySelector('[data-mode="expert"]').click();
+  const { S } = await import("./js/state.js");
+  return { mode: S.answers.posture.guidanceMode, checklist: "preparationChecklist" in S.answers.posture };
+});
+ok(persist.mode === "expert" && !persist.checklist,
+  "§6e — le mode de guidage est persisté, la checklist non (mode=" + persist.mode + ")");
+
+// ── §7 — 2c, LE POINTAGE. Le critère qui compte est GÉOMÉTRIQUE, et il vise une faute précise :
+// stocker les points en 0..1 (le réflexe) déforme tout angle dès que l'image n'est pas carrée,
+// parce qu'un angle est un rapport entre dx et dy et que les diviser par des nombres différents
+// change ce rapport. On pointe donc sur une image 400×200 une figure dont l'angle est connu.
+const geo = await page.evaluate(async () => {
+  const { ouvrirPointage } = await import("./js/ui/posture-pointage.js");
+  // 400×200 — délibérément PAS carrée : c'est ce qui sépare les pixels des 0..1.
+  const cv = document.createElement("canvas"); cv.width = 400; cv.height = 200;
+  const cx = cv.getContext("2d"); cx.fillStyle = "#333"; cx.fillRect(0, 0, 400, 200);
+  const url = cv.toDataURL();
+  const hote = document.createElement("div");
+  hote.id = "screen-probe"; document.body.appendChild(hote);
+  // On force le cadre à une taille connue pour que la conversion écran→image soit vérifiable.
+  hote.style.cssText = "position:fixed;left:0;top:0;width:390px;height:812px";
+  let recu = null;
+  const st = ouvrirPointage({ hote, imageUrl: url, etape: "aslr", titreRetour: "T",
+    onTermine: (r) => { recu = r; }, onAnnuler: () => {} });
+  await new Promise((r) => setTimeout(r, 300));
+  // La figure est DIAGONALE, et ce n'est pas un détail : ma première écriture posait un angle
+  // droit AXÉ (100,50 · 100,150 · 200,150), que la normalisation 0..1 laisse à 90° — le test
+  // était satisfait par le défaut même qu'il annonce (règle 19 : quel est le correctif le
+  // moins coûteux qui le ferait passer ?). Mesuré sur cette figure-ci : 116,57° en pixels
+  // contre 104,04° en 0..1, douze degrés d'écart.
+  st.poses = [{ x: 100, y: 40 }, { x: 150, y: 140 }, { x: 300, y: 140 }];
+  hote.querySelector(".pt-valider").disabled = false;
+  hote.querySelector(".pt-valider").click();
+  const out = { recu, moteur: !!(globalThis.EBV2 && globalThis.EBV2.postureAngles) };
+  hote.remove();
+  return out;
+});
+ok(geo.moteur, "§7a — le moteur porté est exposé au produit (`EBV2.postureAngles`)");
+ok(geo.recu && geo.recu.angles && Math.abs(geo.recu.angles.kneeAngle - 116.6) < 0.15,
+  "§7b — l'angle est calculé PAR LE MOTEUR, en pixels d'image : genou = "
+  + (geo.recu && geo.recu.angles ? geo.recu.angles.kneeAngle : "?")
+  + "° (attendu 116,6 sur une image 400×200 — des coordonnées 0..1 rendraient 104,0)");
+ok(geo.recu && geo.recu.points && geo.recu.points.length === 3,
+  "§7c — les points bruts sont rendus avec les angles (relecture et correction en dépendent)");
+
+// Les repères anatomiques sont MONTRÉS pendant le geste — c'est le défaut que 2c corrige.
+const consigne = await page.evaluate(async () => {
+  const { REPERES, ETAPES } = await import("./js/ui/posture-repere.js");
+  const { ouvrirPointage } = await import("./js/ui/posture-pointage.js");
+  const hote = document.createElement("div"); document.body.appendChild(hote);
+  ouvrirPointage({ hote, imageUrl: "data:image/gif;base64,R0lGODlhAQABAAAAACw=", etape: "pmh",
+    titreRetour: "T", onTermine: () => {}, onAnnuler: () => {} });
+  const t = hote.textContent; const seg = hote.querySelectorAll(".pt-prog i").length;
+  hote.remove();
+  return { t, seg, nPmh: ETAPES.pmh.points.length,
+    hintMain: REPERES.main.hint, tousHints: Object.values(REPERES).every((r) => r.hint && r.titre) };
+});
+ok(consigne.seg === consigne.nPmh,
+  "§7d — un segment de progression par point (" + consigne.seg + " pour " + consigne.nPmh + ")");
+ok(consigne.t.includes("Point 1 · main") && consigne.t.includes(consigne.hintMain),
+  "§7e — le repère anatomique est MONTRÉ pendant le geste (c'est le défaut que 2c corrige)");
+ok(consigne.tousHints, "§7f — chaque repère porte son hint ET son titre court");
+
 ok(errs.length === 0, "aucune erreur JS (" + errs.length + (errs.length ? " : " + errs[0] : "") + ")");
 
 await browser.close();

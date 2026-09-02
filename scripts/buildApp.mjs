@@ -19,6 +19,12 @@ import { dirname, join } from "node:path";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const ORDER = [
   "src/engine/types.ts",
+  // BILAN POSTURE — le moteur porté du dépôt Bikefiting. Modules PURS : `postureAeroEngine`
+  // n'importe rien, `captureProcessing` n'en prend que des TYPES. Ils peuvent donc venir
+  // tout au début. Ils sont dans le bundle parce que l'écran de pointage (2c) calcule les
+  // angles au relâchement du dernier point : sans eux, l'écran rendrait des coordonnées.
+  "src/bikefit/postureAeroEngine.ts",
+  "src/bikefit/captureProcessing.ts",
   "src/engine/trace.ts",
   "src/engine/medicalHold.ts",
   "src/engine/prioriteFinancement.ts",

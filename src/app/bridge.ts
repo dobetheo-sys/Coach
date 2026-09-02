@@ -42,6 +42,7 @@ import { DISCIPLINE_REGISTRY } from "../engine/disciplineRegistry.ts";
 import { assessFeasibility, assessFeasibilityMulti, type FeasibilityLeg } from "../engine/feasibility.ts";
 import { weekDistances } from "../engine/weekDistances.ts";
 import { EDU_LIBRARY } from "../engine/eduLibrary.ts";
+import { computeManualAslrAngle, computeManualTrialPmh, computeManualTrialPmb, buildManualTrialAngles } from "../bikefit/captureProcessing.ts";
 
 interface AppAnswers extends Record<string, unknown> {
   format?: string;
@@ -1280,5 +1281,11 @@ function coachOnIngestV2(sport: string, answers: AppAnswers, ingested: IngestedS
   // Bibliothèque d'éducatifs par discipline (🧰 Outils, retour utilisateur 08/08/2026) — mêmes
   // gestes que ceux nommés dans les séances réelles, jamais un contenu écrit à côté.
   eduLibrary: EDU_LIBRARY,
+  // BILAN POSTURE — la géométrie des angles, telle que le dépôt Bikefiting la calcule.
+  // L'écran de pointage (2c) l'appelle au relâchement du dernier point : c'est ce qui
+  // sépare un écran qui MESURE d'un écran qui collectionne des coordonnées. Le scoring
+  // (`runEngine`) n'est PAS exposé ici — il n'a pas encore d'écran, et exposer une
+  // fonction que rien n'appelle est une promesse que rien ne tient.
+  postureAngles: { computeManualAslrAngle, computeManualTrialPmh, computeManualTrialPmb, buildManualTrialAngles },
   version: "v2-sprint9",
 };
