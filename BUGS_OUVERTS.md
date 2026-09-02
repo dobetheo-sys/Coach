@@ -12168,7 +12168,7 @@ attendu: /les deux rendus : 2/
 cmd: node --input-type=module -e "import('node:fs').then(({readFileSync})=>{const s=readFileSync('endurabuild/js/ui/plan-view.js','utf8');const n=(s.match(/suffixeLivre\(/g)||[]).length-1;console.log('les deux rendus : '+n);})"
 ```
 
-## O-116 · MediaPipe — segmentation de la photo de face (bilan posture) · 🟡 OUVERT, CSP levée le 02/09/2026
+## O-118 · MediaPipe — segmentation de la photo de face (bilan posture) · 🟡 OUVERT, CSP levée le 02/09/2026
 
 **Ce qui est fait** : `index.html` porte désormais `'wasm-unsafe-eval'` dans `script-src`
 (décision du fondateur, session « bilan posture ») — la CSP n'interdit plus l'instanciation de
@@ -12190,7 +12190,7 @@ n'attendent qu'un appel à `computePFSA_cm2` (`src/bikefit/captureProcessing.ts`
 testé, 61 tests verts) sur le masque qu'elle produira.
 
 ```verify
-id: O-116
+id: O-118
 quoi: la CSP admet le WASM précompilé sans jamais admettre eval() sur du texte arbitraire
 attendu: /wasm oui, eval texte non/
 cmd: node --input-type=module -e "import('node:fs').then(({readFileSync})=>{const h=readFileSync('endurabuild/index.html','utf8');const csp=(/<meta http-equiv=\"Content-Security-Policy\" content=\"([^\"]+)\"/.exec(h)||[])[1]||'';const wasm=/script-src[^;]*'wasm-unsafe-eval'/.test(csp);const evalTexte=/script-src[^;]*(?<!wasm-)'unsafe-eval'/.test(csp);console.log('wasm '+(wasm?'oui':'non')+', eval texte '+(evalTexte?'oui':'non'));})"
