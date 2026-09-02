@@ -43,6 +43,7 @@ import { assessFeasibility, assessFeasibilityMulti, type FeasibilityLeg } from "
 import { weekDistances } from "../engine/weekDistances.ts";
 import { EDU_LIBRARY } from "../engine/eduLibrary.ts";
 import { computeManualAslrAngle, computeManualTrialPmh, computeManualTrialPmb, buildManualTrialAngles } from "../bikefit/captureProcessing.ts";
+import { runEngine, validateTrial, aslrToFlexScore, recalibrateWeights, computeReferenceSaddleHeightCm, suggestNextAdjustment } from "../bikefit/postureAeroEngine.ts";
 
 interface AppAnswers extends Record<string, unknown> {
   format?: string;
@@ -1287,5 +1288,11 @@ function coachOnIngestV2(sport: string, answers: AppAnswers, ingested: IngestedS
   // (`runEngine`) n'est PAS exposé ici — il n'a pas encore d'écran, et exposer une
   // fonction que rien n'appelle est une promesse que rien ne tient.
   postureAngles: { computeManualAslrAngle, computeManualTrialPmh, computeManualTrialPmb, buildManualTrialAngles },
+  // Le SCORING du bilan posture. Il n'était pas exposé au lot précédent — « exposer une
+  // fonction que rien n'appelle est une promesse que rien ne tient ». L'écran de résultats
+  // (2e) l'appelle désormais, donc il entre. `runEngine` rend les trois positions, leurs
+  // scores et leurs FOURCHETTES DE SENSIBILITÉ (±20 % sur les pondérations [DEFAULT]) —
+  // l'écran les affiche telles quelles, sans jamais les renommer « marge d'erreur ».
+  postureEngine: { runEngine, validateTrial, aslrToFlexScore, recalibrateWeights, computeReferenceSaddleHeightCm, suggestNextAdjustment },
   version: "v2-sprint9",
 };

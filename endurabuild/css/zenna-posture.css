@@ -406,3 +406,144 @@ body.theme-zenna #screen .pt-aide {
   font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .04em;
   color: var(--zn-faint); margin-top: 11px; text-align: center;
 }
+
+/* ============================================================
+   2d — LES RÉGLAGES DU VÉLO
+   ============================================================ */
+body.theme-zenna #screen .pv-creux { padding: 10px 12px; }
+body.theme-zenna #screen .pv-schema { width: 100%; height: auto; display: block; }
+/* La silhouette est DÉCORATIVE et le reste : gris neutres, aucun jeton de discipline. Lui
+   donner une couleur du système ferait croire qu'elle signifie quelque chose. */
+body.theme-zenna #screen .pv-silhouette circle,
+body.theme-zenna #screen .pv-silhouette line { fill: none; stroke: var(--zn-faint); stroke-width: 2; }
+body.theme-zenna #screen .pv-silhouette rect { fill: var(--zn-faint); }
+body.theme-zenna #screen .pv-rappel { stroke: var(--zn-border); stroke-width: 1; stroke-dasharray: 3 3; }
+body.theme-zenna #screen .pv-t-selle { stroke: var(--zn-orange); stroke-width: 2; }
+body.theme-zenna #screen .pv-t-cintre { stroke: var(--zn-good); stroke-width: 2; }
+body.theme-zenna #screen .pv-lab {
+  font-family: var(--zn-mono); font-size: 11px; letter-spacing: .04em;
+}
+body.theme-zenna #screen .pv-selle { fill: var(--zn-orange); }
+body.theme-zenna #screen .pv-cintre { fill: var(--zn-good); }
+/* Une cote est CLIQUABLE : toucher le dessin ouvre le champ. C'est la moitié de l'intérêt de
+   l'écran — sans ça, le schéma ne serait qu'une illustration. */
+body.theme-zenna #screen .pv-cote { cursor: pointer; }
+body.theme-zenna #screen .pv-cote:active { opacity: .6; }
+
+body.theme-zenna #screen .pv-ligne {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px;
+  padding: 13px 0; border: 0; border-bottom: 1px solid var(--zn-filet);
+  background: none; text-align: left; cursor: pointer; color: inherit; font: inherit;
+}
+body.theme-zenna #screen .pv-liste .pv-ligne:last-child { border-bottom: 0; }
+/* Une ligne obligatoire non remplie porte un fond teinté ET le mot « à saisir » : la couleur
+   seule ne dit rien à qui ne la distingue pas. */
+body.theme-zenna #screen .pv-ligne.manque { background: var(--zn-bg-race); }
+body.theme-zenna #screen .pv-puce { width: 8px; height: 8px; border-radius: 2px; flex: 0 0 auto; }
+body.theme-zenna #screen .pv-p-selle { background: var(--zn-orange); }
+body.theme-zenna #screen .pv-p-cintre { background: var(--zn-good); }
+body.theme-zenna #screen .pv-txt { flex: 1; min-width: 0; }
+body.theme-zenna #screen .pv-lab2 { display: block; font-size: var(--fs-sm); font-weight: 600; color: var(--zn-text); }
+body.theme-zenna #screen .pv-def { display: block; font-size: var(--fs-xs); color: var(--zn-faint2); margin-top: 3px; }
+body.theme-zenna #screen .pv-val {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-xl);
+  color: var(--zn-text); flex: 0 0 auto;
+}
+body.theme-zenna #screen .pv-val i {
+  font-family: var(--zn-mono); font-style: normal; font-size: var(--fs-micro);
+  font-weight: 400; color: var(--zn-faint2); margin-left: 3px;
+}
+body.theme-zenna #screen .pv-asaisir {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .06em;
+  text-transform: uppercase; color: var(--zn-orange);
+  border: 1px solid var(--zn-orange); border-radius: 100px; padding: 4px 9px; flex: 0 0 auto;
+}
+body.theme-zenna #screen .pv-avances { margin: 18px 18px 0; }
+body.theme-zenna #screen .pv-avances summary {
+  display: flex; align-items: baseline; gap: 8px; min-height: 44px; cursor: pointer;
+  list-style: none; font-size: var(--fs-sm); color: var(--zn-text);
+}
+body.theme-zenna #screen .pv-avances summary::-webkit-details-marker { display: none; }
+body.theme-zenna #screen .pv-avances summary span {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint2);
+}
+body.theme-zenna #screen .pv-note {
+  font-size: var(--fs-xs); line-height: 1.5; color: var(--zn-faint2); padding: 10px 0 0;
+}
+/* La saisie : le pavé numérique est celui du système (`inputmode`), on n'en dessine pas un. */
+body.theme-zenna #screen .pv-saisie {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 45;
+  background: var(--zn-surface); border-top: 2px solid var(--zn-orange);
+  border-radius: 4px 4px 0 0; padding: 14px 18px 20px;
+}
+body.theme-zenna #screen .pv-saisie label {
+  display: block; font-family: var(--zn-mono); font-size: var(--fs-micro);
+  letter-spacing: .14em; text-transform: uppercase; color: var(--zn-orange); font-weight: 700;
+}
+body.theme-zenna #screen .pv-saisie-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+body.theme-zenna #screen .pv-saisie input {
+  flex: 1; min-width: 0; min-height: 48px; border-radius: 13px;
+  background: var(--zn-bg); border: 1px solid var(--zn-border); color: var(--zn-text);
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight);
+  font-size: var(--fs-field); /* R18.1 — sous 16 px, iOS zoome sur le champ et ne dézoome jamais */
+  padding: 0 14px;
+}
+body.theme-zenna #screen .pv-saisie-row > span {
+  font-family: var(--zn-mono); font-size: var(--fs-sm); color: var(--zn-faint2);
+}
+body.theme-zenna #screen .pv-ok {
+  min-height: 48px; padding: 0 20px; border: none; border-radius: 13px;
+  background: var(--zn-orange); color: var(--zn-on-accent); cursor: pointer;
+  font-family: var(--zn-mono); font-size: var(--fs-xs); font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase;
+}
+
+/* ============================================================
+   2e — LE RÉSULTAT
+   ============================================================ */
+body.theme-zenna #screen .pr-scores { display: flex; gap: 22px; margin-top: 14px; }
+body.theme-zenna #screen .pr-score b {
+  display: block; font-family: var(--zn-display); font-weight: var(--zn-display-weight);
+  font-size: 40px; line-height: 1; color: var(--zn-on-accent);
+}
+/* La fourchette est COLLÉE au score : la lire ailleurs qu'à côté du chiffre, c'est la lire
+   comme une note de bas de page — or c'est ce qui borne le chiffre. */
+body.theme-zenna #screen .pr-plage {
+  display: block; font-family: var(--zn-mono); font-style: normal; font-size: var(--fs-micro);
+  color: rgba(10, 10, 10, .75); margin-top: 4px;
+}
+body.theme-zenna #screen .pr-score span {
+  display: block; font-family: var(--zn-mono); font-size: var(--fs-micro);
+  letter-spacing: .1em; text-transform: uppercase; color: rgba(10, 10, 10, .7); margin-top: 3px;
+}
+body.theme-zenna #screen .pr-alt { padding: 14px 0; border-bottom: 1px solid var(--zn-filet); }
+body.theme-zenna #screen .po-liste .pr-alt:last-child { border-bottom: 0; }
+body.theme-zenna #screen .pr-alt-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+body.theme-zenna #screen .pr-alt-lab { font-size: var(--fs-sm); font-weight: 600; color: var(--zn-text); }
+body.theme-zenna #screen .pr-alt-reg { font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint2); }
+body.theme-zenna #screen .pr-alt-bar { display: flex; align-items: center; gap: 9px; margin-top: 9px; }
+body.theme-zenna #screen .pr-alt-bar > span {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint);
+  width: 46px; flex: 0 0 auto;
+}
+body.theme-zenna #screen .pr-barre { flex: 1; height: 5px; border-radius: 3px; background: var(--zn-border); overflow: hidden; }
+body.theme-zenna #screen .pr-barre i { display: block; height: 100%; border-radius: 3px; }
+body.theme-zenna #screen .pr-barre i.confort { background: var(--zn-orange); }
+body.theme-zenna #screen .pr-barre i.aero { background: var(--zn-good); }
+/* Largeur FIXE pour que les deux chiffres s'alignent : sans elle, « 9 » et « 84 » décalent
+   la barre au-dessus, et l'œil compare des longueurs qui ne veulent rien dire. */
+body.theme-zenna #screen .pr-alt-bar > b {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-lg);
+  color: var(--zn-text); width: 22px; text-align: right; flex: 0 0 auto;
+}
+body.theme-zenna #screen .pr-averts { padding: 14px 18px 0; }
+body.theme-zenna #screen .pr-avert { display: flex; gap: 9px; align-items: flex-start; padding: 7px 0; }
+body.theme-zenna #screen .pr-avert i {
+  width: 8px; height: 8px; border-radius: 2px; background: var(--zn-gold);
+  flex: 0 0 auto; margin-top: 5px;
+}
+body.theme-zenna #screen .pr-avert span { font-size: var(--fs-sm); line-height: 1.5; color: var(--zn-muted); }
+body.theme-zenna #screen .pr-mono {
+  font-family: var(--zn-mono); font-style: normal; font-size: var(--fs-micro);
+  color: var(--zn-faint); letter-spacing: .04em;
+}

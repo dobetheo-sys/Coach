@@ -286,6 +286,113 @@ const dr = chemin.ecranRendu
 ok(dr < 2, "§7h — et le marqueur est REPEINT là où le doigt était (écart " + dr.toFixed(2)
   + "px) : la lecture et l'écriture partagent la même conversion");
 
+// ── §8 — 2d, LES RÉGLAGES. Trois propriétés : les cotes du SCHÉMA ouvrent le même champ que
+// les lignes (c'est la moitié de l'intérêt de l'écran), le CTA ne s'ouvre qu'une fois les
+// obligatoires là ET dit lesquelles manquent, et les six avancés restent REPLIÉS.
+const velo = await page.evaluate(async () => {
+  const { ouvrirReglages, COTES, AVANCES } = await import("./js/ui/posture-velo.js");
+  const hote = document.querySelector("#screen");
+  let recu = null;
+  ouvrirReglages({ hote, numero: 3, deltas: { saddleHeightMm: 750, dropMm: 145 },
+    onEnregistrer: (d) => { recu = d; }, onRetour: () => {} });
+  const cta = hote.querySelector("#pvSave");
+  const avant = { desactive: cta.disabled, note: cta.nextElementSibling.textContent,
+    cotesSchema: hote.querySelectorAll("[data-cote]").length,
+    avancesReplies: !hote.querySelector(".pv-avances").open,
+    nAvances: AVANCES.length, nCotes: COTES.length };
+  // On touche la cote « reach » SUR LE SCHÉMA, pas la ligne : c'est le geste que l'écran vend.
+  hote.querySelector('[data-cote="reachMm"]').dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  const champOuvert = !!hote.querySelector("#pvIn");
+  const label = hote.querySelector(".pv-saisie label").textContent;
+  hote.querySelector("#pvIn").value = "480";
+  hote.querySelector(".pv-ok").click();
+  const cta2 = hote.querySelector("#pvSave");
+  const apres = { desactive: cta2.disabled, note: cta2.nextElementSibling.textContent };
+  cta2.click();
+  const out = { avant, apres, champOuvert, label, recu };
+  hote.innerHTML = "";
+  return out;
+});
+ok(velo.avant.cotesSchema === 4 && velo.avant.nCotes === 4,
+  "§8a — les quatre cotes obligatoires sont sur le schéma ET dans la liste");
+ok(velo.avant.desactive && /Il manque\s+reach/.test(velo.avant.note.replace(/\s+/g, " ")),
+  "§8b — le CTA attend, et DIT ce qui manque : « " + velo.avant.note.trim() + " »");
+ok(velo.champOuvert && /Reach/.test(velo.label),
+  "§8c — toucher la cote SUR LE SCHÉMA ouvre le bon champ (« " + velo.label + " »)");
+ok(!velo.apres.desactive && velo.recu && velo.recu.reachMm === 480,
+  "§8d — une fois saisie, le CTA agit et rend la valeur (reach = "
+  + (velo.recu ? velo.recu.reachMm : "?") + ")");
+ok(velo.avant.avancesReplies && velo.avant.nAvances === 6,
+  "§8e — les six réglages avancés restent REPLIÉS (§6g : ne pas les remonter dans le flux)");
+
+// ── §9 — 2e, LE RÉSULTAT. Le critère central n'est pas cosmétique : le mot « marge d'erreur »
+// est INTERDIT par le dépôt (§6c) — la fourchette est une sensibilité aux pondérations que la
+// littérature ne tranche pas, et la confondre avec une précision de mesure est une faute de
+// sens, pas de style.
+const fixtureEssai = (id, hip, trunk, knee, wrist, sh, drop, pfsa) => ({
+  id, deltas: { saddleHeightMm: sh, reachMm: 480, dropMm: drop, hasAeroBars: true },
+  frontal: { pFSA_cm2: pfsa, athleteHeight_cm: 178, headOffset_cm: 0 },
+  angles: { hip: { mean: hip, min: hip, max: hip, amplitude: 0, variance: 0 },
+    trunk: { mean: trunk, min: trunk, max: trunk, amplitude: 0, variance: 0 },
+    knee: { mean: knee, min: knee, max: knee, amplitude: 0, variance: 0 },
+    ankle: { mean: 90, min: 90, max: 90, amplitude: 0, variance: 0 },
+    shoulder: { mean: 90, min: 90, max: 90, amplitude: 0, variance: 0 },
+    elbow: { mean: 95, min: 95, max: 95, amplitude: 0, variance: 0 },
+    wrist: { mean: wrist, min: wrist, max: wrist, amplitude: 0, variance: 0 } },
+});
+const res = await page.evaluate(async (arg) => {
+  const { ouvrirResultats } = await import("./js/ui/posture-resultats.js");
+  const hote = document.querySelector("#screen");
+  ouvrirResultats({ hote, trials: arg.trials,
+    profile: { hipFlexibilityScore: 3, goal: "aero" },
+    poids: { neck: 1, lowerBack: 1, hands: 1, knees: 1 }, onRetour: () => {} });
+  const t = hote.textContent;
+  const out = { t, plages: hote.querySelectorAll(".pr-plage").length,
+    barres: hote.querySelectorAll(".pr-barre i").length,
+    moteur: !!(globalThis.EBV2 && globalThis.EBV2.postureEngine) };
+  hote.innerHTML = "";
+  return out;
+}, { trials: [fixtureEssai("01", 44, 11, 142, 8, 745, 130, 3400),
+  fixtureEssai("02", 41, 8, 145, 12, 750, 145, 3200),
+  fixtureEssai("03", 42, 6, 148, 19, 752, 160, 3050)] });
+ok(res.moteur, "§9a — le SCORING du moteur porté est exposé (`EBV2.postureEngine`)");
+ok(/Le meilleur compromis/.test(res.t) && res.plages === 2,
+  "§9b — la position recommandée porte ses deux scores AVEC leur fourchette (" + res.plages + ")");
+ok(/Confort max/.test(res.t) && /Aéro max/.test(res.t) && res.barres === 4,
+  "§9c — les deux autres retenues sont là, deux barres chacune (" + res.barres + ")");
+ok(!/marge d’erreur de mesure/.test(res.t.replace(/\s+/g, " ").replace("marge d'erreur", "marge d’erreur"))
+  || /Ce n’est pas une marge d’erreur/.test(res.t),
+  "§9d — le mot « marge d'erreur » n'apparaît QUE pour être nié (décision §6c du dépôt)");
+ok(/sensibilité ±20 % sur les pondérations \[DEFAULT\]/.test(res.t),
+  "§9e — la référence exacte est citée, pas reformulée");
+
+// Sans photo de face, le score aéro n'a pas de matière : l'écran le DIT au lieu de le fabriquer.
+const sansPhoto = await page.evaluate(async (arg) => {
+  const { ouvrirResultats, aPFSA } = await import("./js/ui/posture-resultats.js");
+  const hote = document.querySelector("#screen");
+  ouvrirResultats({ hote, trials: arg.trials, profile: { hipFlexibilityScore: 3, goal: "aero" },
+    poids: { neck: 1, lowerBack: 1, hands: 1, knees: 1 }, onRetour: () => {} });
+  const out = { t: hote.textContent, detecte: arg.trials.filter((t) => !aPFSA(t)).length };
+  hote.innerHTML = "";
+  return out;
+}, { trials: [fixtureEssai("01", 44, 11, 142, 8, 745, 130, 0),
+  fixtureEssai("02", 41, 8, 145, 12, 750, 145, 0),
+  fixtureEssai("03", 42, 6, 148, 19, 752, 160, 0)] });
+ok(sansPhoto.detecte === 3 && /pas de photo de face/.test(sansPhoto.t),
+  "§9f — sans surface frontale, le manque est ANNONCÉ (3 essais) et non comblé");
+
+// Moins de trois essais valides : le moteur refuse, et l'écran recopie SA raison — avec la
+// valeur mesurée et le seuil, ce que `formatViolation` fait déjà côté dépôt.
+const pauvre = await page.evaluate(async (arg) => {
+  const { ouvrirResultats } = await import("./js/ui/posture-resultats.js");
+  const hote = document.querySelector("#screen");
+  ouvrirResultats({ hote, trials: arg.trials, profile: { hipFlexibilityScore: 3, goal: "aero" },
+    poids: { neck: 1, lowerBack: 1, hands: 1, knees: 1 }, onRetour: () => {} });
+  const out = hote.textContent; hote.innerHTML = ""; return out;
+}, { trials: [fixtureEssai("01", 44, 11, 142, 8, 745, 130, 3400)] });
+ok(/minimum 3 requis/.test(pauvre),
+  "§9g — moins de trois essais : le message du MOTEUR est recopié, pas résumé");
+
 ok(errs.length === 0, "aucune erreur JS (" + errs.length + (errs.length ? " : " + errs[0] : "") + ")");
 
 await browser.close();

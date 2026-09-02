@@ -24,6 +24,8 @@
 // telle quelle. Un essai en cours de saisie n'est pas un essai.
 import { S, $, esc, fmtDay, ebSave, todayISO } from "../state.js";
 import { ouvrirPointage } from "./posture-pointage.js";
+import { ouvrirReglages } from "./posture-velo.js";
+import { ouvrirResultats, POIDS_NEUTRES } from "./posture-resultats.js";
 import { ETAPES } from "./posture-repere.js";
 
 /** Le nombre d'essais qui rend un bilan comparable. Il vient du moteur porté
@@ -153,6 +155,7 @@ export function renderTabPosture() {
   // Le sous-onglet porte plusieurs écrans ; la vue vit sur `S` et NON dans l'état persisté —
   // revenir sur l'outil doit ramener à son accueil, pas rouvrir l'écran qu'on avait quitté.
   if (S.postureVue === "preparatif") return renderPreparatif();
+  if (S.postureVue === "resultats") return renderResultats();
   const st = postureState();
   const phase = phaseDe(st);
   const s = st.session || {};
@@ -191,12 +194,10 @@ export function renderTabPosture() {
   if (b) b.onclick = () => {
     // Un bilan terminé n'a pas encore son écran de résultats (2e) : on le DIT, on n'avale pas
     // le tap. La règle d'interaction du handoff vaut aussi pour un bouton qui n'agit pas.
-    if (phase === "termine") {
-      const n = b.nextElementSibling;
-      if (n) n.innerHTML = '<span>L’écran de résultats arrive au prochain lot —</span> '
-        + "<b>tes essais sont enregistrés</b>";
-      return;
-    }
+    if (phase === "termine") { S.postureVue = "resultats"; return renderTabPosture(); }
+    // Un bilan déjà entamé n'a plus rien à préparer : on repart sur l'essai suivant. Refaire
+    // passer par le préparatif à chaque reprise serait redemander ce qu'on sait déjà.
+    if (phase === "encours") return lancerEssai();
     S.postureVue = "preparatif";
     renderTabPosture();
   };
@@ -304,7 +305,10 @@ function demanderImage(etape, st) {
 
 function lancerPointage(etape, url, st) {
   const mode = (S.answers.posture && S.answers.posture.guidanceMode) || "beginner";
-  const fermer = () => { URL.revokeObjectURL(url); S.postureVue = "accueil"; renderTabPosture(); };
+  // Le cycle de vie des blob URLs est celui du dépôt d'origine (§6e) : révoquées quand on les
+  // abandonne VRAIMENT. Un nettoyage générique les révoquait aussitôt et cassait l'écran de
+  // relecture — d'où une révocation par chemin, jamais une seule au sortir.
+  const fermer = () => { URL.revokeObjectURL(url); _enCours = null; S.postureVue = "accueil"; renderTabPosture(); };
   ouvrirPointage({
     hote: $("screen"),
     imageUrl: url,
@@ -313,17 +317,117 @@ function lancerPointage(etape, url, st) {
     expert: mode === "expert",
     onAnnuler: fermer,
     onTermine: (r) => {
-      // Le moteur peut être absent (bundle non chargé) : on le dit plutôt que de ranger une
-      // mesure vide sous un nom qui promet un angle.
-      if (r.angles && r.angles.angle != null) {
-        const p = S.answers.posture || (S.answers.posture = { session: null, history: [] });
-        p.session = p.session || { trials: [] };
-        p.session.aslrAngle = r.angles.angle;
-        p.session.aslrTestedAt = todayISO();
-        p.session.updatedAt = todayISO();
-        ebSave();
+      URL.revokeObjectURL(url);
+      // LE TEST DE SOUPLESSE range son angle et s'arrête là ; les deux pointages d'un ESSAI
+      // s'enchaînent vers l'étape suivante. Le moteur peut être absent (bundle non chargé) :
+      // on le dit plutôt que de ranger une mesure vide sous un nom qui promet un angle.
+      if (etape === "aslr") {
+        if (r.angles && r.angles.angle != null) {
+          const p = S.answers.posture || (S.answers.posture = { session: null, history: [] });
+          p.session = p.session || { trials: [] };
+          p.session.aslrAngle = r.angles.angle;
+          p.session.aslrTestedAt = todayISO();
+          p.session.updatedAt = todayISO();
+          ebSave();
+        }
+        S.postureVue = "accueil";
+        return renderTabPosture();
       }
-      fermer();
+      if (!r.angles) { S.postureVue = "accueil"; _enCours = null; return renderTabPosture(); }
+      suitePointage(etape, r, postureState());
     },
   });
+}
+
+
+/* ============================================================
+   LE PARCOURS D'UN ESSAI — pointage haut · pointage bas · réglages
+   ============================================================
+   L'ordre vient de la machine à états du handoff (`essai → vidéo profil → pointage → relecture
+   → photo frontale → réglages`). Deux étapes de cette chaîne n'existent pas encore et ne sont
+   pas SIMULÉES : le choix des deux images dans une vidéo, et la photo de face (dont la
+   segmentation est bloquée par la CSP). L'écran de résultats le dit à sa place.
+
+   L'essai en cours vit dans une variable de MODULE et n'est jamais persisté : c'est
+   `pendingTrial` du dépôt d'origine, décision reprise telle quelle (§6). Un essai à moitié
+   pointé n'est pas un essai. */
+let _enCours = null;
+
+function lancerEssai() {
+  const st = postureState();
+  const n = (st.session && st.session.trials ? st.session.trials.length : 0) + 1;
+  _enCours = { numero: n, pmh: null, pmb: null };
+  demanderImage("pmh", st);
+}
+
+/** ENCHAÎNEMENT DES DEUX POINTAGES. Le bras n'est mesuré qu'au point mort HAUT — c'est la
+ *  décision du dépôt d'origine, écrite à sa branche : il ne rebouge pas significativement entre
+ *  les deux, donc le redemander au point bas serait trois taps pour rien. */
+function suitePointage(etape, r, st) {
+  if (etape === "aslr") return; // traité ailleurs — le test de souplesse n'est pas un essai
+  if (etape === "pmh") { _enCours.pmh = r.angles; return demanderImage("pmb", st); }
+  _enCours.pmb = r.angles;
+  return etapeReglages(st);
+}
+
+function etapeReglages(st) {
+  S.postureVue = "reglages";
+  ouvrirReglages({
+    hote: $("screen"),
+    numero: _enCours.numero,
+    deltas: (st.session && st.session.dernierDeltas) || {},
+    onRetour: () => { _enCours = null; S.postureVue = "accueil"; renderTabPosture(); },
+    onEnregistrer: (deltas) => {
+      const A = globalThis.EBV2 && globalThis.EBV2.postureAngles;
+      const p = S.answers.posture || (S.answers.posture = { session: null, history: [] });
+      p.session = p.session || { trials: [] };
+      p.session.trials = p.session.trials || [];
+      p.session.trials.push({
+        id: String(_enCours.numero).padStart(2, "0"),
+        // Les angles viennent du MOTEUR, jamais d'une géométrie réécrite ici. Sans lui, l'essai
+        // est rangé sans angles plutôt qu'avec des angles inventés — et 2e le dira.
+        angles: A && _enCours.pmh && _enCours.pmb
+          ? A.buildManualTrialAngles(_enCours.pmh, _enCours.pmb) : null,
+        // `frontal` reste vide tant que la photo de face n'a pas d'écran : le score aéro en
+        // dépend, et 2e annonce précisément ce manque au lieu de le combler.
+        frontal: { pFSA_cm2: 0, athleteHeight_cm: Number(S.answers.height) || 0, headOffset_cm: 0 },
+        deltas,
+      });
+      // On mémorise les derniers réglages : d'un essai à l'autre, un seul change en général.
+      p.session.dernierDeltas = deltas;
+      p.session.updatedAt = todayISO();
+      ebSave();
+      _enCours = null;
+      S.postureVue = "accueil";
+      renderTabPosture();
+    },
+  });
+}
+
+/* ============================================================
+   2e — LE RÉSULTAT
+   ============================================================ */
+function renderResultats() {
+  const st = postureState();
+  const s = st.session || {};
+  ouvrirResultats({
+    hote: $("screen"),
+    trials: (s.trials || []).filter((t) => t.angles),
+    // `hipFlexibilityScore` se DÉRIVE de l'angle ASLR mesuré, par la fonction du moteur — la
+    // table de conversion vit là-bas, avec son ancrage clinique. En son absence, on prend la
+    // valeur médiane et l'écran de résultats reste honnête sur ce qu'il sait.
+    profile: {
+      hipFlexibilityScore: scoreSouplesse(s.aslrAngle),
+      raceDurationHours: undefined,
+      goal: (s.profile && s.profile.goal) === "confort" ? "comfort" : "aero",
+    },
+    poids: (S.answers.posture && S.answers.posture.weights) || POIDS_NEUTRES,
+    onRetour: () => { S.postureVue = "accueil"; renderTabPosture(); },
+  });
+}
+
+function scoreSouplesse(angle) {
+  const E = globalThis.EBV2 && globalThis.EBV2.postureEngine;
+  if (E && Number.isFinite(angle)) return E.aslrToFlexScore(angle);
+  return 3;
 }
