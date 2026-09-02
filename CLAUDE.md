@@ -611,6 +611,147 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**O-113 FERMÉ — la sortie longue cesse d'être le RÉCEPTEUR ÉLASTIQUE du plan, et la mesure
+d'entrée a trouvé bien pire que le ticket** (fiche 52, 02/09/2026 — voir
+`syntheses/47-fiche52-…`, registre O-113 fermé, **O-117** ouvert, passe
+`abaisserLongueVersPart`, constante `PART_LONGUE_MAX`) : décision du fondateur — borner le
+RÉCEPTEUR plutôt que `sessionScale` (fiche 51, retirée sur une calibration discontinue payée en
+fréquence). R4.1 route la croissance de volume vers les blocs FACILES, à raison ; mais le plus
+gros d'entre eux est la sortie longue, et quand les blocs de qualité naissent petits (enveloppe
+déclarée basse) toute la croissance atterrit sur elle — **l'athlète le plus modeste reçoit la
+plus grosse longue**. **La mesure d'entrée dépasse le ticket** : la longue pèse une **médiane de
+42 % de la semaine en vélo** (p90 52,4 · max 67,2), 46 % en duathlon, 40 % en trail, et **69 % des
+semaines de charge vélo dépassent 35 %** ; le cas extrême du corpus, `G/run/marathon/vol-min`
+(2 h/semaine), livre une longue à **78 % de la semaine à côté d'un footing de SIX minutes** —
+qu'aucun des 13 gates ne voyait. **Deux prémisses de la fiche rectifiées par la mesure** :
+l'ancre du duathlon ne se transpose pas (le questionnaire ne demande **aucune distance en vélo**,
+donc pas de durée d'épreuve prédite), et la longue vélo **n'est pas un puits sans borne** — à
+`vol_max` 9 elle est EXACTEMENT à son plafond (192 = 240 × 0,80), à 13 elle est EN DESSOUS (175),
+pour un volume hebdomadaire **identique** (456 min des deux côtés) : l'inversion est une
+RÉPARTITION, pas un manque de volume. **L'ancre est celle que les tables portent déjà sans le
+dire** : rapporté au volume UTILE du format, `CAP_LONG` vaut 20,6 % (5 km) · 25,0 % (marathon) ·
+30,4 % (trail) · 26,7 % (cyclo) · 30,0 % (gravel) — une bande de 20 à 30 % qui monte avec la durée
+du format ; `PART_LONGUE_MAX = 0,40` applique cette logique à la semaine RÉELLEMENT prescrite,
+délibérément plus permissive. **⚠ Une BORNE a été écrite dans `blockBounds` et RETIRÉE** : elle
+ferme O-113 et laisse `audit:v1` vert, mais une borne ne peut pas être neutre en volume — la
+semaine rétrécissait et **73 profils perdaient des séances** (jusqu'à −6,2 %), la monnaie
+interdite. La pièce livrée est une **REDISTRIBUTION**, miroir exact de C30b : les minutes retirées
+à la longue sont rendues aux séances faciles de la même semaine, receveuses bornées par la
+nouvelle taille de la longue (sinon I14 se rouvre — borne active sur 9 profils, contre-prouvée) ;
+neutralité TRACÉE, `bike/gravel` S6 **407 → 440 → 407**. **Calibration monotone et lisible**
+(contrairement à la fiche 51) — profils touchés / séances perdues / pire volume : 0,32 →
+293/27/−13,9 % · 0,35 → 220/7/−11,3 % · 0,38 → 176/28/−9,0 % · **0,40 → 157/34/−7,3 %** · 0,45 →
+69/45/−3,0 % · 0,50 → 10/0/−0,1 % ; O-113 se ferme à **≤ 0,40**, reste ouvert à ≥ 0,45, 0 violation
+dure partout, et 0,40 est la plus PERMISSIVE qui ferme. **Résidu PUBLIÉ, pas tu** : 34 profils
+perdent **exactement une** séance (tous en vélo, sur des plans de ~90 : −1,1 %), 2 en gagnent une,
+volume médian **+0,00 %**, pire −7,3 % sur `bike/gravel` — et l'instrumentation dit que **ce n'est
+pas la passe** (elle est neutre ; l'écart naît entre deux appels de `reconcileDeclaredVolume`,
+dans une passe aval qui réagit). `T-60` reste vert : aucune discipline ne tombe à zéro. Sans
+commune mesure avec la fiche 51 (81 → 58 séances, −28 %), d'où la livraison plutôt que le retrait.
+**Trouvé en chemin — O-117** : `CAP_LONG` est **MORTE pour la sortie longue**, les modules course
+et vélo portant chacun leur propre table `durCaps` aux mêmes valeurs, et le `bnd` déclaré gagnant
+dans `blockBounds` avant la seule branche qui lit `CAP_LONG` — deux sources pour une borne (R11.1),
+dont une que personne n'exécute. **Deux hypothèses à moi RÉFUTÉES et retirées** : mesurer ce que
+les receveuses ont réellement reçu, puis mesurer la neutralité sur la semaine livrée — les deux
+correctes par construction, les deux rendant un corpus IDENTIQUE au bit près.
+**`audit:monotonie` 28 verts · 0 dette · 0 régression — le registre du gate est VIDE pour la
+première fois**, batterie **13/13**, `audit:v1` 459 à 0, `lotPhysio` 33 verts · 24 rouges attendus
+· 0 régression, golden recapturé **327 profils sur 1 074** (run 109 · bike 94 · duathlon 92 ·
+trail 32).
+
+**O-114 ET O-115 FERMÉS — la décharge se compare à la charge qui PRÉCÈDE, et l'idempotence
+devait passer d'abord ; O-113 reste OUVERT, son correctif écrit puis RETIRÉ sur une CALIBRATION
+DISCONTINUE** (fiches 50 et 51, 01/09/2026 — voir `syntheses/46-fiches50-51-…`, registre O-114 et
+O-115 fermés, O-113 réécrit) : **T-56 n'était pas idempotente**, mesuré par contre-preuve (dupliquer
+son appel changeait **22 plans sur 1 074, tous en `tri/Full`**). La cause n'était ni la borne ni un
+ordre de passes : l'axe DISCIPLINE répartit la réduction proportionnellement (`f = ref / total`) et
+comptait dans son **DÉNOMINATEUR une séance qu'il n'a pas le droit de réduire** — le palier B-17
+épinglé. La passe sous-livrait exactement la part du protégé et ne convergeait plus que
+GÉOMÉTRIQUEMENT (bornes croissantes : 1→2 **22** · 2→3 15 · 3→4 14 · 4→5 13 · 5→6 3 · 6→8 0 · 8→40
+**4** — la queue ne se termine jamais, parce que le mécanisme est faux, pas lent). **C'est
+« protégé par le chemin, pas par la borne » dans l'autre sens** : d'habitude une protection manque
+et une victime paie deux fois ; ici la protection est correcte et c'est la RÉPARTITION qui suppose
+un payeur là où il y a un protégé. Correctif : le facteur se calcule **sur les payeurs**
+(`discMin(w, true)`), c'est-à-dire la définition que le banc `lotPhysio` mesure déjà (R11.1) —
+mesuré ensuite, **1→2 · 2→3 · 3→4 · 4→8 · 8→40 = 0 plan**, un tour suffit ; contre-prouvé (sans le
+correctif payeur, un appel de plus change **16** plans, avec lui **2**). **La bascule ensuite** :
+l'auditeur (`recupHeavier`) et le gate lisaient déjà la charge PRÉCÉDENTE, T-56 était la seule à
+prendre `max(av, ap)` — donc le générateur et l'auditeur ne disaient pas la même chose. Point
+UNIQUE : les deux axes lisent la même fonction, les avoir écrits deux fois est ce qui a laissé la
+définition diverger sans que rien ne le signale. **`audit:monotonie` 24 verts · 4 dettes → 33 verts
+· 1 dette · 0 régression, les SEPT critères `MONO-*-phase` verts** — O-114 (145 inversions sur 60
+profils trail) et O-115 (vélo, tri) avaient la même cause et se ferment ensemble ; contre-preuve :
+remettre `max(av, ap)` rougit exactement ces trois-là. **Le banc encodait l'ancienne définition et
+il l'a dit** (T-56 rouge sur 16 « inversions ») : différence non de SÉVÉRITÉ mais de **PORTÉE** —
+un type présent seulement dans la charge SUIVANTE gardait un référent au banc et n'en avait plus
+pour la passe ; aligné, **16 → 2**. **Les 2 derniers sont STRUCTURELS et publiés** : `B17/tri/M`
+S6 porte UN footing de 34′, S7 (décharge) en porte QUATRE de 34′ — par TYPE les doses sont ÉGALES,
+l'écart est un écart de FRÉQUENCE, et descendre demanderait quatre footings de 8 min ou d'en
+supprimer trois. Classe COMPTÉE dans la ligne « hors champ ». Volume : médiane **−0,5 %**, pire
+**−4,1 %**, aucun profil au-delà de −10 % ; séances 89 en perdent, 41 en gagnent, pire −4 sur 204.
+Rayon golden **943 sur 1 074**, tous sports.
+**FICHE 51 — `sessionScale` positionnelle : ÉCRITE, MESURÉE, RETIRÉE** (patch
+`sessionscale-positionnel.patch`). Elle FONCTIONNE — `MONO-bike-vol_max` au vert, `audit:v1` 459 à
+0 — et c'est la **calibration** qui l'arrête : profils perdant > 20 % de leur pic selon le départ,
+0,40 → **0** (mais 2 violations dures) · 0,68 → 14 · **0,70 → 2** · **0,72 → 40** · 0,80 → 21 ·
+1,00 → 17. **Un pas de 0,02 fait varier la casse d'un facteur vingt** : ce n'est pas une courbe,
+c'est un tirage, et retenir 0,70 serait choisir un numéro (règle 19). **La cause est nommée** : la
+grandeur qui bouge n'est pas la TAILLE des séances mais leur NOMBRE — **33 des 40 perdants perdent
+des séances** (`swim/ow/confirme/inter` **81 → 58**) —, donc la monnaie payée est la FRÉQUENCE,
+celle que le dépôt s'interdit (C29/C29b/C29c) ; et l'agrégat ne le voit pas (médiane **+0,0 %** à
+tous les départs — la faute de méthode de la fiche 48, reproduite à l'identique si on s'y fie).
+**Ce que la mesure d'entrée disait et que la fiche n'anticipait pas** : `sessionScale` n'est pas un
+artefact positionnel comme `_capScale`, c'est un terme de **CAPACITÉ** — min **0,150** · médiane
+**0,700** · **3,9 % seulement à 1,000** ; le supprimer donne à un nageur débutant des blocs nés à
+pleine taille pour une semaine minuscule. **Trois fautes de mes instruments publiées** : ma
+première pièce a atterri sur le **mauvais `discMin`** (celui de `enforceDechargePlancher`) et ma
+sonde a avalé les `ReferenceError` en « REFUS », rendant « 0 plan changé » — un zéro qui était de
+la vacuité, pas de la convergence (la sonde lève désormais) ; ma première contre-preuve
+d'idempotence mesurait la COMPOSITION et non la passe (le second appel changeait l'état AVANT
+C29d) ; et ma borne « ne pas tenter une coupe qu'un plancher restaurera » a été écrite en deux
+versions, l'abstention (25 inversions) puis le plancher sur la cible (23) — **les deux pires que
+l'état de référence**, retirées. **Batterie 13/13**, `audit:v1` 459 à 0, `lotPhysio` 33 verts ·
+24 rouges attendus · 0 régression.
+
+**O-113 ET O-114 : LES DEUX CAUSES SONT NOMMÉES, AUCUN DES DEUX CORRECTIFS N'EST DÉLIVRABLE
+AUJOURD'HUI — et c'est en cherchant le second qu'un défaut d'ORDRE DE PASSES est tombé**
+(fiche 49, 01/09/2026 — voir `BUGS_OUVERTS.md` « O-113 », « O-114 », « O-116 FERMÉ ») :
+**O-113** — neutraliser `sessionScale` ferme l'inversion vélo **ENTIÈREMENT** (174 = 174 ·
+172 = 172 · 170 = 170, contre 192 → 175 au moteur intact). C'est la **même FAMILLE qu'O-77** — une
+constante de PLAN dérivée de l'enveloppe déclarée, appliquée dès la semaine 1 (règle 20) — avec un
+**porteur différent** : en tri, O-77 vivait dans `_capScale` et `sessionScale` avait été
+explicitement RÉFUTÉE (fiche 47) ; en vélo c'est l'inverse. **Le total de la semaine est identique**
+(456 = 456) : c'est une REDISTRIBUTION — à enveloppe basse les blocs naissent petits, la boucle doit
+faire croître la semaine, et la croissance atterrit sur le receveur élastique (R4.1, la sortie
+longue) ; à enveloppe haute rien ne croît. Ce n'est pas que l'ambitieux est affamé, **c'est que le
+modeste est GONFLÉ**. Ampleur **15 cellules sur 45, 51 semaines, −9 à −15 %**. Correctif non écrit
+et sa raison est mesurée : `sessionScale` multiplie la taille de NAISSANCE de chaque bloc de chaque
+sport, strictement plus que `_capScale` qui ne touchait qu'un plafond — et la fiche 48 a chiffré ce
+que coûte cette classe (3 violations DURES et une régression de SÉCURITÉ pour un correctif plus
+petit). **O-114** — ce n'est **pas** un défaut de périmètre de T-56 : **T-56 et le gate ne mesurent
+pas la même propriété.** T-56 prend `max(charge précédente, charge suivante)` — « les charges qui
+l'ENCADRENT » — donc sur un plan qui MONTE une décharge peut peser autant qu'une semaine **pas
+encore faite** ; le gate et l'auditeur (`recupHeavier`) comparent à la charge qui **PRÉCÈDE**. La
+portée est **30× celle que le gate montrait** : **60 profils trail sur 67 (90 %), 145 inversions**,
+jusqu'à **124 min en décharge contre 70 en charge (+77 %)**. **Le correctif a été écrit, mesuré et
+RETIRÉ** : resserrer la référence ferme les 145 et laisse `audit:v1` vert, mais **perturbe le point
+fixe** — le test T-56 du banc `lotPhysio` passe de 0 à **16 inversions de TYPE résiduelles** (T-56
+n'est pas idempotent). Ce qui reste à trancher est une **DÉFINITION, pas un réglage** : « précède »
+ou « encadrent » — décision d'entraînement, au fondateur ; **O-115 a la même cause**.
+**O-116 FERMÉ, et il n'aurait pas été vu sans la tentative** : la réconciliation « le volume annoncé
+est le volume prescrit » (I10/B3) vivait ≈ 700 lignes **AVANT** C29d et T-56, qui modifient toutes
+deux le LIVRÉ — la courbe décrivait l'avant-dernier état, **quatorzième occurrence de la leçon**.
+Le banc v7 passait de 6 à **12 semaines trail prescrivant plus de 1,4 × leur courbe annoncée** : le
+défaut **PRÉEXISTAIT**, la coupe plus stricte l'a rendu visible. `reconcilierCourbe()` est le point
+unique appelé aux deux moments ; **trail 74 % → 76 %**, v7 dans tous ses budgets. **⚠ Ce qu'il
+apprend n'est pas un détail** : la courbe annoncée n'est PAS un pur descripteur — des passes aval la
+LISENT (`vol_declared ?? vol`), donc la réécrire change le plan ; mesuré à facteur unique, le
+cliquet **T-60 passe de 8 à 9** sur `G/tri/Full/vol-min`, le profil le plus plafonné du corpus
+(même population que les 8 autres, déjà rangée en « accident », O-98) — voisinage d'O-43, publié.
+**Batterie 13/13, `audit:v1` 459 à 0, `audit:monotonie` 24 verts · 4 dettes déclarées · 0 régression
+· 1 628 comparaisons, `lotPhysio` 33 verts · 24 rouges attendus · 0 régression, golden recapturé
+(152 écarts sur 1 074 : tri 90 · swim 37 · swimrun 12 · run 9 · trail 4).**
+
 **FICHE 48 livrée — O-77 est FERMÉE : le plafond de séance suit la POSITION, plus l'ambition
 déclarée** (décision du fondateur, 01/09/2026 — voir `syntheses/44-fiche48-…`, registre O-77
 fermé, **O-115** ouvert) : `capScaleAtWeek(phases, weeks, wk)` (point unique, pure, patron

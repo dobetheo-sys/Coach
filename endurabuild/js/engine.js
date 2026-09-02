@@ -3623,6 +3623,10 @@ const CAP_LONG_DUATHLON                         = rule(
   "T4-du", "la sortie longue d'un duathlon plafonne par la durée de l'épreuve, jamais un puits sans borne",
   { S: 135, M: 200, PM: 265, L: 250 },
 );
+const PART_LONGUE_MAX = rule(
+  "O-113", "part maximale de la CIBLE hebdomadaire qu'une sortie longue peut prendre — valeur en cours de calibration (fiche 52)",
+  0.40,
+);
 const CAP_SWIM                         = { sprint: 1400, demifond: 2000, fond: 3000, ow: 4500, S: 750, M: 1500, "70.3": 1900, Full: 3000 };
 const AVG_SESSION_H                                 = { run: 1.15, bike: 1.3, tri: 1.2 };
 
@@ -11314,6 +11318,8 @@ const IS_QUALITY_ZONE = (zone        )          =>
 /** C30b — les décisions produites par `raiseLongRunToSpecificity`, remontées à l'appelant :
  *  `reconcileDeclaredVolume` ne connaît pas le journal de décisions du plan. */
 const _c30b                                                                       = [];
+/** O-113 (fiche 52) — les semaines où la sortie longue a rendu des minutes aux séances faciles. */
+const _o113                                                                  = [];
 /** O-44 — nombre de semaines de charge dont la MAJORITÉ des nages tombent sous le plancher de
  *  durée. La passe de regroupement n'est PAS branchée (voir `BUGS_OUVERTS.md` « O-44 ») : ce
  *  compteur ne sert qu'à décider si le plan doit NOMMER la tension à l'athlète. */
@@ -11422,6 +11428,7 @@ function reconcileDeclaredVolume(
   // passe tardive, un module futur, une séance construite à la main. Il est ici pour que le
   // prochain producteur de séances n'ait pas besoin de connaître la règle pour la respecter.
   _c30b.length = 0;
+  _o113.length = 0;
   _o44.semainesCourtes = 0; _o44.semainesCharge = 0;
   // _o85/_o93 ne se réinitialisent PAS ici : `repairLoop` rappelle cette fonction sur un plan
   // DÉJÀ écrêté, et le second appel — ne trouvant plus rien — effaçait la trace du premier
@@ -12460,15 +12467,26 @@ function reconcileDeclaredVolume(
   //
   // Une promesse d'heures qui ne tient pas est un défaut de véracité, pas un arrondi. Tolérance
   // 10 % : au-delà, le chiffre affiché suit ce qui est réellement prescrit.
-  for (const wk of plan.weeks) {
-    const delivered = weekH(wk);
-    const declared = wk.vol_declared ?? wk.vol;
-    if (declared > 0 && Math.abs(declared - delivered) / declared > 0.10) {
-      wk.vol_declared = delivered;
-      wk.vol = delivered;
+  //
+  // O-116 (fiche 49) — ET ELLE SE REJOUE APRÈS LES PASSES QUI LA DÉFONT. Cette réconciliation
+  // vivait ICI, en amont de C29d et de T-56 (≈ 700 lignes plus bas) : les deux modifient le
+  // LIVRÉ, donc la courbe décrivait l'avant-dernier état. Quatorzième occurrence de la leçon.
+  // Mesuré en resserrant la référence de T-56 (O-114) : le banc v7 passait de 6 à 12 semaines
+  // trail prescrivant plus de 1,4 × leur courbe annoncée — le défaut PRÉEXISTAIT, la coupe plus
+  // stricte l'a rendu visible. `reconcilierCourbe()` est le point unique, appelé aux deux
+  // moments.
+  const reconcilierCourbe = () => {
+    for (const wk of plan.weeks) {
+      const delivered = weekH(wk);
+      const declared = wk.vol_declared ?? wk.vol;
+      if (declared > 0 && Math.abs(declared - delivered) / declared > 0.10) {
+        wk.vol_declared = delivered;
+        wk.vol = delivered;
+      }
+      wk.vol_real = delivered;
     }
-    wk.vol_real = delivered;
-  }
+  };
+  reconcilierCourbe();
   // C13d — UNE SÉANCE SOUS-DOSÉE EST DÉCLASSÉE, PAS RABOTÉE.
   //
   // Corollaire de C13c (plancher d'échauffement 10 min) ET de C13e (échauffement ≤ corps) : pour
@@ -12792,6 +12810,104 @@ function reconcileDeclaredVolume(
         val: Math.round(lg.min || 0) + " min, soit " + Math.round(100 * (lg.min || 0) / weekMinOf(wk)) + " % de la semaine",
         why: "Ta course demande environ " + Math.round(cibleSpec) + " min de spécificité. En semaine de pic, la sortie longue peut prendre jusqu'à " + Math.round(C30_PART_SEMAINE_PIC * 100) + " % du volume : le volume de la semaine ne change pas, ce sont les séances faciles qui cèdent les minutes.",
       });
+    }
+  }
+
+  /**
+   * O-113 (fiche 52) — LA SORTIE LONGUE CESSE D'ÊTRE LE RÉCEPTEUR ÉLASTIQUE DE LA SEMAINE.
+   *
+   * R4.1 route la croissance de volume vers les blocs FACILES — à raison : on n'allonge pas une
+   * VO2max pour remplir une semaine. Mais le plus gros bloc facile est la sortie longue, et elle
+   * n'a pour borne que la table de son format : quand les blocs de qualité naissent petits
+   * (enveloppe déclarée basse), toute la croissance atterrit sur elle jusqu'à ce plafond, et
+   * **l'athlète le plus modeste reçoit la PLUS GROSSE longue**. Mesuré sur `bike/cyclo` S2 :
+   * 192 min à `vol_max` 9 contre 175 à 13, pour un volume hebdomadaire IDENTIQUE (456 min des
+   * deux côtés) — c'est O-113, et ce n'est pas un manque de volume, c'est une répartition.
+   *
+   * Ce que la mesure d'entrée a montré, et qui dépasse le ticket : la longue pèse une **médiane
+   * de 42 % de la semaine en vélo** (p90 52 %, max 67 %), 46 % en duathlon, 40 % en trail, et
+   * **69 % des semaines de charge vélo dépassent 35 %**. Le cas extrême du corpus est
+   * `G/run/marathon/vol-min`, un marathonien à 2 h/semaine : longue à **78 % de la semaine** à
+   * côté d'un **footing de 6 minutes**. Aucun gate ne le voyait.
+   *
+   * LA PART EST L'ANCRE QUE LES TABLES PORTENT DÉJÀ SANS LE DIRE. Rapporté au volume utile du
+   * format (`UTIL`), `CAP_LONG` vaut 20,6 % (5 km) · 21,4 % (10 km) · 24,1 % (semi) · 25,0 %
+   * (marathon) · 30,4 % (trail) · 27,8 % (crit) · 23,1 % (route) · 25,0 % (clm) · 26,7 % (cyclo)
+   * · 30,0 % (gravel) — une bande de 20 à 30 % qui monte avec la durée du format. La part
+   * appliquée ici est plus PERMISSIVE que cette bande (la semaine réelle est souvent bien
+   * au-dessous du volume utile du format), et c'est délibéré : on retire le puits, on ne
+   * redessine pas la périodisation.
+   *
+   * ⚠ C'EST UNE REDISTRIBUTION, PAS UNE BORNE — et c'est ce qui la rend délivrable. La borne
+   * équivalente a été écrite dans `blockBounds` et RETIRÉE : elle ne peut pas être neutre en
+   * volume, donc la semaine rétrécissait, et **73 profils perdaient des séances** (jusqu'à
+   * −6,2 %) — la FRÉQUENCE, la monnaie que ce dépôt s'interdit (C29/C29b/C29c), et exactement ce
+   * qui a fait échouer la fiche 51. Ici les minutes retirées à la longue sont RENDUES aux
+   * séances faciles de la même semaine : le total ne bouge pas d'une minute.
+   *
+   * Miroir exact de `raiseLongRunToSpecificity` (C30b), et pour les mêmes raisons elle peut
+   * tourner après le point fixe : neutre en volume, elle ne déplace que du FACILE (R4.1, donc
+   * C26c/C26d hors d'atteinte), et elle ne fait que DESCENDRE la longue — les receveuses sont
+   * bornées par sa nouvelle taille, sans quoi I14 (« la longue est la plus longue de sa
+   * semaine ») se rouvrirait.
+   */
+  function abaisserLongueVersPart()       {
+    for (const wk of plan.weeks) {
+      if (wk.phase.id === "taper") continue; // l'affûtage a ses propres règles (R3.13/Bosquet)
+      const semaine = weekMinOf(wk);
+      if (!(semaine > 0)) continue;
+      const all = wk.days.flatMap((d) => d.sessions).filter((sx) => sx.d !== "rs" && sx.steps && sx.steps.length);
+      const lg = all.find((sx) => sx.long && !sx.race);
+      if (!lg) continue;
+      const corps = (lg.steps || []).filter((st) => st.role === "body" && !EN_PENTE(st) && st.durationMin != null);
+      if (corps.length !== 1) continue; // une longue de route est UN bloc continu ; sinon on ne touche pas
+      const cible = Math.floor(PART_LONGUE_MAX * semaine);
+      // Le plancher est le minimum DÉCLARÉ par le module pour ce format (`durCaps.lo`), jamais
+      // le plancher de dignité : une sortie longue de cyclosportive ne descend pas à 30 min.
+      const plancher = corps[0].bnd ? corps[0].bnd.floor : 0;
+      const trop = Math.min((lg.min || 0) - cible, (corps[0].durationMin || 0) - plancher);
+      if (trop <= 1) continue;
+      // LES RECEVEUSES : séances faciles de la même semaine (R4.1), jamais un bloc de qualité,
+      // jamais un brick, jamais au-dessus de la NOUVELLE taille de la longue (I14).
+      const nouvelle = (lg.min || 0) - trop;
+      const receveuses = all.filter((sx) => sx !== lg && !sx.race && !sx.brick
+        && (sx.steps || []).some((st) => st.role === "body" && !EN_PENTE(st) && st.distanceM == null
+          && st.durationMin != null && !IS_QUALITY_ZONE(String(st.zone || ""))));
+      // La plus COURTE d'abord : c'est elle qui a le plus de marge sous le plafond, et c'est
+      // aussi elle que le déversement a le plus affamée (le footing de 6 min du marathonien).
+      receveuses.sort((x, y) => (x.min || 0) - (y.min || 0));
+      // LA NEUTRALITÉ SE MESURE SUR LA SEMAINE LIVRÉE, PAS SUR CE QU'ON CROIT AVOIR DONNÉ
+      // (règle 15). Ajouter des minutes à un step ne garantit pas que la SEMAINE les porte : le
+      // rendu re-dérive `min` (récup inter-blocs comprise, R5.6a) et l'écart se paie une fois en
+      // retirant à la longue ce qui n'est jamais arrivé. Mesuré sur `bike/gravel` S6 : 38 min
+      // comptées comme rendues, 25 réellement portées, 13 min de volume perdues chaque semaine —
+      // −6 à −7 % sur le plan, pour une passe annoncée NEUTRE.
+      const avantSemaine = weekMinOf(wk);
+      let rendu = 0;
+      for (const sx of receveuses) {
+        if (rendu >= trop) break;
+        for (const st of sx.steps || []) {
+          if (rendu >= trop) break;
+          if (st.role !== "body" || EN_PENTE(st) || st.distanceM != null || st.durationMin == null) continue;
+          if (IS_QUALITY_ZONE(String(st.zone || ""))) continue;
+          // Le plafond du bloc est celui que le module a DÉCLARÉ — même lecture que la moitié
+          // donneuse de C30b, qui lit `st.bnd.floor` : `blockBounds` n'est pas dans cette portée,
+          // et un bloc sans `bnd` déclaré n'a pas de plafond à respecter ici.
+          const cap = st.bnd ? st.bnd.cap : Number.MAX_SAFE_INTEGER;
+          const marge = Math.min(cap - st.durationMin, nouvelle - (sx.min || 0));
+          if (marge <= 0) continue;
+          const ajout = Math.min(marge, trop - rendu);
+          st.durationMin += ajout;
+          rendu += ajout;
+        }
+        if (render) render(sx);
+      }
+      const donne = weekMinOf(wk) - avantSemaine;
+      if (donne <= 1) continue; // personne n'a pu recevoir : on ne rétrécit pas la semaine
+      const avantLg = lg.min || 0;
+      corps[0].durationMin = Math.max(plancher, (corps[0].durationMin || 0) - donne);
+      if (render) render(lg);
+      _o113.push({ wk: wk.num, avant: Math.round(avantLg), apres: Math.round(lg.min || 0), semaine: Math.round(semaine) });
     }
   }
 
@@ -13182,6 +13298,9 @@ function reconcileDeclaredVolume(
     const rattrapage = enforceDechargePlancher(plan, ctxC29d, render);
     if (rattrapage > 0) enforceRecupSousCharges(plan, render);
     rendus += rattrapage;
+    // O-116 — la courbe se réconcilie de nouveau : C29d vient de rendre des jours et T-56 de
+    // raboter des doses ; l'annonce écrite en amont ne décrit plus le plan.
+    reconcilierCourbe();
     if (rendus > 0) warnings.push("C29d — " + rendus + " jour(s) facile(s) rendu(s) à des semaines de décharge qui étaient tombées sous le quart de leurs voisines : une décharge se fait par le contenu (volume réduit, tout facile), pas par l'interruption.");
   }
   // …et la garantie A− se REJOUE : O-93 peut réduire la semaine qui précède une course A−,
@@ -13208,6 +13327,11 @@ function reconcileDeclaredVolume(
   //   · elle ne fait que MONTER la sortie longue, ce qui va dans le sens d'I14 au lieu de le
   //     rouvrir.
   raiseLongRunToSpecificity();
+  // O-113 (fiche 52) — puis la longue rend ce qu'elle a absorbé de trop. APRÈS C30b, qui la
+  // MONTE vers sa cible de spécificité : l'ordre inverse ferait défaire par C30b ce que cette
+  // passe vient de rendre, et la spécificité est une exigence de course, la part une hygiène de
+  // répartition — la première prime.
+  abaisserLongueVersPart();
 
   // O-44 — LE COMPTEUR SE LIT SUR LE PLAN LIVRÉ, en tout dernier : le message ne doit décrire ni
   // un état intermédiaire ni une intention, mais ce que l'athlète va réellement voir (règle 15).
@@ -13532,6 +13656,55 @@ function enforceDechargePlancher(
   return corrigees;
 }
 
+/**
+ * T-56 — NOMBRE DE TOURS DE LA CORRECTION PAR SEMAINE (fiche 50, idempotence).
+ *
+ * DIAGNOSTIC MESURÉ : la garde n'était PAS idempotente — dupliquer son appel changeait
+ * **22 plans sur 1 074, tous en `tri/Full`**. La cause n'était ni la borne ni un ordre de
+ * passes : l'axe DISCIPLINE répartit la réduction PROPORTIONNELLEMENT (`f = ref / total`) et
+ * comptait dans son DÉNOMINATEUR une séance qu'il n'a pas le droit de réduire — le palier B-17
+ * ÉPINGLÉ. Une passe sous-livrait donc exactement la part du protégé, et la garde ne convergeait
+ * plus que GÉOMÉTRIQUEMENT : mesuré, `tri/Full/reprise/inter` S25 porte une « Nage continue —
+ * 3 050 m d'affilée » de 69 min qui ne bouge pas d'un mètre pendant que « Nage seuil (+dist) »
+ * paie seule, 1 225 → 1 100 m au deuxième passage, 575 → 225 m en S28. Bornes croissantes :
+ * 1→2 22 plans · 2→3 15 · 3→4 14 · 4→5 13 · 5→6 3 · 6→8 0 · 8→40 **4** — la queue ne se
+ * termine jamais proprement, parce que le mécanisme est faux, pas lent.
+ *
+ * CORRECTIF : le facteur se calcule SUR LES PAYEURS (`discMin(w, true)`), c'est-à-dire la
+ * définition que le banc `lotPhysio` mesure déjà — le palier annoncé est HORS CHAMP côté récup,
+ * référence normale côté charge (R11.1 : une seule définition). Mesuré ensuite : **1→2 · 2→3 ·
+ * 3→4 · 4→8 · 8→40 = 0 plan** — UN tour suffit, la garde est idempotente.
+ *
+ * 4 : la boucle est CONSERVÉE avec une marge, parce que la réduction agit sur la dose du CORPS
+ * pendant que la référence se compte en minutes de SÉANCE (l'échauffement ne rétrécit pas) —
+ * une configuration future peut demander un second tour. Les trois tours de marge sont mesurés
+ * INERTES sur le corpus.
+ */
+const T56_TOURS_MAX = 4;
+
+/**
+ * T-56 — LA RÉFÉRENCE D'UNE SEMAINE DE DÉCHARGE : LA CHARGE QUI LA **PRÉCÈDE** (fiche 50).
+ *
+ * *« Une décharge existe pour absorber la fatigue accumulée. »* Elle se compare donc à ce que
+ * l'athlète VIENT DE FAIRE — jamais à ce qu'il n'a pas encore fait. La garde comparait au
+ * `max(av, ap)`, « les charges qui l'ENCADRENT » : sur un plan qui MONTE, la charge SUIVANTE est
+ * la plus grosse, et la décharge pouvait légalement peser autant qu'une semaine à venir, donc
+ * dépasser celle qu'elle est là pour absorber. Mesuré (fiche 49) : **60 profils trail sur 67
+ * (90 %), 145 inversions**, jusqu'à « Back-to-back » à 124 min en décharge contre 70 en charge
+ * (+77 %). L'AUDITEUR (`recupHeavier`) et le gate de monotonie comparaient déjà à la précédente :
+ * la garde en était la seule à ne pas le faire, donc le générateur et l'auditeur ne disaient pas
+ * la même chose (R11.1).
+ *
+ * Décision du fondateur, fiche 50. Le resserrement avait été écrit et RETIRÉ en fiche 49 parce
+ * qu'il laissait 16 inversions de TYPE résiduelles — T-56 n'était pas idempotente ; la fiche 50
+ * a corrigé l'idempotence D'ABORD (voir `T56_TOURS_MAX`), et le resserrement devient délivrable.
+ *
+ * Point UNIQUE : les DEUX axes (type et discipline) lisent cette fonction. Les avoir écrits deux
+ * fois est ce qui a permis à la définition de diverger de celle de l'auditeur sans que rien ne
+ * le signale.
+ */
+const REFERENCES = (av               , ap               )                    => [av];
+
 function enforceRecupSousCharges(plan        , render                         )       {
   const wl = plan.weeks;
   const estCharge = (w        ) => !w.isRecup && w.phase.id !== "taper"
@@ -13546,10 +13719,17 @@ function enforceRecupSousCharges(plan        , render                         ) 
   const doseDe = (s           ) => s.d === "sw"
     ? (s.steps || []).reduce((v, st) => v + (st.distanceM ? (st.reps || 1) * st.distanceM : 0), 0)
     : (s.steps || []).filter((st) => st.role === "body").reduce((v, st) => v + (st._min || 0), 0);
-  const discMin = (w        ) => {
+  // Une séance ÉPINGLÉE (palier B-17 : la distance EST le stimulus, et le plan l'a ANNONCÉE)
+  // est HORS CHAMP côté récup — c'est un TEST, qui se place précisément dans une semaine
+  // allégée, et la passe n'a pas le droit de le raboter. C'est déjà la définition que le banc
+  // `lotPhysio` (T-56) mesure : on la reprend ici pour n'en avoir qu'UNE (R11.1). Côté VOISINE
+  // de charge, la séance compte comme référence normalement.
+  const estEpinglee = (s           ) => (s.steps || []).some((st) => st.bnd?.pinned);
+  const discMin = (w        , sansEpinglees          ) => {
     const t                         = { sw: 0, bk: 0, rn: 0 };
     for (const d of w.days) for (const s of d.sessions) {
       if (s.d === "rs" || s.race) continue;
+      if (sansEpinglees && estEpinglee(s)) continue;
       if (s.d in t) t[s.d] += s.min || 0;
       else for (const st of s.steps || []) { const leg = st.leg === "bike" ? "bk" : st.leg === "run" ? "rn" : null; if (leg) t[leg] += st._min || 0; }
     }
@@ -13604,38 +13784,67 @@ function enforceRecupSousCharges(plan        , render                         ) 
     if (w.phase.id === "peak" && !peakChargeExiste) { exemptes++; continue; }
     const av = voisine(i, -1), ap = voisine(i, +1);
     if (!av && !ap) continue;
-    let touchee = false;
     // ── axe TYPE : la dose d'un type en récup ≤ la meilleure dose du MÊME type chez les
     // charges qui l'encadrent. Un type absent des deux voisines n'a pas de référent : il
     // relève de l'axe DISCIPLINE (déclaré, pas silencieux).
+    //
+    // O-114 (fiche 49) — LA RÉFÉRENCE EST `max(av, ap)`, ET C'EST UNE DÉCISION, PAS UN OUBLI.
+    //
+    // « Les charges qui l'ENCADRENT » : sur un plan qui MONTE, la charge SUIVANTE est la plus
+    // grosse, donc une décharge peut peser autant qu'une semaine PAS ENCORE FAITE et dépasser
+    // celle qu'elle est là pour absorber. Mesuré sur le corpus trail : **60 profils sur 67
+    // (90 %), 145 inversions**, jusqu'à `Back-to-back` à 124 min en décharge contre 70 en charge
+    // (+77 %) — c'est O-114, et le gate de monotonie les voit parce qu'il compare à la charge
+    // PRÉCÉDENTE, comme l'auditeur le fait au niveau de la SEMAINE (`recupHeavier`).
+    //
+    // ⚠ RESSERRER LA RÉFÉRENCE À `av` A ÉTÉ ÉCRIT, MESURÉ, ET RETIRÉ (fiche 49) : il ferme bien
+    // les 145 inversions et laisse `audit:v1` vert, mais il **perturbe le point fixe** — le test
+    // T-56 du banc `lotPhysio`, qui mesure la MÊME propriété contre `max(av, ap)`, passe de 0 à
+    // **16 inversions de TYPE résiduelles** (pire : `REEL/tri/70.3` S32 « Nage récup courte »
+    // 2 625 pour 2 225). La propriété plus stricte n'est donc pas DÉLIVRABLE en une passe, et
+    // T-56 n'est pas idempotent (une seconde passe inconditionnelle change 23 plans, mesuré au
+    // lot du plancher de décharge). Ce qui reste à trancher est une DÉFINITION — « une décharge
+    // ne pèse pas plus que la charge qui PRÉCÈDE » (auditeur, gate) ou « que celles qui
+    // l'ENCADRENT » (ici) — et c'est une décision d'entraînement, pas un réglage.
     const refT = new Map                ();
-    for (const vw of [av, ap]) if (vw) for (const d of vw.days) for (const s of d.sessions) {
+    for (const vw of REFERENCES(av, ap)) if (vw) for (const d of vw.days) for (const s of d.sessions) {
       if (s.d === "rs" || s.race) continue;
       const n = nomDe(s);
       refT.set(n, Math.max(refT.get(n) || 0, doseDe(s)));
     }
-    for (const d of w.days) for (const s of d.sessions) {
-      if (s.d === "rs" || s.race) continue;
-      const ref = refT.get(nomDe(s));
-      if (ref == null || doseDe(s) <= ref) continue;
-      if (reduire(s, ref)) { types++; touchee = true; }
-    }
-    // ── axe DISCIPLINE : minutes par discipline (legs de brick attribués) ≤ la meilleure
-    // voisine. Réduction PROPORTIONNELLE des séances de la discipline — le même facteur pour
-    // toutes, la structure de la semaine ne change pas.
-    const dR = discMin(w), dAv = av ? discMin(av) : { sw: 0, bk: 0, rn: 0 }, dAp = ap ? discMin(ap) : { sw: 0, bk: 0, rn: 0 };
-    for (const k of ["sw", "bk", "rn"]) {
-      const ref = Math.max(dAv[k] || 0, dAp[k] || 0);
-      if (!(dR[k] > ref + 1)) continue;
-      const f = ref / dR[k];
-      let une = false;
+    // Les références sont INVARIANTES sur les tours : `av` et `ap` sont des semaines de CHARGE,
+    // et la passe ne touche QUE des semaines de décharge — rien de ce qui est lu ici ne bouge.
+    const refsD = REFERENCES(av, ap).map((vw) => (vw ? discMin(vw) : { sw: 0, bk: 0, rn: 0 }));
+    const typesVus = new Set        (), discVues = new Set        ();
+    for (let tour = 0; tour < T56_TOURS_MAX; tour++) {
+      let bouge = false;
       for (const d of w.days) for (const s of d.sessions) {
-        if (s.d !== k || s.race) continue;
-        if (reduire(s, doseDe(s) * f)) une = true;
+        if (s.d === "rs" || s.race) continue;
+        const ref = refT.get(nomDe(s));
+        if (ref == null || doseDe(s) <= ref) continue;
+        if (reduire(s, ref)) { typesVus.add(`${w.num}|${nomDe(s)}`); bouge = true; }
       }
-      if (une) { disciplines++; touchee = true; }
+      // ── axe DISCIPLINE : minutes par discipline (legs de brick attribués) ≤ la meilleure
+      // voisine. Réduction PROPORTIONNELLE des séances de la discipline — le même facteur pour
+      // toutes, la structure de la semaine ne change pas.
+      const dR = discMin(w, true);
+      for (const k of ["sw", "bk", "rn"]) {
+        const ref = Math.max(0, ...refsD.map((x) => x[k] || 0));
+        if (!(dR[k] > ref + 1)) continue;
+        // Le facteur se calcule SUR LES PAYEURS, jamais sur le total : compter dans le
+        // dénominateur une séance qu'on n'a pas le droit de réduire fait sous-livrer la passe
+        // d'exactement sa part, et la garde ne converge plus que par répétition (fiche 50 —
+        // 22 plans changeaient à la seconde passe, tous en tri/Full).
+        const f = ref / dR[k];
+        for (const d of w.days) for (const s of d.sessions) {
+          if (s.d !== k || s.race || estEpinglee(s)) continue;
+          if (reduire(s, doseDe(s) * f)) { discVues.add(`${w.num}|${k}`); bouge = true; }
+        }
+      }
+      if (!bouge) break;
     }
-    if (touchee) semaines++;
+    types += typesVus.size; disciplines += discVues.size;
+    if (typesVus.size || discVues.size) semaines++;
   }
   if (semaines > 0 || exemptes > 0) _o93 = { semaines: (_o93?.semaines || 0) + semaines, types: (_o93?.types || 0) + types, disciplines: (_o93?.disciplines || 0) + disciplines, exemptes: (_o93?.exemptes || 0) + exemptes };
 }
@@ -15796,6 +16005,16 @@ function generatePlan(profile                , opts                             
     swimGate: sportModule(a.sport          ).disciplines.length > 1 ? (r.b17Gate ?? null) : null });
 
   for (const d of _c30b) r.decisions.push(d);
+  // O-113 (fiche 52) — UNE décision pour tout le plan, jamais une par semaine : l'athlète a
+  // besoin de savoir que sa sortie longue a une part maximale, pas de la lire trente fois.
+  if (_o113.length) {
+    const pire = _o113.reduce((a, b) => (b.avant - b.apres > a.avant - a.apres ? b : a));
+    r.decisions.push({
+      id: "O-113", what: "Sortie longue : au plus " + Math.round(PART_LONGUE_MAX * 100) + " % de la semaine",
+      val: _o113.length + " semaine(s) rééquilibrée(s), la plus forte de " + pire.avant + " à " + pire.apres + " min",
+      why: "Une sortie longue qui absorbe tout le volume laisse les autres séances à quelques minutes — elle devient le plan au lieu d'en faire partie. Le volume de la semaine ne change pas : les minutes retirées vont aux séances faciles.",
+    });
+  }
 
   normalizeRestMinutes(plan);
   syncDerivedLabels(plan); // repassé en dernier par la boucle de réparation

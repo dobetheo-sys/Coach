@@ -130,18 +130,14 @@ const franchi = (av, ap) => ap < av - 5 && ap < av * 0.92;
  * `_capScale` (fiche 47, tâche 2).
  */
 const DETTES = {
-  // FICHE 48 — deux inversions de POSITION introduites par la trajectoire positionnelle, et
-  // attribuées par élimination : ce n'est ni C29d (neutralisé : 4 régressions inchangées), ni le
-  // plafond de la semaine de récup (mis à l'échelle par RECUP_WEEK_FACTOR : inchangé), ni un
-  // artefact d'échauffement (le critère compare désormais la DOSE DU CORPS, comme T-56). Les
-  // plafonds plus permissifs du début de plan laissent une séance de décharge dépasser la même
-  // séance de la charge voisine, et T-56 ne la rattrape pas. Signalées, non corrigées — le
-  // périmètre de la fiche 48 est la trajectoire, et ce défaut vit dans une autre passe.
-  "MONO-bike-phase": "O-115 (NOUVEAU, fiche 48) — « Endurance facile » 76 min en décharge contre 66 en charge voisine. Introduit par la trajectoire positionnelle ; T-56 ne le ferme pas.",
-  "MONO-tri-phase": "O-115 (NOUVEAU, fiche 48) — « Footing facile » et « Nage récup courte » dépassent leur charge voisine en S12. Même cause.",
-  "MONO-trail-phase": "O-114 (NOUVEAU, trouvé par ce banc) — 5 inversions de type en trail que T-56 ne ferme PAS : « Back-to-back » 92 min en récup contre 80 en charge, « Marche rapide en montée » 90 contre 81. PRÉEXISTANT et attribué : le critère est rouge AVEC et SANS la garde T-56, alors que tri/duathlon/swimrun rougissent seulement sans elle (contre-preuve faite). Signalé, non corrigé (fiche 47 §4).",
-  "MONO-bike-vol_max": "O-77 pour 7 inversions sur 10 (fermées sous `_capScale = 1`) · O-113 pour les 3 restantes — un résidu d'environ −9 % qui survit à la neutralisation, cause NON identifiée, signalée sans être corrigée (fiche 47 §4).",
+  // FICHE 52 — `MONO-bike-vol_max` (O-113) est PAYÉE. La dette restante des fiches 49-51 est
+  // fermée non pas en retouchant `sessionScale` (fiche 51 : calibration discontinue, payée en
+  // fréquence) mais en bornant le RÉCEPTEUR : la sortie longue rend aux séances faciles de sa
+  // semaine tout ce qu'elle porte au-delà de sa part. Le registre du gate est vide — toute
+  // inversion qui apparaîtra désormais est une régression, pas une dette.
 };
+
+
 
 const RESULTATS = [];
 let comparaisons = 0;

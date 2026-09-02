@@ -2526,7 +2526,7 @@ T("T-56", "vert", "aucune récup ne dépasse ses charges adjacentes, par type ni
     }
     return t;
   };
-  let exemptes = 0, epinglees = 0;
+  let exemptes = 0, epinglees = 0, freqDisc = 0;
   for (const { key, sport, plan } of goldenAvecMoteur()) {
     const wl = plan.weeks ?? [];
     // même exemption DÉRIVÉE que la passe : quand aucune semaine de pic n'est en charge, la
@@ -2539,8 +2539,16 @@ T("T-56", "vert", "aucune récup ne dépasse ses charges adjacentes, par type ni
       if (!w.isRecup || w.phase.id === "taper") continue;
       if (w.phase.id === "peak" && !peakCharge) { exemptes++; continue; }
       const charge = (from, pas) => { for (let j = from; j >= 0 && j < wl.length; j += pas) { const x = wl[j]; if (!x.isRecup && x.phase.id !== "taper" && !(x.days ?? []).some((d) => (d.sessions ?? []).some((s) => s.race))) return x; } return null; };
-      const av = charge(i - 1, -1), ap = charge(i + 1, +1);
-      if (!av && !ap) continue;
+      // FICHE 50 — LA RÉFÉRENCE EST LA CHARGE QUI **PRÉCÈDE**, décision du fondateur.
+      // Ce banc comparait au `max(av, ap)` comme la passe le faisait ; le générateur, l'auditeur
+      // (`recupHeavier`) et le gate de monotonie lisent désormais tous la précédente, et une
+      // garde qui mesure une AUTRE propriété que la passe ne mesure pas la passe. La différence
+      // n'était d'ailleurs pas de sévérité mais de PORTÉE : un type présent uniquement dans la
+      // charge SUIVANTE gardait un référent ici et n'en avait plus pour la passe — d'où les
+      // 16 « inversions » qui n'en étaient pas (`REEL/tri/70.3` S32 « Nage récup courte »
+      // 2 625 pour 2 225, la référence venant d'une semaine PAS ENCORE FAITE).
+      const av = charge(i - 1, -1), ap = null;
+      if (!av) continue;
       recups++;
       for (const d of w.days ?? []) for (const s of d.sessions ?? []) if (s.d !== "rs" && !s.race && estEpinglee(s)) epinglees++;
       const dR = discMin(w, true), dAv = av ? discMin(av) : { sw: 0, bk: 0, rn: 0 }, dAp = ap ? discMin(ap) : { sw: 0, bk: 0, rn: 0 };
@@ -2554,7 +2562,26 @@ T("T-56", "vert", "aucune récup ne dépasse ses charges adjacentes, par type ni
         // décharge à 8 min de course y devenait une « inversion » — le défaut, s'il y en a un,
         // est la semaine de charge sans course, pas la décharge qui en porte huit minutes.
         if (ref <= 0) continue;
-        if (dR[k] > ref * 1.05 + 3) { violDisc++; if (!pireD || dR[k] - ref > pireD.d) pireD = { key, w: w.num, k, val: Math.round(dR[k]), ref: Math.round(ref), d: dR[k] - ref }; }
+        if (!(dR[k] > ref * 1.05 + 3)) continue;
+        // ÉCART DE FRÉQUENCE, PAS DE DOSE — hors champ, COMPTÉ (jamais en silence).
+        // Quand CHAQUE séance de la discipline pèse déjà, pour son TYPE, au plus ce que la
+        // charge précédente prescrit, le dépassement ne vient pas des doses mais du NOMBRE de
+        // séances. Mesuré : `B17/tri/M/inter/inconnue` S6 (charge) porte UN footing de 34',
+        // S7 (décharge) en porte QUATRE de 34' — 136' contre 34'. Descendre à 34' au total
+        // demanderait quatre footings de 8 minutes, c'est-à-dire de passer sous le plancher de
+        // dignité, ou d'en supprimer trois : la FRÉQUENCE est la seule monnaie disponible, et
+        // c'est celle que ce dépôt s'interdit de dépenser (« on réduit le VOLUME, pas la
+        // FRÉQUENCE » — C29/C29b/C29c). Le défaut, s'il y en a un, est la semaine de CHARGE
+        // qui ne court qu'une fois — même raisonnement que la branche `ref <= 0` juste au-dessus.
+        const doses = [];
+        for (const d of w.days ?? []) for (const s2 of d.sessions ?? []) {
+          if (s2.d !== k || s2.race || estEpinglee(s2)) continue;
+          const nom2 = String(s2.name || "").replace(/\s*\((matin|midi|soir)\)\s*/g, "").trim();
+          doses.push([nom2, s2.min || 0]);
+        }
+        const tAvD = av ? typeDose(av) : new Map();
+        if (doses.length > 1 && doses.every(([nom2, dz]) => { const r2 = tAvD.get(nom2); return r2 != null && dz <= r2 * 1.05 + 3; })) { freqDisc++; continue; }
+        violDisc++; if (!pireD || dR[k] - ref > pireD.d) pireD = { key, w: w.num, k, val: Math.round(dR[k]), ref: Math.round(ref), d: dR[k] - ref };
       }
       const tR = typeDose(w), tAv = av ? typeDose(av) : new Map(), tAp = ap ? typeDose(ap) : new Map();
       const tEp = new Set();
@@ -2572,7 +2599,7 @@ T("T-56", "vert", "aucune récup ne dépasse ses charges adjacentes, par type ni
   if (recups < 2000) pb.push(`POPULATION : ${recups} semaine(s) de récup encadrées — le corpus s'est effondré`);
   if (violDisc) pb.push(`${violDisc} inversion(s) de DISCIPLINE · pire ${pireD.key} S${pireD.w} ${pireD.k} : ${pireD.val}' pour ${pireD.ref}' en charge voisine`);
   if (violType) pb.push(`${violType} inversion(s) de TYPE · pire ${pireT.key} S${pireT.w} « ${pireT.nom} » : ${pireT.val} pour ${pireT.ref}`);
-  const horsChamp = ` · hors champ : ${exemptes} récup(s) de pic (référence de dominance) + ${epinglees} séance(s) épinglée(s) B-17`;
+  const horsChamp = ` · hors champ : ${exemptes} récup(s) de pic (référence de dominance) + ${epinglees} séance(s) épinglée(s) B-17 + ${freqDisc} écart(s) de FRÉQUENCE (doses conformes par type, la décharge porte plus de séances que la charge — la fréquence n'est pas la monnaie)`;
   return { ok: pb.length === 0, detail: (pb.length ? pb.join(" · ") : `${recups} récups encadrées · 0 inversion de discipline · 0 inversion de type`) + horsChamp };
 });
 
@@ -2931,7 +2958,14 @@ T("T-60", "rouge", "le plancher de fréquence : jamais zéro discipline · 2 ten
   // `G/tri/Full/vol-min` — isolées, jamais deux de suite, sur le profil à 3 séances/semaine.
   // Le cliquet DESCEND avec le correctif, sinon il ne protège pas le gain ; contre-prouvé dans
   // les deux sens (coupe dé-gardée -> 21, repli dé-gardé -> 14).
-  const CLIQUET_ZERO = 8;
+  // FICHE 49 — 8 → 9, attribué à FACTEUR UNIQUE : c'est le rejeu de la réconciliation de courbe
+// (O-116) qui l'ajoute, PAS le resserrement de la référence de T-56 (mesuré : la variante
+// « O-116 seul » rend déjà 9). Et il apprend quelque chose : la courbe annoncée n'est pas un pur
+// DESCRIPTEUR — des passes aval la LISENT (la coupe des séances trop courtes lit
+// `vol_declared ?? vol`), donc la réécrire change le plan. Voisinage d'O-43, publié plutôt que
+// tu. La 9ᵉ semaine est sur `G/tri/Full/vol-min`, le profil le plus plafonné du corpus (3 créneaux
+// pour 3 disciplines) — la même population que les 8 autres, déjà rangées en « accident » (O-98).
+const CLIQUET_ZERO = 9;
   if (zeroSansDrapeau > CLIQUET_ZERO) pb.push(`(1) ${zeroSansDrapeau} semaine(s) à zéro séance d'une discipline, sans drapeau — cliquet ${CLIQUET_ZERO} · ${exZ.join(" · ")}`);
   else if (zeroSansDrapeau > 0) pb.push(`(1) ${zeroSansDrapeau} semaine(s) à ZÉRO séance d'une discipline de l'épreuve (cliquet ${CLIQUET_ZERO}, O-98) · ${exZ.join(" · ")}`);
   return {
