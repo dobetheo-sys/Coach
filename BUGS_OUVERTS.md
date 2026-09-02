@@ -12167,3 +12167,31 @@ quoi: les deux rendus de la décision budget portent la même phrase prescrit/li
 attendu: /les deux rendus : 2/
 cmd: node --input-type=module -e "import('node:fs').then(({readFileSync})=>{const s=readFileSync('endurabuild/js/ui/plan-view.js','utf8');const n=(s.match(/suffixeLivre\(/g)||[]).length-1;console.log('les deux rendus : '+n);})"
 ```
+
+## O-116 · MediaPipe — segmentation de la photo de face (bilan posture) · 🟡 OUVERT, CSP levée le 02/09/2026
+
+**Ce qui est fait** : `index.html` porte désormais `'wasm-unsafe-eval'` dans `script-src`
+(décision du fondateur, session « bilan posture ») — la CSP n'interdit plus l'instanciation de
+WebAssembly précompilé. `smoke-securite.mjs` vérifie la propriété qui compte (aucun script
+inline, `'unsafe-eval'` jamais admis) plutôt que le littéral `script-src 'self'` seul.
+
+**Ce qui reste, et son coût mesuré avant d'y toucher** : le binaire MediaPipe
+(`@mediapipe/tasks-vision`) pèse **~36 Mo installé, dont ~12 Mo de WASM** (`vision_wasm_internal.wasm`
+seul), mesuré dans le dépôt Bikefiting d'origine. `script-src 'self'` interdit tout CDN — le
+binaire doit être VENDU en local et rejoindre le précache du service worker (`sw.js`, 71 assets
+aujourd'hui pour quelques Mo au total). Ajouter 12 Mo au précache d'une PWA dont l'ethos est
+« installable en un geste, hors ligne » (D19, `check:sw`) est un changement d'ordre de grandeur,
+pas un ajout — à trancher explicitement, pas à faire passer dans un lot qui parle d'autre chose.
+
+Une fois le binaire vendu, le reste est déjà câblé côté contrat : `posture-etalonnage.js` et
+`posture-resultats.js` annoncent en clair « la surface frontale n'est pas encore calculée ici »
+(voir leurs commentaires d'en-tête) — le jour où la segmentation existe, ces deux écrans
+n'attendent qu'un appel à `computePFSA_cm2` (`src/bikefit/captureProcessing.ts`, déjà porté et
+testé, 61 tests verts) sur le masque qu'elle produira.
+
+```verify
+id: O-116
+quoi: la CSP admet le WASM précompilé sans jamais admettre eval() sur du texte arbitraire
+attendu: /wasm oui, eval texte non/
+cmd: node --input-type=module -e "import('node:fs').then(({readFileSync})=>{const h=readFileSync('endurabuild/index.html','utf8');const csp=(/<meta http-equiv=\"Content-Security-Policy\" content=\"([^\"]+)\"/.exec(h)||[])[1]||'';const wasm=/script-src[^;]*'wasm-unsafe-eval'/.test(csp);const evalTexte=/script-src[^;]*(?<!wasm-)'unsafe-eval'/.test(csp);console.log('wasm '+(wasm?'oui':'non')+', eval texte '+(evalTexte?'oui':'non'));})"
+```
