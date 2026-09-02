@@ -130,24 +130,13 @@ const franchi = (av, ap) => ap < av - 5 && ap < av * 0.92;
  * `_capScale` (fiche 47, tâche 2).
  */
 const DETTES = {
-  // FICHE 50 — les TROIS critères de PHASE (vélo, tri, trail) sont passés VERTS, et la cause était
-  // UNE seule : la RÉFÉRENCE de T-56. Elle autorisait une décharge à peser autant que la plus
-  // grosse des deux charges qui l'encadrent, donc autant qu'une semaine PAS ENCORE FAITE ; elle
-  // lit désormais la charge qui PRÉCÈDE, comme l'auditeur (`recupHeavier`) et comme ce banc.
-  // Ni C29d, ni le plafond de récup, ni l'échauffement n'y étaient pour quoi que ce soit — les
-  // trois avaient été éliminés à facteur unique en fiche 48, et c'est ce qui a laissé la
-  // définition comme seule candidate.
-  //
-  // FICHE 51 — `MONO-bike-vol_max` reste une dette DÉCLARÉE, et le correctif a été écrit, mesuré
-  // et RETIRÉ (patch `sessionscale-positionnel.patch`). Rendre `sessionScale` positionnelle ferme
-  // bien le critère et laisse `audit:v1` vert, mais la surface de calibration est DISCONTINUE :
-  // un pas de 0,02 sur le départ fait passer les profils qui perdent plus de 20 % de leur pic de
-  // 14 (0,68) à 2 (0,70) à 40 (0,72). La grandeur qui bouge n'est pas la TAILLE des séances mais
-  // leur NOMBRE — 33 des 40 perdants perdent des séances (`swim/ow/confirme/inter` 81 → 58) —,
-  // c'est-à-dire la seule monnaie que ce dépôt s'interdit de dépenser. Choisir une valeur sur
-  // cette surface serait tirer un numéro, pas calibrer.
-  "MONO-bike-vol_max": "O-113 — cause NOMMÉE (fiche 49) : `sessionScale`, la SECONDE constante de plan de la formule de dimensionnement, dérivée de l'enveloppe déclarée et appliquée dès la semaine 1. Neutralisée, les inversions disparaissent entièrement (174 = 174, 172 = 172, 170 = 170). Correctif positionnel ÉCRIT et RETIRÉ (fiche 51) : il ferme le critère mais la calibration est discontinue et se paie en FRÉQUENCE — 33 profils sur 40 perdent des séances.",
+  // FICHE 52 — `MONO-bike-vol_max` (O-113) est PAYÉE. La dette restante des fiches 49-51 est
+  // fermée non pas en retouchant `sessionScale` (fiche 51 : calibration discontinue, payée en
+  // fréquence) mais en bornant le RÉCEPTEUR : la sortie longue rend aux séances faciles de sa
+  // semaine tout ce qu'elle porte au-delà de sa part. Le registre du gate est vide — toute
+  // inversion qui apparaîtra désormais est une régression, pas une dette.
 };
+
 
 
 const RESULTATS = [];

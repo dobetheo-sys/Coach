@@ -4421,6 +4421,10 @@ const CAP_LONG_DUATHLON                         = rule(
   "T4-du", "la sortie longue d'un duathlon plafonne par la durée de l'épreuve, jamais un puits sans borne",
   { S: 135, M: 200, PM: 265, L: 250 },
 );
+const PART_LONGUE_MAX = rule(
+  "O-113", "part maximale de la CIBLE hebdomadaire qu'une sortie longue peut prendre — valeur en cours de calibration (fiche 52)",
+  0.40,
+);
 const CAP_SWIM                         = { sprint: 1400, demifond: 2000, fond: 3000, ow: 4500, S: 750, M: 1500, "70.3": 1900, Full: 3000 };
 const AVG_SESSION_H                                 = { run: 1.15, bike: 1.3, tri: 1.2 };
 
@@ -12112,6 +12116,8 @@ const IS_QUALITY_ZONE = (zone        )          =>
 /** C30b — les décisions produites par `raiseLongRunToSpecificity`, remontées à l'appelant :
  *  `reconcileDeclaredVolume` ne connaît pas le journal de décisions du plan. */
 const _c30b                                                                       = [];
+/** O-113 (fiche 52) — les semaines où la sortie longue a rendu des minutes aux séances faciles. */
+const _o113                                                                  = [];
 /** O-44 — nombre de semaines de charge dont la MAJORITÉ des nages tombent sous le plancher de
  *  durée. La passe de regroupement n'est PAS branchée (voir `BUGS_OUVERTS.md` « O-44 ») : ce
  *  compteur ne sert qu'à décider si le plan doit NOMMER la tension à l'athlète. */
@@ -12220,6 +12226,7 @@ function reconcileDeclaredVolume(
   // passe tardive, un module futur, une séance construite à la main. Il est ici pour que le
   // prochain producteur de séances n'ait pas besoin de connaître la règle pour la respecter.
   _c30b.length = 0;
+  _o113.length = 0;
   _o44.semainesCourtes = 0; _o44.semainesCharge = 0;
   // _o85/_o93 ne se réinitialisent PAS ici : `repairLoop` rappelle cette fonction sur un plan
   // DÉJÀ écrêté, et le second appel — ne trouvant plus rien — effaçait la trace du premier
@@ -13604,6 +13611,104 @@ function reconcileDeclaredVolume(
     }
   }
 
+  /**
+   * O-113 (fiche 52) — LA SORTIE LONGUE CESSE D'ÊTRE LE RÉCEPTEUR ÉLASTIQUE DE LA SEMAINE.
+   *
+   * R4.1 route la croissance de volume vers les blocs FACILES — à raison : on n'allonge pas une
+   * VO2max pour remplir une semaine. Mais le plus gros bloc facile est la sortie longue, et elle
+   * n'a pour borne que la table de son format : quand les blocs de qualité naissent petits
+   * (enveloppe déclarée basse), toute la croissance atterrit sur elle jusqu'à ce plafond, et
+   * **l'athlète le plus modeste reçoit la PLUS GROSSE longue**. Mesuré sur `bike/cyclo` S2 :
+   * 192 min à `vol_max` 9 contre 175 à 13, pour un volume hebdomadaire IDENTIQUE (456 min des
+   * deux côtés) — c'est O-113, et ce n'est pas un manque de volume, c'est une répartition.
+   *
+   * Ce que la mesure d'entrée a montré, et qui dépasse le ticket : la longue pèse une **médiane
+   * de 42 % de la semaine en vélo** (p90 52 %, max 67 %), 46 % en duathlon, 40 % en trail, et
+   * **69 % des semaines de charge vélo dépassent 35 %**. Le cas extrême du corpus est
+   * `G/run/marathon/vol-min`, un marathonien à 2 h/semaine : longue à **78 % de la semaine** à
+   * côté d'un **footing de 6 minutes**. Aucun gate ne le voyait.
+   *
+   * LA PART EST L'ANCRE QUE LES TABLES PORTENT DÉJÀ SANS LE DIRE. Rapporté au volume utile du
+   * format (`UTIL`), `CAP_LONG` vaut 20,6 % (5 km) · 21,4 % (10 km) · 24,1 % (semi) · 25,0 %
+   * (marathon) · 30,4 % (trail) · 27,8 % (crit) · 23,1 % (route) · 25,0 % (clm) · 26,7 % (cyclo)
+   * · 30,0 % (gravel) — une bande de 20 à 30 % qui monte avec la durée du format. La part
+   * appliquée ici est plus PERMISSIVE que cette bande (la semaine réelle est souvent bien
+   * au-dessous du volume utile du format), et c'est délibéré : on retire le puits, on ne
+   * redessine pas la périodisation.
+   *
+   * ⚠ C'EST UNE REDISTRIBUTION, PAS UNE BORNE — et c'est ce qui la rend délivrable. La borne
+   * équivalente a été écrite dans `blockBounds` et RETIRÉE : elle ne peut pas être neutre en
+   * volume, donc la semaine rétrécissait, et **73 profils perdaient des séances** (jusqu'à
+   * −6,2 %) — la FRÉQUENCE, la monnaie que ce dépôt s'interdit (C29/C29b/C29c), et exactement ce
+   * qui a fait échouer la fiche 51. Ici les minutes retirées à la longue sont RENDUES aux
+   * séances faciles de la même semaine : le total ne bouge pas d'une minute.
+   *
+   * Miroir exact de `raiseLongRunToSpecificity` (C30b), et pour les mêmes raisons elle peut
+   * tourner après le point fixe : neutre en volume, elle ne déplace que du FACILE (R4.1, donc
+   * C26c/C26d hors d'atteinte), et elle ne fait que DESCENDRE la longue — les receveuses sont
+   * bornées par sa nouvelle taille, sans quoi I14 (« la longue est la plus longue de sa
+   * semaine ») se rouvrirait.
+   */
+  function abaisserLongueVersPart()       {
+    for (const wk of plan.weeks) {
+      if (wk.phase.id === "taper") continue; // l'affûtage a ses propres règles (R3.13/Bosquet)
+      const semaine = weekMinOf(wk);
+      if (!(semaine > 0)) continue;
+      const all = wk.days.flatMap((d) => d.sessions).filter((sx) => sx.d !== "rs" && sx.steps && sx.steps.length);
+      const lg = all.find((sx) => sx.long && !sx.race);
+      if (!lg) continue;
+      const corps = (lg.steps || []).filter((st) => st.role === "body" && !EN_PENTE(st) && st.durationMin != null);
+      if (corps.length !== 1) continue; // une longue de route est UN bloc continu ; sinon on ne touche pas
+      const cible = Math.floor(PART_LONGUE_MAX * semaine);
+      // Le plancher est le minimum DÉCLARÉ par le module pour ce format (`durCaps.lo`), jamais
+      // le plancher de dignité : une sortie longue de cyclosportive ne descend pas à 30 min.
+      const plancher = corps[0].bnd ? corps[0].bnd.floor : 0;
+      const trop = Math.min((lg.min || 0) - cible, (corps[0].durationMin || 0) - plancher);
+      if (trop <= 1) continue;
+      // LES RECEVEUSES : séances faciles de la même semaine (R4.1), jamais un bloc de qualité,
+      // jamais un brick, jamais au-dessus de la NOUVELLE taille de la longue (I14).
+      const nouvelle = (lg.min || 0) - trop;
+      const receveuses = all.filter((sx) => sx !== lg && !sx.race && !sx.brick
+        && (sx.steps || []).some((st) => st.role === "body" && !EN_PENTE(st) && st.distanceM == null
+          && st.durationMin != null && !IS_QUALITY_ZONE(String(st.zone || ""))));
+      // La plus COURTE d'abord : c'est elle qui a le plus de marge sous le plafond, et c'est
+      // aussi elle que le déversement a le plus affamée (le footing de 6 min du marathonien).
+      receveuses.sort((x, y) => (x.min || 0) - (y.min || 0));
+      // LA NEUTRALITÉ SE MESURE SUR LA SEMAINE LIVRÉE, PAS SUR CE QU'ON CROIT AVOIR DONNÉ
+      // (règle 15). Ajouter des minutes à un step ne garantit pas que la SEMAINE les porte : le
+      // rendu re-dérive `min` (récup inter-blocs comprise, R5.6a) et l'écart se paie une fois en
+      // retirant à la longue ce qui n'est jamais arrivé. Mesuré sur `bike/gravel` S6 : 38 min
+      // comptées comme rendues, 25 réellement portées, 13 min de volume perdues chaque semaine —
+      // −6 à −7 % sur le plan, pour une passe annoncée NEUTRE.
+      const avantSemaine = weekMinOf(wk);
+      let rendu = 0;
+      for (const sx of receveuses) {
+        if (rendu >= trop) break;
+        for (const st of sx.steps || []) {
+          if (rendu >= trop) break;
+          if (st.role !== "body" || EN_PENTE(st) || st.distanceM != null || st.durationMin == null) continue;
+          if (IS_QUALITY_ZONE(String(st.zone || ""))) continue;
+          // Le plafond du bloc est celui que le module a DÉCLARÉ — même lecture que la moitié
+          // donneuse de C30b, qui lit `st.bnd.floor` : `blockBounds` n'est pas dans cette portée,
+          // et un bloc sans `bnd` déclaré n'a pas de plafond à respecter ici.
+          const cap = st.bnd ? st.bnd.cap : Number.MAX_SAFE_INTEGER;
+          const marge = Math.min(cap - st.durationMin, nouvelle - (sx.min || 0));
+          if (marge <= 0) continue;
+          const ajout = Math.min(marge, trop - rendu);
+          st.durationMin += ajout;
+          rendu += ajout;
+        }
+        if (render) render(sx);
+      }
+      const donne = weekMinOf(wk) - avantSemaine;
+      if (donne <= 1) continue; // personne n'a pu recevoir : on ne rétrécit pas la semaine
+      const avantLg = lg.min || 0;
+      corps[0].durationMin = Math.max(plancher, (corps[0].durationMin || 0) - donne);
+      if (render) render(lg);
+      _o113.push({ wk: wk.num, avant: Math.round(avantLg), apres: Math.round(lg.min || 0), semaine: Math.round(semaine) });
+    }
+  }
+
   function refillEasyAfterLabelCap(cuts                      , ciblesForcees                      )       {
     const _cuts = cuts ?? _labelCut;
     // « DEV ≤ PIC » EST UNE RÈGLE DE PÉRIODISATION, ET ELLE VAUT AUSSI POUR CE QU'ON REND.
@@ -14020,6 +14125,11 @@ function reconcileDeclaredVolume(
   //   · elle ne fait que MONTER la sortie longue, ce qui va dans le sens d'I14 au lieu de le
   //     rouvrir.
   raiseLongRunToSpecificity();
+  // O-113 (fiche 52) — puis la longue rend ce qu'elle a absorbé de trop. APRÈS C30b, qui la
+  // MONTE vers sa cible de spécificité : l'ordre inverse ferait défaire par C30b ce que cette
+  // passe vient de rendre, et la spécificité est une exigence de course, la part une hygiène de
+  // répartition — la première prime.
+  abaisserLongueVersPart();
 
   // O-44 — LE COMPTEUR SE LIT SUR LE PLAN LIVRÉ, en tout dernier : le message ne doit décrire ni
   // un état intermédiaire ni une intention, mais ce que l'athlète va réellement voir (règle 15).
@@ -16693,6 +16803,16 @@ function generatePlan(profile                , opts                             
     swimGate: sportModule(a.sport          ).disciplines.length > 1 ? (r.b17Gate ?? null) : null });
 
   for (const d of _c30b) r.decisions.push(d);
+  // O-113 (fiche 52) — UNE décision pour tout le plan, jamais une par semaine : l'athlète a
+  // besoin de savoir que sa sortie longue a une part maximale, pas de la lire trente fois.
+  if (_o113.length) {
+    const pire = _o113.reduce((a, b) => (b.avant - b.apres > a.avant - a.apres ? b : a));
+    r.decisions.push({
+      id: "O-113", what: "Sortie longue : au plus " + Math.round(PART_LONGUE_MAX * 100) + " % de la semaine",
+      val: _o113.length + " semaine(s) rééquilibrée(s), la plus forte de " + pire.avant + " à " + pire.apres + " min",
+      why: "Une sortie longue qui absorbe tout le volume laisse les autres séances à quelques minutes — elle devient le plan au lieu d'en faire partie. Le volume de la semaine ne change pas : les minutes retirées vont aux séances faciles.",
+    });
+  }
 
   normalizeRestMinutes(plan);
   syncDerivedLabels(plan); // repassé en dernier par la boucle de réparation

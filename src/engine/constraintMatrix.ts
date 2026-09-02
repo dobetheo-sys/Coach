@@ -598,6 +598,10 @@ export const CAP_LONG_DUATHLON: Record<string, number> = rule(
   "T4-du", "la sortie longue d'un duathlon plafonne par la durée de l'épreuve, jamais un puits sans borne",
   { S: 135, M: 200, PM: 265, L: 250 },
 );
+export const PART_LONGUE_MAX = rule(
+  "O-113", "part maximale de la CIBLE hebdomadaire qu'une sortie longue peut prendre — valeur en cours de calibration (fiche 52)",
+  0.40,
+);
 export const CAP_SWIM: Record<string, number> = { sprint: 1400, demifond: 2000, fond: 3000, ow: 4500, S: 750, M: 1500, "70.3": 1900, Full: 3000 };
 export const AVG_SESSION_H: Partial<Record<Sport, number>> = { run: 1.15, bike: 1.3, tri: 1.2 };
 
