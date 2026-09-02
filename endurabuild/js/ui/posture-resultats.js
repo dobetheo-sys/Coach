@@ -86,7 +86,10 @@ function ligneAvert(w) {
 export function ouvrirResultats(o) {
   const E = globalThis.EBV2 && globalThis.EBV2.postureEngine;
   const trials = o.trials || [];
-  const sansPhoto = trials.filter((t) => !aPFSA(t)).length;
+  // Le compte des essais sans photo vient du MOTEUR quand il a tourné (`trials_without_frontal`)
+  // et d'un recompte local seulement avant qu'il ne tourne : deux comptes de la même grandeur
+  // finiraient par diverger, et c'est celui du moteur qui décide du classement.
+  const sansPhotoLocal = trials.filter((t) => !aPFSA(t)).length;
 
   let html = '<div class="po-head">'
     + '<button type="button" class="po-retour" id="prRetour">‹ Position</button>'
@@ -94,11 +97,23 @@ export function ouvrirResultats(o) {
 
   if (!E) {
     html += bloc("Le moteur de calcul n’est pas disponible",
-      "Tes essais sont enregistrés et intacts — c’est l’affichage du résultat qui manque, pas la mesure.");
+      "Tes essais sont enregistrés et intacts — c’est l’affichage du résultat qui manque, pas la "
+      + "mesure" + (sansPhotoLocal ? " (" + sansPhotoLocal + " sans photo de face)" : "") + ".");
     return poser(o, html);
   }
 
   const r = E.runEngine(trials, o.profile, o.poids || POIDS_NEUTRES);
+
+  // AUCUNE SURFACE FRONTALE : le moteur refuse de comparer l'aéro, et il a raison — un zéro
+  // n'est pas une traînée nulle. C'est le cas NORMAL tant que l'écran de photo de face n'existe
+  // pas, donc il est traité pour lui-même et non comme une erreur.
+  if (r.status === "insufficient_aero_trials") {
+    html += bloc("Le confort est mesuré, l’aérodynamisme pas encore", r.message)
+      + '<div class="po-mentions">La surface frontale se mesure sur une photo de face, que l’app '
+      + "ne sait pas encore segmenter ici. <b>Tes essais et leurs angles sont intacts</b> : le "
+      + "jour où cette mesure arrive, ils seront comparés sans que tu aies à les refaire.</div>";
+    return poser(o, html);
+  }
 
   if (r.status !== "ok") {
     // Le moteur DIT pourquoi chaque essai est écarté, avec sa valeur et son seuil. On le
@@ -128,11 +143,13 @@ export function ouvrirResultats(o) {
   const avs = (p.equilibre.warnings || []);
   if (avs.length) html += '<div class="pr-averts">' + avs.map(ligneAvert).join("") + "</div>";
 
+  const sansPhoto = (r.trials_without_frontal || []).length;
   if (sansPhoto) {
     html += '<div class="po-mentions"><b>' + sansPhoto + " essai" + (sansPhoto > 1 ? "s n’ont" : " n’a")
-      + " pas de photo de face</b> : leur score aéro repose sur une surface frontale absente. "
-      + "La mesure de cette surface demande un modèle de segmentation que l’app ne charge pas "
-      + "encore — le score confort, lui, n’en dépend pas.</div>";
+      + " pas de photo de face</b> : "
+      + (sansPhoto > 1 ? "ils sont écartés" : "il est écarté") + " de la comparaison aéro — une "
+      + "surface absente n’est pas une surface nulle — mais "
+      + (sansPhoto > 1 ? "restent valides" : "reste valide") + " au titre du confort.</div>";
   }
 
   html += sec("Comment lire ces scores")

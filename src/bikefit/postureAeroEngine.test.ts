@@ -488,3 +488,64 @@ describe('recalibrateWeights — §7, pas d\'overfit à un retour isolé', () =>
     assert.equal(next.neck, 1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// UN ESSAI SANS SURFACE FRONTALE — correctif d'intégration Zenna.
+//
+// Mesuré AVANT d'écrire la garde : avec `pFSA_cm2 = 0`, la surface normalisée vaut 0, donc
+// `computeAeroScore` la lit comme la plus petite de la cohorte et rend **90** — le meilleur
+// score aéro possible. L'essai qu'on n'a PAS photographié remportait `equilibre` et `aero_max`.
+// Un zéro lu comme une performance : la classe de défaut que ce dépôt appelle « un puits non
+// borné » côté moteur d'entraînement, ici sur une surface.
+//
+// Les deux moitiés de la règle (§3f du handoff) sont assertées séparément, parce qu'un
+// correctif qui n'en tiendrait qu'une serait pire que le défaut : EXCLU du front aéro, et
+// JAMAIS exclu au sens de `validateTrial` — l'athlète a fait la mesure qu'on lui demandait.
+describe('surface frontale absente — écarté du front aéro, jamais des essais valides', () => {
+  const A = (m: number) => ({ mean: m, min: m, max: m, amplitude: 0, variance: 0 });
+  const mk = (id: string, hip: number, pfsa: number): Trial => ({
+    id,
+    deltas: { saddleHeightMm: 750, reachMm: 480, dropMm: 140, hasAeroBars: true },
+    frontal: { pFSA_cm2: pfsa, athleteHeight_cm: 178, headOffset_cm: 0 },
+    angles: { hip: A(hip), trunk: A(9), knee: A(145), ankle: A(90),
+      shoulder: A(90), elbow: A(95), wrist: A(10) },
+  });
+  const P: AthleteProfile = { hipFlexibilityScore: 3, goal: 'aero' };
+  const W: SubjectiveWeights = { neck: 1, lowerBack: 1, hands: 1, knees: 1 };
+
+  test("un essai sans pFSA n'apparaît dans AUCUN des trois profils", () => {
+    const r = runEngine([mk('01', 44, 3400), mk('02', 42, 3200), mk('03', 43, 0)], P, W);
+    assert.equal(r.status, 'ok');
+    const ids = Object.values(r.profiles!).map((p) => p.trial_id);
+    assert.ok(!ids.includes('03'), `03 ne devait pas être retenu, profils = ${ids.join()}`);
+  });
+
+  test("…et il n'est PAS compté comme exclu : il reste valide au titre du confort", () => {
+    const r = runEngine([mk('01', 44, 3400), mk('02', 42, 3200), mk('03', 43, 0)], P, W);
+    assert.equal(r.trials_excluded, 0);
+    assert.deepEqual(r.excluded_trials, []);
+    assert.deepEqual(r.trials_without_frontal, ['03']);
+  });
+
+  test('le score aéro des essais photographiés ne dépend pas de la présence des autres', () => {
+    const deux = runEngine([mk('01', 44, 3400), mk('02', 42, 3200), mk('04', 41, 3100)], P, W);
+    const avecUnSans = runEngine(
+      [mk('01', 44, 3400), mk('02', 42, 3200), mk('04', 41, 3100), mk('03', 43, 0)], P, W);
+    // La cohorte de normalisation ne doit pas voir le zéro : sinon le maximum change et TOUS
+    // les scores aéro bougent parce qu'un essai n'a pas été photographié.
+    assert.equal(avecUnSans.profiles!.equilibre.aero_score, deux.profiles!.equilibre.aero_score);
+  });
+
+  test('aucune surface du tout : refus motivé, pas un classement inventé', () => {
+    const r = runEngine([mk('01', 44, 0), mk('02', 42, 0), mk('03', 43, 0)], P, W);
+    assert.equal(r.status, 'insufficient_aero_trials');
+    assert.equal((r as any).profiles, undefined);
+    assert.match(r.message!, /surface frontale/);
+  });
+
+  test('le seuil est UN et non trois — une photo manquante ne fait pas échouer la session', () => {
+    const r = runEngine([mk('01', 44, 3400), mk('02', 42, 0), mk('03', 43, 0)], P, W);
+    assert.equal(r.status, 'ok');
+    assert.deepEqual(r.trials_without_frontal, ['02', '03']);
+  });
+});

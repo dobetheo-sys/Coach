@@ -378,8 +378,31 @@ const sansPhoto = await page.evaluate(async (arg) => {
 }, { trials: [fixtureEssai("01", 44, 11, 142, 8, 745, 130, 0),
   fixtureEssai("02", 41, 8, 145, 12, 750, 145, 0),
   fixtureEssai("03", 42, 6, 148, 19, 752, 160, 0)] });
-ok(sansPhoto.detecte === 3 && /pas de photo de face/.test(sansPhoto.t),
-  "§9f — sans surface frontale, le manque est ANNONCÉ (3 essais) et non comblé");
+// AUCUNE surface : le moteur REFUSE de classer, et c'est le correctif du lot — un `pFSA` à 0
+// rendait 90, le meilleur score aéro possible, et l'essai jamais photographié remportait la
+// recommandation. L'écran dit le refus au lieu d'afficher un classement fabriqué.
+ok(sansPhoto.detecte === 3 && /l’aérodynamisme pas encore/.test(sansPhoto.t)
+  && !/Le meilleur compromis/.test(sansPhoto.t),
+  "§9f — aucune surface frontale : refus MOTIVÉ, et aucune position recommandée affichée");
+
+// Une SEULE photo manquante ne fait pas échouer la session : l'essai est écarté du front aéro
+// et publié comme tel. Le seuil est UN et non trois — relever la barre inventerait une
+// politique que le handoff n'énonce pas.
+const unSansPhoto = await page.evaluate(async (arg) => {
+  const { ouvrirResultats } = await import("./js/ui/posture-resultats.js");
+  const hote = document.querySelector("#screen");
+  ouvrirResultats({ hote, trials: arg.trials, profile: { hipFlexibilityScore: 3, goal: "aero" },
+    poids: { neck: 1, lowerBack: 1, hands: 1, knees: 1 }, onRetour: () => {} });
+  const t = hote.textContent; hote.innerHTML = "";
+  return { t, retenu03: /essai 03/.test(t) };
+}, { trials: [fixtureEssai("01", 44, 11, 142, 8, 745, 130, 3400),
+  fixtureEssai("02", 41, 8, 145, 12, 750, 145, 3200),
+  fixtureEssai("03", 42, 6, 148, 19, 752, 160, 0)] });
+ok(/Le meilleur compromis/.test(unSansPhoto.t) && /1 essai n’a pas de photo de face/.test(unSansPhoto.t)
+  && /une surface absente n’est pas une surface nulle/.test(unSansPhoto.t),
+  "§9h — une photo manquante : la comparaison a lieu, et l'essai écarté est NOMMÉ");
+ok(!unSansPhoto.retenu03,
+  "§9i — …et l'essai sans photo n'est retenu dans AUCUN profil (il rendait 90 avant le correctif)");
 
 // Moins de trois essais valides : le moteur refuse, et l'écran recopie SA raison — avec la
 // valeur mesurée et le seuil, ce que `formatViolation` fait déjà côté dépôt.

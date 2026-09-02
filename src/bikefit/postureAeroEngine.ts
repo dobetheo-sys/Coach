@@ -522,26 +522,62 @@ export function runEngine(trials: Trial[], profile: AthleteProfile, weights: Sub
     };
   }
 
+  // ---------- UN ESSAI SANS SURFACE FRONTALE N'EST PAS UN ESSAI SANS TRAÎNÉE ----------
+  // Mesuré avant d'écrire cette garde : avec `pFSA_cm2 = 0`, la surface normalisée vaut 0,
+  // donc `computeAeroScore` la lit comme la plus petite de la cohorte et rend **90** — le
+  // MEILLEUR score aéro possible. Sur une session où un seul essai n'a pas été photographié,
+  // c'est lui qui remportait `equilibre` ET `aero_max` : la position recommandée était celle
+  // dont on ne sait rien. Un zéro y était lu comme une performance.
+  //
+  // La règle vient du handoff d'intégration (§3f, « essai rapide ») et elle a deux moitiés,
+  // toutes deux nécessaires : un tel essai reste VALIDE au titre du confort — il n'entre pas
+  // dans `excluded_trials`, l'athlète a bien fait la mesure qu'on lui a demandée — et il est
+  // écarté du FRONT DE PARETO aéro, où sa coordonnée n'existe pas.
+  const aeroScorable = (t: ScoredTrial) =>
+    Number.isFinite(t.frontal?.pFSA_cm2) && t.frontal.pFSA_cm2 > 0
+    && Number.isFinite(t.frontal?.athleteHeight_cm) && t.frontal.athleteHeight_cm > 0;
+  const avecAero = validTrials.filter(aeroScorable);
+  const sansAero = validTrials.filter((t) => !aeroScorable(t));
+
+  // Le seuil ici est UN, pas trois, et c'est délibéré : le « minimum 3 » du contrat porte sur
+  // les essais VALIDES, et le relever aux essais photographiés inventerait une politique que le
+  // handoff n'énonce pas. Il demande qu'un essai sans photo soit écarté du front — pas que la
+  // session entière échoue parce qu'il en manque une. Sans AUCUNE surface, en revanche, il n'y
+  // a pas de front du tout : le refus est alors la seule réponse honnête (P7/P8).
+  if (avecAero.length < 1) {
+    return {
+      status: 'insufficient_aero_trials' as const,
+      trials_valid: validTrials.length,
+      trials_with_aero: 0,
+      trials_without_frontal: sansAero.map((t) => t.id),
+      excluded_trials: excluded,
+      message: `Aucun de tes ${validTrials.length} essais valides ne porte de surface frontale mesurée — l'aérodynamisme ne peut pas être comparé. Ils restent valides pour le confort.`,
+    };
+  }
+
   // Filtre les valeurs non finies avant le max : sans ça, un seul essai avec athleteHeight_cm
   // falsy (0/null, ancienne session persistée) donnerait un NaN qui empoisonnerait Math.max
   // pour TOUTE la cohorte (Math.max renvoie NaN dès qu'un seul argument l'est) — un essai
   // corrompu ferait perdre le score aéro relatif de tous les autres essais, pourtant valides.
-  const pfsaNorms = validTrials.map((t) => t.frontal.pFSA_cm2 / t.frontal.athleteHeight_cm).filter(Number.isFinite);
+  const pfsaNorms = avecAero.map((t) => t.frontal.pFSA_cm2 / t.frontal.athleteHeight_cm).filter(Number.isFinite);
   const cohortMaxPFSANorm = pfsaNorms.length > 0 ? Math.max(...pfsaNorms) : 0;
-  validTrials.forEach((t) => {
+  avecAero.forEach((t) => {
     const aero = computeAeroScoreRange(t, cohortMaxPFSANorm);
     t.aeroScore = aero.score;
     t.aeroScoreLow = aero.low;
     t.aeroScoreHigh = aero.high;
   });
 
-  const front = paretoFront(validTrials);
+  const front = paretoFront(avecAero);
   const profiles = selectProfiles(front);
 
   return {
     status: 'ok' as const,
     trials_valid: validTrials.length,
     trials_excluded: excluded.length,
+    // Les essais sans photo de face sont PUBLIÉS séparément : ils ne sont ni notés en aéro ni
+    // exclus, et un écran qui ne le dirait pas laisserait croire qu'ils ont été comparés.
+    trials_without_frontal: sansAero.map((t) => t.id),
     profiles: profiles && {
       confort_max: toOutputProfile(profiles.confort_max),
       equilibre: toOutputProfile(profiles.equilibre),
