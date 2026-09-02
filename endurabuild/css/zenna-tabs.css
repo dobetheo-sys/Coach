@@ -1095,7 +1095,10 @@ body.theme-zenna #screen .card:has(> details.load-card) > details.load-card::bef
    l'échelle d'un pied de bloc. */
 body.theme-zenna #screen .edu-sources-box.edu-src-inline { margin-top: 14px; }
 body.theme-zenna #screen .edu-sources-box.edu-src-inline > summary {
-  font-family: var(--zn-mono); font-size: 10px; letter-spacing: .1em; color: var(--zn-muted-2);
+  /* R16.8 — 10px n'est pas un palier (--fs-micro 9 / --fs-xs 11) ; l'autre des deux tailles
+     hors palier relevées par le handoff. C'est une étiquette capitale très espacée — le rôle
+     exact que styles.css attribue à --fs-micro. */
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .1em; color: var(--zn-muted-2);
 }
 
 /* ============================================================
@@ -1111,7 +1114,9 @@ body.theme-zenna #screen .pay-dot {
   width: 7px; height: 7px; border-radius: 50%; background: var(--zn-bad); flex: 0 0 auto;
 }
 body.theme-zenna #screen .pay-lab {
-  font-family: var(--zn-mono); font-size: 9.5px; font-weight: 700; letter-spacing: .12em;
+  /* R16.8 — 9,5px n'est pas un palier déclaré (--fs-micro 9 / --fs-xs 11) ; relevé par le
+     handoff de refonte comme une des deux tailles hors palier issues de ce lot. */
+  font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 700; letter-spacing: .12em;
   text-transform: uppercase; color: var(--zn-bad);
 }
 body.theme-zenna #screen .pay-title {
