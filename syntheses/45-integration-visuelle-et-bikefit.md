@@ -298,3 +298,73 @@ brief signale sur l'onglet Semaine.
 textes ; orange posé en dur → §3 rouge (`rgb(255,61,0) → rgb(255,61,0)`, la couleur ne descend
 plus) ; entrée du registre retirée → §1 rouge deux fois.
 
+
+
+---
+
+## §10 — Les 18 écrans du bilan posture, livrés
+
+Six lots après le §9, le parcours existe. Ce qui suit ne redit pas la vérification de la
+palette (§9) : seulement ce que la construction a trouvé.
+
+### Le parcours livré
+
+`2a` entrée · `2b` préparatif · `3a` souplesse · `3f` type d'essai · `2c` pointage ·
+`3h` relecture · `2d` réglages du vélo · `2e` résultats · `3e` provisoire à deux essais ·
+`3c` historique et tendance · `3d` retour post-sortie · `3b` étalonnage · `3g` silhouette
+(mécanisme). La boucle est fermée : on mesure, on pointe, on relit, on enregistre, on compare.
+
+Le moteur porté (`src/bikefit/`) entre dans le bundle en deux temps — la géométrie d'abord
+(l'écran de pointage calcule des angles, pas des coordonnées), le scoring ensuite, **quand il a
+eu son écran** : exposer une fonction que rien n'appelle est une promesse que rien ne tient.
+
+### Trois défauts trouvés en construisant, dont un vivant
+
+**⚠ Un zéro lu comme une performance.** Avec `pFSA_cm2 = 0`, la surface normalisée vaut 0, donc
+`computeAeroScore` la lit comme la plus petite de la cohorte et rend **90** — le meilleur score
+aéro possible. L'essai qu'on n'a PAS photographié remportait `equilibre` et `aero_max` : la
+position recommandée était celle dont on ne sait rien. **Et 2e livrait exactement cet état** :
+faute d'écran de photo de face, tous les essais partent à 0. L'écran annonçait « leur score
+aéro repose sur une surface frontale absente » et affichait le classement bâti dessus. Corrigé
+au moteur (§3f du handoff), 5 tests, les deux moitiés assertées séparément : écarté du front
+aéro, **jamais** exclu au sens de `validateTrial`.
+
+**`object-fit: contain` déformait le pointage.** L'image est mise à l'échelle *dans* son élément
+et **centrée** : sur le cadre réel avec une image 400×200, il reste **155 px de vide** en haut
+et en bas. Diviser par la hauteur de l'*élément* est juste au centre — où les deux repères
+coïncident — et faux partout ailleurs. Invisible au centre, donc un essai à la main le rate.
+
+**Les points en 0..1 déforment les angles.** Un angle est un rapport entre `dx` et `dy` ; les
+diviser par des nombres différents change ce rapport. Mesuré : **116,57° en pixels contre
+104,04° en 0..1** sur une image 400×200.
+
+### Quatre fautes de mes propres gardes, publiées
+
+1. **Un critère satisfait par le défaut qu'il nomme** — ma figure de test était un angle droit
+   **axé**, que la normalisation laisse à 90° dans les deux unités (règle 19).
+2. **Un critère qui ne peut pas atteindre sa cible** — §7b *pose* les points directement, donc
+   il mesure le moteur, jamais la conversion. Sa contre-preuve est sortie **verte**.
+3. **Trois sondes qui mesuraient un écran sans styles** — elles rendaient dans un `<div>`
+   détaché alors que tout le CSS est scopé `body.theme-zenna #screen .pt-*`. Elles annonçaient
+   « bandes de 0 px » là où il y en a 155.
+4. **Une fixture fausse prise pour un défaut moteur** — trois essais rendaient
+   `insufficient_valid_trials` parce que le mien avait une hanche à 39° pour un plancher de 40.
+   C'est le moteur qui avait raison.
+
+### Trois écarts assumés avec la référence, chacun mesuré
+
+| | référence | livré | raison |
+|---|---|---|---|
+| palette | 26 couleurs hors jeton | **zéro littéral** | 23 étaient des quasi-doublons, dont un sous AA |
+| 3a, étapes de placement | 4 dessinées | **5** | sa légende en annonce 5, la source en porte 7 ; la manquante est « pas de contre-jour » |
+| 3g, silhouette | 6 cercles dessinés | **mécanisme sans donnée** | le handoff exige un tracé annoté par un fitter — au jugé, elle produit le décalage qu'elle corrige |
+
+### Ce qui reste, et qui n'est pas du code
+
+- **`3i` — modal ou onglet ?** Le handoff fournit les deux « pour être comparés à taille
+  réelle » et dit « à trancher avec l'équipe ». Non tranché ici : c'est un choix de produit.
+- **La CSP.** La segmentation MediaPipe exige `'wasm-unsafe-eval'` dans `script-src`, que
+  `smoke-securite.mjs:31` interdit. Sans elle, pas de surface frontale, donc pas de score aéro.
+  Tout le reste du bilan fonctionne sans.
+- **Le sélecteur d'image dans une vidéo** — les écrans de pointage demandent une image fixe et
+  le disent.
