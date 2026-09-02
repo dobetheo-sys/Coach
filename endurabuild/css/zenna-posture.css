@@ -547,3 +547,107 @@ body.theme-zenna #screen .pr-mono {
   font-family: var(--zn-mono); font-style: normal; font-size: var(--fs-micro);
   color: var(--zn-faint); letter-spacing: .04em;
 }
+
+/* ============================================================
+   TOUR 3 — 3a · 3f · 3h · 3d
+   ============================================================ */
+/* 3a — le relief porte l'AVERTISSEMENT et non une donnée. Il garde donc la forme de la carte
+   principale (c'est bien l'objet du moment) mais pas son ombre : une ombre de CTA sous une
+   consigne de sécurité inviterait à appuyer. */
+body.theme-zenna #screen .po-hero-secu { box-shadow: none; }
+body.theme-zenna #screen .po-hero-secu .po-hero-titre { margin-top: 8px; }
+body.theme-zenna #screen .pe-etape {
+  display: flex; align-items: flex-start; gap: 12px; min-height: 56px; padding: 13px 0;
+  border-bottom: 1px solid var(--zn-filet);
+}
+body.theme-zenna #screen .po-liste .pe-etape:last-child { border-bottom: 0; }
+body.theme-zenna #screen .pe-num {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-lg);
+  color: var(--zn-faint); font-variant-numeric: tabular-nums; flex: 0 0 auto; width: 24px;
+}
+body.theme-zenna #screen .pe-dernier { display: flex; align-items: baseline; gap: 10px; padding: 13px 0; }
+body.theme-zenna #screen .pe-dernier b {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: 28px;
+  color: var(--zn-text); line-height: 1;
+}
+body.theme-zenna #screen .pe-dernier span {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint2);
+}
+
+/* 3f — deux cartes, une seule en relief. La sélectionnée porte la bordure d'accent ET
+   `aria-pressed` : la couleur seule ne dit rien à qui ne la distingue pas. */
+body.theme-zenna #screen .pe-choix { display: flex; flex-direction: column; gap: 10px; padding: 0 14px; }
+body.theme-zenna #screen .pe-type {
+  display: block; width: 100%; text-align: left; cursor: pointer; font: inherit; color: inherit;
+  background: var(--zn-surface); border: 1px solid var(--zn-border); border-radius: 16px;
+  padding: 15px 16px 14px; min-height: 44px;
+}
+body.theme-zenna #screen .pe-type.actif { border-color: var(--zn-orange); background: var(--zn-bg-race); }
+body.theme-zenna #screen .pe-type-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+body.theme-zenna #screen .pe-type-top b {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-xl);
+  text-transform: uppercase; letter-spacing: -.01em; color: var(--zn-text);
+}
+body.theme-zenna #screen .pe-type-top i {
+  font-family: var(--zn-mono); font-style: normal; font-size: var(--fs-micro); color: var(--zn-faint2);
+}
+body.theme-zenna #screen .pe-type-quoi {
+  display: block; font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .1em;
+  text-transform: uppercase; color: var(--zn-good); margin-top: 6px;
+}
+body.theme-zenna #screen .pe-type.actif .pe-type-quoi { color: var(--zn-orange); }
+body.theme-zenna #screen .pe-type-txt {
+  display: block; font-size: var(--fs-xs); line-height: 1.5; color: var(--zn-muted); margin-top: 8px;
+}
+body.theme-zenna #screen .pe-pilules { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+body.theme-zenna #screen .pe-pilules em {
+  font-style: normal; font-family: var(--zn-mono); font-size: var(--fs-micro);
+  letter-spacing: .04em; color: var(--zn-faint2);
+  border: 1px solid var(--zn-border); border-radius: 100px; padding: 4px 9px;
+}
+
+/* 3h — la valeur est colorée par sa ZONE, et le mot l'accompagne toujours (« informatif, pas
+   noté ») : une couleur seule ferait lire « rouge = mauvais » là où il n'y a pas de note. */
+body.theme-zenna #screen .pe-angle {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-xl);
+  flex: 0 0 auto;
+}
+body.theme-zenna #screen .pe-angle.dans { color: var(--zn-good); }
+body.theme-zenna #screen .pe-angle.hors { color: var(--zn-bad); }
+body.theme-zenna #screen .pe-angle.info { color: var(--zn-muted); }
+body.theme-zenna #screen .pe-deux { display: flex; gap: 10px; padding: 18px 18px 0; }
+body.theme-zenna #screen .pe-secondaire {
+  flex: 0 0 auto; padding: 0 18px; min-height: 52px; border-radius: 14px; cursor: pointer;
+  background: none; border: 1px solid var(--zn-border); color: var(--zn-muted);
+  font-family: var(--zn-mono); font-size: var(--fs-xs); font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase;
+}
+body.theme-zenna #screen .pe-deux .po-cta { flex: 1; }
+
+/* 3d — cinq segments par zone. Chacun est un bouton de 44 px de haut : l'échelle se touche au
+   doigt, elle n'est pas un curseur qu'on vise. */
+body.theme-zenna #screen .pe-zone { padding: 14px 0; border-bottom: 1px solid var(--zn-filet); }
+body.theme-zenna #screen .po-liste .pe-zone:last-child { border-bottom: 0; }
+body.theme-zenna #screen .pe-zone-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+body.theme-zenna #screen .pe-etat {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .05em;
+}
+body.theme-zenna #screen .pe-etat.ok { color: var(--zn-good); }
+body.theme-zenna #screen .pe-etat.moyen { color: var(--zn-gold); }
+body.theme-zenna #screen .pe-etat.dur { color: var(--zn-bad); }
+body.theme-zenna #screen .pe-etat.att { color: var(--zn-faint); }
+body.theme-zenna #screen .pe-segs { display: flex; gap: 6px; margin-top: 10px; }
+body.theme-zenna #screen .pe-seg {
+  flex: 1; min-height: 44px; border-radius: 10px; cursor: pointer;
+  background: var(--zn-surface); border: 1px solid var(--zn-border);
+}
+body.theme-zenna #screen .pe-seg.on { border-color: transparent; }
+body.theme-zenna #screen .pe-seg.on.n1,
+body.theme-zenna #screen .pe-seg.on.n2 { background: var(--zn-good); }
+body.theme-zenna #screen .pe-seg.on.n3 { background: var(--zn-gold); }
+body.theme-zenna #screen .pe-seg.on.n4,
+body.theme-zenna #screen .pe-seg.on.n5 { background: var(--zn-bad); }
+body.theme-zenna #screen .pe-echelle {
+  display: flex; justify-content: space-between; padding: 10px 18px 0;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint);
+}

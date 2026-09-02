@@ -416,6 +416,60 @@ const pauvre = await page.evaluate(async (arg) => {
 ok(/minimum 3 requis/.test(pauvre),
   "§9g — moins de trois essais : le message du MOTEUR est recopié, pas résumé");
 
+// ── §10 — TOUR 3. Les écrans sont rendus ISOLÉMENT : leur HTML vient d'un module pur et le
+// branchement vit dans l'onglet, ce qui permet de les mesurer sans traverser tout le parcours.
+const t3 = await page.evaluate(async () => {
+  const M = await import("./js/ui/posture-etapes.js");
+  const hote = document.querySelector("#screen");
+  const lire = (html) => { hote.innerHTML = html; return { t: hote.textContent, h: hote.innerHTML }; };
+  const souplesse = lire(M.souplesseHTML({ aslrAngle: 74, aslrTestedAt: "2026-07-04" }));
+  const souplesseVierge = lire(M.souplesseHTML(null));
+  const type = lire(M.typeEssaiHTML(3, { trials: [
+    { frontal: { pFSA_cm2: 3400 } }, { frontal: { pFSA_cm2: 0 } }] }));
+  const A = (m) => ({ mean: m });
+  const rel = lire(M.relectureHTML({ hip: A(44), trunk: A(9), shoulder: A(90), elbow: A(95), wrist: A(19) }));
+  const relCls = [...hote.querySelectorAll(".pe-angle")].map((e) => e.className.replace("pe-angle ", ""));
+  const fb = lire(M.feedbackHTML({ neck: 3, lowerBack: 1 }, "Sur le réglage selle 750 / drop 145."));
+  const fbSegs = hote.querySelectorAll(".pe-seg").length;
+  const fbOn = hote.querySelectorAll(".pe-seg.on").length;
+  hote.innerHTML = "";
+  return { souplesse, souplesseVierge, type, rel, relCls, fb, fbSegs, fbOn,
+    nPlacement: M.PLACEMENT.length, nZones: M.ZONES.length };
+});
+// 3a — le RELIEF porte l'avertissement, pas une donnée : c'est le seul écran où l'on peut se
+// faire mal, et la hiérarchie de surface doit le dire.
+ok(/Arrête si ça tire/.test(t3.souplesse.t) && /po-hero-secu/.test(t3.souplesse.h),
+  "§10a — 3a : la carte en relief porte la consigne de SÉCURITÉ");
+ok(t3.nPlacement === 5,
+  "§10b — 3a : cinq étapes de placement (" + t3.nPlacement + ") — la référence en dessine quatre, "
+  + "sa propre légende en annonce cinq, et la source en porte sept ; celle qui manquait au dessin "
+  + "est « même pièce, pas de contre-jour », sans quoi la vidéo n'est pas pointable");
+ok(/74°/.test(t3.souplesse.t) && !/74°/.test(t3.souplesseVierge.t)
+  && /Faire le test/.test(t3.souplesseVierge.t),
+  "§10c — 3a : le dernier test s'affiche s'il existe, et l'écran vierge ne l'invente pas");
+
+// 3f — la phrase sur les essais précédents se DÉRIVE des essais, jamais d'un gabarit.
+ok(/1 de tes 2 essais est complet/.test(t3.type.t),
+  "§10d — 3f : le récapitulatif des essais précédents est dérivé (1 complet sur 2)");
+ok(/score aéro absent/.test(t3.type.t) && /5 m de recul/.test(t3.type.t),
+  "§10e — 3f : ce qu'on perd avec l'essai rapide est DIT, pas caché");
+
+// 3h — la valeur est colorée par sa zone, et l'informatif n'est jamais coloré comme une faute.
+ok(t3.relCls.join() === "dans,dans,info,info,hors",
+  "§10f — 3h : hanche/tronc dans la zone, épaule/coude INFORMATIFS, poignet à 19° hors zone ("
+  + t3.relCls.join(" · ") + ")");
+ok(/fléchissement sagittal/.test(t3.rel.t) && !/déviation ulnaire/.test(t3.rel.t),
+  "§10g — 3h : « fléchissement sagittal », JAMAIS « déviation ulnaire » (non mesurable de profil)");
+
+// 3d — quatre zones × cinq segments, le compte des réponses dérivé, et la règle de
+// non-rétroactivité écrite noir sur blanc.
+ok(t3.nZones === 4 && t3.fbSegs === 20 && t3.fbOn === 2,
+  "§10h — 3d : 4 zones × 5 segments (" + t3.fbSegs + "), 2 déjà répondues (" + t3.fbOn + ")");
+ok(/2 zones sur 4 renseignées/.test(t3.fb.t),
+  "§10i — 3d : le compte des réponses est dérivé de l'état");
+ok(/deux sorties de suite/.test(t3.fb.t) && /jamais rétroactif/.test(t3.fb.t),
+  "§10j — 3d : la règle de recalibration est DITE, et sa non-rétroactivité aussi");
+
 ok(errs.length === 0, "aucune erreur JS (" + errs.length + (errs.length ? " : " + errs[0] : "") + ")");
 
 await browser.close();

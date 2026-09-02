@@ -26,6 +26,7 @@ import { S, $, esc, fmtDay, ebSave, todayISO } from "../state.js";
 import { ouvrirPointage } from "./posture-pointage.js";
 import { ouvrirReglages } from "./posture-velo.js";
 import { ouvrirResultats, POIDS_NEUTRES } from "./posture-resultats.js";
+import { souplesseHTML, typeEssaiHTML, relectureHTML, feedbackHTML, ZONES } from "./posture-etapes.js";
 import { ETAPES } from "./posture-repere.js";
 
 /** Le nombre d'essais qui rend un bilan comparable. Il vient du moteur porté
@@ -156,6 +157,10 @@ export function renderTabPosture() {
   // revenir sur l'outil doit ramener à son accueil, pas rouvrir l'écran qu'on avait quitté.
   if (S.postureVue === "preparatif") return renderPreparatif();
   if (S.postureVue === "resultats") return renderResultats();
+  if (S.postureVue === "souplesse") return renderEcran(souplesseHTML(postureState().session), brancherSouplesse);
+  if (S.postureVue === "type") return renderEcran(typeEssaiHTML(numeroProchainEssai(), postureState().session), brancherType);
+  if (S.postureVue === "relecture") return renderEcran(relectureHTML(_enCours && _enCours.aperçu), brancherRelecture);
+  if (S.postureVue === "feedback") return renderEcran(feedbackHTML(_feedback, contexteSortie()), brancherFeedback);
   const st = postureState();
   const phase = phaseDe(st);
   const s = st.session || {};
@@ -197,7 +202,7 @@ export function renderTabPosture() {
     if (phase === "termine") { S.postureVue = "resultats"; return renderTabPosture(); }
     // Un bilan déjà entamé n'a plus rien à préparer : on repart sur l'essai suivant. Refaire
     // passer par le préparatif à chaque reprise serait redemander ce qu'on sait déjà.
-    if (phase === "encours") return lancerEssai();
+    if (phase === "encours") { S.postureVue = "type"; return renderTabPosture(); }
     S.postureVue = "preparatif";
     renderTabPosture();
   };
@@ -278,7 +283,7 @@ function renderPreparatif() {
     };
   });
   $("poRetour").onclick = () => { S.postureVue = "accueil"; renderTabPosture(); };
-  $("poCta2").onclick = () => demanderImage("aslr", st);
+  $("poCta2").onclick = () => { S.postureVue = "souplesse"; renderTabPosture(); };
 }
 
 /* ============================================================
@@ -367,7 +372,13 @@ function suitePointage(etape, r, st) {
   if (etape === "aslr") return; // traité ailleurs — le test de souplesse n'est pas un essai
   if (etape === "pmh") { _enCours.pmh = r.angles; return demanderImage("pmb", st); }
   _enCours.pmb = r.angles;
-  return etapeReglages(st);
+  // 3h — LA RELECTURE S'INTERCALE ICI, entre le dernier point et la validation. Sans elle, une
+  // erreur de pointage ne se voit qu'au score, où elle n'est plus attribuable.
+  const A = globalThis.EBV2 && globalThis.EBV2.postureAngles;
+  _enCours.aperçu = A && _enCours.pmh && _enCours.pmb
+    ? A.buildManualTrialAngles(_enCours.pmh, _enCours.pmb) : null;
+  S.postureVue = "relecture";
+  return renderTabPosture();
 }
 
 function etapeReglages(st) {
@@ -430,4 +441,105 @@ function scoreSouplesse(angle) {
   const E = globalThis.EBV2 && globalThis.EBV2.postureEngine;
   if (E && Number.isFinite(angle)) return E.aslrToFlexScore(angle);
   return 3;
+}
+
+
+/* ============================================================
+   ROUTAGE DES ÉCRANS DU TOUR 3
+   ============================================================
+   Un seul point de rendu : le HTML vient du module d'écrans, le branchement vit ici. Séparer
+   les deux garde les écrans TESTABLES sans navigateur ni état global — c'est ce qui permet à la
+   garde de les rendre isolément. */
+function renderEcran(html, brancher) {
+  $("screen").innerHTML = html;
+  const r = $("poRetour");
+  if (r) r.onclick = () => { S.postureVue = "accueil"; renderTabPosture(); };
+  if (brancher) brancher();
+}
+
+function numeroProchainEssai() {
+  const st = postureState();
+  return (st.session && st.session.trials ? st.session.trials.length : 0) + 1;
+}
+
+function brancherSouplesse() {
+  const b = $("poSouplesse");
+  if (b) b.onclick = () => demanderImage("aslr", postureState());
+}
+
+let _typeEssai = "complet";
+function brancherType() {
+  $("screen").querySelectorAll("[data-type]").forEach((b) => {
+    b.onclick = () => {
+      _typeEssai = b.dataset.type;
+      // Le CTA suit le choix : un bouton qui dit « complet » après qu'on a touché « rapide »
+      // est un bouton dont on ne sait plus ce qu'il lance.
+      $("poLancer").textContent = _typeEssai === "rapide" ? "Lancer l’essai rapide" : "Lancer l’essai complet";
+      $("screen").querySelectorAll("[data-type]").forEach((x) => {
+        const on = x.dataset.type === _typeEssai;
+        x.classList.toggle("actif", on);
+        x.setAttribute("aria-pressed", String(on));
+      });
+    };
+  });
+  const l = $("poLancer");
+  if (l) l.onclick = () => lancerEssai();
+}
+
+function brancherRelecture() {
+  const refaire = () => { S.postureVue = "accueil"; _enCours = null; renderTabPosture(); };
+  const a = $("poRelRefaire"), b = $("poRelRefaire2");
+  if (a) a.onclick = refaire;
+  if (b) b.onclick = refaire;
+  const ok = $("poRelOk");
+  if (ok) ok.onclick = () => etapeReglages(postureState());
+}
+
+/* ============================================================
+   3d — LE RETOUR POST-SORTIE
+   ============================================================
+   Il ne modifie AUCUN score déjà affiché : `recalibrateWeights` produit des pondérations pour
+   les bilans SUIVANTS. C'est écrit à l'écran, et c'est la moitié qui rend la boucle honnête —
+   un score qui changerait après coup serait un score auquel on ne peut pas se fier. */
+let _feedback = {};
+
+function contexteSortie() {
+  const st = postureState();
+  const d = st.session && st.session.dernierDeltas;
+  return d && d.saddleHeightMm
+    ? "Sur le réglage selle " + d.saddleHeightMm + " / drop " + d.dropMm
+      + ". Réponds à chaud, c’est plus juste que demain matin."
+    : "Réponds à chaud, c’est plus juste que demain matin.";
+}
+
+function brancherFeedback() {
+  $("screen").querySelectorAll("[data-zone]").forEach((b) => {
+    b.onclick = () => {
+      const z = b.dataset.zone, n = +b.dataset.niv;
+      // Retoucher le même niveau l'EFFACE : sans ça, une zone touchée par erreur ne peut plus
+      // être remise à « pas de réponse », et un 1 par inadvertance vaut un signal.
+      _feedback[z] = _feedback[z] === n ? undefined : n;
+      renderTabPosture();
+    };
+  });
+  const env = $("poFbEnvoyer");
+  if (env) env.onclick = () => {
+    const p = S.answers.posture || (S.answers.posture = { session: null, history: [] });
+    p.feedbackLog = p.feedbackLog || [];
+    const entrees = ZONES.filter(([k]) => Number.isFinite(_feedback[k]))
+      .map(([k]) => ({ zone: k, painScore: _feedback[k] }));
+    // L'envoi PARTIEL est permis (le handoff le demande) : trois zones sur quatre valent mieux
+    // que rien, et exiger les quatre ferait abandonner le formulaire.
+    p.feedbackLog.push({ date: todayISO(), entrees });
+    const E = globalThis.EBV2 && globalThis.EBV2.postureEngine;
+    if (E && E.recalibrateWeights) {
+      try {
+        p.weights = E.recalibrateWeights(p.weights || POIDS_NEUTRES, p.feedbackLog.flatMap((f) => f.entrees));
+      } catch (e) { /* une recalibration qui échoue ne doit pas perdre le retour de l'athlète */ }
+    }
+    ebSave();
+    _feedback = {};
+    S.postureVue = "accueil";
+    renderTabPosture();
+  };
 }
