@@ -427,22 +427,38 @@ T("T-14", "rouge", "toute séance >60 min porte une cible glucidique horaire", (
 // DISTINCT DE T-01 : T-01 compare deux fonctions entre elles et resterait vert si `sw.aero`
 // était mal classé PARTOUT de la même façon. T-15 teste la cohérence INTERNE d'une seule.
 //
-// LA PRÉMISSE DE LA PREMIÈRE ÉCRITURE ÉTAIT UNE FAUTE D'UNITÉ, MESURÉE LE 14/08/2026 —
-// ARBITRAGE « ALIGNER » ROUVERT AUPRÈS DU FONDATEUR SUR CES CHIFFRES. Elle comparait des
-// ratios de VITESSE (natation : 1/1,06 = 94,3 % de la vitesse CSS) à des ratios de PUISSANCE
-// (bk.ss : 88-94 % FTP). Dans l'eau, la traînée fait puissance ∝ v³ : sw.aero vaut
-// (1/1,06)³ = **84 % de l'effort seuil** — SOUS le plancher de la ligne tempo (88 %) et sous
-// le propre plafond de rn.easy (86 %, classée easy). Le classement actuel (`easy`) RESPECTE
-// donc l'ordre des efforts ; « aligner » sw.aero sur `mod` aurait encodé la confusion
-// vitesse/puissance, et son coût était mesuré : 411 semaines du golden passaient au-dessus
-// de la borne C26d des 40 % de modéré (0 aujourd'hui) — des plans entiers déclassés pour un
-// changement d'étiquette. L'arbitrage C26d demandé « dans le même ticket » est donc SANS
-// OBJET sous la lentille corrigée. La ligne tempo n'a PAS d'homologue natation : les zones
-// de nage sautent de 84 % (aero) à 100 % (css).
+// FICHE 55 (O-83) — L'ARBITRAGE EST TRANCHÉ DANS L'AUTRE SENS, ET LE COMMENTAIRE CI-DESSOUS
+// EST L'ANCIENNE CONCLUSION, GARDÉE POUR SA MESURE (elle reste correcte), PAS SA DÉCISION.
 //
-// L'invariant qui reste — et qui garde — : les classes RESPECTENT L'ORDRE DES EFFORTS entre
-// disciplines. Aucune zone classée plus bas ne demande plus d'effort qu'une zone classée
-// plus haut. C'est lui que le test asserte, fractions publiées.
+// Faute d'unité mesurée le 14/08/2026 : comparer un ratio de VITESSE (natation) à un ratio de
+// PUISSANCE (vélo) est incorrect — dans l'eau, la traînée fait puissance ∝ v³, donc sw.aero
+// vaut (1/1,06)³ = **83,96 % de l'effort seuil**. Le 14/08, cette mesure avait servi à GARDER
+// sw.aero en « easy » (83,96 % < 86,21 %, le plafond de `rn.easy`) : « aligner » sur `mod`
+// coûtait 411 semaines du golden au-dessus de C26d (40 %), pour un changement d'étiquette.
+//
+// Fiche 54 (diagnostic O-83) a mesuré plus large : 83,96 % de l'effort au SEUIL n'est pas un
+// « facile » au sens où l'entend le manifeste (~80/20) — c'est un tempo/sweetspot pour toute
+// discipline qui n'est pas la nage (`bk.ss` 88-94 %, `rn.mara` 88-93 %, dans la même famille).
+// Le classer « facile » comptait comme repos une séance qui ne l'est pas. Fiche 55 (O-83)
+// tranche : `sw.aero` classe désormais MODÉRÉ, avec sa propre borne C26d par discipline
+// (`C26D_MOD_SHARE_MAX_PAR_DISCIPLINE`, `constraintMatrix.ts`) plutôt que le plafond pooled à
+// 40 % qui aurait, comme mesuré le 14/08, coupé du volume d'endurance légitime.
+//
+// CONSÉQUENCE MESURÉE ET ASSUMÉE : `rn.easy` (facile, plafond 86,21 %) dépasse désormais
+// `sw.aero` (modéré, valeur fixe 83,96 %) de **2,25 points** — l'ordre des classes n'est plus
+// strictement respecté À CETTE FRONTIÈRE PRÉCISE. Ce n'est pas la confusion vitesse/puissance
+// que le 14/08 refusait (l'écart le PLUS large du tableau, VO2max, reste à des dizaines de
+// points d'écart) : c'est un chevauchement de 2,25 points entre le bord le plus rapide d'une
+// bande course (calculée en vitesse, linéaire) et une valeur fixe de nage (calculée en
+// puissance, cubique) — deux modèles distincts qui ne s'alignent jamais au point près, l'exacte
+// tolérance de 2 points que ce test portait déjà pour « les bandes publiées sont des arrondis
+// de table ». La tolérance passe à 3 points pour l'absorber explicitement ; RE-VÉRIFIÉ qu'elle
+// ne masque rien d'autre : `sw.aero` restait le SEUL écart trouvé (aucune paire à 2,0-3,0 pts
+// non listée ci-dessus).
+//
+// L'invariant qui reste — et qui garde — : au-delà de ce chevauchement mesuré et documenté,
+// aucune zone classée plus bas ne demande plus d'effort qu'une zone classée plus haut, à plus
+// de 3 points près. C'est lui que le test asserte, fractions publiées.
 const DOMAINES = [
   ["facile / Z2", ["rn.easy", "bk.z2", "sw.easy"]],
   ["tempo / sweetspot", ["rn.mara", "bk.ss", "sw.aero"]],
@@ -465,7 +481,7 @@ T("T-15", "vert", "les classes d'intensité respectent l'ordre des EFFORTS entre
     // une zone de classe STRICTEMENT inférieure ne peut pas demander plus d'effort que le
     // BAS de la fourchette d'une zone de classe supérieure (tolérance 2 pts : les bandes
     // publiées sont des arrondis de table)
-    if (RANG[a.cls] < RANG[b.cls] && a.eff[1] > b.eff[0] + 0.02)
+    if (RANG[a.cls] < RANG[b.cls] && a.eff[1] > b.eff[0] + 0.03) // fiche 55 — sw.aero/rn.easy, voir ci-dessus
       ecarts.push(`${a.z} (${a.cls}, ${Math.round(a.eff[1] * 100)} %) dépasse ${b.z} (${b.cls}, plancher ${Math.round(b.eff[0] * 100)} %)`);
   const table = DOMAINES.map(([nom, zs]) => nom + " : " + zs.map((z) => { const e = effort(z); return e ? `${z} ${Math.round(e[0] * 100)}-${Math.round(e[1] * 100)} %` : z; }).join(" · ")).join(" — ");
   return { ok: !ecarts.length, detail: (ecarts.length ? ecarts.slice(0, 4).join(" · ") + " — " : "") + table };

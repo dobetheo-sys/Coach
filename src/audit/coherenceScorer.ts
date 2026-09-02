@@ -12,7 +12,7 @@
  */
 import type { V1Plan, V1Week } from "../harness/v1Harness.ts";
 import { sessionLoad, intensitySplit, DEFAULT_REFS, type AthleteRefs, type SessionLoad } from "../engine/loadModel.ts";
-import { C22_AUDIT_HARD_JUMP, BRICK_BIKE_BOUNDS, BRICK_TAPER_BIKE_BOUNDS, easyShareFloor, hardTimeCapMin, weightedHardMin, C26c_HARD_TIME_TOLERANCE, C26d_MOD_SHARE_MAX } from "../engine/constraintMatrix.ts";
+import { C22_AUDIT_HARD_JUMP, BRICK_BIKE_BOUNDS, BRICK_TAPER_BIKE_BOUNDS, easyShareFloor, hardTimeCapMin, weightedHardMin, C26c_HARD_TIME_TOLERANCE, C26d_MOD_SHARE_MAX, C26D_MOD_SHARE_MAX_PAR_DISCIPLINE } from "../engine/constraintMatrix.ts";
 
 // Les bornes brick vélo (audit 2, « jamais dépassées, même de peu ») vivent désormais dans la
 // matrice de contraintes : l'auditeur et le générateur lisent LE MÊME tableau. La copie locale
@@ -394,18 +394,23 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
   // C26c/C26d (R20.4) — les deux grandeurs se mesurent aussi PAR SEMAINE : un plafond de temps
   // dur hebdomadaire ne se vérifie pas sur une moyenne de plan. Deux semaines à 20 et 100 min
   // ont la même moyenne qu'un plan sage à 60, et ce n'est pas le même plan.
-  const perWeekHard: { num: number; hard: number; hardPond: number; mod: number; tot: number }[] = [];
+  const perWeekHard: { num: number; hard: number; hardPond: number; mod: number; tot: number; modByDisc: Record<string, number>; totByDisc: Record<string, number> }[] = [];
   for (const w of plan.weeks) {
     if (w.isRecup || w.phase.id === "taper") continue;
     let wh = 0, whp = 0, wm = 0, we = 0;
+    const wModByDisc: Record<string, number> = {}, wTotByDisc: Record<string, number> = {};
     for (const d of w.days)
       for (const s of d.sessions) {
         const sp = intensitySplit(s, refs);
         we += sp.easyMin; wm += sp.modMin; wh += sp.hardMin;
         whp += weightedHardMin(sp.hardByDisc); // B-02 : la ventilation vient du classificateur
+        // Fiche 55 (C26d par discipline) — même geste que B-02, pour le modéré : ventilé ICI,
+        // au même endroit que hardByDisc, pour qu'aucun consommateur ne refasse le parcours.
+        for (const [d2, m] of Object.entries(sp.modByDisc)) wModByDisc[d2] = (wModByDisc[d2] ?? 0) + m;
+        for (const [d2, m] of Object.entries(sp.totByDisc)) wTotByDisc[d2] = (wTotByDisc[d2] ?? 0) + m;
       }
     easyTot += we; modTot += wm; hardTot += wh;
-    perWeekHard.push({ num: w.num, hard: wh, hardPond: whp, mod: wm, tot: we + wm + wh });
+    perWeekHard.push({ num: w.num, hard: wh, hardPond: whp, mod: wm, tot: we + wm + wh, modByDisc: wModByDisc, totByDisc: wTotByDisc });
   }
   const easyShare = easyTot + modTot + hardTot > 0 ? easyTot / (easyTot + modTot + hardTot) : 1;
   // C26 — le plancher suit le VOLUME : 80/20 est la conséquence d'un plafond de temps dur
@@ -453,11 +458,29 @@ export function auditPlan(plan: V1Plan, opts: AuditOpts = {}): PlanAudit {
     hard.push("C26c : " + overHard.length + " semaine(s) au-dessus du plafond de temps DUR ("
       + capHard + " min/sem pour ce profil) — pire : S" + pire.num + " à " + Math.round(pire.hardPond) + " min pondérées");
   }
-  const overMod = perWeekHard.filter((w) => w.tot > 0 && w.mod / w.tot > C26d_MOD_SHARE_MAX);
+  // Fiche 55 — le pooled reste JUGÉ sur ce qu'il jugeait déjà : la part modérée qu'y ajoute le
+  // reclassement `sw.aero` (V-08/B-02a) en est retirée AVANT la comparaison, donc vélo/course
+  // voient EXACTEMENT le même ratio qu'avant ce ticket (`modByDisc.sw` valait 0 pour toute
+  // séance non-nage, et pour la nage avant reclassement — la soustraction est une identité sur
+  // tout plan antérieur à ce lot, pas une nouvelle tolérance).
+  const modSwOf = (w: (typeof perWeekHard)[number]) => w.modByDisc.sw ?? 0;
+  const overMod = perWeekHard.filter((w) => w.tot > 0 && (w.mod - modSwOf(w)) / w.tot > C26d_MOD_SHARE_MAX);
   if (overMod.length) {
-    const pire = overMod.reduce((x, y) => (y.mod / y.tot > x.mod / x.tot ? y : x));
+    const pire = overMod.reduce((x, y) => ((y.mod - modSwOf(y)) / y.tot > (x.mod - modSwOf(x)) / x.tot ? y : x));
     hard.push("C26d : " + overMod.length + " semaine(s) à plus de " + Math.round(C26d_MOD_SHARE_MAX * 100)
-      + "% de temps MODÉRÉ (zone grise) — pire : S" + pire.num + " à " + Math.round((pire.mod / pire.tot) * 100) + "%");
+      + "% de temps MODÉRÉ (zone grise, hors nage — voir C26d-disc) — pire : S" + pire.num + " à " + Math.round(((pire.mod - modSwOf(pire)) / pire.tot) * 100) + "%");
+  }
+  // C26d PAR DISCIPLINE (fiche 55) — la nage juge SA PROPRE part modérée sur SON PROPRE volume,
+  // jamais sur le total de semaine multisport (règle 14 : deux disciplines ne se comparent pas
+  // sans conversion commune). `C26D_MOD_SHARE_MAX_PAR_DISCIPLINE.sw` documente une absence de
+  // plafond MESURÉE (voir sa justification) : la structure ci-dessous reste réelle et vérifiée
+  // pour qu'une frontière nage future n'ait qu'un chiffre à changer.
+  const swMax = C26D_MOD_SHARE_MAX_PAR_DISCIPLINE.sw ?? C26d_MOD_SHARE_MAX;
+  const overModSw = perWeekHard.filter((w) => (w.totByDisc.sw ?? 0) > 0 && modSwOf(w) / (w.totByDisc.sw ?? 1) > swMax);
+  if (overModSw.length) {
+    const pire = overModSw.reduce((x, y) => (modSwOf(y) / (y.totByDisc.sw ?? 1) > modSwOf(x) / (x.totByDisc.sw ?? 1) ? y : x));
+    hard.push("C26d-disc(sw) : " + overModSw.length + " semaine(s) à plus de " + Math.round(swMax * 100)
+      + "% de temps MODÉRÉ en natation — pire : S" + pire.num + " à " + Math.round((modSwOf(pire) / (pire.totByDisc.sw ?? 1)) * 100) + "%");
   }
 
   // ---- Cohérence : une nage FACILE/RÉCUP ne dépasse jamais la « longue » de sa semaine

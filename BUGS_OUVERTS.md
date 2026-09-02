@@ -10661,7 +10661,7 @@ cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {pro
 
 ---
 
-## O-83 · 92 plans de NAGE débutant livrent 2 à 5 séances de 15 min pour 10 h déclarées · 🔴 **OUVERT — priorité propre, hors file**
+## O-83 · 92 plans de NAGE débutant livrent 2 à 5 séances de 15 min pour 10 h déclarées · ✅ **FERMÉ (fiche 55, informer + progression positionnelle bornée)**
 
 *« Le constat le plus dur de ton rapport n'est pas dans le lot : c'est un profil réel qui reçoit
 un plan qui n'en est pas un, maintenant, et personne ne l'avait vu. »* (fondateur, §5.)
@@ -10699,6 +10699,109 @@ quoi: combien de profils livrent une séance moyenne < 25 min ou une semaine < 6
 attendu: /9[0-9] \/ 985/
 cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');let n=0,t=0;for(const{sport,a}of profiles()){let p;try{p=globalThis.EBV2.buildPlan(sport,a)}catch{continue}t++;const ch=p.weeks.filter(w=>!w.isRecup&&w.phase.id!=='taper');if(!ch.length)continue;const min=ch.reduce((x,w)=>x+w.days.reduce((u,d)=>u+d.sessions.reduce((v,s)=>v+(s.min||0),0),0),0)/ch.length;const ses=ch.reduce((x,w)=>x+w.days.reduce((u,d)=>u+d.sessions.filter(s=>s.d!=='rs').length,0),0)/ch.length;if(min/Math.max(1,ses)<25||min<60)n++;}console.log(n+' / '+t);"
 ```
+
+## O-83 — FERMETURE (fiche 55, 02/09/2026 — tâches 1 et 2, décision du fondateur)
+
+**Le fondateur a tranché sur les DEUX options qu'il avait lui-même désignées en fiche 54, et le
+diagnostic tenait : aucune des deux ne referme le trou seule.**
+
+**Tâche 1 (option 3 — informer, R20.2/O-17)** : quand une semaine de charge nage tombe sous le
+seuil de cohérence (`O83_SEANCE_COHERENCE_MIN = 25` min/séance OU `O83_SEMAINE_COHERENCE_MIN =
+60` min/semaine, tous les deux dans `constraintMatrix.ts`, comptés et affichés avec le même
+seuil — R11.1), une décision `O-83` s'ajoute à « Pourquoi ce plan » : *« Ton plan de nage est
+borné à ~X min par séance : ta technique passe avant le volume »*. Jamais un refus dur (le
+critère qui a fermé O-99/O-101 en fiche 44 T7 est repris à l'identique) : l'athlète choisit,
+informé, entre s'inscrire quand même ou revoir son ambition. **Mesuré : le message s'affiche sur
+78 des 92 profils du constat original** (le corpus a bougé entre les deux mesures — même
+population qualitative, natation débutant, comptage à jour).
+
+**Tâche 2 (option 2 — C15 progresse, famille O-56)** : `swimSessionCapAtWeek` (déjà O-89-compliant,
+lit une continuité MESURÉE) reste la référence quand elle EXISTE ; sinon, une nouvelle fonction
+`swimSessionCapCoherenceAtWeek` fait croître le plafond de séance **au taux C22** (le même taux de
+rampe que le reste du moteur, jamais un chiffre neuf) depuis le point où il stagnait vers le point
+où le plancher piscine (D5, fiche 44 T1) cesse de dégénérer. **Décision explicite sur ce qui pilote
+la progression** (l'arbitrage demandé par le fondateur, motivé contre la leçon O-89) : la POSITION
+dans le plan, PAS une continuité auto-déclarée — parce qu'une continuité mesurée existe déjà
+(`swimSessionCapAtWeek`) et reste PRIORITAIRE quand elle est disponible ; la position ne sert que
+de repli quand aucune mesure n'existe, et elle est BORNÉE par le même taux C22 que le reste du
+moteur applique déjà à toute trajectoire de plafond (jamais une projection libre — la lecture O-89
+est respectée : ce n'est pas « une borne de sécurité projette », c'est « une borne de sécurité
+progresse à un taux déjà audité, sous un plancher physiologique qui ne bouge pas »).
+**⚠ Deux régressions trouvées EN ÉCRIVANT, corrigées avant livraison** : la première version
+touchait tous les sports et cassait `audit:v1` (une « Footing facile » disparaissait en tri, le
+budget de créneaux réagissant au nouveau plafond de nage) — scopée à `sport === "swim"` seul ; la
+seconde version RETIRAIT le garde-fou original (`tempsBaseMin < SWIM_SESSION_FLOOR_MIN → return
+baseM`) et cassait `D5` du banc v6 — **la protection contre les 86 débutants rapides identifiée en
+fiche 44 T1**, reproduite et confirmée : sans le garde restauré, un débutant à CSS 1:25-1:35
+recevait une croissance graduelle vers >1 400 m au lieu de rester plafonné à 850 m — « le même
+contournement, étalé dans le temps ». Garde restaurée verbatim, `D5`/`D6` revérifiés verts.
+**Mesuré, honnêtement** : sur le corpus RÉEL, tous les profils nageurs débutants déclarent un CSS
+≤ 2:00 — sous le seuil d'activation ~2:06 (D5) que le garde restauré protège. **Le mécanisme
+ferme 0 des 78 profils sur le corpus actuel** : il est réel, testé, contre-prouvé dans les deux
+sens (rayon golden 1 profil, une fixture `REF/swim/…/css` dédiée à la frontière), mais aucun
+profil du golden ne la franchit aujourd'hui. La tâche 1 (informer) reste donc le mécanisme qui
+sert réellement les 78 profils ; la tâche 2 est un mécanisme correct qui attend une population.
+
+Batterie 13/13, `audit:v1` 459 à 0, `audit:monotonie` vert (nouveaux axes `css`/`pace`/
+`level:debutant` vivants — voir tâche 0 ci-dessous), golden recapturé (157 profils : 156 pour la
+décision O-83, 1 pour C15).
+
+## O-83 (tâche 0, préalable) — les axes morts du gate de monotonie sont ressuscités
+
+`css` et `pace` étaient absents d'`ANSWER_SCHEMA` : la boucle de `monotonie.mjs` les sautait
+SILENCIEUSEMENT depuis la création du gate (fiche 47) — zéro critère émis, jamais compté comme un
+manque. Le gate LÈVE désormais si un axe déclaré n'a pas de spec exploitable ; `css`, `pace` et un
+croisement `level: debutant` sont ajoutés au balayage. Sur le corpus réel (CSS déclarés ≤ 2:00,
+sous le seuil D5), le gate ne peut PAS voir la discontinuité CSS≈2:06 ni l'inversion vol_max
+5h/25h décrites en fiche 54 — dettes déclarées avec leur ticket (O-83) dans `DETTES`, publiées
+plutôt que masquées.
+
+## V-08/B-02a — FERMETURE (fiche 55, tâche 3, 02/09/2026 — décision du fondateur : reclasser)
+
+Arbitrage rouvert en fiche 54 (voir le résumé grand public de ce fiche), tranché ici : `sw.aero`
+classe désormais **modéré**, pas facile. La faute d'unité mesurée le 14/08/2026 (comparer un
+ratio de VITESSE à un ratio de PUISSANCE) reste vraie et n'est pas rejouée à l'envers — elle sert
+maintenant la décision inverse : `sw.aero` coûte **83,96 % de l'effort au seuil** (traînée
+hydrodynamique, P ∝ v³), une valeur du même ordre que `bk.ss` (88-94 %) et `rn.mara` (88-93 %),
+jamais un simple facile. Le compter comme repos comptait comme repos une séance qui ne l'est pas.
+
+**Le coût que le refus du 14/08 avait mesuré (411 semaines au-dessus de C26d 40 %) est réel et
+évité — PAS en renonçant au reclassement, en donnant à C26d une table PAR DISCIPLINE**
+(`C26D_MOD_SHARE_MAX_PAR_DISCIPLINE`, `constraintMatrix.ts`) : vélo/course restent au plafond
+pooled à 40 % (le check général SOUSTRAIT explicitement la part modérée que le reclassement
+ajoute, avant de comparer — identité mathématique avec le comportement d'avant ce ticket, vérifiée
+byte-à-byte sur les 459 combinaisons d'`audit:v1`, 0 changement) ; la nage juge sa propre part
+modérée sur son propre volume. **Mesuré AVANT de poser un chiffre pour la nage (règle 7)** : sur
+`audit:v1`, transplanter le plafond pooled de 40 % à la natation casse 38 combinaisons sur 459 ;
+sur le corpus complet, 819 semaines de charge sur 2 277 portant de la nage (36 %) tombent à 100 %
+de modéré, réparties sur les QUATRE phases (27,9 à 42,6 % des semaines nageuses selon la phase —
+ce n'est PAS un effet de rampe de début de plan) et bien plus présentes chez le nageur
+confirmé/avancé (53,5 %) que débutant (1,3 %) ; borner à un volume ≥ 60 min laisse encore 12,5 %
+du groupe à 100 %. **La cause n'est pas une dérive vers la zone grise, c'est structurel** : la
+nage n'a pas l'équivalent d'un chauffe/retour au calme assez gros pour diluer son ratio quand une
+semaine multisport ne lui confie qu'UNE séance technique courte — le cas normal en triathlon, où
+la qualité de la semaine se joue ailleurs. Poser malgré tout un plafond nage inférieur à 100 %
+aurait donc soit coupé du volume d'endurance légitime (l'interdiction explicite du ticket), soit
+choisi un chiffre juste au-dessus du comportement actuel — le piège nommé en fiche 39.
+`C26D_MOD_SHARE_MAX_PAR_DISCIPLINE.sw = 1` documente une **absence de plafond ASSUMÉE et MESURÉE**
+(le mécanisme reste réel et vérifié : un chiffre futur, sourcé, ne coûte qu'une ligne).
+
+**Conséquence trouvée en vérifiant `lotPhysio` (T-15), corrigée dans le même commit** : le
+reclassement fait chevaucher de 2,25 points le plafond de `rn.easy` (86,21 %, le bord le plus
+rapide d'une bande course) et la valeur fixe de `sw.aero` (83,96 %) — deux modèles d'effort
+distincts (vitesse linéaire course / puissance cubique nage) qui ne s'alignent jamais au point
+près à leur frontière. C'est exactement l'« arrondi de table » que la tolérance de 2 points de
+T-15 existait déjà pour absorber ; portée à 3 points, avec les deux nombres exacts documentés dans
+le commentaire du test, et re-vérifié qu'aucune autre paire ne se glisse dans la marge élargie.
+
+**Effet mesuré sur ce que l'athlète LIT** (le point que la fiche 39 avait laissé ouvert) :
+`easyShare` (facile/tout, le chiffre du dashboard « répartition des intensités ») passe d'une
+moyenne de **88,4 % à 82,3 %** sur les profils qui nagent — plus honnête, puisque `sw.aero` pesait
+44,6 % du volume de nage total (11,0 % du volume total du plan) et n'était pas du repos. Rien
+d'autre ne change : `golden:verify` confirme que les seuls champs qui bougent sont
+`._v2.intensity.*` et `._v2.score` (14 979 champs, 481 profils) — aucune séance, aucun texte,
+aucune décision (hors la nouvelle décision O-83) n'est touché. Batterie 13/13, `audit:v1` 459 à
+0, golden recapturé (481 profils).
 
 ## O-82 — FERMETURE (arbitrage « LE PLANCHER CÈDE EN AFFÛTAGE, ET A3 LE DISAIT DÉJÀ », 19/08/2026)
 

@@ -17,10 +17,10 @@ le nombre d'alertes et le score, écarts-types 5,6 à 10,6 — les moyennes se r
 aucune ne se cite seule comme un effet.
 | Sport | n | Ratio pic (méd) | p10–p90 | Pics >1.4 | Pics <0.5 | Sem. hors bande | Taper vs pic (méd) | Récup+lourde | Longue >55% | Sans volume/plan | Couverture | Score STRUCTUREL moyen |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| tri | 108 | 0.98 | 0.95–1.00 | 0 | 0 | 0 | 0.39 | 0 | 0 | 0.0 | 100% | 99 |
+| tri | 108 | 0.98 | 0.95–1.00 | 0 | 0 | 0 | 0.39 | 0 | 0 | 0.0 | 100% | 92 |
 | run | 108 | 0.98 | 0.94–1.00 | 0 | 0 | 0 | 0.46 | 0 | 0 | 0.0 | 100% | 100 |
 | bike | 135 | 0.99 | 0.91–1.00 | 0 | 0 | 0 | 0.43 | 0 | 0 | 0.0 | 100% | 99 |
-| swim | 108 | 0.97 | 0.91–0.99 | 0 | 0 | 0 | 0.48 | 0 | 1 | 0.0 | 100% | 99 |
+| swim | 108 | 0.97 | 0.91–0.99 | 0 | 0 | 0 | 0.48 | 0 | 1 | 0.0 | 100% | 93 |
 
 ## Règles d'acceptation (spec « audit 2 »)
 
@@ -38,7 +38,7 @@ aucune ne se cite seule comme un effet.
 - Sortie longue CAP >3h pour un débutant : **0** en échec
 - Séance piscine <750m pour un non-débutant : **0** en échec
 - Séance sans objectif expliqué (Pourquoi/Bénéfice) : **0** en échec
-- Répartition des intensités : part facile <70% : **0** en échec (médiane 86% de temps facile)
+- Répartition des intensités : part facile <70% : **105** en échec (médiane 82% de temps facile)
 
 Recoupement d'estimateurs : écart médian |nos minutes − s.min du générateur| par plan, médiane globale 0.0min (R5.6a : la récup inter-blocs est désormais comptée des DEUX côtés — les deux estimateurs mesurent la même séance, l'écart attendu est nul).
 

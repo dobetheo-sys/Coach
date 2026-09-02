@@ -768,6 +768,44 @@ export const C26d_MOD_SHARE_MAX = rule(
   0.40,
 );
 
+/**
+ * C26d PAR DISCIPLINE (fiche 55, O-83 / V-08 / B-02a) — le plafond de 40 % PROTÈGE LA NAGE AU
+ * LIEU DE LA JUGER.
+ *
+ * `sw.aero` classe désormais modéré (V-08 : ~84 % de l'effort au seuil, P ∝ v³ — comparer un
+ * rapport d'allure à un rapport de puissance est la faute d'unité de la règle 14). Mesuré AVANT
+ * d'écrire une borne (règle 7) sur la grille `audit:v1` (459 combos canoniques, pas seulement le
+ * golden élargi) : appliquer le plafond pooled de 40 % à la nage casse **38 combinaisons sur
+ * 459**, et sur le corpus complet, **819 semaines de charge sur 2 277 portant de la nage (36 %)**
+ * tombent à 100 % de modéré — réparti sur les QUATRE phases (base 42,6 % · dev 31,2 % · spec
+ * 38,7 % · peak 27,9 % des semaines nageuses), donc ce n'est pas un effet de rampe de début de
+ * plan. Le clivage réel est le NIVEAU (débutant 1,3 % contre confirmé/avancé 53,5 %) : borner
+ * un volume ≥ 60 min laisse encore 102 semaines (12,5 % du groupe à 100 %) intactes.
+ *
+ * La cause n'est pas une dérive : c'est que la nage n'a PAS l'équivalent d'une sortie facile
+ * vélo/course qui encadre son bloc de qualité d'un chauffe et d'un retour au calme suffisamment
+ * gros pour diluer le ratio — une semaine multisport où la nage ne porte qu'UNE séance technique
+ * courte (le cas typique en tri, où la qualité de la semaine se joue ailleurs) est mécaniquement
+ * à 100 % de modéré, sans qu'aucune qualité n'ait été retirée ni qu'aucune dérive n'ait eu lieu.
+ * `C26d_MOD_SHARE_MAX` (35 % observé → 40 % retenu) suppose une population où le dépassement est
+ * l'exception ; en nage, c'est la majorité qui dépasse même une borne large. Poser malgré tout un
+ * chiffre reviendrait soit à couper du volume d'endurance légitime (l'interdiction explicite de
+ * ce ticket), soit à choisir un chiffre juste au-dessus du comportement actuel — le piège nommé
+ * en fiche 39, qui ne fait alors que PHOTOGRAPHIER l'existant sans rien juger.
+ *
+ * `sw: 1` documente donc une absence de plafond ASSUMÉE et MESURÉE, pas un oubli : rien n'est
+ * coupé, et la table reste RÉELLE (un consommateur qui veut une frontière nage propre — une
+ * source physiologique dédiée, pas un simple ajustement au livré — n'a qu'un chiffre à changer,
+ * pas un mécanisme à écrire). Vélo et course restent à 40 % via `default`, inchangés par
+ * construction (voir `coherenceScorer.ts`, le check pooled soustrait la part nage ajoutée par
+ * ce reclassement AVANT de comparer à `default`).
+ */
+export const C26D_MOD_SHARE_MAX_PAR_DISCIPLINE = rule(
+  "C26d-disc",
+  "la nage n'a pas l'équivalent d'un chauffe/retour au calme qui dilue son ratio modéré : mesurée AVANT d'être bornée, sa population dépasse majoritairement toute borne inférieure à 100% sans qu'aucune dérive n'ait eu lieu",
+  { default: 0.40, sw: 1 } as Record<string, number>,
+);
+
 export interface EasyFloorCtx {
   history?: string;
   level?: string;
