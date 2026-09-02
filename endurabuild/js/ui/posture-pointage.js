@@ -24,7 +24,7 @@
 //   · deux doigts pour le déplacement (le pan ne doit jamais poser un point) ;
 //   · marqueurs contre-scalés (`scale(1/zoom)`) : un point garde sa taille à l'écran.
 import { esc } from "../state.js";
-import { REPERES, ETAPES } from "./posture-repere.js";
+import { REPERES, ETAPES, ORDRE_REFERENCE } from "./posture-repere.js";
 
 const ZOOM_MIN = 1, ZOOM_MAX = 4, ZOOM_PAS = 0.5;
 // La loupe se place AU-DESSUS du doigt, sauf quand le doigt est trop haut — sinon elle sort de
@@ -245,6 +245,16 @@ export function ouvrirPointage(o) {
 
   q(".pt-retour").onclick = () => { if (o.onAnnuler) o.onAnnuler(); };
 
+  // 24b — le lien ouvre l'overlay, LE CONTENU EST RECALCULÉ à chaque ouverture (le repère « en
+  // cours » a pu changer depuis la dernière fois) ; le bouton de fermeture masque, sans jamais
+  // toucher au DOM du pointage sous l'overlay.
+  const refEcran = q(".pt-ref-ecran");
+  q(".pt-ref-lien").onclick = () => {
+    refEcran.innerHTML = referenceHTML(noms[Math.min(st.i, noms.length - 1)]);
+    refEcran.querySelector(".pt-ref-fermer").onclick = () => { refEcran.hidden = true; };
+    refEcran.hidden = false;
+  };
+
   peindre();
   return st;
 }
@@ -276,11 +286,50 @@ function squelette(o, etape, st) {
     + '<button type="button" class="pt-zoom-moins">−</button></div>'
     + "</div>"
     + '<div class="pt-panneau' + (st.expert ? " expert" : "") + '">'
-    + '<div class="pt-panneau-top"><span class="pt-eyebrow"></span><span class="pt-terme"></span></div>'
+    + '<div class="pt-panneau-top"><span class="pt-eyebrow"></span><span class="pt-terme"></span>'
+    // 24b — LE LIEN VERS LES SEPT REPÈRES. Il ne bloque rien : il ouvre un OVERLAY dans le
+    // même DOM (voir plus bas), jamais un second écran qui détruirait `st.poses`. C'est le
+    // gain que 24a n'a pas — pouvoir réviser avant de commencer, ou rouvrir sans être en
+    // train de pointer — sans le coût qu'il a : aucun tap de confirmation avant de poser.
+    + '<button type="button" class="pt-ref-lien">Les 7 repères</button></div>'
     + '<div class="pt-titre"></div><div class="pt-hint"></div>'
     + '<div class="pt-actions"><button type="button" class="pt-annuler">Annuler</button>'
     + '<button type="button" class="pt-valider"></button></div>'
-    + '<div class="pt-aide"></div></div></div>';
+    + '<div class="pt-aide"></div></div>'
+    + '<div class="pt-ref-ecran" hidden></div>'
+    + "</div>";
+}
+
+/* ============================================================
+   24b — LES SEPT REPÈRES, ENSEMBLE
+   ============================================================
+   Une référence qu'on peut lire avant de pointer, et rouvrir sans être en train de pointer.
+   Le repère qu'on cherche est mis en avant ; les six autres restent lisibles, dans leur ORDRE
+   ANATOMIQUE de lecture (`ORDRE_REFERENCE`) et non l'ordre de l'étape en cours — un pointage
+   commence parfois par la main, cette liste commence toujours par l'épaule.
+
+   Rendu en OVERLAY dans le `.pt-wrap` existant, jamais en remplaçant `hote.innerHTML` : le
+   pointage garde son DOM, ses écouteurs et son état (`st.poses`) intacts pendant qu'on
+   consulte la référence. Revenir ne re-render rien — on masque, c'est tout. */
+function referenceHTML(nomCourant) {
+  const autres = ORDRE_REFERENCE.filter((n) => n !== nomCourant);
+  const carte = (nom, n) => {
+    const r = REPERES[nom];
+    return '<div class="pt-ref-item"><span class="pt-ref-num">' + n + "</span>"
+      + '<div class="pt-ref-txt"><b>' + esc(nom[0].toUpperCase() + nom.slice(1)) + "</b>"
+      + '<i>' + esc(r.terme) + "</i><span>" + esc(r.hint) + "</span></div></div>";
+  };
+  const iCourant = ORDRE_REFERENCE.indexOf(nomCourant) + 1;
+  const rCourant = REPERES[nomCourant];
+  return '<div class="pt-ref-head"><button type="button" class="pt-ref-fermer">‹ Revenir au pointage</button></div>'
+    + '<div class="po-hero-nu"><div class="po-eyebrow" style="color:var(--zn-faint)">Les repères osseux</div>'
+    + "<h2>Sept points,<br>toujours sur l’os</h2>"
+    + "<p>Chaque point se cherche au doigt avant de se poser à l’écran. Un point placé sur le "
+    + "tissu ou sur le muscle déplace l’angle de plusieurs degrés.</p></div>"
+    + '<div class="pt-ref-sec">Celui que tu cherches</div>'
+    + '<div class="pt-ref-courant">' + carte(nomCourant, iCourant).replace("pt-ref-item", "pt-ref-item pt-ref-actif") + "</div>"
+    + '<div class="pt-ref-sec">Les six autres</div>'
+    + '<div class="pt-ref-liste">' + autres.map((n) => carte(n, ORDRE_REFERENCE.indexOf(n) + 1)).join("") + "</div>";
 }
 
 /* ============================================================

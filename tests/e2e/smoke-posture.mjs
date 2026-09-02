@@ -527,6 +527,58 @@ ok(t3b.silDispo === false && t3b.silSVG === "",
   "§11g — 3g : sans tracé annoté par un fitter, l'interrupteur N'EXISTE PAS — une silhouette "
   + "dessinée au jugé produirait le décalage qu'elle corrige");
 
+// ── §12 — 24b, LES SEPT REPÈRES EN OVERLAY (choix retenu sur le tour 24 : un écran de
+// référence plutôt qu'une modale, parce que le panneau de consigne montre déjà le hint complet
+// en permanence — dupliquer ce contenu sous une modale n'aurait rien apporté que le coût d'un
+// tap de confirmation en plus, sur un formulaire déjà jugé laborieux).
+const ref24 = await page.evaluate(async () => {
+  const { ouvrirPointage } = await import("./js/ui/posture-pointage.js");
+  const hote = document.querySelector("#screen");
+  const st = ouvrirPointage({ hote, imageUrl: "data:image/gif;base64,R0lGODlhAQABAAAAACw=",
+    etape: "pmh", titreRetour: "T", onTermine: () => {}, onAnnuler: () => {} });
+  const lien = hote.querySelector(".pt-ref-lien");
+  const avant = { visible: !hote.querySelector(".pt-ref-ecran").hidden,
+    posesAvant: JSON.stringify(st.poses) };
+  // On pose un point AVANT d'ouvrir la référence — l'overlay ne doit RIEN perdre.
+  st.poses[0] = { x: 12, y: 34 };
+  lien.click();
+  const ouvert = hote.querySelector(".pt-ref-ecran");
+  const out = {
+    visibleApresClic: !ouvert.hidden,
+    contient7: ouvert.querySelectorAll(".pt-ref-item").length,
+    courantEnTete: /Celui que tu cherches/.test(ouvert.textContent)
+      && ouvert.textContent.indexOf("Main") < ouvert.textContent.indexOf("Les six autres"),
+    ordreAncre: (() => {
+      const noms = [...ouvert.querySelectorAll(".pt-ref-liste .pt-ref-txt b")].map((b) => b.textContent);
+      return noms.join(",");
+    })(),
+    posesPendant: JSON.stringify(st.poses),
+  };
+  ouvert.querySelector(".pt-ref-fermer").click();
+  out.fermeApresClic = ouvert.hidden;
+  out.posesApres = JSON.stringify(st.poses);
+  // Le pointage doit rester UTILISABLE après fermeture : le calque et les écouteurs n'ont pas
+  // été détruits par l'ouverture de l'overlay.
+  const scene = hote.querySelector(".pt-scene");
+  out.sceneToujoursLa = !!scene;
+  hote.innerHTML = "";
+  return { avant, ...out };
+});
+ok(!ref24.avant.visible, "§12a — 24b : l'overlay des sept repères est FERMÉ par défaut");
+ok(ref24.visibleApresClic && ref24.contient7 === 7,
+  "§12b — 24b : le lien « Les 7 repères » ouvre les SEPT, ensemble (" + ref24.contient7 + ")");
+ok(ref24.courantEnTete,
+  "§12c — 24b : le repère cherché (ici « main », premier point de l'étape pmh) est mis en avant, "
+  + "au-dessus des six autres");
+ok(ref24.ordreAncre === "Épaule,Coude,Poignet,Hanche,Genou,Cheville",
+  "§12d — 24b : les six autres suivent l'ORDRE ANATOMIQUE de lecture (" + ref24.ordreAncre
+  + "), pas l'ordre de l'étape en cours (qui commence par la main)");
+ok(ref24.posesPendant === ref24.posesApres && JSON.parse(ref24.posesApres)[0].x === 12,
+  "§12e — 24b : ouvrir puis fermer l'overlay ne perd AUCUN point déjà posé — c'est le gain sur "
+  + "la modale (24a), qui aurait remplacé l'écran de pointage");
+ok(ref24.fermeApresClic && ref24.sceneToujoursLa,
+  "§12f — 24b : fermer rend la main au pointage, DOM et écouteurs intacts (aucun re-render)");
+
 ok(errs.length === 0, "aucune erreur JS (" + errs.length + (errs.length ? " : " + errs[0] : "") + ")");
 
 await browser.close();

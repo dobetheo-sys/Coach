@@ -714,3 +714,60 @@ body.theme-zenna #screen .pt-ref-pt {
 }
 /* 3b */
 body.theme-zenna #screen .pe-etal { margin: 0 14px; }
+
+/* ============================================================
+   24b — LES SEPT REPÈRES (overlay du pointage)
+   ============================================================
+   Un OVERLAY dans `.pt-wrap`, jamais un second écran : le pointage garde son DOM et son état
+   pendant qu'on consulte la référence — c'est ce qui permet de l'ouvrir ET de la refermer sans
+   perdre un seul point déjà posé. */
+body.theme-zenna #screen .pt-ref-lien {
+  background: none; border: 1px solid var(--zn-border); border-radius: 100px;
+  padding: 5px 11px; min-height: 32px; cursor: pointer;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .04em;
+  color: var(--zn-faint2); margin-left: auto;
+}
+body.theme-zenna #screen .pt-ref-ecran {
+  position: absolute; inset: 0; z-index: 5; background: var(--zn-bg);
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+}
+body.theme-zenna #screen .pt-ref-head { padding: 14px 18px 6px; }
+body.theme-zenna #screen .pt-ref-fermer {
+  background: none; border: 0; cursor: pointer; min-height: 44px; padding: 0;
+  font-family: var(--zn-mono); font-size: var(--fs-xs); letter-spacing: .06em;
+  color: var(--zn-faint2);
+}
+body.theme-zenna #screen .pt-ref-sec {
+  padding: 16px 18px 8px; font-family: var(--zn-mono); font-size: var(--fs-micro);
+  letter-spacing: .16em; text-transform: uppercase; color: var(--zn-faint);
+}
+body.theme-zenna #screen .pt-ref-courant,
+body.theme-zenna #screen .pt-ref-liste { padding: 0 14px; }
+body.theme-zenna #screen .pt-ref-item {
+  display: flex; align-items: flex-start; gap: 12px; padding: 13px 4px;
+  border-bottom: 1px solid var(--zn-filet);
+}
+body.theme-zenna #screen .pt-ref-liste .pt-ref-item:last-child { border-bottom: 0; }
+/* Le repère cherché porte le CHÂSSIS de la carte en relief (fond `--zn-surface`, rayon,
+   bordure d'accent) — même hiérarchie de surface que le reste de l'app : un seul objet en
+   relief par écran, même ici, dans un overlay. */
+body.theme-zenna #screen .pt-ref-courant .pt-ref-item {
+  background: var(--zn-surface); border: 1px solid var(--zn-orange); border-radius: 14px;
+  padding: 14px 14px 14px 12px; border-bottom: 1px solid var(--zn-orange);
+}
+body.theme-zenna #screen .pt-ref-num {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-lg);
+  color: var(--zn-faint); flex: 0 0 auto; width: 20px; font-variant-numeric: tabular-nums;
+}
+body.theme-zenna #screen .pt-ref-actif .pt-ref-num { color: var(--zn-orange); }
+body.theme-zenna #screen .pt-ref-txt { flex: 1; min-width: 0; }
+body.theme-zenna #screen .pt-ref-txt b {
+  display: block; font-size: var(--fs-sm); font-weight: 600; color: var(--zn-text);
+}
+body.theme-zenna #screen .pt-ref-txt i {
+  display: block; font-style: normal; font-family: var(--zn-mono); font-size: var(--fs-micro);
+  color: var(--zn-faint2); margin-top: 2px;
+}
+body.theme-zenna #screen .pt-ref-txt span {
+  display: block; font-size: var(--fs-xs); line-height: 1.5; color: var(--zn-muted); margin-top: 6px;
+}

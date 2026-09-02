@@ -69,3 +69,10 @@ export const ETAPES = {
     points: ["hanche", "genou", "cheville"],
   },
 };
+
+// ORDRE DE LECTURE DE L'ÉCRAN DE RÉFÉRENCE (t24b) — un numérotage FIXE, distinct de celui d'une
+// étape de pointage. `ETAPES[x].points` ordonne une CHAÎNE anatomique continue (l'écran de
+// relecture en dérive son tracé, et l'ordre ne doit jamais bouger) ; celui-ci ordonne une
+// LISTE de référence, qu'on lit de haut en bas indépendamment de l'essai en cours — la main
+// avant l'épaule n'aurait aucun sens dans une liste qu'on consulte au calme.
+export const ORDRE_REFERENCE = ["épaule", "coude", "poignet", "main", "hanche", "genou", "cheville"];
