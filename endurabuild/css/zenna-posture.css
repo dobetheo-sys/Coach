@@ -1,0 +1,178 @@
+/* ============================================================
+   BILAN POSTURE AÉRO — écran 2a (l'entrée par 🧰 Outils)
+   ============================================================
+   Recréation en modules ES du handoff `design_handoff_bilan_posture_zenna`. Le paquet reçu
+   est une RÉFÉRENCE de design (18 cadres HTML à styles inline), pas du code de production :
+   son README suppose « React + Tailwind » côté Zenna, ce qui est faux — la PWA sert 45
+   modules ES sans étape de construction. Les écrans sont donc recréés, pas copiés.
+
+   TROIS ÉCARTS DÉLIBÉRÉS AVEC LA RÉFÉRENCE, tous mesurés (voir la synthèse 45) :
+
+   1. LA PALETTE EST CELLE DU DÉPÔT, pas celle du fichier de design. Mesuré : sur 39 couleurs
+      distinctes de la référence, 13 sont déjà des jetons `--zn-*` et 23 des QUASI-DOUBLONS
+      d'un jeton existant — `#111417` contre `--zn-surface #111318` est à une distance de 1
+      sur 442, `#262a30` contre `--zn-border #26292f` aussi. Les reprendre littéralement
+      créerait une seconde palette (ce que `check:spec` et `check:tokens` existent pour
+      empêcher) et ferait déborder un cliquet déjà à saturation. Seules DEUX couleurs sont
+      réellement nouvelles — deux gris de texte plus sourds que `--zn-muted-2` — et elles sont
+      déclarées comme jetons dans `zenna-today.css`, pas posées ici en dur.
+      L'accent suit donc `--zn-orange` (#ff3d00), pas le #f2481b de la référence : la V5 a
+      mesuré ses contrastes en tuile pleine, et le produit n'a qu'un orange.
+
+   2. LES TAILLES SUIVENT L'ÉCHELLE `--fs-*`. La référence pose 168 déclarations en
+      demi-pixels (9,5 · 10,5 · 11,5 · 12,5) et 6 à 8 px. R16.8 a précisément retiré cette
+      famille — « 21 tailles distinctes dont quatre sous le pixel » — et `smoke-typo` refuse
+      tout ce qui passe sous 9 px. Chaque taille de la référence est rabattue sur le palier
+      déclaré le plus proche.
+
+   3. LES POLICES SONT CELLES DÉJÀ EMBARQUÉES. Le README les fait venir de Google Fonts ;
+      ici `font-src 'self'` et D19 les veulent auto-hébergées. Sans conséquence : Poppins 800,
+      Inter et IBM Plex Mono sont exactement les trois polices que la PWA sert déjà.
+
+   Ce que la référence apporte et qui est repris tel quel : la HIÉRARCHIE (un seul objet en
+   relief par écran, tout le reste à nu sur des filets de 1 px, plus un « creux » plus sombre
+   que la page), les gouttières (18 px pour le texte, 14 px pour le relief et les creux), le
+   rayon signature, et la règle du pied fixe.
+   ============================================================ */
+
+/* ---------- Pilule de sous-outil : la rangée existante gagne « Position » sans rien changer
+     à son balisage — `tab-outils.js` compose déjà ses onglets, on n'ajoute qu'une entrée. --- */
+
+/* ---------- LA CARTE EN RELIEF — le seul objet plein de l'écran ---------- */
+body.theme-zenna #screen .po-hero {
+  margin: 0 14px 18px; border-radius: 20px; background: var(--zn-orange);
+  padding: 18px 20px 20px; box-shadow: 0 14px 30px -14px var(--zn-orange-glow);
+}
+body.theme-zenna #screen .po-hero-top {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+}
+/* L'encre sur l'accent est `--zn-on-accent` : la V5 a mesuré que le BLANC ne rend que 3,55:1
+   sur cet orange quand l'encre sombre rend 5,58:1. La référence pose #14140f, à 10 de
+   distance — visuellement le même noir, un littéral de plus. */
+body.theme-zenna #screen .po-eyebrow {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase; color: rgba(10, 10, 10, .75);
+}
+body.theme-zenna #screen .po-eyebrow.faible { font-weight: 400; letter-spacing: .06em; }
+body.theme-zenna #screen .po-hero-titre {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight);
+  font-size: 27px; line-height: 1.04; text-transform: uppercase; letter-spacing: -.01em;
+  color: var(--zn-on-accent); margin-top: 12px;
+}
+body.theme-zenna #screen .po-hero-chiffre {
+  display: flex; align-items: baseline; gap: 7px; margin-top: 12px;
+}
+body.theme-zenna #screen .po-hero-chiffre b {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight);
+  font-size: 54px; line-height: 1; color: var(--zn-on-accent);
+}
+body.theme-zenna #screen .po-hero-chiffre span {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight);
+  font-size: 17px; color: rgba(10, 10, 10, .8);
+}
+/* Les segments disent l'avancement SANS répéter le chiffre : trois essais, trois barres. */
+body.theme-zenna #screen .po-seg { display: flex; gap: 5px; margin-top: 12px; }
+body.theme-zenna #screen .po-seg i {
+  flex: 1; height: 5px; border-radius: 3px; display: block;
+  background: rgba(10, 10, 10, .28);
+}
+body.theme-zenna #screen .po-seg i.plein { background: var(--zn-on-accent); }
+body.theme-zenna #screen .po-hero-pied {
+  margin-top: 14px; padding-top: 13px; border-top: 1px solid rgba(10, 10, 10, .2);
+  font-size: var(--fs-sm); line-height: 1.5; color: rgba(10, 10, 10, .88);
+}
+
+/* ---------- LE CTA ET SA LIGNE D'ÉTAT ----------
+   Le bouton fait 52 px, la cible tactile de U4 est 44 : on est au-dessus, et c'est voulu —
+   c'est l'action principale de l'écran. La ligne dessous n'est pas décorative : la règle
+   d'interaction du handoff dit qu'un bouton désactivé porte TOUJOURS sa raison écrite. */
+body.theme-zenna #screen .po-cta {
+  width: 100%; min-height: 52px; border: none; border-radius: 14px;
+  background: var(--zn-orange); color: var(--zn-on-accent);
+  font-family: var(--zn-mono); font-size: var(--fs-xs); font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+}
+body.theme-zenna #screen .po-cta:active { transform: scale(.97); }
+body.theme-zenna #screen .po-cta-zone { margin: 0 18px 22px; }
+body.theme-zenna #screen .po-cta-note {
+  display: flex; align-items: center; gap: 7px; margin-top: 11px; justify-content: center;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .05em;
+  color: var(--zn-muted); flex-wrap: wrap; text-align: center;
+}
+body.theme-zenna #screen .po-cta-note b { color: var(--zn-text); font-weight: 700; }
+
+/* ---------- EN-TÊTE DE SECTION — l'étiquette, le filet, le compte à droite ---------- */
+body.theme-zenna #screen .po-sec {
+  display: flex; align-items: center; gap: 10px; padding: 0 18px 12px;
+}
+body.theme-zenna #screen .po-sec.espace { padding-top: 24px; }
+body.theme-zenna #screen .po-sec > span {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .16em;
+  text-transform: uppercase; color: var(--zn-faint);
+}
+body.theme-zenna #screen .po-sec > i {
+  flex: 1; height: 1px; background: var(--zn-filet); display: block;
+}
+body.theme-zenna #screen .po-sec > .compte { letter-spacing: .05em; }
+
+/* ---------- LES LIGNES À NU — 56 px minimum, la cible tactile de U4 avec sa marge ---------- */
+body.theme-zenna #screen .po-liste { padding: 0 18px; }
+body.theme-zenna #screen .po-ligne {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  min-height: 56px; padding: 13px 0; border-bottom: 1px solid var(--zn-filet);
+  width: 100%; background: none; border-left: 0; border-right: 0; border-top: 0;
+  text-align: left; cursor: pointer; color: inherit; font: inherit;
+}
+body.theme-zenna #screen .po-liste .po-ligne:last-child { border-bottom: 0; }
+body.theme-zenna #screen .po-ligne-txt { flex: 1; min-width: 0; }
+body.theme-zenna #screen .po-ligne-titre {
+  font-size: var(--fs-sm); font-weight: 600; color: var(--zn-text);
+}
+body.theme-zenna #screen .po-ligne-meta {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint2);
+  margin-top: 4px;
+}
+body.theme-zenna #screen .po-chevron { color: var(--zn-faint); font-size: var(--fs-lg); }
+
+/* ---------- LE CREUX — plus sombre que la page, c'est ce qui le distingue d'une carte ----
+   `--zn-bg` vaut #000 dans ce thème : un creux ne peut pas être plus sombre que le fond.
+   Il se marque donc par sa BORDURE et son rayon, et non par sa valeur — l'intention du
+   handoff (« un bloc en retrait ») tient, le moyen change parce que le fond n'est pas le
+   même que dans la référence (#0b0b0c). */
+body.theme-zenna #screen .po-creux {
+  margin: 0 14px; background: var(--zn-surface); border: 1px solid var(--zn-filet);
+  border-radius: 14px; padding: 4px 16px;
+}
+body.theme-zenna #screen .po-essai {
+  display: flex; align-items: center; gap: 12px; padding: 13px 0;
+  border-bottom: 1px solid var(--zn-filet);
+}
+body.theme-zenna #screen .po-creux .po-essai:last-child { border-bottom: 0; }
+body.theme-zenna #screen .po-essai-num {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight);
+  font-size: var(--fs-xl); color: var(--zn-faint); font-variant-numeric: tabular-nums;
+}
+body.theme-zenna #screen .po-essai-txt { flex: 1; min-width: 0; }
+body.theme-zenna #screen .po-essai-reglages { font-size: var(--fs-sm); color: var(--zn-text); }
+body.theme-zenna #screen .po-essai-angles {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint2);
+  margin-top: 4px;
+}
+/* Le statut d'un essai porte le vocabulaire du moteur, pas un adjectif de confort : `valide`
+   ou `écarté`, et l'écran des résultats en dira la RAISON (`formatViolation` existe déjà). */
+body.theme-zenna #screen .po-essai-statut {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--zn-good);
+}
+body.theme-zenna #screen .po-essai-statut.ecarte { color: var(--zn-bad); }
+
+/* L'espaceur du handoff : sans lui, le dernier bloc passe sous la barre d'onglets. */
+body.theme-zenna #screen .po-espaceur { height: 96px; }
+
+/* ---------- MOUVEMENT — une seule courbe, plafonné à cinq blocs ----------
+   La règle est celle du handoff ET celle du système : `znPlay` fait déjà exactement ça pour
+   les cinq onglets (stagger plafonné, repli `prefers-reduced-motion`). On ne pose donc PAS
+   une seconde cascade ici — l'écran est rendu dans `#screen`, il hérite de celle de l'onglet
+   Outils. Poser la nôtre serait le double mouvement que le brief de la refonte signale déjà
+   sur l'onglet Semaine. */

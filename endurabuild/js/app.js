@@ -33,7 +33,7 @@ import("./ui/brand.js").then(({ brandHTML }) => {
   if (h) h.innerHTML = brandHTML("grand");
 });
 if (!globalThis.EB_STANDALONE) {
-  for (const f of ["css/zenna-today.css", "css/zenna-tabs.css"]) {
+  for (const f of ["css/zenna-today.css", "css/zenna-tabs.css", "css/zenna-posture.css"]) {
     const l = document.createElement("link");
     l.rel = "stylesheet";
     l.href = f;

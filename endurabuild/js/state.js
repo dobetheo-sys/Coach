@@ -15,7 +15,7 @@ const S = { sport:null, answers:{}, rules:[], step:0, tier:"free", started:false
 // du précédent XP/badges/streak (resté per-plan, `answers.done`) — mais ce précédent n'a
 // jamais eu de raison documentée, juste un effet de bord de `ebActivate()` qui échange
 // `S.answers` en bloc ; ça n'en fait pas la référence à suivre ici.
-const SHARED_KEYS=["readiness","painFlag","sickDates","weight","height","notifyTime","notifyDismissed","lastDailyNotif","lastWeeklyNotif","relanceSent","stravaRelay","stravaAuth","hrRestLog","educatifs"];
+const SHARED_KEYS=["readiness","painFlag","sickDates","weight","height","notifyTime","notifyDismissed","lastDailyNotif","lastWeeklyNotif","relanceSent","stravaRelay","stravaAuth","hrRestLog","educatifs","posture"];
 function liftShared(){for(const k of SHARED_KEYS)if(S.answers[k]!==undefined)S.shared[k]=S.answers[k];}
 function overlayShared(){for(const k of SHARED_KEYS)if(S.shared[k]!==undefined)S.answers[k]=S.shared[k];}
 // Échappement HTML pour toute valeur saisie réinjectée via innerHTML (anti-XSS, avant tout partage).

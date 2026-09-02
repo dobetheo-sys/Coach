@@ -32,6 +32,10 @@ const compte = (css) => {
 const PLAFONDS = {
   "zenna-today.css": { hex: 20, durees: 5 },
   "zenna-tabs.css": { hex: 48, durees: 9 },
+  // Le bilan posture (écran 2a) : recréé sur les jetons, pas sur la palette de sa référence
+  // de design — 23 de ses 26 couleurs hors-jeton en étaient des quasi-doublons. D'où un
+  // plafond qui NAÎT bas au lieu de photographier une dette.
+  "zenna-posture.css": { hex: 0, durees: 0 },
 };
 
 let echecs = 0;

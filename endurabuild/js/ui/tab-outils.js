@@ -12,6 +12,7 @@
 import { S, $ } from "../state.js";
 import { renderTabNutrition } from "./tab-nutrition.js";
 import { renderTabEducatifs } from "./tab-educatifs.js";
+import { renderTabPosture } from "./tab-posture.js";
 
 const SUBTOOLS = [
   ["nutrition", "\u{1F957}", "Nutrition", renderTabNutrition],
@@ -19,6 +20,10 @@ const SUBTOOLS = [
   // slot et même libellé que le glossaire de gestes qu'il remplace (le brief reporte le
   // choix du libellé définitif). Même principe d'ajout que Nutrition : une ligne ici.
   ["educatifs", "\u{1F4DA}", "Éducatifs", renderTabEducatifs],
+  // Bilan de position aéro (handoff `design_handoff_bilan_posture_zenna`). Même principe
+  // d'ajout que les deux précédents : une ligne ici. Le handoff demandait précisément ce
+  // point d'entrée — « le bilan est un outil de l'app, pas une app dans l'app ».
+  ["position", "\u{1F6B4}", "Position", renderTabPosture],
 ];
 
 function subtabsHTML(active) {
