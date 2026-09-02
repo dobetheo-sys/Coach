@@ -182,10 +182,12 @@ const geo = await page.evaluate(async () => {
   const cv = document.createElement("canvas"); cv.width = 400; cv.height = 200;
   const cx = cv.getContext("2d"); cx.fillStyle = "#333"; cx.fillRect(0, 0, 400, 200);
   const url = cv.toDataURL();
-  const hote = document.createElement("div");
-  hote.id = "screen-probe"; document.body.appendChild(hote);
-  // On force le cadre à une taille connue pour que la conversion écran→image soit vérifiable.
-  hote.style.cssText = "position:fixed;left:0;top:0;width:390px;height:812px";
+  // ⚠ LA SONDE REND DANS LE VRAI `#screen`. Tout le CSS du module est scopé
+  // `body.theme-zenna #screen .pt-*` : un `<div>` détaché n'en reçoit RIEN — ni le
+  // `position:fixed` du cadre, ni le `inset:0` de l'image, ni le `position:relative` qui
+  // ancre les marqueurs. Ma première écriture mesurait donc un écran sans styles, et rendait
+  // « bandes de 0 px » sur une image 400×200 dans un cadre de 600 de haut.
+  const hote = document.querySelector("#screen");
   let recu = null;
   const st = ouvrirPointage({ hote, imageUrl: url, etape: "aslr", titreRetour: "T",
     onTermine: (r) => { recu = r; }, onAnnuler: () => {} });
@@ -199,7 +201,7 @@ const geo = await page.evaluate(async () => {
   hote.querySelector(".pt-valider").disabled = false;
   hote.querySelector(".pt-valider").click();
   const out = { recu, moteur: !!(globalThis.EBV2 && globalThis.EBV2.postureAngles) };
-  hote.remove();
+  hote.innerHTML = "";
   return out;
 });
 ok(geo.moteur, "§7a — le moteur porté est exposé au produit (`EBV2.postureAngles`)");
@@ -214,11 +216,11 @@ ok(geo.recu && geo.recu.points && geo.recu.points.length === 3,
 const consigne = await page.evaluate(async () => {
   const { REPERES, ETAPES } = await import("./js/ui/posture-repere.js");
   const { ouvrirPointage } = await import("./js/ui/posture-pointage.js");
-  const hote = document.createElement("div"); document.body.appendChild(hote);
+  const hote = document.querySelector("#screen");
   ouvrirPointage({ hote, imageUrl: "data:image/gif;base64,R0lGODlhAQABAAAAACw=", etape: "pmh",
     titreRetour: "T", onTermine: () => {}, onAnnuler: () => {} });
   const t = hote.textContent; const seg = hote.querySelectorAll(".pt-prog i").length;
-  hote.remove();
+  hote.innerHTML = "";
   return { t, seg, nPmh: ETAPES.pmh.points.length,
     hintMain: REPERES.main.hint, tousHints: Object.values(REPERES).every((r) => r.hint && r.titre) };
 });
@@ -227,6 +229,62 @@ ok(consigne.seg === consigne.nPmh,
 ok(consigne.t.includes("Point 1 · main") && consigne.t.includes(consigne.hintMain),
   "§7e — le repère anatomique est MONTRÉ pendant le geste (c'est le défaut que 2c corrige)");
 ok(consigne.tousHints, "§7f — chaque repère porte son hint ET son titre court");
+
+// ── §7g — LE VRAI CHEMIN DU DOIGT. §7b pose les points directement : il mesure le moteur et
+// la plomberie qui y mène, PAS la conversion écran → image. Sa contre-preuve est sortie VERTE
+// quand j'ai normalisé les coordonnées en 0..1 — le critère annonçait la faute et ne pouvait
+// pas la voir. Celui-ci passe par des vrais `pointerdown`/`pointerup` à des positions ÉCRAN
+// connues, et vérifie ce qui atterrit dans `st.poses`.
+//
+// Il vise DEUX fautes à la fois, et la seconde est celle que la première contre-preuve a fait
+// sortir de l'ombre : `object-fit: contain` met l'image à l'échelle DANS son élément et la
+// CENTRE. Sur un cadre de 362 × 600 et une image 400 × 200, l'image peinte fait 362 × 181 et
+// il reste 210 px de vide en haut et en bas. Une conversion qui divise par la hauteur de
+// l'ÉLÉMENT est juste au CENTRE — où les deux repères coïncident — et fausse partout ailleurs.
+// D'où un tap DÉCENTRÉ : au centre, les deux implémentations donnent le même résultat.
+const chemin = await page.evaluate(async () => {
+  const { ouvrirPointage } = await import("./js/ui/posture-pointage.js");
+  const cv = document.createElement("canvas"); cv.width = 400; cv.height = 200;
+  const cx = cv.getContext("2d"); cx.fillStyle = "#333"; cx.fillRect(0, 0, 400, 200);
+  const url = cv.toDataURL();
+  const hote = document.querySelector("#screen");
+  const st = ouvrirPointage({ hote, imageUrl: url, etape: "aslr", titreRetour: "T",
+    onTermine: () => {}, onAnnuler: () => {} });
+  await new Promise((r) => setTimeout(r, 400));
+  const scene = hote.querySelector(".pt-scene");
+  const img = hote.querySelector(".pt-img");
+  const ri = img.getBoundingClientRect();
+  // La boîte réellement peinte, calculée ICI par une seconde implémentation : si le module et
+  // le critère se trompaient de la même façon, le critère serait vacueux.
+  const k = Math.min(ri.width / 400, ri.height / 200);
+  const pw = 400 * k, ph = 200 * k;
+  const bx = ri.left + (ri.width - pw) / 2, by = ri.top + (ri.height - ph) / 2;
+  // Cible : le point (300, 40) de l'image — franchement décentré sur les DEUX axes.
+  const cible = { x: 300, y: 40 };
+  const cx2 = bx + (cible.x / 400) * pw, cy2 = by + (cible.y / 200) * ph;
+  const ev = (t) => scene.dispatchEvent(new PointerEvent(t, { clientX: cx2, clientY: cy2,
+    bubbles: true, pointerId: 1, isPrimary: true, pointerType: "mouse" }));
+  ev("pointerdown"); ev("pointerup");
+  const pose = st.poses[0] || null;
+  // Où le marqueur a-t-il ATTERRI à l'écran ? La pose et son rendu doivent se retrouver.
+  const m = hote.querySelector(".pt-pt");
+  const rm = m ? m.getBoundingClientRect() : null;
+  const out = { pose, cible, ecranAttendu: { x: cx2, y: cy2 },
+    ecranRendu: rm ? { x: rm.left + rm.width / 2, y: rm.top + rm.height / 2 } : null,
+    bandes: ((ri.height - ph) / 2).toFixed(0) };
+  hote.innerHTML = "";
+  return out;
+});
+const dp = chemin.pose
+  ? Math.hypot(chemin.pose.x - chemin.cible.x, chemin.pose.y - chemin.cible.y) : 999;
+ok(dp < 2, "§7g — un tap à l'écran atterrit au BON pixel d'image : visé ("
+  + chemin.cible.x + "," + chemin.cible.y + ") · obtenu ("
+  + (chemin.pose ? chemin.pose.x.toFixed(1) + "," + chemin.pose.y.toFixed(1) : "aucun")
+  + "), écart " + dp.toFixed(2) + "px — bandes `contain` de " + chemin.bandes + "px");
+const dr = chemin.ecranRendu
+  ? Math.hypot(chemin.ecranRendu.x - chemin.ecranAttendu.x, chemin.ecranRendu.y - chemin.ecranAttendu.y) : 999;
+ok(dr < 2, "§7h — et le marqueur est REPEINT là où le doigt était (écart " + dr.toFixed(2)
+  + "px) : la lecture et l'écriture partagent la même conversion");
 
 ok(errs.length === 0, "aucune erreur JS (" + errs.length + (errs.length ? " : " + errs[0] : "") + ")");
 

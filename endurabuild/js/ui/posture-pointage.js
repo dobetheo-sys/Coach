@@ -74,18 +74,50 @@ export function ouvrirPointage(o) {
   img.addEventListener("load", () => { mesurerNat(); peindre(); });
   mesurerNat();
 
-  /** ÉCRAN → PIXELS D'IMAGE. `getBoundingClientRect` de l'IMAGE porte déjà le zoom et le pan
-   *  (ils sont appliqués par un `transform` sur son conteneur) : on n'a donc pas à les défaire
-   *  à la main, ce qui serait une seconde implémentation de la même transformation. */
-  function versImage(clientX, clientY) {
+  /** LE RECTANGLE RÉELLEMENT PEINT, qui n'est PAS celui de l'élément.
+   *
+   *  `object-fit: contain` met l'image À L'ÉCHELLE DANS son élément et la CENTRE : dès que les
+   *  deux ratios diffèrent, il reste des bandes vides. Mesuré sur le cadre du téléphone (362 ×
+   *  600) avec une image 400 × 200 : l'image peinte fait 362 × 181 et il y a **210 px de vide
+   *  en haut et en bas**. Diviser par la hauteur de l'ÉLÉMENT rend alors juste au centre — où
+   *  les deux repères coïncident — et faux partout ailleurs : un tap au quart haut du cadre
+   *  tombe hors de l'image, et la formule le range quand même à 50 sur 200.
+   *
+   *  C'est le piège habituel de cette famille : la faute est INVISIBLE au centre, donc un essai
+   *  à la main la rate. `getBoundingClientRect` de l'image porte bien le zoom et le pan (ils
+   *  sont appliqués par un `transform` sur son conteneur) — mais il ne sait rien de `contain`. */
+  function boitePeinte() {
     if (!nat) return null;
     const r = img.getBoundingClientRect();
     if (!r.width || !r.height) return null;
-    return { x: ((clientX - r.left) / r.width) * nat.w, y: ((clientY - r.top) / r.height) * nat.h };
+    const k = Math.min(r.width / nat.w, r.height / nat.h);
+    const w = nat.w * k, h = nat.h * k;
+    return { left: r.left + (r.width - w) / 2, top: r.top + (r.height - h) / 2, w, h, k };
   }
-  /** PIXELS D'IMAGE → % du cadre, pour poser un marqueur en CSS. */
+
+  /** ÉCRAN → PIXELS D'IMAGE. Rend `null` hors de l'image : un tap dans la bande vide n'est pas
+   *  un point, et le ranger comme s'il en était un poserait un repère que l'athlète n'a pas vu. */
+  function versImage(clientX, clientY) {
+    const b = boitePeinte();
+    if (!b) return null;
+    const x = ((clientX - b.left) / b.w) * nat.w;
+    const y = ((clientY - b.top) / b.h) * nat.h;
+    if (x < 0 || y < 0 || x > nat.w || y > nat.h) return null;
+    return { x, y };
+  }
+
+  /** PIXELS D'IMAGE → % DU CADRE. Symétrique de la conversion ci-dessus, et elle doit l'être
+   *  exactement : un marqueur posé avec une autre formule que celle qui l'a lu dériverait de la
+   *  hauteur des bandes. Le pourcentage porte sur l'ÉLÉMENT (c'est lui qui positionne), donc on
+   *  repasse par la boîte peinte. */
   function versPct(p) {
-    return nat ? { left: (p.x / nat.w) * 100, top: (p.y / nat.h) * 100 } : { left: 50, top: 50 };
+    const b = boitePeinte();
+    if (!b) return { left: 50, top: 50 };
+    const r = img.getBoundingClientRect();
+    return {
+      left: ((b.left - r.left) + (p.x / nat.w) * b.w) / r.width * 100,
+      top: ((b.top - r.top) + (p.y / nat.h) * b.h) / r.height * 100,
+    };
   }
 
   function peindre() {
