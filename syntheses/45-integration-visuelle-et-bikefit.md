@@ -368,3 +368,32 @@ diviser par des nombres différents change ce rapport. Mesuré : **116,57° en p
   Tout le reste du bilan fonctionne sans.
 - **Le sélecteur d'image dans une vidéo** — les écrans de pointage demandent une image fixe et
   le disent.
+
+
+---
+
+## §11 — Le double mouvement de Semaine, tranché
+
+Trois captures vidéo du geste réel (le même profil, le même clic, capturé depuis le code sur
+la branche — pas une simulation) ont été montrées au fondateur en comparaison côte à côte.
+Verdict, mot pour mot : « je vois pas bien la différence, je te laisse choisir ».
+
+**Décision : garder l'état actuel.** Trois raisons, dans l'ordre où elles pèsent :
+
+1. **La mesure la plus honnête qui existe** vient de la tomber : si la personne qui va s'en
+   servir tous les jours ne perçoit pas l'effet en le voyant tourner en vrai, aucun jugement
+   porté sur une vidéo ne vaut mieux que cette réponse-là.
+2. **La fenêtre est minuscule** — une seule fois, à la toute première arrivée sur l'onglet dans
+   la session. Les retours et les changements de semaine ne sont jamais concernés.
+3. **Les deux corrections cassent une promesse ailleurs.** Retirer la cascade des jours au
+   premier rendu prive Semaine de la grammaire « chaque arrivée anime jour par jour » qu'elle
+   tient partout ailleurs. Retirer la montée du conteneur prive Semaine de la cascade d'entrée
+   que les quatre autres onglets ont — l'incohérence exacte que cette cascade existe pour lever.
+
+Les deux payent un coût réel pour un effet que personne ne voit. **Documenté au point de
+décision plutôt que laissé en commentaire ouvert** : `tabs.js` (le côté conteneur) et
+`tab-week.js` (le côté grille) portent désormais l'arbitrage et sa date, avec un renvoi croisé
+l'un vers l'autre — le prochain qui touche l'un des deux fichiers voit l'autre moitié du
+mécanisme sans avoir à la redécouvrir.
+
+Aucun comportement ne change ; aucune garde n'a besoin d'un nouveau critère.

@@ -310,6 +310,14 @@ function renderActiveTab() {
   // pas le geste qui coûte, c'est sa répétition — `znPlayOnce` ne joue qu'à la PREMIÈRE arrivée
   // sur un onglet dans la session. Aujourd'hui n'est pas concerné : il pose sa propre cascade,
   // enchaînée au tampon de verdict, et la rejoue chaque matin par dessein.
+  // ARBITRAGE DU FONDATEUR (02/09/2026) — sur Semaine, ceci se superpose une fois à
+  // `znPlayDays()` (tab-week.js) : à la toute PREMIÈRE arrivée dans la session, le conteneur
+  // monte pendant que la grille anime ses sept jours. Trois captures vidéo du geste réel ont
+  // été montrées ; verdict : imperceptible dans l'usage, plus fiable que n'importe quel
+  // jugement porté sur la vidéo. Retiré ici : Semaine perd la cascade d'entrée des quatre
+  // autres onglets. Retiré côté grille : Semaine saute, une fois, la cascade jour-par-jour
+  // promise à CHAQUE arrivée. Les deux corrections cassent une promesse ailleurs pour un
+  // effet que personne ne voit — gardé tel quel, PAR CHOIX et non par oubli.
   if (activeTab !== "today") znPlayOnce(activeTab);
   const bar = $("ebTabbar");
   if (bar) bar.innerHTML = tabbarHTML();
