@@ -183,6 +183,19 @@ export const BEGINNER_SWIM_VOLPEAK_CAP_H = 4;
  *              de disponibilité au bassin
  * ```
  */
+/**
+ * O-83 (fiche 55, tâche 1) — LE SEUIL DE COHÉRENCE D'UN PLAN DE NAGE, PARTAGÉ ENTRE LA MESURE
+ * ET LE MESSAGE.
+ *
+ * Mesuré (fiche 53) : 78 profils (natation, tous niveaux) livrent une séance moyenne < 25 min
+ * OU une semaine < 60 min alors qu'un volume bien plus élevé est déclaré. Ce sont les DEUX
+ * mêmes seuils qui comptent la population du ticket au registre (bloc `verify` d'O-83) et qui
+ * déclenchent le message informatif — une seule définition (R11.1), jamais une pour compter et
+ * une autre pour informer.
+ */
+export const O83_SEANCE_COHERENCE_MIN = rule("O-83", "séance de nage moyenne en dessous de laquelle le plan informe l'athlète (comptage ET message partagent ce seuil)", 25);
+export const O83_SEMAINE_COHERENCE_MIN = rule("O-83", "semaine de nage totale en dessous de laquelle le plan informe l'athlète (comptage ET message partagent ce seuil)", 60);
+
 export const SWIM_SESSION_FLOOR_MIN = rule("O-44", "plancher de durée d'une séance de nage : sous ~20 min d'eau, le déplacement coûte plus que la séance ne rapporte (hypothèse logistique, PANSEMENT)", 20);
 /**
  * B-09 — LE BIAIS DÉCLARATIF DE LA PISCINE DÉPEND DE QUI NAGE, PAS SEULEMENT DU BASSIN.

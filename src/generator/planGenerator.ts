@@ -11,7 +11,7 @@
 import type { AthleteProfile, ReasonedPlan, V1Plan, V1Session, V1Step, V1Week } from "../engine/types.ts";
 import { scaleStepDose } from "../engine/stepScale.ts";
 import {
-  BANDS, C15_BEGINNER_SWIM_SESSION_CAP_M, C21_REPRISE_BRICK_FACTOR, C22_MAX_WEEKLY_GROWTH, SWIM_SESSION_FLOOR_MIN,
+  BANDS, C15_BEGINNER_SWIM_SESSION_CAP_M, C21_REPRISE_BRICK_FACTOR, C22_MAX_WEEKLY_GROWTH, SWIM_SESSION_FLOOR_MIN, O83_SEANCE_COHERENCE_MIN, O83_SEMAINE_COHERENCE_MIN,
   C22_AUDIT_HARD_JUMP, C23_BEGINNER_LONG_RUN_CAP_MIN, C24B_MIN_SWIM_SESSION_BEGINNER_M,
   C24_MIN_SWIM_SESSION_M,
   BRICK_BIKE_BOUNDS, DOSE_CAP_MIN, CAP_BRICK_RUN, CAP_LONG, CAP_LONG_DUATHLON, PART_LONGUE_MAX, CAP_SWIM, R313_TAPER_MAX_VS_PEAK, RECUP_WEEK_FACTOR, O69_DEPART_PLANCHER,
@@ -5342,6 +5342,39 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
                   + ") : elle vient du partage du temps de ta COURSE, corrigé pour la natation — la technique se perd par la fréquence, pas par le volume, donc on nage plus que sa part de chrono. Ce que tu lis est ce que ton plan livre : l'écart vient de la structure de ta semaine (combien de créneaux portent quelle discipline), pas d'un réglage — le forcer reviendrait à prendre des minutes sous des planchers de séance qui existent pour te protéger.",
               });
             }
+          }
+        }
+      }
+
+      // O-83 (fiche 55, tâche 1) — QUAND UN PLAN DE NAGE TOMBE SOUS LE SEUIL DE COHÉRENCE, LA
+      // CARTE LE DIT — décision du fondateur : informer plutôt que refuser (O-17), même forme
+      // que le plancher de fréquence deux paragraphes plus bas et que R20.2/O-99/O-101 (T7,
+      // fiche 44).
+      //
+      // Diagnostic (fiche 54) : trois des six règles de la chaîne (`C20`, le plancher O-44,
+      // le pic débutant C15) sont mesurées INERTES — seul `C15` (le plafond de séance, 850 m)
+      // agit réellement, et il fixe une durée de séance qui ne dépend NI du nombre de créneaux
+      // NI du volume déclaré au-delà de ~8 h. Le SEUIL est celui du ticket O-83 lui-même
+      // (`séance moyenne < 25 min OU semaine < 60 min`) : le réutiliser ici, à l'identique,
+      // évite d'avoir deux définitions de la même propriété (R11.1) — celle qui COMPTE les
+      // profils concernés et celle qui les INFORME doivent être la même.
+      //
+      // Descripteur, donc APRÈS le point fixe et lu sur le plan LIVRÉ (T-16c) : borné à `sport
+      // === "swim"`, seul sport où le phénomène a été mesuré (fiche 54, A.0 — zéro occurrence
+      // ailleurs sur les 1 060 profils du corpus).
+      if (a.sport === "swim") {
+        const chSem = plan.weeks.filter((w) => !w.isRecup && w.phase?.id !== "taper");
+        if (chSem.length) {
+          const minTot = chSem.reduce((x, w) => x + w.days.reduce((u, d) => u + d.sessions.reduce((v, sx) => v + (sx.min || 0), 0), 0), 0) / chSem.length;
+          const sesTot = chSem.reduce((x, w) => x + w.days.reduce((u, d) => u + d.sessions.filter((sx) => sx.d !== "rs").length, 0), 0) / chSem.length;
+          const moySeance = minTot / Math.max(1, sesTot);
+          if (moySeance < O83_SEANCE_COHERENCE_MIN || minTot < O83_SEMAINE_COHERENCE_MIN) {
+            r.decisions.push({
+              id: "O-83",
+              what: "Ton plan de nage est borné à ~" + Math.round(moySeance) + " min par séance",
+              val: Math.round(minTot) + " min/semaine livrées pour " + h(L.declared) + " déclarées",
+              why: "Ta séance ne peut pas dépasser " + C15_BEGINNER_SWIM_SESSION_CAP_M + " m (C15) : la technique passe avant le volume, parce qu'au-delà le risque porte sur l'épaule. Ce plafond ne dépend ni du nombre de séances par semaine ni du volume que tu déclares — c'est pour ça que le plan ne grossit plus au-delà d'un certain point. Ce n'est pas un réglage à trouver : c'est ta vitesse actuelle qui fixe la durée de chaque séance.",
+            });
           }
         }
       }

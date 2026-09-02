@@ -2238,6 +2238,19 @@ const BEGINNER_SWIM_VOLPEAK_CAP_H = 4;
  *              de disponibilité au bassin
  * ```
  */
+/**
+ * O-83 (fiche 55, tâche 1) — LE SEUIL DE COHÉRENCE D'UN PLAN DE NAGE, PARTAGÉ ENTRE LA MESURE
+ * ET LE MESSAGE.
+ *
+ * Mesuré (fiche 53) : 78 profils (natation, tous niveaux) livrent une séance moyenne < 25 min
+ * OU une semaine < 60 min alors qu'un volume bien plus élevé est déclaré. Ce sont les DEUX
+ * mêmes seuils qui comptent la population du ticket au registre (bloc `verify` d'O-83) et qui
+ * déclenchent le message informatif — une seule définition (R11.1), jamais une pour compter et
+ * une autre pour informer.
+ */
+const O83_SEANCE_COHERENCE_MIN = rule("O-83", "séance de nage moyenne en dessous de laquelle le plan informe l'athlète (comptage ET message partagent ce seuil)", 25);
+const O83_SEMAINE_COHERENCE_MIN = rule("O-83", "semaine de nage totale en dessous de laquelle le plan informe l'athlète (comptage ET message partagent ce seuil)", 60);
+
 const SWIM_SESSION_FLOOR_MIN = rule("O-44", "plancher de durée d'une séance de nage : sous ~20 min d'eau, le déplacement coûte plus que la séance ne rapporte (hypothèse logistique, PANSEMENT)", 20);
 /**
  * B-09 — LE BIAIS DÉCLARATIF DE LA PISCINE DÉPEND DE QUI NAGE, PAS SEULEMENT DU BASSIN.
@@ -15605,6 +15618,39 @@ function generatePlan(profile                , opts                             
                   + ") : elle vient du partage du temps de ta COURSE, corrigé pour la natation — la technique se perd par la fréquence, pas par le volume, donc on nage plus que sa part de chrono. Ce que tu lis est ce que ton plan livre : l'écart vient de la structure de ta semaine (combien de créneaux portent quelle discipline), pas d'un réglage — le forcer reviendrait à prendre des minutes sous des planchers de séance qui existent pour te protéger.",
               });
             }
+          }
+        }
+      }
+
+      // O-83 (fiche 55, tâche 1) — QUAND UN PLAN DE NAGE TOMBE SOUS LE SEUIL DE COHÉRENCE, LA
+      // CARTE LE DIT — décision du fondateur : informer plutôt que refuser (O-17), même forme
+      // que le plancher de fréquence deux paragraphes plus bas et que R20.2/O-99/O-101 (T7,
+      // fiche 44).
+      //
+      // Diagnostic (fiche 54) : trois des six règles de la chaîne (`C20`, le plancher O-44,
+      // le pic débutant C15) sont mesurées INERTES — seul `C15` (le plafond de séance, 850 m)
+      // agit réellement, et il fixe une durée de séance qui ne dépend NI du nombre de créneaux
+      // NI du volume déclaré au-delà de ~8 h. Le SEUIL est celui du ticket O-83 lui-même
+      // (`séance moyenne < 25 min OU semaine < 60 min`) : le réutiliser ici, à l'identique,
+      // évite d'avoir deux définitions de la même propriété (R11.1) — celle qui COMPTE les
+      // profils concernés et celle qui les INFORME doivent être la même.
+      //
+      // Descripteur, donc APRÈS le point fixe et lu sur le plan LIVRÉ (T-16c) : borné à `sport
+      // === "swim"`, seul sport où le phénomène a été mesuré (fiche 54, A.0 — zéro occurrence
+      // ailleurs sur les 1 060 profils du corpus).
+      if (a.sport === "swim") {
+        const chSem = plan.weeks.filter((w) => !w.isRecup && w.phase?.id !== "taper");
+        if (chSem.length) {
+          const minTot = chSem.reduce((x, w) => x + w.days.reduce((u, d) => u + d.sessions.reduce((v, sx) => v + (sx.min || 0), 0), 0), 0) / chSem.length;
+          const sesTot = chSem.reduce((x, w) => x + w.days.reduce((u, d) => u + d.sessions.filter((sx) => sx.d !== "rs").length, 0), 0) / chSem.length;
+          const moySeance = minTot / Math.max(1, sesTot);
+          if (moySeance < O83_SEANCE_COHERENCE_MIN || minTot < O83_SEMAINE_COHERENCE_MIN) {
+            r.decisions.push({
+              id: "O-83",
+              what: "Ton plan de nage est borné à ~" + Math.round(moySeance) + " min par séance",
+              val: Math.round(minTot) + " min/semaine livrées pour " + h(L.declared) + " déclarées",
+              why: "Ta séance ne peut pas dépasser " + C15_BEGINNER_SWIM_SESSION_CAP_M + " m (C15) : la technique passe avant le volume, parce qu'au-delà le risque porte sur l'épaule. Ce plafond ne dépend ni du nombre de séances par semaine ni du volume que tu déclares — c'est pour ça que le plan ne grossit plus au-delà d'un certain point. Ce n'est pas un réglage à trouver : c'est ta vitesse actuelle qui fixe la durée de chaque séance.",
+            });
           }
         }
       }
