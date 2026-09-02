@@ -12458,6 +12458,56 @@ function swimCapDebutantM(baseM        , cssSecPer100m                    )     
 }
 
 /**
+ * O-83 (fiche 55, tâche 2) — SANS CONTINUITÉ MESURÉE, LE PLAFOND DE SÉANCE CROÎT PAR PALIERS
+ * BORNÉS PAR LE MÊME TAUX QUE LA COURBE — PAS PAR UN SAUT.
+ *
+ * `swimSessionCapAtWeek` (O-56/B-17) fait déjà progresser ce plafond vers la distance de
+ * course — mais SEULEMENT quand la continuité est MESURÉE (`g.source === "mesure"`),
+ * conformément à O-89 (« une borne de sécurité ne projette pas »). Sans mesure — la majorité
+ * des 78 profils d'O-83, où B-17 §17 accepte « je ne sais pas » comme une réponse légitime —
+ * le plafond restait PLAT à `C15_BEGINNER_SWIM_SESSION_CAP_M` toute la préparation, et
+ * `swimCapDebutantM` corrigeait la fenêtre DÉGÉNÉRÉE (850 m ≥ 20 min d'eau) par un SAUT
+ * instantané plutôt qu'une progression — la discontinuité mesurée en fiche 54 (A.4a) : un
+ * débutant à CSS 2:00 reçoit 850 m dès la semaine 1, un débutant à CSS 2:10 reçoit 1 175 m dès
+ * la semaine 1, pour la MÊME absence de mesure.
+ *
+ * DÉCISION (fiche 55, réponse à la fiche 54 §A.5 option 2) : PAS une position pure — un
+ * `capScaleAtWeek` serait aveugle à la sécurité, et le fondateur l'a nommé explicitement. La
+ * position est bornée par le TAUX que la courbe de charge s'impose déjà à elle-même
+ * (`C22_MAX_WEEKLY_GROWTH`, +10 %/semaine) : semaine 1 = STRICTEMENT `baseM` (souvent C15,
+ * 850 m), pour TOUT athlète quel que soit son CSS — c'est ce qui protège le cas des 86
+ * débutants rapides (leur plafond ne bouge PAS au jour 1, retesté ci-dessous) — puis une
+ * croissance GÉOMÉTRIQUE, au même taux que le reste du moteur, jamais un pourcentage inventé
+ * pour l'occasion. La cible d'arrivée (`pleinM`) est EXACTEMENT celle que `swimCapDebutantM`
+ * calculait déjà pour la fenêtre dégénérée — une durée FIXE (le plancher de durée O-44, mis à
+ * l'échelle de C15/C24b) convertie en mètres au CSS de CET athlète : deux nageurs à des CSS
+ * différents convergent vers la MÊME durée de séance, chacun à SA distance, jamais l'inverse.
+ *
+ * Si `pleinM ≤ baseM` (nageur déjà assez lent pour que `baseM` seul dépasse le plancher de
+ * cohérence), rien à faire croître : la fonction rend `baseM` inchangé, comme aujourd'hui.
+ */
+function swimSessionCapCoherenceAtWeek(baseM        , cssSecPer100m                    , wkNum        )         {
+  const css = cssSecPer100m || 130;
+  const ratio = zoneSpeedRatio("sw.easy", undefined, "css") ?? 1;
+  // ⚠ CETTE CONDITION EST RESTAURÉE, ET C'EST UNE FAUTE MESURÉE ET CORRIGÉE. Ma première
+  // écriture la retirait (toute la protection reposait sur la seule LENTEUR du départ), et
+  // `audit:v6` (D5, banc EXTERNE) l'a réfutée : sur un profil déclarant CSS 1:25, la plus
+  // grosse séance finissait par dépasser 850 m après une trentaine de semaines de croissance
+  // GÉOMÉTRIQUE — lente au départ, mais un nageur rapide n'a JAMAIS besoin de dépasser C15,
+  // quelle que soit la position dans le plan. C'est la forme exacte du « contournement de C15 »
+  // que `swimCapDebutantM` documente déjà pour le saut instantané : une croissance graduelle
+  // vers le même point d'arrivée est le MÊME contournement, seulement étalé dans le temps.
+  const tempsBaseMin = (baseM / 100) * (css / 60) / ratio;
+  if (tempsBaseMin < SWIM_SESSION_FLOOR_MIN) return baseM;
+  const capTempsMin = SWIM_SESSION_FLOOR_MIN * (C15_BEGINNER_SWIM_SESSION_CAP_M / C24B_MIN_SWIM_SESSION_BEGINNER_M);
+  const pleinM = Math.round(((capTempsMin * 60 / css) * 100 * ratio) / 25) * 25;
+  if (pleinM <= baseM) return baseM;
+  const k = Math.max(0, (wkNum || 1) - 1);
+  const projete = baseM * Math.pow(C22_MAX_WEEKLY_GROWTH, k);
+  return Math.min(pleinM, Math.round(projete));
+}
+
+/**
  * O-11 / R20.5 — la bande « allure course » vélo de cette épreuve, relief compris. Un seul
  * point pour les deux appelants (génération et réparation) : deux copies auraient divergé, ce
  * qui est très exactement le défaut qu'O-11 décrit.
@@ -13828,7 +13878,28 @@ function generatePlan(profile                , opts                             
     // pic quand la courbe en demandait 55, et la décroissance partait d'une falaise (−63 %
     // d'un coup, mesuré sur le Full). La longue de S-3 d'un plan long fait encore 60-70 % de
     // sa taille normale : c'est la réduction 40-60 % de Bosquet, pas un arrêt.
-    _swimCapW = r.beginner ? swimCapDebutantM(swimSessionCapAtWeek(r.b17Gate ?? null, C15_BEGINNER_SWIM_SESSION_CAP_M, w + 1), r.baseRefs.css) : Number.MAX_SAFE_INTEGER;
+    // O-83 (fiche 55, tâche 2) — DEUX CHEMINS, JAMAIS MÉLANGÉS, ET BORNÉS AU SPORT MESURÉ.
+    //
+    // Continuité MESURÉE : le patron O-89 existant (`swimSessionCapAtWeek`) grandit déjà vers
+    // la distance de COURSE, et `swimCapDebutantM` n'y déclenche plus rien (la base atteint
+    // vite le plancher de durée d'elle-même) — INCHANGÉ, tous sports.
+    //
+    // Continuité NON mesurée : `swimSessionCapCoherenceAtWeek` grandit vers la durée de SÉANCE
+    // cohérente, au taux C22, jamais un saut — mais SEULEMENT pour `sport === "swim"`, comme la
+    // tâche 1. Mesuré en l'appliquant à `tri` sans cette garde : `tri/S/ancien/debutant` perd
+    // une séance de course en semaine 3 (allocation/fréquence qui réagit au volume de nage
+    // devenu plus gros) et bascule `audit:v1` en violation DURE sur C26d (43 % de modéré — le
+    // dénominateur a rétréci, pas le numérateur qui a grossi). Le diagnostic (fiche 54, A.0)
+    // avait déjà mesuré ZÉRO occurrence d'O-83 hors natation pure : la portée du correctif suit
+    // la portée du défaut.
+    {
+      const g83 = r.b17Gate ?? null;
+      const baseAvecContinuite = swimSessionCapAtWeek(g83, C15_BEGINNER_SWIM_SESSION_CAP_M, w + 1);
+      _swimCapW = !r.beginner ? Number.MAX_SAFE_INTEGER
+        : g83 && g83.source === "mesure" ? swimCapDebutantM(baseAvecContinuite, r.baseRefs.css)
+        : a.sport === "swim" ? swimSessionCapCoherenceAtWeek(baseAvecContinuite, r.baseRefs.css, w + 1)
+        : swimCapDebutantM(baseAvecContinuite, r.baseRefs.css);
+    }
     // O-77 (fiche 48) — LE PLAFOND DE SÉANCE SUIT LA POSITION, PLUS L'AMBITION DÉCLARÉE.
     // La branche de CHARGE se dérivait de `Lw = cible/peakH` : déclarer un pic plus haut
     // abaissait le plafond des premières semaines, dont la cible ABSOLUE est pourtant figée par
