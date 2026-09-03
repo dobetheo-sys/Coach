@@ -12,6 +12,7 @@
 import { S, $ } from "../state.js";
 import { renderTabNutrition } from "./tab-nutrition.js";
 import { renderTabEducatifs } from "./tab-educatifs.js";
+import { renderTabBikefitting } from "./tab-bikefitting.js";
 
 const SUBTOOLS = [
   ["nutrition", "\u{1F957}", "Nutrition", renderTabNutrition],
@@ -19,6 +20,9 @@ const SUBTOOLS = [
   // slot et même libellé que le glossaire de gestes qu'il remplace (le brief reporte le
   // choix du libellé définitif). Même principe d'ajout que Nutrition : une ligne ici.
   ["educatifs", "\u{1F4DA}", "Éducatifs", renderTabEducatifs],
+  // Bikefitting (voir INTEGRATION_HANDOFF.md) : une carte qui ouvre une sous-app séparée,
+  // pas un rendu monté ici — `renderTabBikefitting` ne prend jamais `plan` en argument.
+  ["bikefitting", "\u{1F6B4}", "Position", renderTabBikefitting],
 ];
 
 function subtabsHTML(active) {

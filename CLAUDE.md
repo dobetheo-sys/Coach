@@ -37,6 +37,7 @@ régularité est priorité 3, pas priorité 7.
 | `src/sports/registry.ts` + `src/sports/<sport>/` | **Le registre de sports** (R10) : un sport = un module qui DÉCLARE ses séances, sa prédiction, ses tests et ses `guards` (garde-fous). Un sport inconnu lève. |
 | `src/engine/trailModel.ts` + `src/generator/trailLibrary.ts` | **Le module trail** (R7) : catégorie déduite, charge à 3 axes (temps/D+/D−), 14 séances |
 | `endurabuild/` | **La PWA** — même produit en modules ES, mobile-first, installable/offline, 5 onglets (Profil/Plan/Aujourd'hui/Semaine/Outils, voir ses RAPPORT-MIGRATION-PWA.md, RAPPORT-ONGLETS.md et RAPPORT-R4.md) ; UI = source de vérité désormais |
+| `bikefitting/` | **Bikefitting** — bilan de position aéro vélo/triathlon, sous-app React/Vite ISOLÉE (ses propres dépendances npm, jamais celles du moteur — voir `bikefitting/docs/INTEGRATION_HANDOFF.md`). Accessible depuis 🧰 Outils › 🚴 Position (`endurabuild/js/ui/tab-bikefitting.js`, un lien, pas un montage). `npm run build:bikefitting` la construit et la copie sous `endurabuild/bikefitting/` (généré, jamais commité) ; le workflow `pages.yml` le fait à chaque déploiement. |
 | `ARCHITECTURE.md` | Choix techniques : pipeline du moteur, registre des règles R3.x/Cn, auditeur, conventions |
 | `src/` + `npm run audit:v1` | L'auditeur de cohérence — la spec exécutable (486 combinaisons) |
 | `ROADMAP-V2.md` | La cible V2 (raisonner → générer → auditer → adapter) |
@@ -610,6 +611,55 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
 avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
+
+**Bikefitting intégré — bilan de position aéro, accessible depuis 🧰 Outils › 🚴 Position**
+(handoff `bikefitting/docs/INTEGRATION_HANDOFF.md`, 03/09/2026) : port de
+`dobetheo-sys/Bikefiting` (React/Vite/MediaPipe, sa propre logique de scoring sourcée §5 de son
+spec) dans `bikefitting/`, **sous-app ISOLÉE** — aucune dépendance ajoutée au moteur
+zéro-dépendance de Zenna, l'engagement documenté dans ce fichier porte sur le moteur de plans,
+pas sur un outil compagnon autonome avec son propre `package.json`/build. Décision du fondateur
+sur le fond (« qu'il fasse partie de l'onglet Outils », sans arbitrer les détails techniques) ;
+le choix d'architecture (sous-app séparée plutôt que fusion React dans `endurabuild/`, zéro
+dépendance native) reste de la responsabilité de ce dépôt et est motivé ci-dessous.
+
+**Code mort retiré** (conforme au §2 du handoff) : `pose-integration.ts` (+ son test),
+`video-frame-sampler.ts`, et `extractTrialAngles()` — vestiges du pipeline de détection
+automatique MediaPipe Pose, abandonné au profit du pointage manuel (décision (a) du handoff,
+issue d'échecs terrain réels : un angle de tronc à 43° biomécaniquement impossible). 70 → 61
+tests (9 retirés avec le code mort qu'ils testaient), 0 échec. **Périmètre NON étendu au-delà de
+ce que le handoff nomme** : `extractAslrAngle`/`computeAslrTrace` (même pipeline auto, ASLR)
+sont eux aussi inutilisés par l'UI actuelle — mesuré, pas supposé — mais le handoff ne les
+nomme pas explicitement comme morts ; laissés en l'état plutôt que d'élargir la suppression
+sans mandat clair.
+
+**Intégration** : `endurabuild/js/ui/tab-bikefitting.js` ajoute une entrée dans le registre
+`SUBTOOLS` de `tab-outils.js` (même patron qu'un ajout de sport, R10) — une carte qui **navigue**
+vers `bikefitting/index.html`, jamais un composant React monté dans le moteur d'affichage de
+Zenna. `npm run build:bikefitting` (`scripts/buildBikefitting.mjs`) construit la sous-app et la
+copie sous `endurabuild/bikefitting/` (généré, gitignored) ; le workflow `pages.yml` l'exécute à
+CHAQUE déploiement (contrairement au moteur, dont le bundle est committé et vérifié par
+`check:app`/`check:sw` — Bikefitting a de vraies dépendances npm, les committer construites
+aurait ajouté des dizaines de Mo binaires, dont 34 Mo de WASM MediaPipe, à l'historique git pour
+un artefact regénérable en une commande). `vite.config.js` : base passée de conditionnelle-absolue
+(déploiement autonome de Bikefitting) à **relative** (`./`) — la copie sert tantôt à la racine du
+domaine, tantôt sous `/Coach/` selon la config GitHub Pages, même raison que les chemins relatifs
+d'`endurabuild/manifest.json`.
+
+**Écart avec la maquette fournie** (`bikefitting/design/bikefitting-zenna-screen.html`, un extrait
+riche du thème sombre R-ZENNA — segmenté « bilan fait/premier bilan », chips confort/aéro, positions
+recommandées) : **non reproduit tel quel**, délibérément. Cette maquette utilise les classes/tokens
+du thème R-ZENNA (`.chip`, `.jauge`, `details.fold`, `--surface`, `--cyan`…), qui n'existent que
+sous `body.theme-zenna` — or l'onglet Outils reste sur le thème « papier/collage »
+(`styles.css`/`mobile.css`), sa migration vers R-ZENNA n'a pas commencé (voir plus bas, « Design
+responsive »). Reproduire la maquette sans cette migration aurait rendu des classes non stylées.
+La carte livrée reprend donc le langage visuel ACTUEL d'Outils (`.card`/`.card-note`/`.btn.primary`,
+identique à Nutrition/Éducatifs) ; la maquette reste la cible pour quand la migration R-ZENNA
+atteindra Outils — non perdue, juste pas applicable aujourd'hui sans élargir le chantier.
+
+**Non testé sur appareil réel** (caméra, permissions iOS, segmentation MediaPipe sur une vraie
+photo — bloqué par le réseau du bac à sable de développement, comme documenté dans le handoff
+lui-même) : à vérifier explicitement avant tout partage large, sur un téléphone, pas seulement
+en desktop — trois points précis listés dans `bikefitting/docs/INTEGRATION_HANDOFF.md` §8.
 
 **O-83 FERMÉ (informer + progression bornée) et V-08/B-02a FERMÉ (sw.aero reclassé, table
 C26d par discipline) — et le gate de monotonie perd ses deux axes morts** (fiche 55, 02/09/2026 —

@@ -33,7 +33,10 @@ const SUITES = ["smoke-checkin.mjs", "smoke-r4.mjs", "smoke-retention.mjs", "smo
   "smoke-educatifs.mjs",
   // R-ZENNA — le reskin animé de 🎯 Aujourd'hui : le mouvement porte l'opacité, donc son
   // absence VIDE l'onglet sans qu'aucune assertion de contenu ne s'en aperçoive.
-  "smoke-zenna.mjs"];
+  "smoke-zenna.mjs",
+  // Bikefitting — l'entrée Outils › Position existe et pointe au bon endroit (le lien, pas
+  // la sous-app elle-même : voir bikefitting/docs/INTEGRATION_HANDOFF.md).
+  "smoke-bikefitting.mjs"];
 let failed = 0;
 for (const s of SUITES) {
   console.log("\n━━━ " + s + " ━━━");
