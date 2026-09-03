@@ -10,3 +10,10 @@ tests/fixtures/baseline/plans.full.json
 bikefitting/dist/
 bikefitting/public/
 endurabuild/bikefitting/
+# ⚠ EXCEPTION au motif global `package-lock.json` ci-dessus : bikefitting/ a de VRAIES
+# dépendances npm (contrairement au moteur, qui exécute son TypeScript nativement) — son
+# lockfile doit être committé, sinon `npm ci` (scripts/buildBikefitting.mjs, rejoué à CHAQUE
+# déploiement par pages.yml) échoue en CI faute de fichier à reproduire (EUSAGE). Trouvé le
+# 03/09/2026 : les deux premiers déploiements après l'ajout du build ont échoué pour cette
+# raison exacte — le site n'affichait donc AUCUNE des mises à jour de ce lot.
+!bikefitting/package-lock.json
