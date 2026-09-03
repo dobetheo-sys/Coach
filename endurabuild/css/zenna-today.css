@@ -82,6 +82,24 @@ body.theme-zenna {
   --zn-ink: #f5f1ea;
   --zn-ink-2: #d7d2c6;
   --zn-good: #1fb8a6;
+  /* Le rouge d'alerte du thème papier (#e63946) mesure 4,46:1 sur --zn-surface : SOUS le
+     seuil AA de 4,5. Éclairci ici (7,61:1), c'est la seule valeur admise dans le sombre —
+     le repli visuel `[style*="color:#e63946"]` de zenna-tabs.css la posait déjà. */
+  --zn-bad: #ff7d92;
+  /* Deux gris de TEXTE plus sourds que `--zn-muted-2`, apportés par le handoff du bilan
+     posture. Ce sont les DEUX seules couleurs de ses 39 qui ne soient pas déjà un jeton ou
+     le quasi-doublon d'un jeton (23 des 26 autres le sont, plusieurs à une distance de 1
+     sur 442). `--zn-faint` porte les eyebrows de section et les chevrons, `--zn-faint2`
+     les métadonnées mono.
+     ⚠ LE GRIS DE LA RÉFÉRENCE NE PASSE PAS. `#6d737a` mesure 4,38:1 sur `--zn-bg` et
+     3,88:1 sur `--zn-surface` — sous le seuil AA de 4,5, sur un texte de 9 px en capitales,
+     c'est-à-dire le pire cas. Éclairci à teinte constante jusqu'au premier palier qui passe
+     des DEUX côtés : 5,18:1 sur le fond, 4,58:1 sur la surface. Même faute et même remède
+     que `--zn-bad` deux lignes plus haut ; `smoke-zenna` mesure ces deux fonds par onglet. */
+  --zn-faint: #787f86;
+  --zn-faint2: #8e939a;
+  /* Le filet de séparation du même handoff : une ligne de 1 px, jamais un fond. */
+  --zn-filet: #1a1c20;
   --zn-good-dark: #0f8f81;
   --zn-track-bg: #20252c;
   --zn-sep: rgba(255, 255, 255, .18);

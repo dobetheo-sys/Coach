@@ -232,6 +232,48 @@ function shopSubscriptionCardHTML(plan, today) {
   const wkg = parseFloat(S.answers.weight) > 0 ? parseFloat(S.answers.weight) : null;
   const abonneActif = view.status === "active" || view.status === "cancel_pending";
 
+  // ── PRÉLÈVEMENT REFUSÉ ─────────────────────────────────────────────────────
+  //
+  // ⚠ CONTRAT À TENIR LE JOUR OÙ LE SERVICE EXISTE. Aucun paiement n'est encore encaissé (voir
+  // la mention en pied de carte) : cet état ne peut donc pas se produire tout seul aujourd'hui.
+  // Il est écrit maintenant parce que c'est le moment où l'abonnement se dessine, et qu'un
+  // échec de prélèvement traité après coup se traite mal — on y bricole une alerte rouge et on
+  // perd la seule chose qui compte ici : dire que rien n'est annulé.
+  //
+  // Le prestataire de paiement devra écrire `S.answers.shopSubscription.paymentFailure` :
+  //   { at: "AAAA-MM-JJ",        (obligatoire — date du refus)
+  //     amountEur: 34,           (optionnel)
+  //     reason: "carte expirée", (optionnel, en clair, jamais un code)
+  //     dueBy: "AAAA-MM-JJ",     (optionnel — date après laquelle l'envoi saute)
+  //     shipmentAt: "AAAA-MM-JJ" } (optionnel — l'envoi suspendu)
+  // Effacer la clé = le problème est réglé. Rien d'autre à faire, aucun statut à synchroniser :
+  // `subscriptionView` continue de dériver le reste, cet état se pose PAR-DESSUS sans le
+  // remplacer — l'abonnement n'est pas résilié, c'est tout le propos.
+  //
+  // TON : l'envoi est SUSPENDU, pas annulé. La date limite est dite, ce qui se passe après
+  // aussi, et une seule action est proposée. Pas de rouge plein, pas de majuscules d'alarme :
+  // quelqu'un dont la carte a expiré n'a rien fait de mal.
+  const echec = sub && sub.paymentFailure && sub.paymentFailure.at ? sub.paymentFailure : null;
+  if (echec && abonneActif && !shopEditing) {
+    const cad = CADENCES[sub.cadence] || CADENCES.hebdo;
+    return '<div class="shop-card" id="shopCard" data-payment="failed">'
+      + '<div class="pay-head"><span class="pay-dot" aria-hidden="true"></span>'
+      + '<span class="pay-lab">Prélèvement refusé</span></div>'
+      + '<div class="pay-title">' + (echec.shipmentAt ? "Envoi du " + esc(fmtDay(echec.shipmentAt)) : "Prochain envoi")
+      + "<br>suspendu</div>"
+      + '<div class="pay-body">'
+      + (echec.reason ? esc(echec.reason).replace(/^./, (c) => c.toUpperCase()) + ". " : "")
+      + "Le prélèvement" + (echec.amountEur ? " de " + esc(String(echec.amountEur)) + " €" : "")
+      + " du " + esc(fmtDay(echec.at)) + " n’est pas passé. "
+      + "<b>Rien n’est annulé</b> : ton abonnement " + esc(cad.label.toLowerCase()) + " reste en place, "
+      + "l’envoi part dès que le paiement aboutit"
+      + (echec.dueBy ? ". Passé le " + esc(fmtDay(echec.dueBy)) + ", il saute et reprend à la période suivante." : ".")
+      + "</div>"
+      + '<div class="btn-row" style="margin-top:14px"><button class="btn gold" id="shopFixPayment" type="button">Mettre à jour le paiement</button></div>'
+      + '<div class="shop-fine">Aucune relance automatique : le prélèvement n’est retenté qu’après ta mise à jour.</div>'
+      + "</div>";
+  }
+
   // ── ABONNEMENT EN COURS ────────────────────────────────────────────────────
   if (abonneActif && !shopEditing) {
     const cad = CADENCES[sub.cadence] || CADENCES.hebdo;
@@ -479,6 +521,22 @@ function bindShopSubscription(plan, today, rerender) {
   // retenu ailleurs dans le produit — une modale native est intestable et brutale.
   const ask = $("shopAskCancel");
   if (ask) ask.onclick = () => { shopConfirmCancel = true; rerender(); };
+  // ⚠ POINT DE BRANCHEMENT DU PRESTATAIRE DE PAIEMENT — à remplacer, pas à garder tel quel.
+  //
+  // Le jour où un prestataire existe, ce clic doit ouvrir SON parcours de mise à jour de moyen
+  // de paiement, et c'est le retour du prestataire (webhook ou retour d'appel) qui effacera
+  // `paymentFailure`. En attendant, le bouton fait exactement ce que ferait un paiement réussi :
+  // il efface la clé et re-rend. Ça rend l'état ATTEIGNABLE et TESTABLE de bout en bout — on
+  // pose `paymentFailure` à la main, on voit la carte, on en sort — au lieu d'un écran mort que
+  // personne ne pourra vérifier avant la mise en service.
+  const fixPay = $("shopFixPayment");
+  if (fixPay) fixPay.onclick = () => {
+    const sub = S.answers.shopSubscription;
+    if (!sub) return;
+    S.answers.shopSubscription = Object.assign({}, sub, { paymentFailure: undefined });
+    ebSave();
+    rerender();
+  };
   const keep = $("shopKeep");
   if (keep) keep.onclick = () => { shopConfirmCancel = false; rerender(); };
   const cancel = $("shopCancel");

@@ -13,7 +13,7 @@
    `npm run check:sw`, comme `check:app` pour le bundle du monolithe). */
 
 // __SW_VERSION__ (généré par scripts/buildSW.mjs — ne pas éditer à la main)
-const VERSION = "eb-pwa-68b1b4de425a";
+const VERSION = "eb-pwa-b4bbb58581f7";
 // __/SW_VERSION__
 
 // __SW_ASSETS__ (généré par scripts/buildSW.mjs — ne pas éditer à la main)
@@ -23,6 +23,7 @@ const ASSETS = [
   "./manifest.json",
   "./css/mobile.css",
   "./css/styles.css",
+  "./css/zenna-posture.css",
   "./css/zenna-tabs.css",
   "./css/zenna-today.css",
   "./css/zenna-tokens.css",
@@ -57,16 +58,22 @@ const ASSETS = [
   "./js/ui/icons.js",
   "./js/ui/modal.js",
   "./js/ui/plan-view.js",
+  "./js/ui/posture-etalonnage.js",
+  "./js/ui/posture-etapes.js",
+  "./js/ui/posture-pointage.js",
+  "./js/ui/posture-repere.js",
+  "./js/ui/posture-resultats.js",
+  "./js/ui/posture-velo.js",
   "./js/ui/readiness.js",
   "./js/ui/retest.js",
   "./js/ui/sachet.js",
   "./js/ui/session-life.js",
   "./js/ui/steps.js",
-  "./js/ui/tab-bikefitting.js",
   "./js/ui/tab-educatifs.js",
   "./js/ui/tab-nutrition.js",
   "./js/ui/tab-outils.js",
   "./js/ui/tab-plan-general.js",
+  "./js/ui/tab-posture.js",
   "./js/ui/tab-profile.js",
   "./js/ui/tab-today.js",
   "./js/ui/tab-week.js",

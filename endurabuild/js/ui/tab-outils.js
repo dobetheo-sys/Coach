@@ -12,17 +12,28 @@
 import { S, $ } from "../state.js";
 import { renderTabNutrition } from "./tab-nutrition.js";
 import { renderTabEducatifs } from "./tab-educatifs.js";
-import { renderTabBikefitting } from "./tab-bikefitting.js";
+import { renderTabPosture } from "./tab-posture.js";
 
+// ARBITRAGE (03/09/2026) — deux implémentations du bilan bikefitting sont arrivées en
+// parallèle sur ce même créneau : celle-ci (18 écrans natifs, suivant au mot près le handoff
+// `design_handoff_bilan_posture_zenna`, moteur porté et branché dans `src/bikefit/`) et une
+// carte de navigation vers une sous-app séparée (`bikefitting/`, React/Vite, voir
+// `docs/INTEGRATION_HANDOFF.md` de ce sous-dossier) ajoutée directement sur `main` sans
+// passer par ce handoff. Décision du fondateur : garder celle-ci — elle suit le design brief
+// commandé, elle est intégrée au thème Zenna (l'autre en est encore à l'ancienne palette
+// `#f2481b`/or), et elle fonctionne aujourd'hui sans étape de build séparée. La sous-app
+// `bikefitting/` reste dans le dépôt (code réel, testé, avec une segmentation MediaPipe que
+// celle-ci n'a pas encore — voir O-118) mais n'est plus reliée depuis Outils.
 const SUBTOOLS = [
   ["nutrition", "\u{1F957}", "Nutrition", renderTabNutrition],
   // R26 — module riche à six disciplines (paliers/blocs sourcés, badges de preuve), même
   // slot et même libellé que le glossaire de gestes qu'il remplace (le brief reporte le
   // choix du libellé définitif). Même principe d'ajout que Nutrition : une ligne ici.
   ["educatifs", "\u{1F4DA}", "Éducatifs", renderTabEducatifs],
-  // Bikefitting (voir INTEGRATION_HANDOFF.md) : une carte qui ouvre une sous-app séparée,
-  // pas un rendu monté ici — `renderTabBikefitting` ne prend jamais `plan` en argument.
-  ["bikefitting", "\u{1F6B4}", "Position", renderTabBikefitting],
+  // Bilan de position aéro (handoff `design_handoff_bilan_posture_zenna`). Même principe
+  // d'ajout que les deux précédents : une ligne ici. Le handoff demandait précisément ce
+  // point d'entrée — « le bilan est un outil de l'app, pas une app dans l'app ».
+  ["position", "\u{1F6B4}", "Position", renderTabPosture],
 ];
 
 function subtabsHTML(active) {

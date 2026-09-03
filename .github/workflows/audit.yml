@@ -151,6 +151,12 @@ jobs:
       - run: npm run mesure:o56
       # O-52 — `countDiff` distingue 1 champ de N et n'invente pas d'amplitude sur une chaîne.
       - run: npm run mesure:o52
+      # BIKEFIT — la logique pure du bilan de position aéro (scoring + géométrie des angles),
+      # portée du dépôt Bikefiting. 56 tests `node:test`, exécutés NATIVEMENT par Node : le
+      # dépôt d'origine passait par `tsx`, ici les imports portent leur extension `.ts` et la
+      # dépendance disparaît. Elle n'a aucune UI dans ce dépôt et ne touche aucun plan — mais
+      # un banc que rien ne lance vaut zéro (O-9/R20.6), donc il tourne ici dès son arrivée.
+      - run: npm run test:bikefit
 
   # E2E navigateur : les smokes de la PWA (check-in, R4, rétention, améliorations)
   # tournent dans un vrai Chromium — Playwright est une devDependency de TEST

@@ -12,7 +12,7 @@
 // (texte/test/seuils/table/schema/drill/debat/warn/secu/renvoi), une barre de disciplines
 // alimentée par le sport du profil (B3), un mécanisme de verrouillage/progression générique
 // (actif seulement pour les disciplines qui déclarent des `prerequis` — natation aujourd'hui).
-import { S, $, ebSave, esc, todayISO } from "../state.js";
+import { S, $, ebSave, esc, todayISO, fmtDay } from "../state.js";
 import { SPORTS } from "../config.js";
 import { EDUCATIFS, disciplinesForSport, sectionsFor } from "../data/educatifs/registry.js";
 import { SVG_REGISTRY } from "../data/educatifs/svgRegistry.js";
@@ -73,8 +73,20 @@ function renderContenuItem(item) {
         + "</div>").join("") + "</div>";
     case "debat":
       return '<div class="edu-block"><div class="edu-debat"><strong>' + esc(item.titre) + "</strong><span>" + item.texte + "</span></div></div>";
+    // ── LES ERREURS FRÉQUENTES (refonte, chantier Éducatifs) ──
+    //
+    // Le patron de carte dessiné en maquette réclame un bloc d'erreurs types. Il n'a pas fallu
+    // l'écrire : il EXISTE déjà, sous le type `warn`, et chaque occurrence du corpus en est une
+    // (« les deux erreurs symétriques… », « ne cherche pas la position la plus basse… », « la
+    // pression maximale n'est pas une recommandation »). Ce qui manquait n'était pas le contenu,
+    // c'était son NOM — un encart générique sans titre se lit comme une note de bas de page,
+    // alors que c'est la partie que l'athlète relit avant sa séance.
+    //
+    // Aucune donnée n'a été touchée : le titre est posé au rendu. Inventer un nouveau type de
+    // contenu aurait obligé à re-taguer six fichiers de données pour un changement d'affichage.
     case "warn":
-      return '<div class="edu-block"><div class="warn">' + item.texte + "</div></div>";
+      return '<div class="edu-block"><span class="edu-block-h">Les erreurs fréquentes</span>'
+        + '<div class="warn">' + item.texte + "</div></div>";
     // secu : encart rouge plein, JAMAIS replié — rendu directement dans le corps de la
     // section, jamais sous un <details> imbriqué (A10 : visible dès l'ouverture, sans clic
     // de plus).
@@ -114,7 +126,17 @@ function sectionHTML(discipline, section, valides, accent) {
   const corps = lock && !LOCKED_PREVIEW
     ? lockedMsg
     : lockedMsg + badge + (section.contenuDynamique ? contenuDynamiqueHTML(section.contenuDynamique)
-      : section.contenu.map(renderContenuItem).join(""));
+      : section.contenu.map(renderContenuItem).join(""))
+      // LES SOURCES D'UNE SECTION VIVENT DANS LA SECTION (refonte, chantier Éducatifs).
+      //
+      // Elles étaient toutes regroupées en bas de page, dans une boîte unique : pour vérifier
+      // d'où sortait l'étape 3, il fallait la quitter, déplier la boîte et retrouver son titre
+      // dans une liste de neuf groupes. Une preuve qu'on doit aller chercher ailleurs ne fait
+      // plus son travail de preuve. Elle se pose donc sous le contenu qu'elle appuie, repliée
+      // (elle ne doit pas concurrencer le geste à apprendre) mais à un clic, sans changement
+      // de contexte. Rien n'est resaisi : ce sont les mêmes `section.sources` que la boîte
+      // affichait — elles ont changé de place, pas de source.
+      + sourcesListHTML(section.sources);
 
   const numLabel = section.numero != null ? esc(String(section.numero)) + " — " : "";
   const sousTitre = lock ? "Verrouillée — " + esc(prereq ? prereq.titre : "") + " d'abord" : esc(section.accroche || "");
@@ -140,14 +162,61 @@ function progressHTML(discipline, valides) {
   }).join("") + "</div>";
 }
 
+/** La liste de sources d'UN bloc, repliée. Même balisage que la boîte de bas de page (mêmes
+ *  classes, donc même style et même `data-type` de niveau de preuve) : un seul dessin. */
+function sourcesListHTML(sources) {
+  if (!Array.isArray(sources) || !sources.length) return "";
+  return '<details class="edu-sources-box edu-src-inline"><summary>Sources de cette étape <span>▼</span></summary><div>'
+    + '<div class="edu-src-group"><ul>'
+    + sources.map((src) => '<li data-type="' + esc(src.type) + '">' + src.texte
+      + (src.url ? ' <a href="' + esc(src.url) + '" target="_blank" rel="noopener">Consulter</a>' : "") + "</li>").join("")
+    + "</ul></div></div></details>";
+}
+
+/* ============================================================
+   OÙ CETTE DISCIPLINE APPARAÎT DANS TON PLAN
+   ============================================================
+   Le manque relevé à la relecture : les Éducatifs sont une bibliothèque posée à côté du plan.
+   On y apprend un geste sans jamais savoir QUAND on le fera — et un contenu qui ne rejoint
+   jamais l'entraînement se lit comme un article de magazine, pas comme une préparation.
+
+   Ce bloc fait le pont, et il ne l'invente pas : il compte les séances de la discipline dans
+   le plan DÉJÀ GÉNÉRÉ (`S.currentPlan`, jamais un recalcul — R11.1) et nomme la prochaine.
+   Rien n'est écrit, rien n'est stocké.
+
+   LA GRANULARITÉ EST CELLE QUE LA DONNÉE PERMET, et c'est délibéré : par DISCIPLINE, pas par
+   étape. Rattacher « étape 3 : la position de la tête » à une séance précise demanderait une
+   table étape → séance qui n'existe nulle part ; je l'aurais écrite au jugé, et elle serait
+   devenue fausse à la première évolution du générateur. Un lien vrai et large vaut mieux
+   qu'un lien précis et inventé. */
+const DISC_CODE = { natation: "sw", velo: "bk", course: "rn", enchainements: "br" };
+function ancrePlanHTML(discipline) {
+  const code = DISC_CODE[discipline.discipline];
+  const plan = S.currentPlan;
+  if (!code || !plan || !Array.isArray(plan.weeks)) return "";
+  const today = todayISO();
+  let total = 0, prochaine = null;
+  plan.weeks.forEach((w) => w.days.forEach((d) => (d.sessions || []).forEach((s) => {
+    if (s.d !== code) return;
+    total++;
+    if (!prochaine && d.date >= today) prochaine = { date: d.date, jour: d.jour, name: s.name };
+  })));
+  if (!total) return "";
+  return '<div class="load-card"><span class="load-title">Dans ton plan</span>'
+    + '<p class="load-sub">' + total + " séance" + (total > 1 ? "s" : "") + " de cette discipline sur l’ensemble du plan."
+    + (prochaine ? " La prochaine : <b>" + esc(prochaine.jour || "") + " " + esc(fmtDay(prochaine.date))
+      + "</b> — " + esc(prochaine.name) + "." : " Toutes sont passées.")
+    + "</p></div>";
+}
+
 function sourcesHTML(discipline, sections) {
   const groupes = [];
   if (discipline.intro && discipline.intro.sources && discipline.intro.sources.length) {
     groupes.push({ titre: "Introduction", sources: discipline.intro.sources });
   }
-  sections.forEach((s) => {
-    if (s.sources && s.sources.length) groupes.push({ titre: (s.numero != null ? "Étape " + s.numero + " — " : "") + s.titre, sources: s.sources });
-  });
+  // Les sources d'une SECTION sont rendues DANS la section (`sourcesListHTML`) depuis la
+  // refonte : les répéter ici en ferait deux endroits à tenir pour une même liste. La boîte de
+  // bas de page garde ce qui n'appartient à aucune étape — les sources de l'introduction.
   if (!groupes.length) return "";
   return '<details class="edu-sources-box"><summary>Sources <span>▼</span></summary><div>'
     + groupes.map((g) => '<div class="edu-src-group"><h3>' + esc(g.titre) + "</h3><ul>"
@@ -186,6 +255,7 @@ export function renderTabEducatifs() {
     + '<div class="load-card"><span class="load-title">' + esc(active.intro.encart.titre) + "</span>"
     + active.intro.encart.paragraphes.map((p) => '<p class="load-sub">' + p + "</p>").join("")
     + "</div>"
+    + ancrePlanHTML(active)
     + progressHTML(active, valides)
     + sections.map((s) => sectionHTML(active, s, valides, accent)).join("")
     + sourcesHTML(active, sections)

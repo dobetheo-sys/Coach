@@ -201,10 +201,42 @@ export function momentHTML(plan, todayIso) {
     return B("var(--zn-bg-race,#ffe3e0)", "\u{1F3C1} <b>Jour de course.</b> Tout le travail est fait — départ prudent, finis fort. Bonne course !");
   if (raceDates.includes(tomorrow))
     return B("var(--zn-bg-eve,#fff3d6)", "\u{1F389} <b>Veille de course.</b> Objectif du jour : des jambes fraîches. Repos, hydratation, matériel préparé — demain tu récoltes.");
+  // ── PLAN TERMINÉ (refonte, chantier 3) ──
+  //
+  // La course est passée : il n'y a plus de séance à piloter, et l'app continuait pourtant à
+  // rendre le même écran qu'un mardi de semaine 4 — un héros, une charge, une prédiction pour
+  // une échéance qui n'existe plus. L'état manquant n'est pas « vide », il est TERMINÉ.
+  //
+  // CE QUE CE BANDEAU NE FAIT PAS, et c'est le point de la maquette : il ne pousse pas à
+  // repartir. Pas de « Créer un nouveau plan », pas de « Prêt pour la suite ? ». Quelqu'un qui
+  // vient de courir son objectif n'a pas besoin qu'on lui vende la saison prochaine le
+  // lendemain matin. On dit ce qui a été fait, on nomme le chemin pour la suite SANS l'ouvrir
+  // (les réglages du Plan le portent déjà, R23.12b — un seul chemin), et on se tait.
+  const fin = planEndDate(plan, S.answers);
+  if (fin && today > fin) {
+    const done = S.answers && S.answers.done ? Object.keys(S.answers.done).length : 0;
+    return B("var(--zn-bg-done,#e2f3ec)",
+      "\u{1F3C5} <b>Plan terminé.</b> " + plan.totalWeeks + " semaines"
+      + (done ? ", " + done + " séance" + (done > 1 ? "s" : "") + " validée" + (done > 1 ? "s" : "") : "")
+      + " — c’est fait. Rien à faire aujourd’hui. Quand tu voudras repartir, un nouveau plan se crée depuis "
+      + "les réglages de l’onglet Plan.");
+  }
   let taperStart = null;
   plan.weeks.forEach((w) => w.days.forEach((d) => { if (!taperStart && (d.phaseId === "taper" || (w.phase && w.phase.id === "taper"))) taperStart = d.date; }));
   if (taperStart && taperStart === today)
     return B("var(--zn-bg-taper,#e9defc)", "✂️ <b>L’affûtage commence.</b> Le volume descend, la forme monte — le plus dur est derrière toi. Ne rajoute rien.");
+  // ── SEMAINE D'AFFÛTAGE, LES JOURS SUIVANTS (refonte, chantier 3) ──
+  //
+  // Le bandeau ci-dessus ne se montrait que le PREMIER jour de l'affûtage. Or c'est toute la
+  // semaine qui pose problème : les séances sont courtes, l'athlète se sent frais, et le doute
+  // (« l'app s'est trompée », « je vais perdre ma forme ») arrive le mercredi, pas le lundi.
+  // La semaine s'annonce donc chaque jour pour ce qu'elle est — plus discrètement que son
+  // premier jour, qui garde sa célébration : répéter le même ton six fois l'userait.
+  const wAuj = plan.weeks.find((w) => w.days.some((d) => d.date === today));
+  const estAffutage = !!wAuj && wAuj.days.some((d) => d.phaseId === "taper")
+    || (!!wAuj && !!wAuj.phase && wAuj.phase.id === "taper");
+  if (estAffutage)
+    return B("var(--zn-bg-taper,#e9defc)", "✂️ <b>Semaine d’affûtage.</b> Court, c’est normal — et c’est le travail. La forme se révèle en retirant de la charge, pas en en ajoutant.");
   return "";
 }
 

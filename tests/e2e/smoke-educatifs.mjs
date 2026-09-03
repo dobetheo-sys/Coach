@@ -140,7 +140,12 @@ await renderPour("natation" in table ? "swim" : "swim");
 const cible = page.locator(".edu-section").last();
 await cible.evaluate((el) => el.scrollIntoView({ block: "end" })); // on part loin de l'en-tête, exprès
 await page.waitForTimeout(150);
-await cible.locator("summary").click();
+// Depuis que les sources d'une section vivent DANS la section (refonte Éducatifs), une
+// `.edu-section` porte DEUX <summary> : le sien et celui de sa boîte de sources. Le mode
+// strict de Playwright refuse alors le clic. On vise le PREMIER — celui de la section, qui
+// est ce que A6 mesure — plutôt que de compter les <summary>, un compte que le contenu
+// ferait bouger à la première source ajoutée.
+await cible.locator("summary").first().click();
 await page.waitForTimeout(700);
 const ecarts = await cible.evaluate((el) => {
   const r = el.querySelector("summary").getBoundingClientRect();

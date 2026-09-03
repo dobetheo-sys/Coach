@@ -617,7 +617,7 @@ body.theme-zenna #screen [style*="color:#00a376"] { color: var(--zn-good) !impor
 body.theme-zenna #screen [style*="background:var(--acc)"] { color: var(--zn-on-accent) !important; }
 /* Le rouge « dur » de la légende des intensités : 4,46:1, à 0,04 du seuil. Il reste rouge —
    c'est le repère de la zone la plus intense — simplement éclairci (7,61:1). */
-body.theme-zenna #screen [style*="color:#e63946"] { color: #ff7d92 !important; }
+body.theme-zenna #screen [style*="color:#e63946"] { color: var(--zn-bad) !important; }
 
 /* ============================================================
    🧰 OUTILS › NUTRITION — LA COMPOSITION DE LA MAQUETTE, AU PIXEL
@@ -851,7 +851,7 @@ body.theme-zenna #screen .confirm-strip {
   background: rgba(255, 31, 74, .08); border: 1px solid rgba(255, 31, 74, .35);
   border-radius: 13px; padding: 10px 12px; margin-top: 12px; flex-wrap: wrap;
 }
-body.theme-zenna #screen .confirm-strip span { font-family: var(--zn-mono); font-size: 9.5px; font-weight: 700; color: #ff7d92; letter-spacing: .04em; }
+body.theme-zenna #screen .confirm-strip span { font-family: var(--zn-mono); font-size: 9.5px; font-weight: 700; color: var(--zn-bad); letter-spacing: .04em; }
 body.theme-zenna #screen .confirm-strip .btn { min-height: 40px; padding: 0 12px; font-size: 9.5px; }
 body.theme-zenna #screen .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
 body.theme-zenna #screen .btn-row .btn { flex: 1; }
@@ -989,3 +989,142 @@ body.theme-zenna #screen .zn-badge-earned-name { font-size: var(--fs-sm); font-w
 body.theme-zenna #screen .zn-jminus.zn-jm-in { animation: znJmIn calc(var(--beat, 120ms) * 11) var(--ease-enter, cubic-bezier(.25,.46,.45,.94)) both; }
 @keyframes znJmIn { from { opacity: 0; transform: scale(.82); } to { opacity: 1; transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { body.theme-zenna #screen .zn-jminus.zn-jm-in { animation: none; } }
+
+/* ============================================================
+   NAVIGATION DE SEMAINE — la grille arrive jour par jour
+   ============================================================
+   Même grammaire que la cascade d'Aujourd'hui (`zn-rise`), à deux différences près, et les
+   deux se lisent sur l'objet plutôt que sur le goût :
+     · LA DISTANCE est de 14 px, pas 40. Les 40 px de `--zn-travel` sont calibrés sur une carte
+       pleine largeur ; une case de jour fait un tiers de largeur et deux lignes de haut — la
+       même course la ferait entrer depuis la case du dessous.
+     · LA CLASSE EST POSÉE SUR LA GRILLE, pas sur `#screen`. Le reste de l'onglet (bandeaux,
+       en-tête de semaine, navigation) NE bouge pas : c'est la semaine qui change, pas l'écran.
+   Cinq pas de décalage au maximum : les jours 6 et 7 partent avec le 5e. */
+body.theme-zenna #screen .gw-grid.zn-days > * {
+  opacity: 0; transform: translateY(14px);
+  animation: zn-day-in calc(var(--beat) * 3) var(--ease-enter) both;
+}
+@keyframes zn-day-in {
+  0%   { opacity: 0; transform: translateY(14px); }
+  45%  { opacity: 1; }
+  100% { opacity: 1; transform: translateY(0); }
+}
+body.theme-zenna #screen .gw-grid.zn-days > .d2 { animation-delay: var(--stagger); }
+body.theme-zenna #screen .gw-grid.zn-days > .d3 { animation-delay: calc(var(--stagger) * 2); }
+body.theme-zenna #screen .gw-grid.zn-days > .d4 { animation-delay: calc(var(--stagger) * 3); }
+body.theme-zenna #screen .gw-grid.zn-days > .d5 { animation-delay: calc(var(--stagger) * 4); }
+/* Le repli remet l'état FINAL, jamais l'état de départ : une entrée coupée sans repli laisse
+   la grille à opacité 0 pour toujours (le piège documenté en tête de zenna-today.css). */
+@media (prefers-reduced-motion: reduce) {
+  body.theme-zenna #screen .gw-grid.zn-days > * { opacity: 1; transform: none; animation: none; }
+}
+
+/* ============================================================
+   LES TROIS NIVEAUX DE SURFACE (chantier 2 de la refonte)
+   ============================================================
+   Le constat de l'audit : tout est une carte. Le héros, la liste de réglages, un tableau de
+   références et un bandeau d'alerte portent le même fond, la même bordure, le même rayon —
+   donc l'écran n'a plus de hiérarchie, seulement une pile. Trois niveaux, et un seul par rôle :
+
+     1. EN RELIEF — l'objet unique de l'écran (la séance du jour, le décompte). Fond accentué,
+        ombre portée. Il existe DÉJÀ (`.zn-hero`, `.zn-count-hero`) et ne change pas ici : le
+        chantier consiste à lui rendre son relief en retirant celui des autres.
+     2. NU SUR LA PAGE — une SECTION : un intitulé, puis ses éléments. Elle n'a pas de contour
+        propre ; son titre et le filet sous lui suffisent à la délimiter. C'est le niveau qui
+        manquait, et c'est lui qui rend le relief au niveau 1.
+     3. CREUSÉ — la donnée de référence qu'on consulte (journaux, tableaux, replis). Elle
+        s'enfonce au lieu de se soulever : ombre INTÉRIEURE, pas de liseré de crête.
+
+   LE CHOIX D'IMPLÉMENTATION, et pourquoi il ne touche aucun module de rendu : la structure
+   existe déjà dans le HTML produit. Une `.card` qui CONTIENT des `.load-card` est, de fait,
+   une section avec ses éléments — son `.eyebrow` en est le titre. `:has()` lit cette
+   structure au lieu de demander à onze modules de se déclarer. Aucun sélecteur fonctionnel,
+   aucun identifiant, aucune chaîne de texte ne bouge : les gardes qui comparent des empreintes
+   de DOM ne voient rien passer.
+   Un navigateur sans `:has()` ignore le bloc et retombe sur l'empilement actuel — dégradation
+   silencieuse, jamais d'écran cassé. */
+
+/* NIVEAU 2 — la carte-conteneur redevient une section nue. */
+body.theme-zenna #screen .card:has(> .load-card),
+body.theme-zenna #screen .card:has(> details.load-card) {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  margin-bottom: 26px; /* l'air REMPLACE le contour : c'est lui qui sépare deux sections */
+}
+/* Le liseré de crête dit « cette surface est soulevée ». Une section nue n'a pas d'arête. */
+body.theme-zenna #screen .card:has(> .load-card)::before,
+body.theme-zenna #screen .card:has(> details.load-card)::before { content: none; }
+
+/* Le chapeau devient un TITRE DE SECTION : plus une pastille posée sur une carte, mais un
+   intitulé aligné sur la marge, souligné d'un filet — la même graphie mono qui signe le
+   reste du thème, à la taille d'un titre de rubrique. */
+body.theme-zenna #screen .card:has(> .load-card) > .eyebrow,
+body.theme-zenna #screen .card:has(> details.load-card) > .eyebrow {
+  display: block;
+  background: transparent;
+  border-radius: 0;
+  padding: 0 0 9px;
+  margin: 0 0 12px;
+  border-bottom: 1px solid var(--zn-border);
+  color: var(--zn-muted-2);
+  font-family: var(--zn-mono);
+  font-size: 11px;
+  letter-spacing: .18em;
+}
+
+/* NIVEAU 3 — les éléments de la section se CREUSENT. */
+body.theme-zenna #screen .card:has(> .load-card) > .load-card,
+body.theme-zenna #screen .card:has(> details.load-card) > .load-card,
+body.theme-zenna #screen .card:has(> details.load-card) > details.load-card {
+  background: var(--zn-surface-2);
+  border: 1px solid transparent;
+  border-radius: 14px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .55);
+  margin-bottom: 10px; /* rythme de LISTE, plus rythme de pile de cartes */
+}
+body.theme-zenna #screen .card:has(> .load-card) > .load-card:last-child,
+body.theme-zenna #screen .card:has(> details.load-card) > details.load-card:last-child { margin-bottom: 0; }
+body.theme-zenna #screen .card:has(> .load-card) > .load-card::before,
+body.theme-zenna #screen .card:has(> details.load-card) > details.load-card::before { content: none; }
+
+/* Les sources d'une étape d'Éducatif, posées SOUS le contenu qu'elles appuient. Elles ne
+   doivent pas concurrencer le geste à apprendre : même boîte que celle de bas de page, à
+   l'échelle d'un pied de bloc. */
+body.theme-zenna #screen .edu-sources-box.edu-src-inline { margin-top: 14px; }
+body.theme-zenna #screen .edu-sources-box.edu-src-inline > summary {
+  /* R16.8 — 10px n'est pas un palier (--fs-micro 9 / --fs-xs 11) ; l'autre des deux tailles
+     hors palier relevées par le handoff. C'est une étiquette capitale très espacée — le rôle
+     exact que styles.css attribue à --fs-micro. */
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .1em; color: var(--zn-muted-2);
+}
+
+/* ============================================================
+   PRÉLÈVEMENT REFUSÉ — l'envoi est suspendu, pas annulé
+   ============================================================
+   Pas de rouge plein ni de majuscules d'alarme : quelqu'un dont la carte a expiré n'a rien fait
+   de mal, et un écran qui crie fait fermer l'app au lieu de faire mettre à jour une carte. Le
+   rouge tient dans une pastille de 7 px et un intitulé ; le corps garde la voix du reste du
+   produit. La carte reprend le châssis `.shop-card` existant — même surface, même rayon. */
+body.theme-zenna #screen .shop-card[data-payment="failed"] { border-color: rgba(230, 57, 70, .38); }
+body.theme-zenna #screen .pay-head { display: flex; align-items: center; gap: 8px; }
+body.theme-zenna #screen .pay-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--zn-bad); flex: 0 0 auto;
+}
+body.theme-zenna #screen .pay-lab {
+  /* R16.8 — 9,5px n'est pas un palier déclaré (--fs-micro 9 / --fs-xs 11) ; relevé par le
+     handoff de refonte comme une des deux tailles hors palier issues de ce lot. */
+  font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--zn-bad);
+}
+body.theme-zenna #screen .pay-title {
+  font-family: var(--zn-display, var(--zn-mono)); font-weight: 800; font-size: 21px; line-height: 1.1;
+  text-transform: uppercase; color: var(--zn-text); margin-top: 13px;
+}
+body.theme-zenna #screen .pay-body {
+  font-size: var(--fs-md); line-height: 1.55; color: var(--zn-muted); margin-top: 12px;
+  text-wrap: pretty;
+}
+body.theme-zenna #screen .pay-body b { color: var(--zn-text); }

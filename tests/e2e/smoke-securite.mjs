@@ -28,8 +28,16 @@ const csp = (/<meta http-equiv="Content-Security-Policy" content="([^"]+)"/.exec
 ok(!!csp, "index.html porte une Content-Security-Policy");
 ok(/connect-src[^;]*api\.open-meteo\.com/.test(csp) && /connect-src[^;]*www\.strava\.com/.test(csp),
   "…dont `connect-src` nomme les deux hôtes réellement appelés (Open-Meteo, Strava)");
-ok(/script-src 'self'(;|$)/.test(csp),
-  "…et `script-src` reste à 'self' — aucun script inline dans la page, la contrainte tient");
+// S-4, révision du 02/09/2026 — `'wasm-unsafe-eval'` a rejoint `'self'`, décision du fondateur
+// pour la segmentation MediaPipe du bilan posture. Le jeton n'autorise QUE l'instanciation de
+// WebAssembly précompilé ; il n'ouvre PAS `eval()`/`new Function()` sur du texte arbitraire —
+// c'est `'unsafe-eval'` qui ferait ça, et lui reste absent. Le critère porte donc sur ce qui
+// compte réellement : AUCUN script inline (toujours vrai) ET AUCUN `'unsafe-eval'` (jamais admis).
+ok(/script-src[^;]*'self'/.test(csp) && !/script-src[^;]*'unsafe-inline'/.test(csp),
+  "…`script-src` autorise 'self' sans jamais 'unsafe-inline' — aucun script inline dans la page");
+ok(!/script-src[^;]*(?<!wasm-)'unsafe-eval'/.test(csp),
+  "…et `script-src` n'admet jamais 'unsafe-eval' (texte arbitraire) — seul 'wasm-unsafe-eval' "
+  + "(WebAssembly précompilé, MediaPipe) est toléré");
 ok(/object-src 'none'/.test(csp) && /form-action 'none'/.test(csp) && /base-uri 'self'/.test(csp),
   "…plus les verrous gratuits : `object-src`, `form-action`, `base-uri`");
 // `frame-ancestors` est IGNORÉ en `<meta>` (il exige un en-tête HTTP) : le déclarer ne

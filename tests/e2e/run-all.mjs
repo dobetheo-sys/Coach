@@ -31,12 +31,14 @@ const SUITES = ["smoke-checkin.mjs", "smoke-r4.mjs", "smoke-retention.mjs", "smo
   // R26 — Éducatifs (six disciplines) : A1-A13 du brief, le mécanisme de verrouillage/
   // cascade, l'affichage conditionnel par sport et l'absence de doublon d'identifiant SVG.
   "smoke-educatifs.mjs",
+  // Bilan posture — écran 2a. Les critères portent sur des PROPRIÉTÉS (les trois états
+  // rendent trois écrans, la couleur DESCEND des jetons, aucun texte sous AA) et non sur
+  // des valeurs : l'écran est recréé d'après une référence de design, et épingler un hex
+  // ou un padding rougirait au premier changement de contenu sans rien garder d'utile.
+  "smoke-posture.mjs",
   // R-ZENNA — le reskin animé de 🎯 Aujourd'hui : le mouvement porte l'opacité, donc son
   // absence VIDE l'onglet sans qu'aucune assertion de contenu ne s'en aperçoive.
-  "smoke-zenna.mjs",
-  // Bikefitting — l'entrée Outils › Position existe et pointe au bon endroit (le lien, pas
-  // la sous-app elle-même : voir bikefitting/docs/INTEGRATION_HANDOFF.md).
-  "smoke-bikefitting.mjs"];
+  "smoke-zenna.mjs"];
 let failed = 0;
 for (const s of SUITES) {
   console.log("\n━━━ " + s + " ━━━");

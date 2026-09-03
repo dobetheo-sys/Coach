@@ -240,6 +240,976 @@ function phaseJours(p       )                                                   
     
  
 
+// ===== src/bikefit/postureAeroEngine.ts =====
+// posture-aero-engine.ts
+// Moteur de scoring posture aéro (prolongateurs) — V1
+// Implémente SPEC_POSTURE_AERO_MOTEUR.md
+//
+// Statut des constantes (voir §9 du spec, table de confiance) :
+//   [SOURCED]  = valeur vérifiée en littérature / pratique pro (citée dans le spec)
+//   [DEFAULT]  = hypothèse d'ingénierie, pas de source chiffrée trouvée — à calibrer par le feedback
+
+// ---------- Types ----------
+
+                             
+               
+              
+              
+                    
+                   
+ 
+
+                              
+                                                                  
+                                                   
+                                                                   
+                                                       
+                                                                                         
+                                                                                          
+                                                                                       
+                                                                                         
+                                                                                 
+                    
+                                                                                             
+                                                                                               
+                                                                                             
+                                                                                         
+                       
+                    
+ 
+
+                                 
+                                                                            
+                             
+                                                                                             
+                                                                                            
+                                                                                               
+                                                                                           
+                                                                                            
+                                                                                           
+                                                                                        
+                                                                                            
+                                                                                           
+                                                                                             
+                                                                                 
+                            
+                                                                                           
+                                                                                              
+                                                                                             
+                                                                                              
+                                                                                            
+                                                                                          
+                         
+                         
+ 
+
+                                 
+                                                                                          
+                           
+                                                                            
+ 
+
+                        
+             
+                      
+                          
+                                                                                                
+                                                                                             
+                                                                                             
+                                                                                               
+                                                                                            
+                                                                                             
+                                                                                              
+                                                                                             
+                                                                                              
+                                                                                                 
+                                                                                          
+                                                                                                 
+                                                                                          
+                                                                                                 
+                                                                                                 
+                                                                                       
+    
+                                                                                                 
+                                                                                                
+                                                                                                
+                                                                                                     
+                                                                                                
+                                                                                               
+                                                                                               
+                                                                                           
+                                                                                                
+                                                                                               
+           
+                           
+                             
+                    
+                   
+                          
+                           
+                               
+                        
+                              
+                           
+                             
+    
+ 
+
+                            
+                
+                
+                
+ 
+
+                                   
+                 
+                          
+                        
+                                  
+ 
+
+                                            
+                               
+                       
+                          
+                           
+                    
+                       
+                        
+ 
+
+                                    
+               
+                    
+                
+                
+  // multiplicateur, 1.0 = neutre
+
+// ---------- §3.1 — ASLR -> score de souplesse ----------
+// Ancrage clinique : seuil de tightness ischio-jambiers = 80° (littérature SLR test)
+
+function aslrToFlexScore(angleDeg        )                    {
+  if (angleDeg < 60) return 1;
+  if (angleDeg < 70) return 2;
+  if (angleDeg < 80) return 3;
+  if (angleDeg < 90) return 4;
+  return 5;
+}
+
+// ---------- Hauteur de selle de référence (formule LeMond) ----------
+// Retour terrain : "plutôt un réglage de base sur le vélo avant, comme une norme pour
+// l'athlète" — un point de départ documenté si l'athlète ne connaît pas déjà son réglage
+// habituel, pas une prescription. Volontairement limité à la hauteur de selle : c'est la seule
+// des 4 valeurs de TrialDeltasForm (hauteur/recul selle, reach, drop) qui a une formule
+// largement citée et reproductible (LeMond, popularisée dans "Greg LeMond's Complete Book of
+// Bicycling", 1987) ; reach/recul/drop dépendent trop du vélo, de la souplesse et de la
+// discipline pour qu'une "norme" universelle ait un sens — en proposer une inventerait une
+// fausse précision, ce que l'appli a justement évité de faire ailleurs (cf. les corrections
+// successives sur la détection ASLR).
+const LEMOND_SADDLE_HEIGHT_RATIO = 0.883; // [SOURCED] entrejambe -> hauteur pédalier–haut de selle
+
+function computeReferenceSaddleHeightCm(inseamCm        )         {
+  if (inseamCm <= 0) throw new Error('computeReferenceSaddleHeightCm: entrejambe doit être > 0');
+  return round1(inseamCm * LEMOND_SADDLE_HEIGHT_RATIO);
+}
+
+// ---------- §3 — Contraintes dures ----------
+
+const HIP_FLOOR_ABS = 40; // [SOURCED] Retül/BikeFittr — sous 40°, perte de puissance 5-15% chez la majorité
+const HIP_TARGET_BY_FLEX                         = { 1: 50, 2: 48, 3: 46, 4: 43, 5: 40 }; // [SOURCED, indicatif] cible, jamais sous le plancher
+const TRUNK_MIN = 5;
+const TRUNK_MAX = 15; // [convergence de sources pro]
+const KNEE_MIN = 137;
+const KNEE_MAX = 150; // [convergence de sources pro] angle interne hanche-genou-cheville
+const ANKLE_FLAG = 22; // [SOURCED] typique 15-20° (BikeDynamics), flag au-delà — jamais exclusoire
+const WRIST_WARN = 15; // [DEFAULT] non sourcé — warning uniquement, jamais exclusoire (cf. §10 du spec)
+
+// hasAeroBars : optionnel (essais déjà persistés avant l'ajout du champ, cf. Trial['deltas']).
+// undefined/true = comportement historique inchangé (prolongateurs supposés par défaut).
+// Correctif d'audit (12/08/2026) : un essai explicitement marqué hasAeroBars=false (position
+// route testée sans prolongateurs) ne doit pas être jugé sur la plage tronc/genou pensée pour
+// une position aéro/TT — même assouplissement (exclusion -> avertissement) que goal='comfort'.
+function validateTrial(angles             , profile                , hasAeroBars          )                   {
+  const violations              = [];
+  const warnings              = [];
+  const margins                         = {};
+  const aeroRangeIsExclusionary = (profile.goal ?? 'aero') === 'aero' && hasAeroBars !== false;
+
+  // Garde-fou défensif : angleAt()/angleVsHorizontal() (capture-processing.ts) retournent NaN
+  // quand 2 points tapés coïncident. La couche UI (measure screen) filtre déjà ce cas avant
+  // d'enregistrer un essai, mais validateTrial est la couche d'autorité pour la validité d'un
+  // essai — s'appuyer uniquement sur l'UI serait fragile. Sans ce garde-fou, TOUTES les
+  // comparaisons numériques ci-dessous (<, >) valent silencieusement false pour NaN : un essai
+  // avec un angle NaN ne serait jamais exclu ici, et ne serait jamais dominé dans paretoFront
+  // (b.comfortScore >= a.comfortScore est aussi toujours false avec NaN) — il resterait sur la
+  // frontière et pourrait ressortir comme une des 3 positions recommandées.
+  const numericFields = [angles.hip.mean, angles.trunk.mean, angles.knee.mean, angles.knee.min, angles.knee.max];
+  if (numericFields.some((v) => !Number.isFinite(v))) {
+    violations.push({ param: 'invalid_measurement', value: NaN, bound: 0 });
+    return { valid: false, violations, warnings, margins };
+  }
+
+  // Hanche : plancher absolu, indépendant de la souplesse déclarée ET de l'objectif (perte de
+  // puissance mesurée, pas une question de style de position — cf. AthleteProfile.goal)
+  if (angles.hip.mean < HIP_FLOOR_ABS) {
+    violations.push({ param: 'hip_floor', value: angles.hip.mean, bound: HIP_FLOOR_ABS });
+  }
+  margins.hip_deg = round1(angles.hip.mean - HIP_FLOOR_ABS);
+
+  // Tronc : exclusoire en objectif 'aero' AVEC prolongateurs (plage TT/tri sourcée) ;
+  // avertissement seulement en 'comfort' (cf. AthleteProfile.goal) OU si hasAeroBars=false
+  // (position route testée sans prolongateurs — cette plage n'a pas de sens à lui appliquer).
+  if (angles.trunk.mean < TRUNK_MIN) {
+    const entry            = { param: 'trunk_min', value: angles.trunk.mean, bound: TRUNK_MIN };
+    (aeroRangeIsExclusionary ? violations : warnings).push(entry);
+  }
+  if (angles.trunk.mean > TRUNK_MAX) {
+    const entry            = { param: 'trunk_max', value: angles.trunk.mean, bound: TRUNK_MAX };
+    (aeroRangeIsExclusionary ? violations : warnings).push(entry);
+  }
+  margins.trunk_deg = round1(Math.min(angles.trunk.mean - TRUNK_MIN, TRUNK_MAX - angles.trunk.mean));
+
+  // Genou : doit rester dans la plage sur tout le cycle (min/max), pas juste en moyenne.
+  // Même gating que le tronc ci-dessus (aeroRangeIsExclusionary).
+  // Audit fiabilité : `value`/`bound` reflètent maintenant le seuil RÉELLEMENT franchi (min si
+  // trop plié, max si trop tendu) plutôt que systématiquement la moyenne + KNEE_MIN — l'ancien
+  // comportement pouvait afficher une valeur qui a l'air dans la plage (la moyenne) à côté d'un
+  // message "genou hors de la plage", contradiction confuse pour l'utilisateur qui essaie de
+  // comprendre pourquoi son essai a été exclu.
+  if (angles.knee.min < KNEE_MIN || angles.knee.max > KNEE_MAX) {
+    const tooFlexed = angles.knee.min < KNEE_MIN;
+    const entry            = {
+      param: 'knee_range',
+      value: tooFlexed ? angles.knee.min : angles.knee.max,
+      bound: tooFlexed ? KNEE_MIN : KNEE_MAX,
+    };
+    (aeroRangeIsExclusionary ? violations : warnings).push(entry);
+  }
+  margins.knee_deg = round1(Math.min(angles.knee.min - KNEE_MIN, KNEE_MAX - angles.knee.max));
+
+  // Ankling : jamais exclusoire, juste un flag qualité
+  if (angles.ankle.amplitude > ANKLE_FLAG) {
+    warnings.push({ param: 'ankle_unstable', value: angles.ankle.amplitude, bound: ANKLE_FLAG });
+  }
+
+  // Poignet : warning seulement (non sourcé, cf. §10 du spec)
+  if (angles.wrist.mean > WRIST_WARN) {
+    warnings.push({ param: 'wrist_bend', value: angles.wrist.mean, bound: WRIST_WARN });
+  }
+
+  return { valid: violations.length === 0, violations, warnings, margins };
+}
+
+// ---------- Suggestion de réglage entre 2 essais ----------
+// Retour terrain : "est-ce qu'on ne peut pas avoir cette réflexion entre chaque essai ? regarder
+// le paramètre le plus loin de la norme et donner une suggestion" — jusqu'ici ce raisonnement
+// (quel angle mesuré est le plus problématique, quel réglage vélo agit dessus) restait à faire
+// à la main, essai par essai. Automatise le même calcul : parmi hanche/tronc/genou, identifie
+// celui dont l'écart à sa zone cible (en degrés) est le plus grand, et donne le réglage vélo qui
+// agit dessus dans le bon sens.
+//
+// Relations directionnelles utilisées [SOURCED, convergence de sources pro Retül/BikeFittr/
+// BikeDynamics, mêmes sources que §3/§9 du spec] : plus de recul de selle ouvre la hanche, plus
+// de drop/reach la ferme ; une selle plus haute tend la jambe au point bas du cycle (genou plus
+// ouvert), plus basse la plie (genou plus fermé). Volontairement PAS de valeur en mm suggérée :
+// contrairement à la hauteur de selle (cf. computeReferenceSaddleHeightCm), aucune formule
+// fiable ne relie un écart en degrés à un delta en mm pour reach/recul/drop — donner un chiffre
+// inventerait exactement la fausse précision que l'appli évite ailleurs. Seule la direction et
+// le réglage à toucher sont fournis ; à l'athlète d'avancer par petits pas et de re-tester.
+                                       
+                                                                              
+                                                                                              
+                  
+ 
+
+function suggestNextAdjustment(t       , profile                )                              {
+  const hipTarget = HIP_TARGET_BY_FLEX[profile.hipFlexibilityScore];
+  // Le tronc ET le genou ne ciblent leur plage aéro sourcée qu'en objectif 'aero' AVEC
+  // prolongateurs — même gating que validateTrial/computeComfortScore (aeroRangeIsExclusionary/
+  // aeroRangeApplies ci-dessus). Correctif d'audit (12/08/2026) : le genou n'était jusqu'ici PAS
+  // gaté du tout ici (contrairement au tronc), une incohérence trouvée en alignant les 3
+  // fonctions qui utilisent cette même plage — sans ce correctif, un essai 'comfort' ou sans
+  // prolongateurs se voyait quand même suggérer "monte/baisse la selle" pour viser une plage
+  // aéro que le reste du moteur ne lui applique plus. gapDeg à 0 exclut simplement le candidat.
+  const aeroRangeTargeted = (profile.goal ?? 'aero') === 'aero' && t.deltas.hasAeroBars !== false;
+  const candidates                         = [
+    {
+      param: 'hip',
+      gapDeg: round1(Math.max(0, hipTarget - t.angles.hip.mean)),
+      message: `Hanche fermée à ${t.angles.hip.mean}° (cible ${hipTarget}° pour ta souplesse) — essaie de reculer la selle, ou de réduire le drop/reach, pour l'ouvrir.`,
+    },
+    {
+      param: 'trunk_high',
+      gapDeg: aeroRangeTargeted ? round1(Math.max(0, t.angles.trunk.mean - TRUNK_MAX)) : 0,
+      message: `Tronc à ${t.angles.trunk.mean}°, au-dessus du seuil aéro de ${TRUNK_MAX}° — essaie d'augmenter le drop (cintre plus bas) ou le reach.`,
+    },
+    {
+      param: 'trunk_low',
+      gapDeg: aeroRangeTargeted ? round1(Math.max(0, TRUNK_MIN - t.angles.trunk.mean)) : 0,
+      message: `Tronc à ${t.angles.trunk.mean}°, sous le minimum de ${TRUNK_MIN}° — essaie de réduire le drop pour te redresser un peu.`,
+    },
+    {
+      param: 'knee_flexed',
+      gapDeg: aeroRangeTargeted ? round1(Math.max(0, KNEE_MIN - t.angles.knee.min)) : 0,
+      message: `Genou trop plié au point le plus fermé du cycle (${t.angles.knee.min}°, sous ${KNEE_MIN}°) — essaie de monter la selle.`,
+    },
+    {
+      param: 'knee_extended',
+      gapDeg: aeroRangeTargeted ? round1(Math.max(0, t.angles.knee.max - KNEE_MAX)) : 0,
+      message: `Genou trop tendu au point le plus ouvert du cycle (${t.angles.knee.max}°, au-dessus de ${KNEE_MAX}°) — essaie de baisser la selle.`,
+    },
+  ];
+
+  const worst = candidates.reduce((a, b) => (b.gapDeg > a.gapDeg ? b : a));
+  return worst.gapDeg > 0 ? worst : null;
+}
+
+// ---------- §4 — Score confort ----------
+
+function quadPenalty(distance        , scale        , cap = 40)         {
+  // distance <= 0 => dans la plage confortable, pas de pénalité
+  if (distance <= 0) return 0;
+  return Math.min(cap, scale * distance * distance);
+}
+
+// penaltyScale : multiplicateur appliqué à TOUTES les échelles de pénalité ci-dessous (0.3/0.5/
+// 0.4/0.4, plus le ×2 de la pénalité de variance) — valeurs [DEFAULT], non sourcées, cf. §9 du
+// spec ("Poids ... confort (pondérations) : Non sourcé — défaut d'ingénierie [...] pas une
+// vérité biomécanique"). Sert uniquement à computeComfortScoreRange ci-dessous pour donner une
+// plage de sensibilité ; = 1 => comportement exactement inchangé pour tout appelant existant.
+function computeComfortScore(t       , profile                , weights                   , penaltyScale = 1)         {
+  let score = 100;
+
+  const hipTarget = HIP_TARGET_BY_FLEX[profile.hipFlexibilityScore];
+  const hipGap = Math.max(0, hipTarget - t.angles.hip.mean); // en dessous de la cible = pénalité croissante
+  score -= quadPenalty(hipGap, 0.3 * penaltyScale) * weights.lowerBack;
+
+  // Le tronc et le genou ne sont pénalisés par rapport à leur plage aéro sourcée qu'en objectif
+  // 'aero' AVEC prolongateurs (hasAeroBars) — même gating que validateTrial (aeroRangeIsExclusionary
+  // ci-dessus). En 'comfort' il n'y a pas de plage tronc/genou "confort" sourcée équivalente (cf.
+  // AthleteProfile.goal) ; sans prolongateurs (hasAeroBars=false, position route testée), pénaliser
+  // quand même sur une plage pensée pour une position aéro/TT n'a pas de sens non plus — dans les
+  // deux cas, inventer une cible non sourcée serait la fausse précision que ce moteur évite ailleurs.
+  const aeroRangeApplies = (profile.goal ?? 'aero') === 'aero' && t.deltas.hasAeroBars !== false;
+  if (aeroRangeApplies) {
+    const trunkMid = (TRUNK_MIN + TRUNK_MAX) / 2;
+    const trunkHalfRange = (TRUNK_MAX - TRUNK_MIN) / 2;
+    const trunkGap = Math.abs(t.angles.trunk.mean - trunkMid) - trunkHalfRange;
+    score -= quadPenalty(trunkGap, 0.5 * penaltyScale) * weights.neck;
+
+    // Correctif d'audit (12/08/2026) : weights.knees existe (recalibré par le feedback douleur
+    // genoux, cf. recalibrateWeights) mais n'était utilisé nulle part ici — un retour "genoux"
+    // répété n'avait donc aucun effet sur le score, contrairement aux 3 autres zones (nuque/bas
+    // du dos via hanche+tronc, mains via poignet). Même forme de pénalité que le tronc juste
+    // au-dessus (écart à la plage cible, quadratique).
+    const kneeMid = (KNEE_MIN + KNEE_MAX) / 2;
+    const kneeHalfRange = (KNEE_MAX - KNEE_MIN) / 2;
+    const kneeGap = Math.abs(t.angles.knee.mean - kneeMid) - kneeHalfRange;
+    score -= quadPenalty(kneeGap, 0.4 * penaltyScale) * weights.knees;
+  }
+
+  // Stabilité inter-cycles : variance élevée = moins fiable / moins confortable sur la durée
+  score -= Math.min(15, (t.angles.hip.variance + t.angles.trunk.variance) * 2 * penaltyScale);
+
+  // Poignet : coûte du confort au-delà du seuil, même s'il ne bloque pas la validité
+  const wristGap = Math.max(0, t.angles.wrist.mean - WRIST_WARN);
+  score -= quadPenalty(wristGap, 0.4 * penaltyScale) * weights.hands;
+
+  return Math.max(0, Math.min(100, round1(score)));
+}
+
+// ---------- §5 — Score aéro (relatif, via pFSA mesurée) ----------
+
+const AERO_WEIGHTS = { pfsa: 0.65, trunk: 0.25, head: 0.10 }; // [DEFAULT] pondération de départ, à calibrer (§10)
+
+// weights : paramétrable uniquement pour computeAeroScoreRange ci-dessous (plage de sensibilité
+// sur cette même pondération [DEFAULT]) — défaut = AERO_WEIGHTS, comportement inchangé pour tout
+// appelant existant.
+function computeAeroScore(t       , cohortMaxPFSANorm        , weights = AERO_WEIGHTS)         {
+  const pfsaNorm = t.frontal.pFSA_cm2 / t.frontal.athleteHeight_cm;
+  // Audit fiabilité : sans ce garde-fou, cohortMaxPFSANorm === 0 (tous les essais de la session
+  // à pFSA=0 — ex. segmentation ayant échoué sur toute la session, photos trop sombres/mal
+  // cadrées) ou athleteHeight_cm falsy (ancienne session persistée avant que ce champ soit
+  // obligatoire) produit un score NaN affiché tel quel sur l'écran de résultats. Comme le score
+  // est "relatif aux essais de LA session, jamais absolu" (cf. commentaire ci-dessous), un
+  // dénominateur nul signifie qu'aucune comparaison relative n'a de sens ici : neutre (0) plutôt
+  // que NaN, les autres composantes (trunk/head) restent utilisables.
+  const pfsaScore = cohortMaxPFSANorm > 0 && Number.isFinite(pfsaNorm) ? 100 * (1 - pfsaNorm / cohortMaxPFSANorm) : 0; // relatif aux essais de LA session, jamais absolu
+
+  const trunkScore = 100 * (1 - (t.angles.trunk.mean - TRUNK_MIN) / (TRUNK_MAX - TRUNK_MIN));
+
+  const headPenalty = Math.min(30, Math.abs(t.frontal.headOffset_cm) * 5);
+  const headScore = 100 - headPenalty;
+
+  const raw = weights.pfsa * pfsaScore + weights.trunk * trunkScore + weights.head * headScore;
+  return Math.max(0, Math.min(100, round1(raw)));
+}
+
+// ---------- Plages de sensibilité (audit 13/08/2026) ----------
+// comfort_score/aero_score s'affichaient comme des chiffres uniques qui ont l'air plus précis
+// qu'ils ne le sont : les pondérations qui les calculent sont explicitement [DEFAULT]/"non
+// sourcé — défaut d'ingénierie [...] pas une vérité biomécanique" (§9 du spec). Plutôt que
+// d'inventer une plage statistique sur l'erreur de mesure (qu'on ne peut pas quantifier sans
+// données réelles — la même fausse précision que ce moteur évite déjà ailleurs), on calcule le
+// score sous 2 variantes plausibles de CES MÊMES constantes non sourcées et on affiche la plage
+// résultante : une mesure honnête de la sensibilité du score à des réglages jamais validés
+// empiriquement, pas une estimation de la précision de la mesure elle-même.
+                             
+                
+              
+               
+ 
+
+const COMFORT_SENSITIVITY_SPREAD = 0.2; // [DEFAULT] ±20%, choix arbitraire explicite — non sourcé
+
+function computeComfortScoreRange(t       , profile                , weights                   )             {
+  const score = computeComfortScore(t, profile, weights);
+  // Moins de pénalité (échelle réduite) -> score plus haut ; plus de pénalité -> score plus bas.
+  // Triés par Math.min/max plutôt que supposé dans cet ordre, pour rester correct même si le
+  // sens changeait un jour (ex. nouvelle composante de score qui inverserait la direction).
+  const generous = computeComfortScore(t, profile, weights, 1 - COMFORT_SENSITIVITY_SPREAD);
+  const strict = computeComfortScore(t, profile, weights, 1 + COMFORT_SENSITIVITY_SPREAD);
+  return { score, low: Math.min(generous, strict), high: Math.max(generous, strict) };
+}
+
+// 2 répartitions alternatives plausibles de AERO_WEIGHTS (la pFSA mesurée reste dominante dans
+// les 2 — rien ne remet ça en cause, cf. spec §5 — seule l'AMPLEUR du poids varie) : pas une
+// vraie distribution statistique, juste de quoi donner une idée de la sensibilité du score à ce
+// choix non sourcé.
+const AERO_WEIGHTS_LOW_PFSA = { pfsa: 0.5, trunk: 0.35, head: 0.15 };
+const AERO_WEIGHTS_HIGH_PFSA = { pfsa: 0.8, trunk: 0.15, head: 0.05 };
+
+function computeAeroScoreRange(t       , cohortMaxPFSANorm        )             {
+  const score = computeAeroScore(t, cohortMaxPFSANorm);
+  const a = computeAeroScore(t, cohortMaxPFSANorm, AERO_WEIGHTS_LOW_PFSA);
+  const b = computeAeroScore(t, cohortMaxPFSANorm, AERO_WEIGHTS_HIGH_PFSA);
+  return { score, low: Math.min(a, b), high: Math.max(a, b) };
+}
+
+// ---------- §6 — Front de Pareto + sélection des 3 profils ----------
+
+function paretoFront(trials               )                {
+  const valid = trials.filter((t) => t.validation.valid);
+  return valid.filter(
+    (a) =>
+      !valid.some(
+        (b) =>
+          b.id !== a.id &&
+          b.comfortScore >= a.comfortScore &&
+          b.aeroScore >= a.aeroScore &&
+          (b.comfortScore > a.comfortScore || b.aeroScore > a.aeroScore)
+      )
+  );
+}
+
+function selectProfiles(front               ) {
+  if (front.length === 0) return null;
+  const confortMax = [...front].sort((a, b) => b.comfortScore - a.comfortScore)[0];
+  const aeroMax = [...front].sort((a, b) => b.aeroScore - a.aeroScore)[0];
+  const equilibre = [...front].sort((a, b) => distToIdeal(a) - distToIdeal(b))[0];
+  return { confort_max: confortMax, equilibre, aero_max: aeroMax };
+}
+
+function distToIdeal(t             )         {
+  return Math.hypot(100 - t.comfortScore, 100 - t.aeroScore);
+}
+
+// ---------- §7 — Boucle de feedback ----------
+
+                                
+                                                 
+                           
+ 
+
+function recalibrateWeights(current                   , history                   )                    {
+  const next = { ...current };
+  (['neck', 'lowerBack', 'hands', 'knees']         ).forEach((zone) => {
+    const last2 = history.slice(-2).map((session) => session.find((e) => e.zone === zone)?.painScore ?? 0);
+    // Recalibration seulement si 2 sorties consécutives signalent la même zone — évite l'overfit à un mauvais jour
+    if (last2.length === 2 && last2.every((p) => p >= 4)) {
+      next[zone] = Math.min(2.0, round1(next[zone] + 0.2));
+    }
+  });
+  return next;
+}
+
+// ---------- Pipeline complet (§8 — format de sortie) ----------
+
+function runEngine(trials         , profile                , weights                   ) {
+  const scored                = trials.map((t) => {
+    const comfort = computeComfortScoreRange(t, profile, weights);
+    return {
+      ...t,
+      validation: validateTrial(t.angles, profile, t.deltas.hasAeroBars),
+      comfortScore: comfort.score,
+      comfortScoreLow: comfort.low,
+      comfortScoreHigh: comfort.high,
+      aeroScore: 0, // calculé après normalisation cohort ci-dessous
+      aeroScoreLow: 0,
+      aeroScoreHigh: 0,
+    };
+  });
+
+  const validTrials = scored.filter((t) => t.validation.valid);
+  const excluded = scored
+    .filter((t) => !t.validation.valid)
+    .map((t) => ({ trial_id: t.id, violations: t.validation.violations }));
+
+  if (validTrials.length < 3) {
+    return {
+      status: 'insufficient_valid_trials'         ,
+      trials_valid: validTrials.length,
+      trials_needed: 3,
+      excluded_trials: excluded,
+      message: `${validTrials.length} essai(s) valide(s) sur ${trials.length} — minimum 3 requis pour proposer une frontière Pareto.`,
+    };
+  }
+
+  // ---------- UN ESSAI SANS SURFACE FRONTALE N'EST PAS UN ESSAI SANS TRAÎNÉE ----------
+  // Mesuré avant d'écrire cette garde : avec `pFSA_cm2 = 0`, la surface normalisée vaut 0,
+  // donc `computeAeroScore` la lit comme la plus petite de la cohorte et rend **90** — le
+  // MEILLEUR score aéro possible. Sur une session où un seul essai n'a pas été photographié,
+  // c'est lui qui remportait `equilibre` ET `aero_max` : la position recommandée était celle
+  // dont on ne sait rien. Un zéro y était lu comme une performance.
+  //
+  // La règle vient du handoff d'intégration (§3f, « essai rapide ») et elle a deux moitiés,
+  // toutes deux nécessaires : un tel essai reste VALIDE au titre du confort — il n'entre pas
+  // dans `excluded_trials`, l'athlète a bien fait la mesure qu'on lui a demandée — et il est
+  // écarté du FRONT DE PARETO aéro, où sa coordonnée n'existe pas.
+  const aeroScorable = (t             ) =>
+    Number.isFinite(t.frontal?.pFSA_cm2) && t.frontal.pFSA_cm2 > 0
+    && Number.isFinite(t.frontal?.athleteHeight_cm) && t.frontal.athleteHeight_cm > 0;
+  const avecAero = validTrials.filter(aeroScorable);
+  const sansAero = validTrials.filter((t) => !aeroScorable(t));
+
+  // Le seuil ici est UN, pas trois, et c'est délibéré : le « minimum 3 » du contrat porte sur
+  // les essais VALIDES, et le relever aux essais photographiés inventerait une politique que le
+  // handoff n'énonce pas. Il demande qu'un essai sans photo soit écarté du front — pas que la
+  // session entière échoue parce qu'il en manque une. Sans AUCUNE surface, en revanche, il n'y
+  // a pas de front du tout : le refus est alors la seule réponse honnête (P7/P8).
+  if (avecAero.length < 1) {
+    return {
+      status: 'insufficient_aero_trials'         ,
+      trials_valid: validTrials.length,
+      trials_with_aero: 0,
+      trials_without_frontal: sansAero.map((t) => t.id),
+      excluded_trials: excluded,
+      message: `Aucun de tes ${validTrials.length} essais valides ne porte de surface frontale mesurée — l'aérodynamisme ne peut pas être comparé. Ils restent valides pour le confort.`,
+    };
+  }
+
+  // Filtre les valeurs non finies avant le max : sans ça, un seul essai avec athleteHeight_cm
+  // falsy (0/null, ancienne session persistée) donnerait un NaN qui empoisonnerait Math.max
+  // pour TOUTE la cohorte (Math.max renvoie NaN dès qu'un seul argument l'est) — un essai
+  // corrompu ferait perdre le score aéro relatif de tous les autres essais, pourtant valides.
+  const pfsaNorms = avecAero.map((t) => t.frontal.pFSA_cm2 / t.frontal.athleteHeight_cm).filter(Number.isFinite);
+  const cohortMaxPFSANorm = pfsaNorms.length > 0 ? Math.max(...pfsaNorms) : 0;
+  avecAero.forEach((t) => {
+    const aero = computeAeroScoreRange(t, cohortMaxPFSANorm);
+    t.aeroScore = aero.score;
+    t.aeroScoreLow = aero.low;
+    t.aeroScoreHigh = aero.high;
+  });
+
+  const front = paretoFront(avecAero);
+  const profiles = selectProfiles(front);
+
+  return {
+    status: 'ok'         ,
+    trials_valid: validTrials.length,
+    trials_excluded: excluded.length,
+    // Les essais sans photo de face sont PUBLIÉS séparément : ils ne sont ni notés en aéro ni
+    // exclus, et un écran qui ne le dirait pas laisserait croire qu'ils ont été comparés.
+    trials_without_frontal: sansAero.map((t) => t.id),
+    profiles: profiles && {
+      confort_max: toOutputProfile(profiles.confort_max),
+      equilibre: toOutputProfile(profiles.equilibre),
+      aero_max: toOutputProfile(profiles.aero_max),
+    },
+    excluded_trials: excluded,
+  };
+}
+
+function toOutputProfile(t             ) {
+  return {
+    trial_id: t.id,
+    comfort_score: t.comfortScore,
+    comfort_score_low: t.comfortScoreLow,
+    comfort_score_high: t.comfortScoreHigh,
+    aero_score: t.aeroScore,
+    aero_score_low: t.aeroScoreLow,
+    aero_score_high: t.aeroScoreHigh,
+    // angles : ajouté pour la tendance entre sessions (amélioration §4, App.jsx/TrendScreen) —
+    // ProfileCard ne s'en sert pas (juste comfort_score/aero_score/deltas), mais un graphe
+    // hanche/tronc/genou dans le temps en a besoin. Champ additif, ne casse aucun consommateur
+    // existant qui l'ignore simplement.
+    angles: t.angles,
+    deltas: t.deltas,
+    margins: t.validation.margins,
+    warnings: t.validation.warnings,
+  };
+}
+
+function round1(n        )         {
+  return Math.round(n * 10) / 10;
+}
+
+// Sanity checks déplacés dans posture-aero-engine.test.ts (node:test).
+
+// ===== src/bikefit/captureProcessing.ts =====
+// capture-processing.ts
+// Transforme les captures brutes (landmarks MediaPipe Pose, masque de silhouette)
+// en objets consommables par posture-aero-engine.ts (TrialAngles, pFSA_cm2).
+//
+// LIMITE CONNUE ET IMPORTANTE (à ne pas survoler) :
+// MediaPipe Pose (33 points, BlazePose) ne fournit qu'UN point poignet (WRIST),
+// pas les landmarks de doigts/main — la déviation ulnaire réelle (rotation du poignet
+// dans le plan de la main, hors du plan sagittal filmé de profil) ne peut donc PAS être
+// calculée depuis Pose seul, ni depuis une vue de profil en général. Cette limite ne
+// s'applique qu'au pipeline auto ci-dessous (extractTrialAngles, abandonné — voir plus
+// bas) : en mesure MANUELLE (computeManualTrialPmh), l'utilisateur tape lui-même un point
+// sur la main, ce qui permet de mesurer le seul angle réellement visible de profil — le
+// fléchissement sagittal du poignet (dorsiflexion/extension, "poignet cassé" vs aligné
+// dans le prolongement de l'avant-bras) — PAS la déviation ulnaire au sens clinique
+// (rotation dans le plan de la main). Voir ManualTrialPmhMeasurement.wristBendAngle
+// ci-dessous pour la formule exacte et cette distinction.
+
+                                                                      
+
+// ---------- Angles depuis landmarks MediaPipe Pose ----------
+
+                           
+            
+            
+             
+                      
+ 
+
+                            
+                                                               
+                      
+ 
+
+const IDX = {
+  LEFT_SHOULDER: 11,
+  RIGHT_SHOULDER: 12,
+  LEFT_WRIST: 15,
+  RIGHT_WRIST: 16,
+  LEFT_HIP: 23,
+  RIGHT_HIP: 24,
+  LEFT_KNEE: 25,
+  RIGHT_KNEE: 26,
+  LEFT_ANKLE: 27,
+  RIGHT_ANKLE: 28,
+  LEFT_FOOT_INDEX: 31,
+  RIGHT_FOOT_INDEX: 32,
+};
+
+function angleAt(a          , vertex          , b          )         {
+  // Angle interne au sommet "vertex", entre vertex->a et vertex->b (degrés)
+  const v1 = { x: a.x - vertex.x, y: a.y - vertex.y };
+  const v2 = { x: b.x - vertex.x, y: b.y - vertex.y };
+  const mag1 = Math.hypot(v1.x, v1.y);
+  const mag2 = Math.hypot(v2.x, v2.y);
+  if (mag1 === 0 || mag2 === 0) return NaN;
+  const cos = Math.min(1, Math.max(-1, (v1.x * v2.x + v1.y * v2.y) / (mag1 * mag2)));
+  return (Math.acos(cos) * 180) / Math.PI;
+}
+
+function angleVsHorizontal(from          , to          )         {
+  // Angle aigu entre le segment from->to et l'horizontale, indépendant du sens (avant/arrière).
+  // BUG CORRIGÉ : la version initiale (atan2(-dy, dx) puis abs()) donnait ~180°-x au lieu de x
+  // quand le segment pointe vers l'arrière (dx négatif, cas normal pour un buste penché en avant
+  // filmé de profil). On prend les valeurs absolues des deux composantes avant atan2.
+  const dx = Math.abs(to.x - from.x);
+  const dy = Math.abs(to.y - from.y);
+  return (Math.atan2(dy, dx) * 180) / Math.PI;
+}
+
+function pickSide(frames             )                   {
+  // Vue de profil : un seul côté est fiable (l'autre est partiellement masqué par le cadre/vélo).
+  // On choisit le côté à la visibilité moyenne la plus haute plutôt que de supposer un côté fixe.
+  let leftVis = 0;
+  let rightVis = 0;
+  for (const f of frames) {
+    leftVis += f.landmarks[IDX.LEFT_HIP]?.visibility ?? 0;
+    rightVis += f.landmarks[IDX.RIGHT_HIP]?.visibility ?? 0;
+  }
+  return rightVis >= leftVis ? 'RIGHT' : 'LEFT';
+}
+
+function stats(values          )             {
+  const clean = values.filter((v) => !Number.isNaN(v));
+  if (clean.length === 0) return { mean: NaN, min: NaN, max: NaN, amplitude: NaN, variance: NaN };
+  const mean = clean.reduce((s, v) => s + v, 0) / clean.length;
+  const min = Math.min(...clean);
+  const max = Math.max(...clean);
+  const variance = clean.reduce((s, v) => s + (v - mean) ** 2, 0) / clean.length;
+  return { mean: r1(mean), min: r1(min), max: r1(max), amplitude: r1(max - min), variance: r1(variance) };
+}
+
+function r1(n        )         {
+  return Math.round(n * 10) / 10;
+}
+
+// `extractTrialAngles()` A ÉTÉ RETIRÉE À L'INTÉGRATION, pas oubliée. C'était l'entrée du
+// pipeline de détection AUTOMATIQUE (MediaPipe Pose), abandonné dans le dépôt d'origine
+// après deux échecs sur de vraies vidéos (ASLR filmé au ras du sol hors du domaine
+// d'entraînement des modèles ; un angle de tronc à 43°, que la biomécanique rend
+// impossible). La mesure est MANUELLE — l'athlète choisit l'image et tape les points.
+// La porter donnerait l'illusion qu'une détection auto existe : c'est la raison écrite
+// dans le handoff, et elle vaut ici autant que là-bas. Les statistiques par angle
+// (`statsOf`, ci-dessus) restent, elles servent la mesure manuelle.
+
+// ---------- §3.1 — Test ASLR (souplesse hanche) : angle cuisse au point d'arrêt ----------
+// Protocole (spec §3.1) : allongé, jambe testée tendue (genou verrouillé), on la lève le plus
+// haut possible sans plier le genou ; la mesure s'arrête au moment où le genou commence à plier.
+
+const KNEE_STRAIGHT_THRESHOLD = 165; // sous ce seuil, le genou est considéré en train de plier -> fin de mesure
+
+// Sous ce seuil de cuisse, on considère qu'on est encore en position de repos/installation
+// (avant que la levée n'ait vraiment commencé), pas dans le mouvement testé lui-même.
+//
+// Bug réel trouvé sur une vraie vidéo ASLR (retour terrain, 08/08/2026) : la vidéo contient
+// naturellement une phase d'installation au tout début (l'utilisateur s'accroupit pour
+// ajuster le téléphone avant de s'allonger — genou plié) AVANT le mouvement testé. L'ancienne
+// logique arrêtait la mesure (`break`) dès le premier genou plié rencontré, y compris pendant
+// cette installation — donnant un angle proche de 0 ou très sous-estimé alors que la vraie
+// levée, filmée juste après, atteignait ~85° (vérifié en rejouant la vidéo réelle image par
+// image). Le seuil d'"engagement" ci-dessous retarde l'armement de la règle d'arrêt jusqu'à
+// ce que la cuisse soit réellement levée — les genoux pliés AVANT ce point (installation)
+// sont ignorés plutôt que fatals ; ceux APRÈS (le vrai point d'arrêt clinique du test)
+// arrêtent toujours la mesure comme prévu (cf. test "un angle plus élevé après que le genou
+// ait plié n'est pas retenu").
+const RAISE_ENGAGED_THRESHOLD_DEG = 15;
+
+// Retour terrain (08/08/2026, suite) : même après le fix ci-dessus, la même vidéo réelle
+// redonnait le même angle sous-estimé (18.9°) — donc l'armement se déclenchait quand même
+// trop tôt. Hypothèse la plus probable (non confirmée par des données réelles : le sandbox
+// de dev ne peut pas télécharger le modèle MediaPipe, cf. limite d'environnement — vérifiable
+// seulement via le téléphone de l'utilisateur) : la phase d'installation en gros plan flou
+// (cf. capture d'écran) donne des landmarks bruités qui peuvent franchir le seuil de 15° sur
+// UNE frame par hasard. On exige maintenant plusieurs frames straight-knee consécutives
+// au-dessus du seuil avant d'armer, pour filtrer un faux positif isolé. Reste un choix
+// d'ingénierie non validé sur vraies données — voir extractAslrAngleTrace() ci-dessous,
+// exposée pour afficher un diagnostic à l'écran et confirmer/infirmer sur le prochain test
+// réel (ce sandbox ne peut pas faire tourner PoseLandmarker pour vérifier autrement).
+const ENGAGE_STREAK_FRAMES = 3;
+
+                            
+                
+                      
+                             
+                                
+                                                                                                
+ 
+
+function computeAslrTrace(frames             )            {
+  const side = pickSide(frames);
+  const S =
+    side === 'RIGHT'
+      ? { HIP: IDX.RIGHT_HIP, KNEE: IDX.RIGHT_KNEE, ANKLE: IDX.RIGHT_ANKLE }
+      : { HIP: IDX.LEFT_HIP, KNEE: IDX.LEFT_KNEE, ANKLE: IDX.LEFT_ANKLE };
+
+  let maxThighAngle = 0;
+  let raiseEngaged = false;
+  let engageStreak = 0;
+  let framesStraightKnee = 0;
+  let engagedAtIndex                = null;
+  let stoppedAtIndex                = null;
+
+  for (let i = 0; i < frames.length; i++) {
+    const lm = frames[i].landmarks;
+    const kneeAngle = angleAt(lm[S.HIP], lm[S.KNEE], lm[S.ANKLE]);
+    if (Number.isNaN(kneeAngle) || kneeAngle < KNEE_STRAIGHT_THRESHOLD) {
+      if (raiseEngaged) {
+        stoppedAtIndex = i; // genou qui plie après le début de la levée -> fin de la mesure valide
+        break;
+      }
+      engageStreak = 0; // genou plié avant que la levée commence (installation) -> ignoré
+      continue;
+    }
+    framesStraightKnee++;
+    const thighAngle = angleVsHorizontal(lm[S.HIP], lm[S.KNEE]);
+    if (Number.isNaN(thighAngle)) continue;
+    maxThighAngle = Math.max(maxThighAngle, thighAngle);
+    if (!raiseEngaged) {
+      engageStreak = thighAngle >= RAISE_ENGAGED_THRESHOLD_DEG ? engageStreak + 1 : 0;
+      if (engageStreak >= ENGAGE_STREAK_FRAMES) {
+        raiseEngaged = true;
+        engagedAtIndex = i - ENGAGE_STREAK_FRAMES + 1;
+      }
+    }
+  }
+
+  return { angle: r1(maxThighAngle), framesTotal: frames.length, framesStraightKnee, engagedAtIndex, stoppedAtIndex };
+}
+
+function extractAslrAngle(frames             )         {
+  if (frames.length === 0) throw new Error('extractAslrAngle: aucune frame fournie');
+  return computeAslrTrace(frames).angle;
+}
+
+// Diagnostic exposé à l'écran (cf. App.jsx) pour comprendre à distance ce qui se passe sur
+// un vrai appareil, faute de pouvoir faire tourner PoseLandmarker dans ce sandbox.
+function extractAslrAngleTrace(frames             )            {
+  if (frames.length === 0) throw new Error('extractAslrAngle: aucune frame fournie');
+  return computeAslrTrace(frames);
+}
+
+// ---------- Mesure manuelle ASLR (3 taps : hanche, genou, cheville) ----------
+// Alternative à la détection automatique ci-dessus — retour terrain (10/08/2026) : la
+// détection MediaPipe a échoué sur plusieurs vraies vidéos malgré des corrections
+// successives (cadrage, contre-jour, seuils de confiance), toujours pour la même raison de
+// fond : filmer quelqu'un allongé au sol, vu de loin et au ras du sol, sort largement du cas
+// standard ("personne debout, cadrée serré") sur lequel ces modèles sont entraînés/calibrés.
+// Plutôt que de continuer à durcir un pipeline auto peu fiable pour ce cas précis, l'utilisateur
+// choisit lui-même l'image où sa jambe testée est la plus haute et touche 3 points — mêmes
+// formules géométriques que la détection auto (angleAt, angleVsHorizontal), juste alimentées
+// par des points tapés à la main plutôt que par des landmarks MediaPipe.
+
+                                        
+                                                                                           
+                                                                                                      
+ 
+
+function computeManualAslrAngle(hip          , knee          , ankle          )                        {
+  return {
+    angle: r1(angleVsHorizontal(hip, knee)),
+    kneeAngle: r1(angleAt(hip, knee, ankle)),
+  };
+}
+
+// ---------- Mesure manuelle vidéo profil (2 images : point mort haut / point mort bas) ----------
+// Même logique que la mesure ASLR ci-dessus, étendue à la vidéo profil (retour terrain,
+// 10/08/2026, suite : "il y a une erreur dans le calcul du logiciel, laisse l'utilisateur faire
+// lui-même les mesures" — un essai réel a donné un angle de tronc de 43°, bien au-delà de ce
+// qu'une position sur vélo peut produire, révélant que la détection automatique se trompait
+// aussi sur cette vidéo, pas seulement sur l'ASLR).
+//
+// extractTrialAngles() ci-dessus calcule des statistiques (mean/min/max/amplitude/variance) sur
+// tout le cycle de pédalage à partir de frames échantillonnées automatiquement. En mesure
+// manuelle, on ne demande à l'utilisateur que les 2 images cliniquement significatives d'un tour
+// de pédale :
+//   - le point mort haut (PMH) : cuisse la plus proche du buste -> hanche la plus fermée (c'est
+//     la valeur qui compte pour la contrainte HIP_FLOOR_ABS et le score confort), et le tronc y
+//     est mesuré (position relativement stable sur un cycle stable, donc représentatif).
+//   - le point mort bas (PMB) : jambe la plus tendue -> genou le plus extension (c'est la valeur
+//     qui compte pour la plage KNEE_MIN/KNEE_MAX).
+// L'angle de cheville (ANKLE_FLAG) n'est qu'un warning qualité non-bloquant basé sur une
+// amplitude sur tout le cycle — pas mesurable de façon fiable à la main sur 2 images fixes, donc
+// volontairement pas demandé ici (buildManualTrialAngles renvoie une amplitude de 0, qui ne
+// déclenche jamais ce warning plutôt que d'inventer une fausse précision).
+
+// Retour terrain (12/08/2026) : un bike-fitter pro annote ses photos avant/après avec les
+// angles épaule/coude/poignet en plus de hanche/genou — pertinent pour une position aéro,
+// où l'angle du bras (prolongateurs/cocottes) compte autant que la jambe. Ajoutés au même
+// point mort haut que hanche/tronc (le bras ne bouge pas significativement entre PMH et PMB,
+// les mains restant sur le cintre tout le pédalage) plutôt que de redemander les mêmes points
+// au PMB. Chaîne de points tapée dans l'ordre anatomique continu main -> poignet -> coude ->
+// épaule -> hanche -> genou (cf. MANUAL_MEASURE_STEPS dans PostureCaptureFlow.jsx), pour que
+// l'overlay de relecture (TrialReviewScreen) puisse relier les points consécutifs sans table
+// de correspondance séparée.
+                                            
+                                                                        
+                                                                 
+                                                          
+                                                        
+                                                                                              
+                                                                                                
+                                                                                            
+                                                                                          
+                         
+ 
+
+function computeManualTrialPmh(
+  hand          ,
+  wrist          ,
+  elbow          ,
+  shoulder          ,
+  hip          ,
+  knee          
+)                            {
+  return {
+    hipAngle: r1(angleAt(shoulder, hip, knee)),
+    trunkAngle: r1(angleVsHorizontal(hip, shoulder)),
+    shoulderAngle: r1(angleAt(hip, shoulder, elbow)),
+    elbowAngle: r1(angleAt(shoulder, elbow, wrist)),
+    wristBendAngle: r1(180 - angleAt(elbow, wrist, hand)),
+  };
+}
+
+                                            
+                                                                          
+ 
+
+function computeManualTrialPmb(hip          , knee          , ankle          )                            {
+  return { kneeAngle: r1(angleAt(hip, knee, ankle)) };
+}
+
+function fixedStat(value        )             {
+  // Mesure manuelle = une seule valeur, pas une distribution sur un cycle : min = max = mean,
+  // amplitude et variance à 0 (pas mesurées). C'est un choix délibéré, pas une approximation
+  // cachée — la seule chose que le moteur regarde pour hip/trunk/knee est mean (+ min/max pour
+  // knee), donc ça reste sémantiquement correct pour valider la position.
+  return { mean: value, min: value, max: value, amplitude: 0, variance: 0 };
+}
+
+function buildManualTrialAngles(pmh                           , pmb                           )              {
+  const zero             = { mean: 0, min: 0, max: 0, amplitude: 0, variance: 0 };
+  return {
+    hip: fixedStat(pmh.hipAngle),
+    trunk: fixedStat(pmh.trunkAngle),
+    knee: fixedStat(pmb.kneeAngle),
+    ankle: zero, // non mesuré manuellement (warning qualité non-bloquant, cf. commentaire ci-dessus)
+    shoulder: fixedStat(pmh.shoulderAngle),
+    elbow: fixedStat(pmh.elbowAngle),
+    wrist: fixedStat(pmh.wristBendAngle), // désormais mesuré pour de vrai (avant : stub à 0)
+  };
+}
+
+// ---------- pFSA depuis un masque de silhouette calibré ----------
+
+                             
+                
+                 
+                                                                                      
+ 
+
+                                 
+                                                                                         
+                                                                
+                                                                                             
+                                                                                
+                                                                                         
+                                                                                   
+                                                                                             
+                                                                                            
+                                                                                         
+                                                                                            
+                                                                                        
+                        
+                         
+ 
+
+function computePFSA_cm2(mask            , calibration                )         {
+  if (calibration.pixelLength <= 0) throw new Error('computePFSA_cm2: calibration.pixelLength doit être > 0');
+  const cmPerPixel = calibration.realLengthCm / calibration.pixelLength;
+  // cmPerPixel ci-dessus est à l'échelle de la PHOTO où la calibration a été mesurée. Le
+  // masque de segmentation peut être à une résolution différente (cf. CalibrationRef) — on
+  // ramène l'aire d'un pixel du masque à l'aire qu'il représente réellement sur la photo
+  // avant d'appliquer cm²/pixel-photo, sinon la surface est faussée d'un facteur
+  // (résolution photo / résolution masque)² — potentiellement énorme.
+  const scaleX = calibration.photoWidthPx ? calibration.photoWidthPx / mask.width : 1;
+  const scaleY = calibration.photoHeightPx ? calibration.photoHeightPx / mask.height : 1;
+  const cm2PerMaskPixel = cmPerPixel * cmPerPixel * scaleX * scaleY;
+  let count = 0;
+  for (let i = 0; i < mask.data.length; i++) if (mask.data[i]) count++;
+  return r1(count * cm2PerMaskPixel);
+}
+
+// Sanity checks déplacés dans capture-processing.test.ts (node:test).
+
 // ===== src/engine/trace.ts =====
 /**
  * TRACE DES MUTATIONS — « quelle passe a fait ça ? », répondu une fois pour toutes.
@@ -7408,6 +8378,17 @@ function buildTriSessions(kit            )              {
     // sweetspot, ce qu'un entraîneur prescrit pour cette épreuve. Aucune séance n'est supprimée,
     // c'est une question de PHASE — la même forme que R13.4 (« l'affûtage est branché
     // explicitement, plus jamais par un `else` attrape-tout »).
+    //
+    // C26d (03/09/2026) — trois écritures ESSAYÉES ICI ET RETIRÉES (voir BUGS_OUVERTS.md
+    // « O-119 » pour le détail chiffré) : changer le TEMPLATE (Sweetspot → Force) casse
+    // `tri/S/confirme/debutant/finir` (S5 spec > pic de >5 %) ; réduire `repCap` (4→2) casse
+    // `audit:monotonie` sur deux axes (`vol_max`, `css` — O-21, l'invariance au CSS) ; raccourcir
+    // la fourchette (`PT(12,20)`→`PT(8,14)`) casse un brick vélo (C21b) sur un TROISIÈME profil.
+    // Les trois échouent pour la MÊME raison : cette branche alimente la sonde de capacité
+    // (V2.1/structBrut), qui recalibre TOUTE la courbe du plan — un changement, même une simple
+    // dose, à cet endroit précis a un rayon bien plus large que le créneau qu'il touche (leçon
+    // O-43/O-94, poussée à sa limite). Le correctif retenu vit donc APRÈS la construction, dans
+    // la boucle du point fixe, comme C26c (`enforceHardTimeCap`) : voir `enforceModShareCap`.
     else if (phase === "dev") S2.push({ d: "bk", name: "Sweetspot vélo", note: "L'allure qui construit un long : soutenu mais tenable, cadence 85-95 rpm. C'est le cœur de la préparation vélo d'un triathlon longue distance — le jour J se roule plus bas, mais c'est ici que le plafond se construit.", det: "", steps: [W(15, "montée progressive"), Object.assign(B(PT(2, 3), PT(12, 20), "bk.ss", "5min souple"), { repCap: 4 }), C(10, "décrassage")] });
     else S2.push({ d: "bk", name: "Force basse cadence", note: "Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.", det: "", steps: [W(15, "+ montée en intensité"), Object.assign(B(PT(4, 6), ({ S: 5, M: 5, "70.3": 6, Full: 7 }                          )[fmt] || 5, "bk.frc", "3min souple", " à 50-60 rpm"), { repCap: 8 }), C(10, "moulinage")] });
   } else if (slot === "durLong") {
@@ -12360,6 +13341,18 @@ function reconcileDeclaredVolume(
       for (const [num] of coupe) cibles.set(num, avant.get(num) || 0);
       refillEasyAfterLabelCap(coupe, cibles);
     }
+    // C26d — même geste, pour le plafond de temps MODÉRÉ (voir `enforceModShareCap`) : appelé
+    // APRÈS C26c et sa restitution, sur un `avant` recalculé, pour ne pas confondre les deux
+    // sources de minutes rendues.
+    const avantMod = new Map                ();
+    for (const w of plan.weeks) avantMod.set(w.num, w.days.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.min || 0), 0), 0));
+    const refsMod              = { cssSecPer100m: ctx?.refs?.cssSecPer100m || 130, thrPaceSecPerKm: ctx?.refs?.thrPaceSecPerKm || 330 };
+    const coupeMod = enforceModShareCap(plan, refsMod, render);
+    if (coupeMod.size) {
+      const ciblesMod = new Map                ();
+      for (const [num] of coupeMod) ciblesMod.set(num, avantMod.get(num) || 0);
+      refillEasyAfterLabelCap(coupeMod, ciblesMod);
+    }
   }
   // …et une dernière fois APRÈS toutes les passes de ce point de convergence : elles peuvent
   // recomposer une séance (déclassement C13d, remplacement de course, greffe).
@@ -13126,6 +14119,92 @@ function enforceHardTimeCap(
       }
       if (render) render(cible);
     }
+    const perdu = avantSemaine - totalOf(w);
+    if (perdu > 1) coupe.set(w.num, perdu);
+  }
+  return coupe;
+}
+
+/**
+ * C26d (03/09/2026) — LE PLAFOND DE TEMPS MODÉRÉ SE FAIT RESPECTER, PAS SEULEMENT MESURER.
+ *
+ * `auditPlan` borne le pooled `(mod − modSw) / tot` à `C26d_MOD_SHARE_MAX` (40 %) depuis R20.4,
+ * mais aucune passe ne le TENAIT — l'auditeur pouvait rougir sans que rien dans le générateur ne
+ * le sache. Trouvé sur `tri/S/ancien/debutant/competition` (S3 à 43 %, deux séances vélo
+ * modérées — `dur1` « Tempo vélo » et `dur2` « Sweetspot vélo » — la même semaine).
+ *
+ * ⚠ TROIS ÉCRITURES DIFFÉRENTES DANS `sports/tri/index.ts` ONT ÉTÉ ESSAYÉES ET RETIRÉES (voir
+ * le commentaire du créneau `dur2`/dev) : changer quel gabarit de séance porte le modéré déplace
+ * la sonde de capacité (V2.1/structBrut) qui recalibre TOUTE la courbe du plan — un rayon bien
+ * plus large que le créneau visé, à chaque fois une garde DIFFÉRENTE rouverte ailleurs. Le
+ * patron qui fonctionne déjà pour C26c (`enforceHardTimeCap`, ci-dessus) évite ce problème par
+ * construction : il tourne APRÈS que la courbe et la sonde ont fini leur travail, donc il ne
+ * peut pas les perturber — il ne fait que RETIRER un peu de ce qu'elles ont produit.
+ *
+ * Même geste que C26c : on cède par PALIER (reps d'abord, puis durée jusqu'à un plancher, puis
+ * déclassement en facile — jamais la fréquence, jamais la nage puisqu'elle a sa PROPRE borne
+ * `C26D_MOD_SHARE_MAX_PAR_DISCIPLINE.sw`, ci-dessous), et les minutes retirées sont rendues aux
+ * séances faciles de la même semaine (`refillEasyAfterLabelCap`, neutralité de volume, R4.1).
+ */
+function enforceModShareCap(
+  plan        ,
+  refs             ,
+  render                         ,
+)                      {
+  const coupe = new Map                ();
+  const cap = C26d_MOD_SHARE_MAX;
+  const swCap = C26D_MOD_SHARE_MAX_PAR_DISCIPLINE.sw;
+  const totalOf = (w        ) => w.days.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.min || 0), 0), 0);
+  const pooled = (w        ) => {
+    let mod = 0, modSw = 0, tot = 0;
+    for (const d of w.days)
+      for (const s of d.sessions) {
+        const sp = intensitySplit(s, refs);
+        tot += sp.easyMin + sp.modMin + sp.hardMin;
+        mod += sp.modMin;
+        modSw += sp.modByDisc.sw ?? 0;
+      }
+    return { pooled: tot > 0 ? (mod - modSw) / tot : 0, tot };
+  };
+  for (const w of plan.weeks) {
+    if (w.isRecup || w.phase.id === "taper") continue;
+    const avantSemaine = totalOf(w);
+    for (let tour = 0; tour < 200 && pooled(w).pooled > cap; tour++) {
+      // La plus grosse séance de qualité MODÉRÉE, hors nage (sa propre borne, ci-dessus) et
+      // hors course/séance verrouillée — même exclusion que C26c.
+      let cible                   = null, cibleMod = 0;
+      for (const d of w.days)
+        for (const s of d.sessions) {
+          if (s.d === "rs" || s.d === "sw" || (s                      ).race) continue;
+          const sp = intensitySplit(s, refs);
+          if (sp.modMin > cibleMod) { cibleMod = sp.modMin; cible = s; }
+        }
+      if (!cible || cibleMod <= 0) break;
+      // R20.5 — la coupe et la mesure doivent classer pareil : `bk.rp`/`rn.mara` sont "mod" ou
+      // "hard" selon la bande de l'épreuve, jamais par suffixe seul (même garde qu'enforceHardTimeCap).
+      const mods = (cible.steps || []).filter((b) => b.role === "body"
+        && zoneClass(b.zone, false, (b                                           ).rpBand, (b                                             ).maraBand) === "mod");
+      if (!mods.length) break;
+      const b = mods.reduce((x, y) => ((y.reps || 1) * (y.durationMin || 0) > (x.reps || 1) * (x.durationMin || 0) ? y : x));
+      if ((b.reps || 1) > 1) {
+        b.reps = (b.reps || 1) - 1;
+      } else if ((b.durationMin || 0) > C26C_PLANCHER_CONTINU_MIN) {
+        b.durationMin = Math.max(C26C_PLANCHER_CONTINU_MIN, Math.round((b.durationMin || 0) * 0.8));
+      } else {
+        // Même geste que C26c : plus rien à retirer sans mentir, la séance DEVIENT ce qu'elle
+        // est réellement devenue (nom + note suivent, R19.5).
+        const disc = String(b.d ?? cible.d);
+        b.zone = disc === "sw" ? "sw.easy" : disc === "bk" ? "bk.z2" : "rn.easy";
+        b.intensity = "easy"                     ;
+        cible.name = disc === "sw" ? "Nage endurance" : disc === "bk" ? "Vélo endurance" : "Footing endurance";
+        cible.note = "Le plafond de temps modéré de ta semaine est atteint : cette séance passe en endurance. Ce n'est pas une punition — c'est ce qui garde ta charge assimilable.";
+      }
+      if (render) render(cible);
+    }
+    // La borne par discipline nage, si elle existe un jour (aujourd'hui `swCap` est `undefined`,
+    // absence MESURÉE — voir sa justification dans constraintMatrix.ts) : même structure, jamais
+    // appliquée tant que le chiffre n'est pas sourcé.
+    void swCap;
     const perdu = avantSemaine - totalOf(w);
     if (perdu > 1) coupe.set(w.num, perdu);
   }
@@ -21508,6 +22587,8 @@ function dailyEnergy(input             )                             {
 
 
 
+
+
 /** R21 — exportée : la spec du coach proactif construit ses profils comme le pont, pas autrement. */
 function toProfile(sport        , answers            )                 {
   return { ...(answers          ), sport }                  ;
@@ -22741,6 +23822,18 @@ function coachOnIngestV2(sport        , answers            , ingested           
   // Bibliothèque d'éducatifs par discipline (🧰 Outils, retour utilisateur 08/08/2026) — mêmes
   // gestes que ceux nommés dans les séances réelles, jamais un contenu écrit à côté.
   eduLibrary: EDU_LIBRARY,
+  // BILAN POSTURE — la géométrie des angles, telle que le dépôt Bikefiting la calcule.
+  // L'écran de pointage (2c) l'appelle au relâchement du dernier point : c'est ce qui
+  // sépare un écran qui MESURE d'un écran qui collectionne des coordonnées. Le scoring
+  // (`runEngine`) n'est PAS exposé ici — il n'a pas encore d'écran, et exposer une
+  // fonction que rien n'appelle est une promesse que rien ne tient.
+  postureAngles: { computeManualAslrAngle, computeManualTrialPmh, computeManualTrialPmb, buildManualTrialAngles },
+  // Le SCORING du bilan posture. Il n'était pas exposé au lot précédent — « exposer une
+  // fonction que rien n'appelle est une promesse que rien ne tient ». L'écran de résultats
+  // (2e) l'appelle désormais, donc il entre. `runEngine` rend les trois positions, leurs
+  // scores et leurs FOURCHETTES DE SENSIBILITÉ (±20 % sur les pondérations [DEFAULT]) —
+  // l'écran les affiche telles quelles, sans jamais les renommer « marge d'erreur ».
+  postureEngine: { runEngine, validateTrial, aslrToFlexScore, recalibrateWeights, computeReferenceSaddleHeightCm, suggestNextAdjustment },
   version: "v2-sprint9",
 };
 

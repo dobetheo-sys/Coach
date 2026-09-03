@@ -29,9 +29,9 @@ de l'axe de charge ci-dessous, et c'est le seul motif qui traverse les deux.
 
 ## 1 · Tokens du thème sombre — `endurabuild/css/zenna-today.css`
 
-Tout est déclaré sur `body.theme-zenna` : **68 variables**, en trois familles.
+Tout est déclaré sur `body.theme-zenna` : **72 variables**, en trois familles.
 
-### 1a · Palette Zenna — 41 tokens
+### 1a · Palette Zenna — 45 tokens
 
 | Token | Valeur |
 |---|---|
@@ -54,6 +54,10 @@ Tout est déclaré sur `body.theme-zenna` : **68 variables**, en trois familles.
 | `--zn-ink` | `#f5f1ea` |
 | `--zn-ink-2` | `#d7d2c6` |
 | `--zn-good` | `#1fb8a6` |
+| `--zn-bad` | `#ff7d92` |
+| `--zn-faint` | `#787f86` |
+| `--zn-faint2` | `#8e939a` |
+| `--zn-filet` | `#1a1c20` |
 | `--zn-good-dark` | `#0f8f81` |
 | `--zn-track-bg` | `#20252c` |
 | `--zn-sep` | `rgba(255, 255, 255, .18)` |

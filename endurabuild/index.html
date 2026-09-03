@@ -50,7 +50,16 @@
   passer « la séance apparaît sans attendre la météo » de 1720 ms à ~2000 ms, juste sous le
   plafond que U7 existe pour garder. `js/app.js` l'injecte en script après coup — voir sa note.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://api.open-meteo.com https://www.strava.com https://*.workers.dev; form-action 'none'; base-uri 'self'; object-src 'none'">
+<!-- S-4, révision du 02/09/2026 — `'wasm-unsafe-eval'` s'ajoute à `script-src`, sur décision du
+     fondateur (session « bilan posture », le score aéro dépend de la segmentation MediaPipe de
+     la photo de face). Il n'autorise QUE l'instanciation de modules WebAssembly compilés à
+     l'avance (le mécanisme que le runtime MediaPipe utilise pour son binaire vision_wasm) — il
+     n'ouvre PAS `eval()` ni `new Function()` sur du texte arbitraire, ce que `'unsafe-eval'`
+     ferait et que cette CSP continue de refuser. Le binaire lui-même doit encore être vendu en
+     local et servi sous `'self'` : ce commit ouvre la porte, il ne branche pas le module — voir
+     BUGS_OUVERTS.md « MediaPipe — segmentation de la photo de face » pour le coût mesuré
+     (~12 Mo de WASM) avant de vendre quoi que ce soit dans le service worker. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://api.open-meteo.com https://www.strava.com https://*.workers.dev; form-action 'none'; base-uri 'self'; object-src 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <!-- Réponse au STOP de Phase 1 (§5) — la barre système suit enfin l'app : theme-zenna est posée
      dès app.js:26, il n'existe AUCUN écran clair. #f1eadb datait du thème papier (résidu n°1

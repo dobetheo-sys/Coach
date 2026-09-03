@@ -612,54 +612,46 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
-**Bikefitting intégré — bilan de position aéro, accessible depuis 🧰 Outils › 🚴 Position**
-(handoff `bikefitting/docs/INTEGRATION_HANDOFF.md`, 03/09/2026) : port de
-`dobetheo-sys/Bikefiting` (React/Vite/MediaPipe, sa propre logique de scoring sourcée §5 de son
-spec) dans `bikefitting/`, **sous-app ISOLÉE** — aucune dépendance ajoutée au moteur
-zéro-dépendance de Zenna, l'engagement documenté dans ce fichier porte sur le moteur de plans,
-pas sur un outil compagnon autonome avec son propre `package.json`/build. Décision du fondateur
-sur le fond (« qu'il fasse partie de l'onglet Outils », sans arbitrer les détails techniques) ;
-le choix d'architecture (sous-app séparée plutôt que fusion React dans `endurabuild/`, zéro
-dépendance native) reste de la responsabilité de ce dépôt et est motivé ci-dessous.
+**O-119 FERMÉ — C26d appliqué, pas seulement mesuré ; trois correctifs dans `sports/tri/index.ts`
+essayés et retirés avant le bon** (03/09/2026 — voir `BUGS_OUVERTS.md` « O-119 », fonction
+`enforceModShareCap` dans `src/generator/planGenerator.ts`) : `tri/S/ancien/debutant/competition`
+violait le plafond de temps modéré (R20.4, 40 % pooled) — `dur1` « Tempo vélo » (déjà gradué par
+niveau) et `dur2` « Sweetspot vélo » (pas gradué, écrit pour la longue distance et appliqué sans
+garde au Sprint) empilaient deux séances vélo modérées la même semaine, S3 à 43 %. **Trois
+écritures dans le module tri, trois cascades DIFFÉRENTES** : changer le gabarit de séance rouvrait
+un autre profil sur « S5 dépasse le pic de >5 % » ; réduire `repCap` rouvrait deux régressions
+`audit:monotonie` (O-21, l'invariance au CSS) ; raccourcir la fourchette de répétition rouvrait un
+brick vélo hors bornes sur un troisième profil — la même cause à chaque fois : ce créneau alimente
+la sonde de capacité (V2.1/`structBrut`) qui recalibre toute la courbe, donc tout changement là
+a un rayon plus large que lui-même (forme extrême d'O-43/O-94). Le correctif qui tient ne touche
+plus le module tri (revenu identique à l'original) : `enforceModShareCap`, calqué sur
+`enforceHardTimeCap` (C26c), tourne APRÈS la courbe et la sonde — il ne peut donc pas les
+perturber, il ne fait que reprendre un peu de ce qu'elles ont produit (cession par palier,
+minutes rendues au facile de la même semaine, R4.1). `audit:v2` 594/594, `audit:v1` 459/459,
+`audit:monotonie` 0 régression (42 verts, deux de plus qu'avant), `audit:v6`/`lotPhysio`/
+`audit:invariants` inchangés, golden recapturé (88 profils, tous `tri/*/debutant/*`).
 
-**Code mort retiré** (conforme au §2 du handoff) : `pose-integration.ts` (+ son test),
-`video-frame-sampler.ts`, et `extractTrialAngles()` — vestiges du pipeline de détection
-automatique MediaPipe Pose, abandonné au profit du pointage manuel (décision (a) du handoff,
-issue d'échecs terrain réels : un angle de tronc à 43° biomécaniquement impossible). 70 → 61
-tests (9 retirés avec le code mort qu'ils testaient), 0 échec. **Périmètre NON étendu au-delà de
-ce que le handoff nomme** : `extractAslrAngle`/`computeAslrTrace` (même pipeline auto, ASLR)
-sont eux aussi inutilisés par l'UI actuelle — mesuré, pas supposé — mais le handoff ne les
-nomme pas explicitement comme morts ; laissés en l'état plutôt que d'élargir la suppression
-sans mandat clair.
-
-**Intégration** : `endurabuild/js/ui/tab-bikefitting.js` ajoute une entrée dans le registre
-`SUBTOOLS` de `tab-outils.js` (même patron qu'un ajout de sport, R10) — une carte qui **navigue**
-vers `bikefitting/index.html`, jamais un composant React monté dans le moteur d'affichage de
-Zenna. `npm run build:bikefitting` (`scripts/buildBikefitting.mjs`) construit la sous-app et la
-copie sous `endurabuild/bikefitting/` (généré, gitignored) ; le workflow `pages.yml` l'exécute à
-CHAQUE déploiement (contrairement au moteur, dont le bundle est committé et vérifié par
-`check:app`/`check:sw` — Bikefitting a de vraies dépendances npm, les committer construites
-aurait ajouté des dizaines de Mo binaires, dont 34 Mo de WASM MediaPipe, à l'historique git pour
-un artefact regénérable en une commande). `vite.config.js` : base passée de conditionnelle-absolue
-(déploiement autonome de Bikefitting) à **relative** (`./`) — la copie sert tantôt à la racine du
-domaine, tantôt sous `/Coach/` selon la config GitHub Pages, même raison que les chemins relatifs
-d'`endurabuild/manifest.json`.
-
-**Écart avec la maquette fournie** (`bikefitting/design/bikefitting-zenna-screen.html`, un extrait
-riche du thème sombre R-ZENNA — segmenté « bilan fait/premier bilan », chips confort/aéro, positions
-recommandées) : **non reproduit tel quel**, délibérément. Cette maquette utilise les classes/tokens
-du thème R-ZENNA (`.chip`, `.jauge`, `details.fold`, `--surface`, `--cyan`…), qui n'existent que
-sous `body.theme-zenna` — or l'onglet Outils reste sur le thème « papier/collage »
-(`styles.css`/`mobile.css`), sa migration vers R-ZENNA n'a pas commencé (voir plus bas, « Design
-responsive »). Reproduire la maquette sans cette migration aurait rendu des classes non stylées.
-La carte livrée reprend donc le langage visuel ACTUEL d'Outils (`.card`/`.card-note`/`.btn.primary`,
-identique à Nutrition/Éducatifs) ; la maquette reste la cible pour quand la migration R-ZENNA
-atteindra Outils — non perdue, juste pas applicable aujourd'hui sans élargir le chantier.
-
-**Non testé sur appareil réel** (caméra, permissions iOS, segmentation MediaPipe sur une vraie
-photo — bloqué par le réseau du bac à sable de développement, comme documenté dans le handoff
-lui-même) : à vérifier explicitement avant tout partage large, sur un téléphone, pas seulement
-en desktop — trois points précis listés dans `bikefitting/docs/INTEGRATION_HANDOFF.md` §8.
+**ARBITRAGE — deux implémentations parallèles du bilan bikefitting, une seule reste branchée**
+(03/09/2026) : `main` avait reçu, indépendamment de cette branche et sans passer par le handoff
+`design_handoff_bilan_posture_zenna`, une intégration concurrente (`bikefitting/`, sous-app
+React/Vite/MediaPipe séparée, entrée de navigation `tab-bikefitting.js` vers
+`bikefitting/index.html`, voir `bikefitting/docs/INTEGRATION_HANDOFF.md`) sur le MÊME créneau
+Outils › Position que le bilan natif de cette branche (18 écrans, `tab-posture.js`, moteur
+`src/bikefit/`). Décision du fondateur, après comparaison écran à écran des deux : **garder le
+bilan natif**, retirer l'entrée de navigation concurrente. Raisons mesurées : le bilan natif suit
+le handoff commandé au mot près (thème orange Zenna, palette et pilules identiques aux captures
+du handoff) quand la sous-app est restée sur l'ancienne palette du dépôt Bikefiting d'origine
+(`#f2481b`/or) et ne migre pas le thème R-ZENNA de l'onglet Outils ; il fonctionne aujourd'hui
+sans étape de build séparée (la sous-app nécessite `npm run build:bikefitting`, non exécuté par
+la CI à ce jour) ; le moteur de scoring est déjà porté et branché (`src/bikefit/`, 61 tests) côté
+natif. Ce que la sous-app apporte et que le natif n'a pas encore : une segmentation AUTOMATIQUE
+de la photo de face par MediaPipe (voir `bikefitting/src/capture/mediapipe-vision.ts`) — le natif
+reste au pointage manuel (O-118, WASM non vendu dans le service worker Zenna).
+**`bikefitting/` reste dans le dépôt** (code réel, testé, buildable — vérifié : `npm install` +
+`npm run build` réussissent) mais n'est plus référencé depuis `tab-outils.js` : `tab-bikefitting.js`
+est retiré (code mort une fois débranché), `smoke-bikefitting.mjs` retiré de `run-all.mjs` pour la
+même raison. Rien n'empêche de reprendre la segmentation MediaPipe de cette sous-app pour
+compléter le bilan natif plus tard — c'est une ressource parquée, pas perdue.
 
 **O-83 FERMÉ (informer + progression bornée) et V-08/B-02a FERMÉ (sw.aero reclassé, table
 C26d par discipline) — et le gate de monotonie perd ses deux axes morts** (fiche 55, 02/09/2026 —

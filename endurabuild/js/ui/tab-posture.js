@@ -1,0 +1,602 @@
+// Sous-onglet 🧰 Outils › 🚴 Position — écran 2a du handoff `design_handoff_bilan_posture_zenna`.
+//
+// CE QUE CE FICHIER EST, ET CE QU'IL N'EST PAS. Le paquet reçu est une RÉFÉRENCE DE DESIGN
+// (18 cadres HTML à styles inline), et son README le dit lui-même : « pas du code de
+// production à copier ». Il suppose en revanche que Zenna tourne en « React + Tailwind » —
+// une prémisse déduite du `src/index.css` du dépôt Bikefiting, et FAUSSE ici : la PWA sert
+// 45 modules ES sans étape de construction. Les écrans sont donc RECRÉÉS dans les conventions
+// du dépôt, pas transposés. Les écarts de palette et de typographie sont mesurés et écrits en
+// tête de `css/zenna-posture.css`.
+//
+// PÉRIMÈTRE DE CE LOT : le socle (point d'entrée, état, feuille de style) et le seul écran
+// 2a, dans ses TROIS états. Les 17 autres écrans du handoff ne sont pas ici — et surtout, ce
+// module ne CALCULE rien : il affiche ce que la session porte. Le moteur de scoring est déjà
+// dans le dépôt (`src/bikefit/`, 56 tests verts) mais il n'entre pas dans le bundle servi, et
+// l'y faire entrer est une décision de bundling qui n'appartient pas à un écran de liste.
+//
+// L'ÉTAT SUIT LA PERSONNE, PAS LE PLAN. `posture` rejoint `SHARED_KEYS` pour la même raison
+// qu'`educatifs` : un bilan de position décrit l'athlète et son vélo, et il survit à un
+// changement de plan. Le handoff propose quatre clés `localStorage` distinctes ; ici l'état
+// vit dans `eb_state_v2` comme tout le reste — une seconde persistance serait un second
+// endroit à migrer, à sauvegarder et à restaurer.
+//
+// `pendingTrial` N'EST PAS PERSISTÉ : décision du dépôt d'origine (§6 de son handoff), reprise
+// telle quelle. Un essai en cours de saisie n'est pas un essai.
+import { S, $, esc, fmtDay, ebSave, todayISO } from "../state.js";
+import { ouvrirPointage } from "./posture-pointage.js";
+import { ouvrirReglages } from "./posture-velo.js";
+import { ouvrirResultats, POIDS_NEUTRES } from "./posture-resultats.js";
+import { souplesseHTML, typeEssaiHTML, relectureHTML, feedbackHTML, provisoireHTML, tendanceHTML, ZONES } from "./posture-etapes.js";
+import { etalonnageHTML, echelleCmParPx } from "./posture-etalonnage.js";
+import { ETAPES } from "./posture-repere.js";
+
+/** Le nombre d'essais qui rend un bilan comparable. Il vient du moteur porté
+ *  (`validateSession` refuse sous 3) — on ne le redécide pas ici, on le nomme. */
+const ESSAIS_CIBLE = 3;
+
+/** L'état du bilan, créé paresseusement. Aucune écriture au rendu : lire un écran ne doit
+ *  jamais modifier ce qu'il décrit (la leçon d'O-43, appliquée à l'UI). */
+function postureState() {
+  const p = S.answers.posture;
+  return {
+    session: (p && p.session) || null,
+    history: (p && Array.isArray(p.history)) ? p.history : [],
+  };
+}
+
+/** Trois états, et le handoff les nomme : aucun bilan · un bilan en cours · un bilan terminé.
+ *  Le troisième se distingue du deuxième par le nombre d'essais, jamais par un drapeau — un
+ *  drapeau et un compte finiraient par se contredire. */
+function phaseDe(st) {
+  if (!st.session || !st.session.trials || !st.session.trials.length) return "vide";
+  return st.session.trials.length >= ESSAIS_CIBLE ? "termine" : "encours";
+}
+
+const monoLigne = (t) => '<div class="po-ligne-meta">' + esc(t) + "</div>";
+
+/** UNE ligne de la section « Ce que le bilan sait de toi ». Le chevron n'est pas décoratif :
+ *  chaque ligne mènera à son écran (souplesse 3a, profil 2b, historique 3c). Tant que ces
+ *  écrans n'existent pas, la ligne est rendue en `div` et NON en bouton — un chevron qui ne
+ *  mène nulle part est une promesse fausse, et un bouton mort en est une pire. */
+function ligneHTML(titre, meta) {
+  return '<div class="po-ligne"><div class="po-ligne-txt">'
+    + '<div class="po-ligne-titre">' + esc(titre) + "</div>"
+    + monoLigne(meta) + "</div></div>";
+}
+
+/** Un essai enregistré. Les angles portent le vocabulaire du moteur (hanche/tronc/genou) et
+ *  le statut dit `valide` ou `écarté` — jamais un adjectif de confort. La RAISON d'un écart
+ *  vit sur l'écran des résultats (`formatViolation` existe déjà côté moteur) : la répéter ici
+ *  en ferait une seconde source de vérité. */
+function essaiHTML(t, i) {
+  const d = t.deltas || {};
+  const a = t.angles || {};
+  const cote = (v, u) => (v == null ? "—" : String(v) + (u || ""));
+  const reglages = "Selle " + cote(d.saddleHeightMm) + " · reach " + cote(d.reachMm)
+    + " · drop " + cote(d.dropMm);
+  const ang = (o) => (o && o.mean != null ? Math.round(o.mean) + "°" : "—");
+  const angles = "hanche " + ang(a.hip) + " · tronc " + ang(a.trunk) + " · genou " + ang(a.knee);
+  const ecarte = t.valid === false;
+  return '<div class="po-essai">'
+    + '<span class="po-essai-num">' + String(i + 1).padStart(2, "0") + "</span>"
+    + '<div class="po-essai-txt"><div class="po-essai-reglages">' + esc(reglages) + "</div>"
+    + '<div class="po-essai-angles">' + esc(angles) + "</div></div>"
+    + '<span class="po-essai-statut' + (ecarte ? " ecarte" : "") + '">'
+    + (ecarte ? "écarté" : "valide") + "</span></div>";
+}
+
+/** LA CARTE EN RELIEF — le seul objet plein de l'écran (règle de hiérarchie du handoff, déjà
+ *  celle du reste de Zenna). Son contenu change avec la phase ; sa forme, jamais. */
+function heroHTML(st, phase) {
+  const n = st.session && st.session.trials ? st.session.trials.length : 0;
+  const segs = Array.from({ length: ESSAIS_CIBLE }, (_, i) =>
+    '<i class="' + (i < n ? "plein" : "") + '"></i>').join("");
+
+  if (phase === "vide") {
+    // Pas de chiffre : afficher « 0 / 3 » à quelqu'un qui n'a rien commencé, c'est lui
+    // reprocher de ne pas avoir commencé. C'est la leçon d'U1, sur un autre écran.
+    return '<div class="po-hero">'
+      + '<div class="po-hero-top"><span class="po-eyebrow">Nouveau</span>'
+      + '<span class="po-eyebrow faible">10 minutes</span></div>'
+      + '<div class="po-hero-titre">Position aéro<br>prolongateurs</div>'
+      + '<div class="po-hero-pied">Trois essais, chacun avec un réglage différent, et le bilan '
+      + "te dit lequel tient. Seul, avec ton vélo et ton téléphone.</div></div>";
+  }
+  if (phase === "termine") {
+    return '<div class="po-hero">'
+      + '<div class="po-hero-top"><span class="po-eyebrow">Bilan terminé</span>'
+      + '<span class="po-eyebrow faible">' + esc(dateReprise(st)) + "</span></div>"
+      + '<div class="po-hero-titre">Position aéro<br>prolongateurs</div>'
+      + '<div class="po-hero-chiffre"><b>' + n + "</b><span>essais comparés</span></div>"
+      + '<div class="po-seg">' + segs + "</div>"
+      + '<div class="po-hero-pied">Tes essais sont comparables. Le résultat te donne trois '
+      + "positions : confort, équilibrée, aéro.</div></div>";
+  }
+  const reste = ESSAIS_CIBLE - n;
+  return '<div class="po-hero">'
+    + '<div class="po-hero-top"><span class="po-eyebrow">Bilan en cours</span>'
+    + '<span class="po-eyebrow faible">' + esc(dateReprise(st)) + "</span></div>"
+    + '<div class="po-hero-titre">Position aéro<br>prolongateurs</div>'
+    + '<div class="po-hero-chiffre"><b>' + n + "</b><span>/ " + ESSAIS_CIBLE + " essais</span></div>"
+    + '<div class="po-seg">' + segs + "</div>"
+    + '<div class="po-hero-pied">Il te reste ' + (reste > 1 ? reste + " essais" : "un essai")
+    + " pour pouvoir comparer. Compte 3 minutes.</div></div>";
+}
+
+function dateReprise(st) {
+  const d = st.session && st.session.updatedAt;
+  return d ? "repris le " + fmtDay(d) : "jamais repris";
+}
+
+/** Le CTA et sa ligne d'état. Règle d'interaction du handoff, tenue ici : un bouton n'est
+ *  jamais désactivé en silence — soit il agit, soit la raison est écrite dessous. */
+function ctaHTML(st, phase) {
+  const n = st.session && st.session.trials ? st.session.trials.length : 0;
+  const label = phase === "vide" ? "Commencer le bilan"
+    : phase === "termine" ? "Voir le résultat"
+      : "Reprendre · essai " + (n + 1);
+  const souplesse = st.session && st.session.aslrAngle != null;
+  const note = phase === "vide"
+    ? '<span>Aucune donnée demandée</span> <b>avant de commencer</b>'
+    : souplesse
+      ? '<span>Souplesse et profil</span> <b>déjà enregistrés</b>'
+      : '<span>Le test de souplesse</span> <b>reste à faire</b>';
+  return '<div class="po-cta-zone">'
+    + '<button type="button" class="po-cta" id="poCta">' + esc(label) + "</button>"
+    + '<div class="po-cta-note">' + note + "</div></div>";
+}
+
+function sectionHTML(titre, compte) {
+  return '<div class="po-sec' + (compte === undefined ? "" : " espace") + '">'
+    + "<span>" + esc(titre) + "</span><i></i>"
+    + (compte === undefined ? "" : '<span class="compte">' + esc(compte) + "</span>")
+    + "</div>";
+}
+
+export function renderTabPosture() {
+  // Le sous-onglet porte plusieurs écrans ; la vue vit sur `S` et NON dans l'état persisté —
+  // revenir sur l'outil doit ramener à son accueil, pas rouvrir l'écran qu'on avait quitté.
+  if (S.postureVue === "preparatif") return renderPreparatif();
+  if (S.postureVue === "resultats") return renderResultats();
+  if (S.postureVue === "souplesse") return renderEcran(souplesseHTML(postureState().session), brancherSouplesse);
+  if (S.postureVue === "type") return renderEcran(typeEssaiHTML(numeroProchainEssai(), postureState().session), brancherType);
+  if (S.postureVue === "relecture") return renderEcran(relectureHTML(_enCours && _enCours.aperçu), brancherRelecture);
+  if (S.postureVue === "feedback") return renderEcran(feedbackHTML(_feedback, contexteSortie()), brancherFeedback);
+  if (S.postureVue === "tendance") return renderEcran(tendanceHTML(bilansArchives()));
+  if (S.postureVue === "etalonnage") return renderEcran(etalonnageHTML(etalState()), brancherEtalonnage);
+  const st = postureState();
+  const phase = phaseDe(st);
+  const s = st.session || {};
+  const trials = s.trials || [];
+
+  let html = heroHTML(st, phase) + ctaHTML(st, phase);
+
+  html += sectionHTML("Ce que le bilan sait de toi");
+  html += '<div class="po-liste">'
+    + ligneHTML("Souplesse de hanche",
+      s.aslrAngle != null
+        ? "test du " + fmtDay(s.aslrTestedAt || s.updatedAt) + " · " + Math.round(s.aslrAngle) + "°"
+        : "pas encore mesurée")
+    + ligneHTML("Ton objectif de position",
+      s.profile && s.profile.goal ? String(s.profile.goal) : "pas encore choisi")
+    + ligneHTML("Bilans précédents",
+      st.history.length
+        ? st.history.length + (st.history.length > 1 ? " bilans" : " bilan")
+          + " · dernier le " + fmtDay(st.history[st.history.length - 1].date)
+        : "aucun pour l’instant")
+    + "</div>";
+
+  // La section « Tes essais » n'existe QUE s'il y en a. Un creux vide sous une étiquette qui
+  // annonce « 0 enregistré » occupe un écran pour dire qu'il n'a rien à dire.
+  if (trials.length) {
+    html += sectionHTML("Tes essais", trials.length + " enregistré" + (trials.length > 1 ? "s" : ""));
+    html += '<div class="po-creux">' + trials.map(essaiHTML).join("") + "</div>";
+  }
+  html += '<div class="po-espaceur"></div>';
+
+  $("screen").innerHTML = html;
+
+  // Le CTA ne mène nulle part tant que 2b n'existe pas — et il le DIT plutôt que de ne rien
+  // faire. Un bouton qui absorbe le tap en silence est le défaut que le handoff interdit.
+  const b = $("poCta");
+  if (b) b.onclick = () => {
+    // Un bilan terminé n'a pas encore son écran de résultats (2e) : on le DIT, on n'avale pas
+    // le tap. La règle d'interaction du handoff vaut aussi pour un bouton qui n'agit pas.
+    if (phase === "termine") { S.postureVue = "resultats"; return renderTabPosture(); }
+    // 3e — DEUX essais suffisent à montrer un provisoire, et à dire ce qu'un troisième
+    // apporterait. Le CTA reste « reprendre » : le provisoire s'atteint par la ligne de la
+    // liste, pas en détournant l'action principale.
+    // Un bilan déjà entamé n'a plus rien à préparer : on repart sur l'essai suivant. Refaire
+    // passer par le préparatif à chaque reprise serait redemander ce qu'on sait déjà.
+    if (phase === "encours") { S.postureVue = "type"; return renderTabPosture(); }
+    S.postureVue = "preparatif";
+    renderTabPosture();
+  };
+}
+
+/* ============================================================
+   2b — LE PRÉPARATIF
+   ============================================================
+   Le mur de texte devient cinq lignes à cocher. La checklist est ÉPHÉMÈRE et non persistée
+   (le handoff le précise) : elle sert à préparer la séance de mesure, pas à décrire l'athlète.
+   Le mode de guidage, lui, EST persisté — il pilote le pointage à chaque essai. */
+const PREPARATIF = [
+  ["Un support pour poser le téléphone", "Trépied, étagère, pile de livres. Mains libres obligatoire."],
+  ["Le vélo stable", "Home-trainer de préférence, sinon calé à l’arrêt."],
+  ["Un repère de longueur connue", "La largeur de ton cintre suffit. Il servira à convertir les pixels en centimètres."],
+  ["3 à 4 m de recul, lumière correcte", "De quoi te voir en entier de profil. Pas de contre-jour."],
+  ["De la place au sol pour t’allonger", "Pour le test de souplesse, avant de monter sur le vélo."],
+];
+
+let _coches = [];
+
+const COCHE_SVG = '<svg viewBox="0 0 20 20" width="14" height="14" fill="none" '
+  + 'stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" '
+  + 'aria-hidden="true"><path d="M4 10.5l4 4 8-9"></path></svg>';
+
+function renderPreparatif() {
+  const st = postureState();
+  const mode = (S.answers.posture && S.answers.posture.guidanceMode) || "beginner";
+  let html = '<div class="po-head">'
+    + '<button type="button" class="po-retour" id="poRetour">‹ Outils · Position</button>'
+    + '<span class="po-etape">étape 0 / 3</span></div>'
+    + '<div class="po-hero-nu"><div class="po-eyebrow" style="color:var(--zn-faint)">Avant de commencer</div>'
+    + "<h2>Dix minutes,<br>seul avec ton vélo</h2>"
+    + "<p>Un test de souplesse au sol, puis trois réglages de vélo filmés. À la fin, tu sais "
+    + "lequel te fait gagner de l’aéro sans te coûter du confort.</p></div>";
+
+  html += sectionHTML("Coche ce que tu as sous la main");
+  html += '<div class="po-liste">' + PREPARATIF.map((it, k) =>
+    '<button type="button" class="po-check" data-coche="' + k + '" aria-pressed="'
+    + (_coches[k] ? "true" : "false") + '">'
+    + '<span class="po-case">' + COCHE_SVG + "</span>"
+    + '<span class="po-check-txt"><span class="po-check-lab">' + esc(it[0]) + "</span>"
+    + '<span class="po-check-exp">' + esc(it[1]) + "</span></span></button>").join("") + "</div>";
+
+  html += sectionHTML("Combien on te guide", "");
+  html += '<div class="po-modes">'
+    + '<button type="button" class="po-mode" data-mode="beginner" aria-pressed="' + (mode === "beginner") + '">'
+    + "<b>Première fois</b><span>Chaque point d’articulation est montré et expliqué avant d’être placé.</span></button>"
+    + '<button type="button" class="po-mode" data-mode="expert" aria-pressed="' + (mode === "expert") + '">'
+    + "<b>J’ai l’habitude</b><span>Six points d’un coup, consignes repliées.</span></button></div>";
+
+  html += '<div class="po-mentions">Tout est calculé sur ton téléphone, aucune image n’est '
+    + "envoyée. Le bilan ne remplace pas un bikefitter : arrête un mouvement s’il tire ou fait mal.</div>";
+
+  // Le pied : le CTA n'est JAMAIS désactivé — cocher est une aide, pas une condition. Ce qui
+  // manque est écrit dessous, et le compte se dérive des cases, jamais d'un texte figé.
+  const manque = PREPARATIF.length - _coches.filter(Boolean).length;
+  html += '<div class="po-cta-zone" style="margin-top:22px">'
+    + '<button type="button" class="po-cta" id="poCta2">Commencer par la souplesse</button>'
+    + '<div class="po-cta-note">' + (manque === 0
+      ? "<b>Tout est prêt</b>"
+      : "<span>" + manque + " case" + (manque > 1 ? "s" : "") + " non cochée"
+        + (manque > 1 ? "s" : "") + " —</span> <b>tu peux commencer quand même</b>")
+    + "</div></div>";
+  html += '<div class="po-espaceur"></div>';
+
+  $("screen").innerHTML = html;
+
+  $("screen").querySelectorAll("[data-coche]").forEach((b) => {
+    b.onclick = () => { const k = +b.dataset.coche; _coches[k] = !_coches[k]; renderPreparatif(); };
+  });
+  $("screen").querySelectorAll("[data-mode]").forEach((b) => {
+    b.onclick = () => {
+      const p = S.answers.posture || (S.answers.posture = { session: null, history: [] });
+      p.guidanceMode = b.dataset.mode;
+      ebSave();
+      renderPreparatif();
+    };
+  });
+  $("poRetour").onclick = () => { S.postureVue = "accueil"; renderTabPosture(); };
+  $("poCta2").onclick = () => { S.postureVue = "souplesse"; renderTabPosture(); };
+}
+
+/* ============================================================
+   L'IMAGE À POINTER
+   ============================================================
+   Le parcours complet du handoff passe par une VIDÉO dont on choisit deux images (le sélecteur
+   d'image est son propre écran, absent de ce lot). En attendant, on demande une image fixe —
+   et on le DIT, plutôt que d'ouvrir un sélecteur de vidéo qui ne saurait pas en extraire une
+   image. L'URL est révoquée quand le pointage se termine ou s'annule : c'est le cycle de vie
+   des blob URLs que le dépôt d'origine documente (§6e de son handoff), et le point où il a
+   déjà cassé une fois. */
+function demanderImage(etape, st) {
+  const inp = document.createElement("input");
+  inp.type = "file";
+  inp.accept = "image/*";
+  inp.onchange = () => {
+    const f = inp.files && inp.files[0];
+    if (!f) return;
+    const url = URL.createObjectURL(f);
+    lancerPointage(etape, url, st);
+  };
+  inp.click();
+}
+
+function lancerPointage(etape, url, st) {
+  const mode = (S.answers.posture && S.answers.posture.guidanceMode) || "beginner";
+  // Le cycle de vie des blob URLs est celui du dépôt d'origine (§6e) : révoquées quand on les
+  // abandonne VRAIMENT. Un nettoyage générique les révoquait aussitôt et cassait l'écran de
+  // relecture — d'où une révocation par chemin, jamais une seule au sortir.
+  const fermer = () => { URL.revokeObjectURL(url); _enCours = null; S.postureVue = "accueil"; renderTabPosture(); };
+  ouvrirPointage({
+    hote: $("screen"),
+    imageUrl: url,
+    etape,
+    titreRetour: "Position",
+    expert: mode === "expert",
+    onAnnuler: fermer,
+    onTermine: (r) => {
+      URL.revokeObjectURL(url);
+      // LE TEST DE SOUPLESSE range son angle et s'arrête là ; les deux pointages d'un ESSAI
+      // s'enchaînent vers l'étape suivante. Le moteur peut être absent (bundle non chargé) :
+      // on le dit plutôt que de ranger une mesure vide sous un nom qui promet un angle.
+      if (etape === "aslr") {
+        if (r.angles && r.angles.angle != null) {
+          const p = S.answers.posture || (S.answers.posture = { session: null, history: [] });
+          p.session = p.session || { trials: [] };
+          p.session.aslrAngle = r.angles.angle;
+          p.session.aslrTestedAt = todayISO();
+          p.session.updatedAt = todayISO();
+          ebSave();
+        }
+        S.postureVue = "accueil";
+        return renderTabPosture();
+      }
+      if (!r.angles) { S.postureVue = "accueil"; _enCours = null; return renderTabPosture(); }
+      suitePointage(etape, r, postureState());
+    },
+  });
+}
+
+
+/* ============================================================
+   LE PARCOURS D'UN ESSAI — pointage haut · pointage bas · réglages
+   ============================================================
+   L'ordre vient de la machine à états du handoff (`essai → vidéo profil → pointage → relecture
+   → photo frontale → réglages`). Deux étapes de cette chaîne n'existent pas encore et ne sont
+   pas SIMULÉES : le choix des deux images dans une vidéo, et la photo de face (dont la
+   segmentation est bloquée par la CSP). L'écran de résultats le dit à sa place.
+
+   L'essai en cours vit dans une variable de MODULE et n'est jamais persisté : c'est
+   `pendingTrial` du dépôt d'origine, décision reprise telle quelle (§6). Un essai à moitié
+   pointé n'est pas un essai. */
+let _enCours = null;
+
+function lancerEssai() {
+  const st = postureState();
+  const n = (st.session && st.session.trials ? st.session.trials.length : 0) + 1;
+  _enCours = { numero: n, pmh: null, pmb: null };
+  demanderImage("pmh", st);
+}
+
+/** ENCHAÎNEMENT DES DEUX POINTAGES. Le bras n'est mesuré qu'au point mort HAUT — c'est la
+ *  décision du dépôt d'origine, écrite à sa branche : il ne rebouge pas significativement entre
+ *  les deux, donc le redemander au point bas serait trois taps pour rien. */
+function suitePointage(etape, r, st) {
+  if (etape === "aslr") return; // traité ailleurs — le test de souplesse n'est pas un essai
+  if (etape === "pmh") { _enCours.pmh = r.angles; return demanderImage("pmb", st); }
+  _enCours.pmb = r.angles;
+  // 3h — LA RELECTURE S'INTERCALE ICI, entre le dernier point et la validation. Sans elle, une
+  // erreur de pointage ne se voit qu'au score, où elle n'est plus attribuable.
+  const A = globalThis.EBV2 && globalThis.EBV2.postureAngles;
+  _enCours.aperçu = A && _enCours.pmh && _enCours.pmb
+    ? A.buildManualTrialAngles(_enCours.pmh, _enCours.pmb) : null;
+  S.postureVue = "relecture";
+  return renderTabPosture();
+}
+
+function etapeReglages(st) {
+  S.postureVue = "reglages";
+  ouvrirReglages({
+    hote: $("screen"),
+    numero: _enCours.numero,
+    deltas: (st.session && st.session.dernierDeltas) || {},
+    onRetour: () => { _enCours = null; S.postureVue = "accueil"; renderTabPosture(); },
+    onEnregistrer: (deltas) => {
+      const A = globalThis.EBV2 && globalThis.EBV2.postureAngles;
+      const p = S.answers.posture || (S.answers.posture = { session: null, history: [] });
+      p.session = p.session || { trials: [] };
+      p.session.trials = p.session.trials || [];
+      p.session.trials.push({
+        id: String(_enCours.numero).padStart(2, "0"),
+        // Les angles viennent du MOTEUR, jamais d'une géométrie réécrite ici. Sans lui, l'essai
+        // est rangé sans angles plutôt qu'avec des angles inventés — et 2e le dira.
+        angles: A && _enCours.pmh && _enCours.pmb
+          ? A.buildManualTrialAngles(_enCours.pmh, _enCours.pmb) : null,
+        // `frontal` reste vide tant que la photo de face n'a pas d'écran : le score aéro en
+        // dépend, et 2e annonce précisément ce manque au lieu de le combler.
+        frontal: { pFSA_cm2: 0, athleteHeight_cm: Number(S.answers.height) || 0, headOffset_cm: 0 },
+        deltas,
+      });
+      // On mémorise les derniers réglages : d'un essai à l'autre, un seul change en général.
+      p.session.dernierDeltas = deltas;
+      p.session.updatedAt = todayISO();
+      ebSave();
+      _enCours = null;
+      S.postureVue = "accueil";
+      renderTabPosture();
+    },
+  });
+}
+
+/* ============================================================
+   2e — LE RÉSULTAT
+   ============================================================ */
+function renderResultats() {
+  const st = postureState();
+  const s = st.session || {};
+  ouvrirResultats({
+    hote: $("screen"),
+    trials: (s.trials || []).filter((t) => t.angles),
+    // `hipFlexibilityScore` se DÉRIVE de l'angle ASLR mesuré, par la fonction du moteur — la
+    // table de conversion vit là-bas, avec son ancrage clinique. En son absence, on prend la
+    // valeur médiane et l'écran de résultats reste honnête sur ce qu'il sait.
+    profile: {
+      hipFlexibilityScore: scoreSouplesse(s.aslrAngle),
+      raceDurationHours: undefined,
+      goal: (s.profile && s.profile.goal) === "confort" ? "comfort" : "aero",
+    },
+    poids: (S.answers.posture && S.answers.posture.weights) || POIDS_NEUTRES,
+    onRetour: () => { S.postureVue = "accueil"; renderTabPosture(); },
+  });
+}
+
+function scoreSouplesse(angle) {
+  const E = globalThis.EBV2 && globalThis.EBV2.postureEngine;
+  if (E && Number.isFinite(angle)) return E.aslrToFlexScore(angle);
+  return 3;
+}
+
+
+/* ============================================================
+   ROUTAGE DES ÉCRANS DU TOUR 3
+   ============================================================
+   Un seul point de rendu : le HTML vient du module d'écrans, le branchement vit ici. Séparer
+   les deux garde les écrans TESTABLES sans navigateur ni état global — c'est ce qui permet à la
+   garde de les rendre isolément. */
+function renderEcran(html, brancher) {
+  $("screen").innerHTML = html;
+  const r = $("poRetour");
+  if (r) r.onclick = () => { S.postureVue = "accueil"; renderTabPosture(); };
+  if (brancher) brancher();
+}
+
+function numeroProchainEssai() {
+  const st = postureState();
+  return (st.session && st.session.trials ? st.session.trials.length : 0) + 1;
+}
+
+function brancherSouplesse() {
+  const b = $("poSouplesse");
+  if (b) b.onclick = () => demanderImage("aslr", postureState());
+}
+
+let _typeEssai = "complet";
+function brancherType() {
+  $("screen").querySelectorAll("[data-type]").forEach((b) => {
+    b.onclick = () => {
+      _typeEssai = b.dataset.type;
+      // Le CTA suit le choix : un bouton qui dit « complet » après qu'on a touché « rapide »
+      // est un bouton dont on ne sait plus ce qu'il lance.
+      $("poLancer").textContent = _typeEssai === "rapide" ? "Lancer l’essai rapide" : "Lancer l’essai complet";
+      $("screen").querySelectorAll("[data-type]").forEach((x) => {
+        const on = x.dataset.type === _typeEssai;
+        x.classList.toggle("actif", on);
+        x.setAttribute("aria-pressed", String(on));
+      });
+    };
+  });
+  const l = $("poLancer");
+  if (l) l.onclick = () => lancerEssai();
+}
+
+function brancherRelecture() {
+  const refaire = () => { S.postureVue = "accueil"; _enCours = null; renderTabPosture(); };
+  const a = $("poRelRefaire"), b = $("poRelRefaire2");
+  if (a) a.onclick = refaire;
+  if (b) b.onclick = refaire;
+  const ok = $("poRelOk");
+  if (ok) ok.onclick = () => etapeReglages(postureState());
+}
+
+/* ============================================================
+   3d — LE RETOUR POST-SORTIE
+   ============================================================
+   Il ne modifie AUCUN score déjà affiché : `recalibrateWeights` produit des pondérations pour
+   les bilans SUIVANTS. C'est écrit à l'écran, et c'est la moitié qui rend la boucle honnête —
+   un score qui changerait après coup serait un score auquel on ne peut pas se fier. */
+let _feedback = {};
+
+function contexteSortie() {
+  const st = postureState();
+  const d = st.session && st.session.dernierDeltas;
+  return d && d.saddleHeightMm
+    ? "Sur le réglage selle " + d.saddleHeightMm + " / drop " + d.dropMm
+      + ". Réponds à chaud, c’est plus juste que demain matin."
+    : "Réponds à chaud, c’est plus juste que demain matin.";
+}
+
+function brancherFeedback() {
+  $("screen").querySelectorAll("[data-zone]").forEach((b) => {
+    b.onclick = () => {
+      const z = b.dataset.zone, n = +b.dataset.niv;
+      // Retoucher le même niveau l'EFFACE : sans ça, une zone touchée par erreur ne peut plus
+      // être remise à « pas de réponse », et un 1 par inadvertance vaut un signal.
+      _feedback[z] = _feedback[z] === n ? undefined : n;
+      renderTabPosture();
+    };
+  });
+  const env = $("poFbEnvoyer");
+  if (env) env.onclick = () => {
+    const p = S.answers.posture || (S.answers.posture = { session: null, history: [] });
+    p.feedbackLog = p.feedbackLog || [];
+    const entrees = ZONES.filter(([k]) => Number.isFinite(_feedback[k]))
+      .map(([k]) => ({ zone: k, painScore: _feedback[k] }));
+    // L'envoi PARTIEL est permis (le handoff le demande) : trois zones sur quatre valent mieux
+    // que rien, et exiger les quatre ferait abandonner le formulaire.
+    p.feedbackLog.push({ date: todayISO(), entrees });
+    const E = globalThis.EBV2 && globalThis.EBV2.postureEngine;
+    if (E && E.recalibrateWeights) {
+      try {
+        p.weights = E.recalibrateWeights(p.weights || POIDS_NEUTRES, p.feedbackLog.flatMap((f) => f.entrees));
+      } catch (e) { /* une recalibration qui échoue ne doit pas perdre le retour de l'athlète */ }
+    }
+    ebSave();
+    _feedback = {};
+    S.postureVue = "accueil";
+    renderTabPosture();
+  };
+}
+
+
+function bilansArchives() {
+  const st = postureState();
+  return (st.history || []).map((h) => ({
+    date: h.date, confort: h.confort, aero: h.aero,
+    confortLo: h.confortLo, confortHi: h.confortHi, aeroLo: h.aeroLo, aeroHi: h.aeroHi,
+    resume: h.resume,
+  }));
+}
+
+/** 3e — LE RÉSULTAT PROVISOIRE. Il ne se calcule pas à part : c'est `runEngine` qui rend les
+ *  scores, et `validateTrial` qui a déjà calculé les `margins` — la distance de chaque angle à
+ *  son seuil, que rien n'affichait jusqu'ici. */
+export function provisoireDepuis(trials, profile, poids) {
+  const E = globalThis.EBV2 && globalThis.EBV2.postureEngine;
+  if (!E || trials.length !== 2) return null;
+  // Le moteur exige trois essais valides pour une frontière ; sur deux, on note chacun et on
+  // prend le meilleur compromis à la main — sans jamais fabriquer de fourchette.
+  const notes = trials.map((t) => {
+    const v = E.validateTrial(t.angles, profile, t.deltas && t.deltas.hasAeroBars);
+    return { t, v };
+  }).filter((x) => x.v.valid);
+  if (!notes.length) return null;
+  return notes;
+}
+
+
+/* ============================================================
+   3b — L'ÉTALONNAGE
+   ============================================================
+   La longueur du repère se MÉMORISE d'un essai à l'autre (c'est en général le même objet) —
+   comportement repris du dépôt d'origine, qui la rangeait dans sa propre clé `localStorage`.
+   Ici elle vit dans l'état du bilan, comme le reste. */
+function etalState() {
+  const p = S.answers.posture || {};
+  return { longueurCm: p.refLengthCm == null ? 40 : p.refLengthCm, a: null, b: null };
+}
+
+function brancherEtalonnage() {
+  const inp = $("poEtalLong");
+  if (!inp) return;
+  inp.onchange = () => {
+    const v = inp.value === "" ? null : Number(inp.value);
+    if (v !== null && (!Number.isFinite(v) || v <= 0)) return;
+    const p = S.answers.posture || (S.answers.posture = { session: null, history: [] });
+    p.refLengthCm = v;
+    ebSave();
+    renderTabPosture();
+  };
+}

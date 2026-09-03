@@ -300,6 +300,17 @@ export function buildTriSessions(kit: SessionKit): V1Session[] {
     // sweetspot, ce qu'un entraîneur prescrit pour cette épreuve. Aucune séance n'est supprimée,
     // c'est une question de PHASE — la même forme que R13.4 (« l'affûtage est branché
     // explicitement, plus jamais par un `else` attrape-tout »).
+    //
+    // C26d (03/09/2026) — trois écritures ESSAYÉES ICI ET RETIRÉES (voir BUGS_OUVERTS.md
+    // « O-119 » pour le détail chiffré) : changer le TEMPLATE (Sweetspot → Force) casse
+    // `tri/S/confirme/debutant/finir` (S5 spec > pic de >5 %) ; réduire `repCap` (4→2) casse
+    // `audit:monotonie` sur deux axes (`vol_max`, `css` — O-21, l'invariance au CSS) ; raccourcir
+    // la fourchette (`PT(12,20)`→`PT(8,14)`) casse un brick vélo (C21b) sur un TROISIÈME profil.
+    // Les trois échouent pour la MÊME raison : cette branche alimente la sonde de capacité
+    // (V2.1/structBrut), qui recalibre TOUTE la courbe du plan — un changement, même une simple
+    // dose, à cet endroit précis a un rayon bien plus large que le créneau qu'il touche (leçon
+    // O-43/O-94, poussée à sa limite). Le correctif retenu vit donc APRÈS la construction, dans
+    // la boucle du point fixe, comme C26c (`enforceHardTimeCap`) : voir `enforceModShareCap`.
     else if (phase === "dev") S2.push({ d: "bk", name: "Sweetspot vélo", note: "L'allure qui construit un long : soutenu mais tenable, cadence 85-95 rpm. C'est le cœur de la préparation vélo d'un triathlon longue distance — le jour J se roule plus bas, mais c'est ici que le plafond se construit.", det: "", steps: [W(15, "montée progressive"), Object.assign(B(PT(2, 3), PT(12, 20), "bk.ss", "5min souple"), { repCap: 4 }), C(10, "décrassage")] });
     else S2.push({ d: "bk", name: "Force basse cadence", note: "Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.", det: "", steps: [W(15, "+ montée en intensité"), Object.assign(B(PT(4, 6), ({ S: 5, M: 5, "70.3": 6, Full: 7 } as Record<string, number>)[fmt] || 5, "bk.frc", "3min souple", " à 50-60 rpm"), { repCap: 8 }), C(10, "moulinage")] });
   } else if (slot === "durLong") {

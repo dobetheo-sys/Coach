@@ -27,7 +27,7 @@ import { pointLabelInline } from "./checkin.js";
 import { retestBannerHTML, bindRetestBanner } from "./retest.js";
 import { ensurePlan, setTab } from "./tabs.js";
 import { DISC } from "./icons.js";
-import { znDrawChart } from "./zenna-motion.js";
+import { znDrawChart, znPlayDays } from "./zenna-motion.js";
 
 /** Semaine affichée. Non persistée : revenir sur l'onglet ramène à la semaine courante —
  *  c'est la semaine EN COURS qui est le sujet, la navigation n'est qu'une consultation.
@@ -455,6 +455,16 @@ export function renderTabWeek(plan) {
   $("screen").innerHTML = html;
   bindPainBanner(plan, rerender);
   bindRetestBanner(today, () => renderTabWeek(ensurePlan()));
+  // R-ZENNA (motion) — la grille arrive jour par jour. Ici et pas dans `renderActiveTab` :
+  // les flèches de semaine re-rendent l'onglet SANS repasser par `setTab`, et c'est justement
+  // ce geste-là que le mouvement doit accompagner (sept cases se remplacent au même endroit).
+  //
+  // ARBITRAGE DU FONDATEUR (02/09/2026, voir `tabs.js` pour le détail) — à la toute première
+  // arrivée sur l'onglet dans la session, ceci joue EN MÊME TEMPS que la montée du conteneur
+  // (`znPlayOnce`). Trois captures vidéo du geste réel ont tranché : imperceptible, gardé tel
+  // quel — retirer l'un ou l'autre casserait une promesse ailleurs pour un effet que personne
+  // ne voit.
+  znPlayDays();
   {
     const g = $("wkGoCheckin");
     if (g) g.onclick = () => setTab("today");

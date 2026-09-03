@@ -1,0 +1,773 @@
+/* ============================================================
+   BILAN POSTURE AÉRO — écran 2a (l'entrée par 🧰 Outils)
+   ============================================================
+   Recréation en modules ES du handoff `design_handoff_bilan_posture_zenna`. Le paquet reçu
+   est une RÉFÉRENCE de design (18 cadres HTML à styles inline), pas du code de production :
+   son README suppose « React + Tailwind » côté Zenna, ce qui est faux — la PWA sert 45
+   modules ES sans étape de construction. Les écrans sont donc recréés, pas copiés.
+
+   TROIS ÉCARTS DÉLIBÉRÉS AVEC LA RÉFÉRENCE, tous mesurés (voir la synthèse 45) :
+
+   1. LA PALETTE EST CELLE DU DÉPÔT, pas celle du fichier de design. Mesuré : sur 39 couleurs
+      distinctes de la référence, 13 sont déjà des jetons `--zn-*` et 23 des QUASI-DOUBLONS
+      d'un jeton existant — `#111417` contre `--zn-surface #111318` est à une distance de 1
+      sur 442, `#262a30` contre `--zn-border #26292f` aussi. Les reprendre littéralement
+      créerait une seconde palette (ce que `check:spec` et `check:tokens` existent pour
+      empêcher) et ferait déborder un cliquet déjà à saturation. Seules DEUX couleurs sont
+      réellement nouvelles — deux gris de texte plus sourds que `--zn-muted-2` — et elles sont
+      déclarées comme jetons dans `zenna-today.css`, pas posées ici en dur.
+      L'accent suit donc `--zn-orange` (#ff3d00), pas le #f2481b de la référence : la V5 a
+      mesuré ses contrastes en tuile pleine, et le produit n'a qu'un orange.
+
+   2. LES TAILLES SUIVENT L'ÉCHELLE `--fs-*`. La référence pose 168 déclarations en
+      demi-pixels (9,5 · 10,5 · 11,5 · 12,5) et 6 à 8 px. R16.8 a précisément retiré cette
+      famille — « 21 tailles distinctes dont quatre sous le pixel » — et `smoke-typo` refuse
+      tout ce qui passe sous 9 px. Chaque taille de la référence est rabattue sur le palier
+      déclaré le plus proche.
+
+   3. LES POLICES SONT CELLES DÉJÀ EMBARQUÉES. Le README les fait venir de Google Fonts ;
+      ici `font-src 'self'` et D19 les veulent auto-hébergées. Sans conséquence : Poppins 800,
+      Inter et IBM Plex Mono sont exactement les trois polices que la PWA sert déjà.
+
+   Ce que la référence apporte et qui est repris tel quel : la HIÉRARCHIE (un seul objet en
+   relief par écran, tout le reste à nu sur des filets de 1 px, plus un « creux » plus sombre
+   que la page), les gouttières (18 px pour le texte, 14 px pour le relief et les creux), le
+   rayon signature, et la règle du pied fixe.
+   ============================================================ */
+
+/* ---------- Pilule de sous-outil : la rangée existante gagne « Position » sans rien changer
+     à son balisage — `tab-outils.js` compose déjà ses onglets, on n'ajoute qu'une entrée. --- */
+
+/* ---------- LA CARTE EN RELIEF — le seul objet plein de l'écran ---------- */
+body.theme-zenna #screen .po-hero {
+  margin: 0 14px 18px; border-radius: 20px; background: var(--zn-orange);
+  padding: 18px 20px 20px; box-shadow: 0 14px 30px -14px var(--zn-orange-glow);
+}
+body.theme-zenna #screen .po-hero-top {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+}
+/* L'encre sur l'accent est `--zn-on-accent` : la V5 a mesuré que le BLANC ne rend que 3,55:1
+   sur cet orange quand l'encre sombre rend 5,58:1. La référence pose #14140f, à 10 de
+   distance — visuellement le même noir, un littéral de plus. */
+body.theme-zenna #screen .po-eyebrow {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase; color: rgba(10, 10, 10, .75);
+}
+body.theme-zenna #screen .po-eyebrow.faible { font-weight: 400; letter-spacing: .06em; }
+body.theme-zenna #screen .po-hero-titre {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight);
+  font-size: 27px; line-height: 1.04; text-transform: uppercase; letter-spacing: -.01em;
+  color: var(--zn-on-accent); margin-top: 12px;
+}
+body.theme-zenna #screen .po-hero-chiffre {
+  display: flex; align-items: baseline; gap: 7px; margin-top: 12px;
+}
+body.theme-zenna #screen .po-hero-chiffre b {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight);
+  font-size: 54px; line-height: 1; color: var(--zn-on-accent);
+}
+body.theme-zenna #screen .po-hero-chiffre span {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight);
+  font-size: 17px; color: rgba(10, 10, 10, .8);
+}
+/* Les segments disent l'avancement SANS répéter le chiffre : trois essais, trois barres. */
+body.theme-zenna #screen .po-seg { display: flex; gap: 5px; margin-top: 12px; }
+body.theme-zenna #screen .po-seg i {
+  flex: 1; height: 5px; border-radius: 3px; display: block;
+  background: rgba(10, 10, 10, .28);
+}
+body.theme-zenna #screen .po-seg i.plein { background: var(--zn-on-accent); }
+body.theme-zenna #screen .po-hero-pied {
+  margin-top: 14px; padding-top: 13px; border-top: 1px solid rgba(10, 10, 10, .2);
+  font-size: var(--fs-sm); line-height: 1.5; color: rgba(10, 10, 10, .88);
+}
+
+/* ---------- LE CTA ET SA LIGNE D'ÉTAT ----------
+   Le bouton fait 52 px, la cible tactile de U4 est 44 : on est au-dessus, et c'est voulu —
+   c'est l'action principale de l'écran. La ligne dessous n'est pas décorative : la règle
+   d'interaction du handoff dit qu'un bouton désactivé porte TOUJOURS sa raison écrite. */
+body.theme-zenna #screen .po-cta {
+  width: 100%; min-height: 52px; border: none; border-radius: 14px;
+  background: var(--zn-orange); color: var(--zn-on-accent);
+  font-family: var(--zn-mono); font-size: var(--fs-xs); font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+}
+body.theme-zenna #screen .po-cta:active { transform: scale(.97); }
+body.theme-zenna #screen .po-cta-zone { margin: 0 18px 22px; }
+body.theme-zenna #screen .po-cta-note {
+  display: flex; align-items: center; gap: 7px; margin-top: 11px; justify-content: center;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .05em;
+  color: var(--zn-muted); flex-wrap: wrap; text-align: center;
+}
+body.theme-zenna #screen .po-cta-note b { color: var(--zn-text); font-weight: 700; }
+
+/* ---------- EN-TÊTE DE SECTION — l'étiquette, le filet, le compte à droite ---------- */
+body.theme-zenna #screen .po-sec {
+  display: flex; align-items: center; gap: 10px; padding: 0 18px 12px;
+}
+body.theme-zenna #screen .po-sec.espace { padding-top: 24px; }
+body.theme-zenna #screen .po-sec > span {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .16em;
+  text-transform: uppercase; color: var(--zn-faint);
+}
+body.theme-zenna #screen .po-sec > i {
+  flex: 1; height: 1px; background: var(--zn-filet); display: block;
+}
+body.theme-zenna #screen .po-sec > .compte { letter-spacing: .05em; }
+
+/* ---------- LES LIGNES À NU — 56 px minimum, la cible tactile de U4 avec sa marge ---------- */
+body.theme-zenna #screen .po-liste { padding: 0 18px; }
+body.theme-zenna #screen .po-ligne {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  min-height: 56px; padding: 13px 0; border-bottom: 1px solid var(--zn-filet);
+  width: 100%; background: none; border-left: 0; border-right: 0; border-top: 0;
+  text-align: left; cursor: pointer; color: inherit; font: inherit;
+}
+body.theme-zenna #screen .po-liste .po-ligne:last-child { border-bottom: 0; }
+body.theme-zenna #screen .po-ligne-txt { flex: 1; min-width: 0; }
+body.theme-zenna #screen .po-ligne-titre {
+  font-size: var(--fs-sm); font-weight: 600; color: var(--zn-text);
+}
+body.theme-zenna #screen .po-ligne-meta {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint2);
+  margin-top: 4px;
+}
+body.theme-zenna #screen .po-chevron { color: var(--zn-faint); font-size: var(--fs-lg); }
+
+/* ---------- LE CREUX — plus sombre que la page, c'est ce qui le distingue d'une carte ----
+   `--zn-bg` vaut #000 dans ce thème : un creux ne peut pas être plus sombre que le fond.
+   Il se marque donc par sa BORDURE et son rayon, et non par sa valeur — l'intention du
+   handoff (« un bloc en retrait ») tient, le moyen change parce que le fond n'est pas le
+   même que dans la référence (#0b0b0c). */
+body.theme-zenna #screen .po-creux {
+  margin: 0 14px; background: var(--zn-surface); border: 1px solid var(--zn-filet);
+  border-radius: 14px; padding: 4px 16px;
+}
+body.theme-zenna #screen .po-essai {
+  display: flex; align-items: center; gap: 12px; padding: 13px 0;
+  border-bottom: 1px solid var(--zn-filet);
+}
+body.theme-zenna #screen .po-creux .po-essai:last-child { border-bottom: 0; }
+body.theme-zenna #screen .po-essai-num {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight);
+  font-size: var(--fs-xl); color: var(--zn-faint); font-variant-numeric: tabular-nums;
+}
+body.theme-zenna #screen .po-essai-txt { flex: 1; min-width: 0; }
+body.theme-zenna #screen .po-essai-reglages { font-size: var(--fs-sm); color: var(--zn-text); }
+body.theme-zenna #screen .po-essai-angles {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint2);
+  margin-top: 4px;
+}
+/* Le statut d'un essai porte le vocabulaire du moteur, pas un adjectif de confort : `valide`
+   ou `écarté`, et l'écran des résultats en dira la RAISON (`formatViolation` existe déjà). */
+body.theme-zenna #screen .po-essai-statut {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--zn-good);
+}
+body.theme-zenna #screen .po-essai-statut.ecarte { color: var(--zn-bad); }
+
+/* L'espaceur du handoff : sans lui, le dernier bloc passe sous la barre d'onglets. */
+body.theme-zenna #screen .po-espaceur { height: 96px; }
+
+/* ---------- MOUVEMENT — une seule courbe, plafonné à cinq blocs ----------
+   La règle est celle du handoff ET celle du système : `znPlay` fait déjà exactement ça pour
+   les cinq onglets (stagger plafonné, repli `prefers-reduced-motion`). On ne pose donc PAS
+   une seconde cascade ici — l'écran est rendu dans `#screen`, il hérite de celle de l'onglet
+   Outils. Poser la nôtre serait le double mouvement que le brief de la refonte signale déjà
+   sur l'onglet Semaine. */
+
+/* ============================================================
+   2b — LE PRÉPARATIF
+   ============================================================
+   Le mur de texte devient cinq lignes à cocher. La règle qui décide de la forme est dans le
+   handoff : « le bouton n'est jamais désactivé ici — cocher est une aide, pas une condition ».
+   Ce qui manque est donc DIT sous le bouton, jamais opposé par un bouton gris. */
+body.theme-zenna #screen .po-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 0 18px 14px;
+}
+body.theme-zenna #screen .po-retour {
+  background: none; border: 0; padding: 6px 0; cursor: pointer; text-align: left;
+  font-family: var(--zn-mono); font-size: var(--fs-xs); letter-spacing: .06em;
+  color: var(--zn-faint2); min-height: 44px;
+}
+body.theme-zenna #screen .po-etape {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .06em;
+  text-transform: uppercase; color: var(--zn-faint);
+}
+body.theme-zenna #screen .po-hero-nu {
+  padding: 0 18px 16px;
+}
+body.theme-zenna #screen .po-hero-nu h2 {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight);
+  font-size: 30px; line-height: 1.06; letter-spacing: -.01em; text-transform: uppercase;
+  color: var(--zn-text); margin: 0;
+}
+body.theme-zenna #screen .po-hero-nu p {
+  font-size: var(--fs-sm); line-height: 1.6; color: var(--zn-muted); margin: 12px 0 0;
+  text-wrap: pretty;
+}
+/* Une ligne à cocher est un BOUTON, pas un `<label>` autour d'une case : la cible tactile doit
+   faire toute la ligne (U4), et un `<input type=checkbox>` stylé ne donne pas ça sans une
+   seconde couche de CSS qui masque l'original. */
+body.theme-zenna #screen .po-check {
+  display: flex; align-items: flex-start; gap: 12px; width: 100%;
+  min-height: 56px; padding: 13px 0; border: 0; border-bottom: 1px solid var(--zn-filet);
+  background: none; text-align: left; cursor: pointer; color: inherit; font: inherit;
+}
+body.theme-zenna #screen .po-liste .po-check:last-child { border-bottom: 0; }
+body.theme-zenna #screen .po-case {
+  width: 22px; height: 22px; border-radius: 7px; flex: 0 0 auto; margin-top: 1px;
+  border: 1.5px solid var(--zn-border); display: flex; align-items: center;
+  justify-content: center; color: transparent;
+}
+body.theme-zenna #screen .po-check[aria-pressed="true"] .po-case {
+  background: var(--zn-good); border-color: var(--zn-good); color: var(--zn-on-accent);
+}
+body.theme-zenna #screen .po-check-txt { flex: 1; min-width: 0; }
+body.theme-zenna #screen .po-check-lab {
+  font-size: var(--fs-sm); font-weight: 600; color: var(--zn-text);
+}
+body.theme-zenna #screen .po-check-exp {
+  font-size: var(--fs-xs); line-height: 1.45; color: var(--zn-faint2); margin-top: 4px;
+}
+/* Les deux cartes de guidage. Le choix pilote le mode de pointage (2c) : consigne dépliée ou
+   repliée. Ce n'est donc pas une préférence d'affichage, c'est un réglage du parcours. */
+body.theme-zenna #screen .po-modes { display: flex; gap: 10px; padding: 0 18px; }
+body.theme-zenna #screen .po-mode {
+  flex: 1; min-width: 0; text-align: left; cursor: pointer; font: inherit; color: inherit;
+  background: none; border: 1px solid var(--zn-border); border-radius: 14px; padding: 13px;
+  min-height: 44px;
+}
+body.theme-zenna #screen .po-mode[aria-pressed="true"] {
+  border-color: var(--zn-orange); background: var(--zn-bg-race);
+}
+body.theme-zenna #screen .po-mode b {
+  display: block; font-size: var(--fs-sm); font-weight: 600; color: var(--zn-text);
+}
+body.theme-zenna #screen .po-mode span {
+  display: block; font-size: var(--fs-xs); line-height: 1.45; color: var(--zn-faint2);
+  margin-top: 5px;
+}
+body.theme-zenna #screen .po-mentions {
+  margin: 22px 14px 0; background: var(--zn-surface); border: 1px solid var(--zn-filet);
+  border-radius: 14px; padding: 13px 16px;
+  font-size: var(--fs-xs); line-height: 1.5; color: var(--zn-faint2);
+}
+
+/* ============================================================
+   2c — LE POINTAGE
+   ============================================================ */
+body.theme-zenna #screen .pt-wrap {
+  position: fixed; inset: 0; display: flex; flex-direction: column;
+  background: var(--zn-bg); z-index: 40;
+}
+body.theme-zenna #screen .pt-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 14px 18px 10px; flex: 0 0 auto;
+}
+body.theme-zenna #screen .pt-retour {
+  background: none; border: 0; cursor: pointer; text-align: left; min-height: 44px;
+  font-family: var(--zn-mono); font-size: var(--fs-xs); letter-spacing: .06em;
+  color: var(--zn-faint2);
+}
+body.theme-zenna #screen .pt-compte {
+  font-family: var(--zn-mono); font-size: var(--fs-xs); font-weight: 700; color: var(--zn-text);
+}
+/* La barre segmentée : un segment par point. Turquoise = posé, orange = en cours, filet =
+   à venir. Elle dit COMBIEN il en reste sans qu'on ait à lire le compteur. */
+body.theme-zenna #screen .pt-prog {
+  display: flex; gap: 4px; padding: 0 18px 12px; flex: 0 0 auto;
+}
+body.theme-zenna #screen .pt-prog i {
+  flex: 1; height: 3px; border-radius: 2px; display: block; background: var(--zn-border);
+}
+body.theme-zenna #screen .pt-prog i.fait { background: var(--zn-good); }
+body.theme-zenna #screen .pt-prog i.encours { background: var(--zn-orange); }
+
+body.theme-zenna #screen .pt-scene {
+  flex: 1; position: relative; margin: 0 14px; border-radius: 16px; overflow: hidden;
+  border: 1px solid var(--zn-filet); background: var(--zn-surface);
+  touch-action: none; /* sans ça, le navigateur avale le geste avant le pointage */
+}
+body.theme-zenna #screen .pt-scene-wrap {
+  position: absolute; inset: 0; transform-origin: 50% 50%;
+}
+body.theme-zenna #screen .pt-img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;
+  user-select: none; -webkit-user-drag: none; pointer-events: none;
+}
+body.theme-zenna #screen .pt-calque { position: absolute; inset: 0; pointer-events: none; }
+/* Un point posé. L'étiquette est un frère POSITIONNÉ, jamais un enfant du flux : le handoff le
+   dit et la raison est mécanique — mise dans le même conteneur, elle déplacerait le point. */
+body.theme-zenna #screen .pt-pt {
+  position: absolute; width: 11px; height: 11px; border-radius: 50%;
+  background: var(--zn-good); border: 2px solid var(--zn-bg); pointer-events: auto;
+}
+body.theme-zenna #screen .pt-pt.encours {
+  width: 13px; height: 13px; background: var(--zn-orange);
+}
+body.theme-zenna #screen .pt-halo { display: none; }
+body.theme-zenna #screen .pt-pt.encours .pt-halo {
+  display: block; position: absolute; left: 50%; top: 50%; width: 34px; height: 34px;
+  margin: -17px 0 0 -17px; border-radius: 50%;
+  border: 1px dashed var(--zn-orange); /* STATIQUE — un repère qui pulse est un repère qu'on ne peut pas viser */
+}
+body.theme-zenna #screen .pt-etiq {
+  position: absolute; left: 15px; top: 50%; transform: translateY(-50%);
+  font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 400;
+  letter-spacing: .04em; color: var(--zn-good); white-space: nowrap;
+}
+body.theme-zenna #screen .pt-pt.encours .pt-etiq {
+  color: var(--zn-on-accent); background: var(--zn-orange);
+  padding: 2px 6px; border-radius: 100px; font-weight: 700;
+}
+/* La loupe. `pixelated` est délibéré : lisser une loupe de pointage invente des pixels entre
+   ceux qu'on vise. */
+body.theme-zenna #screen .pt-loupe {
+  position: absolute; width: 104px; height: 104px; border-radius: 50%;
+  border: 2px solid var(--zn-orange); pointer-events: none;
+  background-repeat: no-repeat; image-rendering: pixelated;
+  box-shadow: 0 8px 22px -8px rgba(0, 0, 0, .8);
+}
+body.theme-zenna #screen .pt-loupe::before,
+body.theme-zenna #screen .pt-loupe::after {
+  content: ""; position: absolute; background: var(--zn-orange);
+}
+body.theme-zenna #screen .pt-loupe::before { left: 50%; top: 38%; bottom: 38%; width: 1px; }
+body.theme-zenna #screen .pt-loupe::after { top: 50%; left: 38%; right: 38%; height: 1px; }
+
+body.theme-zenna #screen .pt-zoom {
+  position: absolute; right: 10px; bottom: 10px; display: flex; flex-direction: column;
+  align-items: center; gap: 2px;
+}
+body.theme-zenna #screen .pt-zoom button {
+  width: 44px; height: 44px; border-radius: 12px; cursor: pointer;
+  background: var(--zn-surface); border: 1px solid var(--zn-border); color: var(--zn-text);
+  font-family: var(--zn-mono); font-size: var(--fs-lg); line-height: 1;
+}
+body.theme-zenna #screen .pt-zoom-val {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint2);
+  padding: 2px 0;
+}
+
+/* Le panneau de consigne — rayon signature, coin supérieur coupé, filet d'accent en haut. */
+body.theme-zenna #screen .pt-panneau {
+  flex: 0 0 auto; margin: 12px 14px 14px; background: var(--zn-surface);
+  border: 1px solid var(--zn-filet); border-top: 2px solid var(--zn-orange);
+  border-radius: 4px 4px 18px 18px; padding: 14px 16px 16px;
+}
+body.theme-zenna #screen .pt-panneau-top {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+}
+body.theme-zenna #screen .pt-eyebrow {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--zn-orange);
+}
+body.theme-zenna #screen .pt-terme {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint2);
+}
+body.theme-zenna #screen .pt-titre {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight);
+  font-size: var(--fs-xl); line-height: 1.1; text-transform: uppercase; letter-spacing: -.01em;
+  color: var(--zn-text); margin-top: 10px;
+}
+body.theme-zenna #screen .pt-hint {
+  font-size: var(--fs-sm); line-height: 1.55; color: var(--zn-muted); margin-top: 9px;
+  text-wrap: pretty;
+}
+/* MODE EXPERT — la consigne se replie en une ligne. Le contenu ne DISPARAÎT pas : il tient sur
+   une ligne tronquée, et le titre reste. Quelqu'un qui a l'habitude sait déjà où est l'acromion ;
+   il ne doit pas pour autant perdre le moyen de le relire. */
+body.theme-zenna #screen .pt-panneau.expert .pt-hint {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+body.theme-zenna #screen .pt-panneau.expert .pt-titre { font-size: var(--fs-lg); }
+body.theme-zenna #screen .pt-actions { display: flex; gap: 10px; margin-top: 14px; }
+body.theme-zenna #screen .pt-annuler,
+body.theme-zenna #screen .pt-valider {
+  min-height: 48px; border-radius: 13px; cursor: pointer;
+  font-family: var(--zn-mono); font-size: var(--fs-xs); font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase;
+}
+body.theme-zenna #screen .pt-annuler {
+  flex: 0 0 auto; padding: 0 16px; background: none;
+  border: 1px solid var(--zn-border); color: var(--zn-muted);
+}
+body.theme-zenna #screen .pt-valider {
+  flex: 1; border: none; background: var(--zn-orange); color: var(--zn-on-accent);
+}
+body.theme-zenna #screen .pt-valider:disabled {
+  background: var(--zn-surface); color: var(--zn-faint); cursor: default;
+}
+body.theme-zenna #screen .pt-valider:active:not(:disabled) { transform: scale(.97); }
+body.theme-zenna #screen .pt-aide {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .04em;
+  color: var(--zn-faint); margin-top: 11px; text-align: center;
+}
+
+/* ============================================================
+   2d — LES RÉGLAGES DU VÉLO
+   ============================================================ */
+body.theme-zenna #screen .pv-creux { padding: 10px 12px; }
+body.theme-zenna #screen .pv-schema { width: 100%; height: auto; display: block; }
+/* La silhouette est DÉCORATIVE et le reste : gris neutres, aucun jeton de discipline. Lui
+   donner une couleur du système ferait croire qu'elle signifie quelque chose. */
+body.theme-zenna #screen .pv-silhouette circle,
+body.theme-zenna #screen .pv-silhouette line { fill: none; stroke: var(--zn-faint); stroke-width: 2; }
+body.theme-zenna #screen .pv-silhouette rect { fill: var(--zn-faint); }
+body.theme-zenna #screen .pv-rappel { stroke: var(--zn-border); stroke-width: 1; stroke-dasharray: 3 3; }
+body.theme-zenna #screen .pv-t-selle { stroke: var(--zn-orange); stroke-width: 2; }
+body.theme-zenna #screen .pv-t-cintre { stroke: var(--zn-good); stroke-width: 2; }
+body.theme-zenna #screen .pv-lab {
+  font-family: var(--zn-mono); font-size: 11px; letter-spacing: .04em;
+}
+body.theme-zenna #screen .pv-selle { fill: var(--zn-orange); }
+body.theme-zenna #screen .pv-cintre { fill: var(--zn-good); }
+/* Une cote est CLIQUABLE : toucher le dessin ouvre le champ. C'est la moitié de l'intérêt de
+   l'écran — sans ça, le schéma ne serait qu'une illustration. */
+body.theme-zenna #screen .pv-cote { cursor: pointer; }
+body.theme-zenna #screen .pv-cote:active { opacity: .6; }
+
+body.theme-zenna #screen .pv-ligne {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px;
+  padding: 13px 0; border: 0; border-bottom: 1px solid var(--zn-filet);
+  background: none; text-align: left; cursor: pointer; color: inherit; font: inherit;
+}
+body.theme-zenna #screen .pv-liste .pv-ligne:last-child { border-bottom: 0; }
+/* Une ligne obligatoire non remplie porte un fond teinté ET le mot « à saisir » : la couleur
+   seule ne dit rien à qui ne la distingue pas. */
+body.theme-zenna #screen .pv-ligne.manque { background: var(--zn-bg-race); }
+body.theme-zenna #screen .pv-puce { width: 8px; height: 8px; border-radius: 2px; flex: 0 0 auto; }
+body.theme-zenna #screen .pv-p-selle { background: var(--zn-orange); }
+body.theme-zenna #screen .pv-p-cintre { background: var(--zn-good); }
+body.theme-zenna #screen .pv-txt { flex: 1; min-width: 0; }
+body.theme-zenna #screen .pv-lab2 { display: block; font-size: var(--fs-sm); font-weight: 600; color: var(--zn-text); }
+body.theme-zenna #screen .pv-def { display: block; font-size: var(--fs-xs); color: var(--zn-faint2); margin-top: 3px; }
+body.theme-zenna #screen .pv-val {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-xl);
+  color: var(--zn-text); flex: 0 0 auto;
+}
+body.theme-zenna #screen .pv-val i {
+  font-family: var(--zn-mono); font-style: normal; font-size: var(--fs-micro);
+  font-weight: 400; color: var(--zn-faint2); margin-left: 3px;
+}
+body.theme-zenna #screen .pv-asaisir {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .06em;
+  text-transform: uppercase; color: var(--zn-orange);
+  border: 1px solid var(--zn-orange); border-radius: 100px; padding: 4px 9px; flex: 0 0 auto;
+}
+body.theme-zenna #screen .pv-avances { margin: 18px 18px 0; }
+body.theme-zenna #screen .pv-avances summary {
+  display: flex; align-items: baseline; gap: 8px; min-height: 44px; cursor: pointer;
+  list-style: none; font-size: var(--fs-sm); color: var(--zn-text);
+}
+body.theme-zenna #screen .pv-avances summary::-webkit-details-marker { display: none; }
+body.theme-zenna #screen .pv-avances summary span {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint2);
+}
+body.theme-zenna #screen .pv-note {
+  font-size: var(--fs-xs); line-height: 1.5; color: var(--zn-faint2); padding: 10px 0 0;
+}
+/* La saisie : le pavé numérique est celui du système (`inputmode`), on n'en dessine pas un. */
+body.theme-zenna #screen .pv-saisie {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 45;
+  background: var(--zn-surface); border-top: 2px solid var(--zn-orange);
+  border-radius: 4px 4px 0 0; padding: 14px 18px 20px;
+}
+body.theme-zenna #screen .pv-saisie label {
+  display: block; font-family: var(--zn-mono); font-size: var(--fs-micro);
+  letter-spacing: .14em; text-transform: uppercase; color: var(--zn-orange); font-weight: 700;
+}
+body.theme-zenna #screen .pv-saisie-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+body.theme-zenna #screen .pv-saisie input {
+  flex: 1; min-width: 0; min-height: 48px; border-radius: 13px;
+  background: var(--zn-bg); border: 1px solid var(--zn-border); color: var(--zn-text);
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight);
+  font-size: var(--fs-field); /* R18.1 — sous 16 px, iOS zoome sur le champ et ne dézoome jamais */
+  padding: 0 14px;
+}
+body.theme-zenna #screen .pv-saisie-row > span {
+  font-family: var(--zn-mono); font-size: var(--fs-sm); color: var(--zn-faint2);
+}
+body.theme-zenna #screen .pv-ok {
+  min-height: 48px; padding: 0 20px; border: none; border-radius: 13px;
+  background: var(--zn-orange); color: var(--zn-on-accent); cursor: pointer;
+  font-family: var(--zn-mono); font-size: var(--fs-xs); font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase;
+}
+
+/* ============================================================
+   2e — LE RÉSULTAT
+   ============================================================ */
+body.theme-zenna #screen .pr-scores { display: flex; gap: 22px; margin-top: 14px; }
+body.theme-zenna #screen .pr-score b {
+  display: block; font-family: var(--zn-display); font-weight: var(--zn-display-weight);
+  font-size: 40px; line-height: 1; color: var(--zn-on-accent);
+}
+/* La fourchette est COLLÉE au score : la lire ailleurs qu'à côté du chiffre, c'est la lire
+   comme une note de bas de page — or c'est ce qui borne le chiffre. */
+body.theme-zenna #screen .pr-plage {
+  display: block; font-family: var(--zn-mono); font-style: normal; font-size: var(--fs-micro);
+  color: rgba(10, 10, 10, .75); margin-top: 4px;
+}
+body.theme-zenna #screen .pr-score span {
+  display: block; font-family: var(--zn-mono); font-size: var(--fs-micro);
+  letter-spacing: .1em; text-transform: uppercase; color: rgba(10, 10, 10, .7); margin-top: 3px;
+}
+body.theme-zenna #screen .pr-alt { padding: 14px 0; border-bottom: 1px solid var(--zn-filet); }
+body.theme-zenna #screen .po-liste .pr-alt:last-child { border-bottom: 0; }
+body.theme-zenna #screen .pr-alt-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+body.theme-zenna #screen .pr-alt-lab { font-size: var(--fs-sm); font-weight: 600; color: var(--zn-text); }
+body.theme-zenna #screen .pr-alt-reg { font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint2); }
+body.theme-zenna #screen .pr-alt-bar { display: flex; align-items: center; gap: 9px; margin-top: 9px; }
+body.theme-zenna #screen .pr-alt-bar > span {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint);
+  width: 46px; flex: 0 0 auto;
+}
+body.theme-zenna #screen .pr-barre { flex: 1; height: 5px; border-radius: 3px; background: var(--zn-border); overflow: hidden; }
+body.theme-zenna #screen .pr-barre i { display: block; height: 100%; border-radius: 3px; }
+body.theme-zenna #screen .pr-barre i.confort { background: var(--zn-orange); }
+body.theme-zenna #screen .pr-barre i.aero { background: var(--zn-good); }
+/* Largeur FIXE pour que les deux chiffres s'alignent : sans elle, « 9 » et « 84 » décalent
+   la barre au-dessus, et l'œil compare des longueurs qui ne veulent rien dire. */
+body.theme-zenna #screen .pr-alt-bar > b {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-lg);
+  color: var(--zn-text); width: 22px; text-align: right; flex: 0 0 auto;
+}
+body.theme-zenna #screen .pr-averts { padding: 14px 18px 0; }
+body.theme-zenna #screen .pr-avert { display: flex; gap: 9px; align-items: flex-start; padding: 7px 0; }
+body.theme-zenna #screen .pr-avert i {
+  width: 8px; height: 8px; border-radius: 2px; background: var(--zn-gold);
+  flex: 0 0 auto; margin-top: 5px;
+}
+body.theme-zenna #screen .pr-avert span { font-size: var(--fs-sm); line-height: 1.5; color: var(--zn-muted); }
+body.theme-zenna #screen .pr-mono {
+  font-family: var(--zn-mono); font-style: normal; font-size: var(--fs-micro);
+  color: var(--zn-faint); letter-spacing: .04em;
+}
+
+/* ============================================================
+   TOUR 3 — 3a · 3f · 3h · 3d
+   ============================================================ */
+/* 3a — le relief porte l'AVERTISSEMENT et non une donnée. Il garde donc la forme de la carte
+   principale (c'est bien l'objet du moment) mais pas son ombre : une ombre de CTA sous une
+   consigne de sécurité inviterait à appuyer. */
+body.theme-zenna #screen .po-hero-secu { box-shadow: none; }
+body.theme-zenna #screen .po-hero-secu .po-hero-titre { margin-top: 8px; }
+body.theme-zenna #screen .pe-etape {
+  display: flex; align-items: flex-start; gap: 12px; min-height: 56px; padding: 13px 0;
+  border-bottom: 1px solid var(--zn-filet);
+}
+body.theme-zenna #screen .po-liste .pe-etape:last-child { border-bottom: 0; }
+body.theme-zenna #screen .pe-num {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-lg);
+  color: var(--zn-faint); font-variant-numeric: tabular-nums; flex: 0 0 auto; width: 24px;
+}
+body.theme-zenna #screen .pe-dernier { display: flex; align-items: baseline; gap: 10px; padding: 13px 0; }
+body.theme-zenna #screen .pe-dernier b {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: 28px;
+  color: var(--zn-text); line-height: 1;
+}
+body.theme-zenna #screen .pe-dernier span {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint2);
+}
+
+/* 3f — deux cartes, une seule en relief. La sélectionnée porte la bordure d'accent ET
+   `aria-pressed` : la couleur seule ne dit rien à qui ne la distingue pas. */
+body.theme-zenna #screen .pe-choix { display: flex; flex-direction: column; gap: 10px; padding: 0 14px; }
+body.theme-zenna #screen .pe-type {
+  display: block; width: 100%; text-align: left; cursor: pointer; font: inherit; color: inherit;
+  background: var(--zn-surface); border: 1px solid var(--zn-border); border-radius: 16px;
+  padding: 15px 16px 14px; min-height: 44px;
+}
+body.theme-zenna #screen .pe-type.actif { border-color: var(--zn-orange); background: var(--zn-bg-race); }
+body.theme-zenna #screen .pe-type-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+body.theme-zenna #screen .pe-type-top b {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-xl);
+  text-transform: uppercase; letter-spacing: -.01em; color: var(--zn-text);
+}
+body.theme-zenna #screen .pe-type-top i {
+  font-family: var(--zn-mono); font-style: normal; font-size: var(--fs-micro); color: var(--zn-faint2);
+}
+body.theme-zenna #screen .pe-type-quoi {
+  display: block; font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .1em;
+  text-transform: uppercase; color: var(--zn-good); margin-top: 6px;
+}
+body.theme-zenna #screen .pe-type.actif .pe-type-quoi { color: var(--zn-orange); }
+body.theme-zenna #screen .pe-type-txt {
+  display: block; font-size: var(--fs-xs); line-height: 1.5; color: var(--zn-muted); margin-top: 8px;
+}
+body.theme-zenna #screen .pe-pilules { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+body.theme-zenna #screen .pe-pilules em {
+  font-style: normal; font-family: var(--zn-mono); font-size: var(--fs-micro);
+  letter-spacing: .04em; color: var(--zn-faint2);
+  border: 1px solid var(--zn-border); border-radius: 100px; padding: 4px 9px;
+}
+
+/* 3h — la valeur est colorée par sa ZONE, et le mot l'accompagne toujours (« informatif, pas
+   noté ») : une couleur seule ferait lire « rouge = mauvais » là où il n'y a pas de note. */
+body.theme-zenna #screen .pe-angle {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-xl);
+  flex: 0 0 auto;
+}
+body.theme-zenna #screen .pe-angle.dans { color: var(--zn-good); }
+body.theme-zenna #screen .pe-angle.hors { color: var(--zn-bad); }
+body.theme-zenna #screen .pe-angle.info { color: var(--zn-muted); }
+body.theme-zenna #screen .pe-deux { display: flex; gap: 10px; padding: 18px 18px 0; }
+body.theme-zenna #screen .pe-secondaire {
+  flex: 0 0 auto; padding: 0 18px; min-height: 52px; border-radius: 14px; cursor: pointer;
+  background: none; border: 1px solid var(--zn-border); color: var(--zn-muted);
+  font-family: var(--zn-mono); font-size: var(--fs-xs); font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase;
+}
+body.theme-zenna #screen .pe-deux .po-cta { flex: 1; }
+
+/* 3d — cinq segments par zone. Chacun est un bouton de 44 px de haut : l'échelle se touche au
+   doigt, elle n'est pas un curseur qu'on vise. */
+body.theme-zenna #screen .pe-zone { padding: 14px 0; border-bottom: 1px solid var(--zn-filet); }
+body.theme-zenna #screen .po-liste .pe-zone:last-child { border-bottom: 0; }
+body.theme-zenna #screen .pe-zone-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+body.theme-zenna #screen .pe-etat {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .05em;
+}
+body.theme-zenna #screen .pe-etat.ok { color: var(--zn-good); }
+body.theme-zenna #screen .pe-etat.moyen { color: var(--zn-gold); }
+body.theme-zenna #screen .pe-etat.dur { color: var(--zn-bad); }
+body.theme-zenna #screen .pe-etat.att { color: var(--zn-faint); }
+body.theme-zenna #screen .pe-segs { display: flex; gap: 6px; margin-top: 10px; }
+body.theme-zenna #screen .pe-seg {
+  flex: 1; min-height: 44px; border-radius: 10px; cursor: pointer;
+  background: var(--zn-surface); border: 1px solid var(--zn-border);
+}
+body.theme-zenna #screen .pe-seg.on { border-color: transparent; }
+body.theme-zenna #screen .pe-seg.on.n1,
+body.theme-zenna #screen .pe-seg.on.n2 { background: var(--zn-good); }
+body.theme-zenna #screen .pe-seg.on.n3 { background: var(--zn-gold); }
+body.theme-zenna #screen .pe-seg.on.n4,
+body.theme-zenna #screen .pe-seg.on.n5 { background: var(--zn-bad); }
+body.theme-zenna #screen .pe-echelle {
+  display: flex; justify-content: space-between; padding: 10px 18px 0;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint);
+}
+
+/* ============================================================
+   3e · 3c
+   ============================================================ */
+body.theme-zenna #screen .pe-badge {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--zn-gold);
+  border: 1px solid var(--zn-gold); border-radius: 100px; padding: 4px 9px;
+}
+body.theme-zenna #screen .pe-arg {
+  display: flex; align-items: flex-start; gap: 12px; min-height: 56px; padding: 13px 0;
+  border-bottom: 1px solid var(--zn-filet);
+}
+body.theme-zenna #screen .po-liste .pe-arg:last-child { border-bottom: 0; }
+body.theme-zenna #screen .pe-arg-p {
+  width: 8px; height: 8px; border-radius: 2px; flex: 0 0 auto; margin-top: 5px;
+}
+body.theme-zenna #screen .pe-arg-p.gain { background: var(--zn-good); }
+body.theme-zenna #screen .pe-arg-p.vigilance { background: var(--zn-gold); }
+
+body.theme-zenna #screen .pe-graphe { padding: 12px 10px; }
+body.theme-zenna #screen .pe-svg { width: 100%; height: auto; display: block; }
+body.theme-zenna #screen .pe-grille { stroke: var(--zn-filet); stroke-width: 1; }
+/* L'AIRE est la fourchette, la LIGNE est la valeur. Tracer les valeurs seules ferait lire une
+   progression là où les deux bandes se recouvrent — c'est l'écart connu de `TrendChart` (§7)
+   qu'on ne reproduit pas ici. */
+body.theme-zenna #screen .pe-aire-conf { fill: var(--zn-orange); opacity: .22; }
+body.theme-zenna #screen .pe-aire-aero { fill: var(--zn-good); opacity: .2; }
+body.theme-zenna #screen .pe-l-conf { fill: none; stroke: var(--zn-orange); stroke-width: 2.5; stroke-linejoin: round; }
+body.theme-zenna #screen .pe-l-aero { fill: none; stroke: var(--zn-good); stroke-width: 2.5; stroke-linejoin: round; }
+body.theme-zenna #screen .pe-pt-conf { fill: var(--zn-orange); }
+body.theme-zenna #screen .pe-pt-aero { fill: var(--zn-good); }
+body.theme-zenna #screen .pe-legende {
+  display: flex; gap: 14px; padding: 10px 18px 0;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint2);
+}
+body.theme-zenna #screen .pe-legende span::before {
+  content: ""; display: inline-block; width: 9px; height: 3px; border-radius: 2px;
+  margin-right: 5px; vertical-align: middle;
+}
+body.theme-zenna #screen .pe-legende .l-conf::before { background: var(--zn-orange); }
+body.theme-zenna #screen .pe-legende .l-aero::before { background: var(--zn-good); }
+body.theme-zenna #screen .pe-legende .l-sens::before { background: var(--zn-border); height: 9px; }
+body.theme-zenna #screen .pe-duo {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-lg);
+  color: var(--zn-text); flex: 0 0 auto; margin-right: 8px;
+}
+
+/* 3g — la silhouette de référence : le mécanisme est là, la donnée n'y est pas encore (voir
+   `SILHOUETTE_REF`). Ces règles ne peignent donc rien aujourd'hui, et c'est voulu — l'écrire
+   maintenant évite qu'on invente une seconde apparence le jour où le tracé arrivera. */
+body.theme-zenna #screen .pt-ref { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .5; pointer-events: none; }
+body.theme-zenna #screen .pt-ref polyline {
+  fill: none; stroke: var(--zn-good); stroke-width: 1.1; stroke-dasharray: 3 2.5;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+body.theme-zenna #screen .pt-ref-pt {
+  position: absolute; width: 9px; height: 9px; border-radius: 50%;
+  border: 1.5px dashed var(--zn-good); transform: translate(-50%, -50%);
+  opacity: .5; pointer-events: none;
+}
+/* 3b */
+body.theme-zenna #screen .pe-etal { margin: 0 14px; }
+
+/* ============================================================
+   24b — LES SEPT REPÈRES (overlay du pointage)
+   ============================================================
+   Un OVERLAY dans `.pt-wrap`, jamais un second écran : le pointage garde son DOM et son état
+   pendant qu'on consulte la référence — c'est ce qui permet de l'ouvrir ET de la refermer sans
+   perdre un seul point déjà posé. */
+body.theme-zenna #screen .pt-ref-lien {
+  background: none; border: 1px solid var(--zn-border); border-radius: 100px;
+  padding: 5px 11px; min-height: 32px; cursor: pointer;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .04em;
+  color: var(--zn-faint2); margin-left: auto;
+}
+body.theme-zenna #screen .pt-ref-ecran {
+  position: absolute; inset: 0; z-index: 5; background: var(--zn-bg);
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+}
+body.theme-zenna #screen .pt-ref-head { padding: 14px 18px 6px; }
+body.theme-zenna #screen .pt-ref-fermer {
+  background: none; border: 0; cursor: pointer; min-height: 44px; padding: 0;
+  font-family: var(--zn-mono); font-size: var(--fs-xs); letter-spacing: .06em;
+  color: var(--zn-faint2);
+}
+body.theme-zenna #screen .pt-ref-sec {
+  padding: 16px 18px 8px; font-family: var(--zn-mono); font-size: var(--fs-micro);
+  letter-spacing: .16em; text-transform: uppercase; color: var(--zn-faint);
+}
+body.theme-zenna #screen .pt-ref-courant,
+body.theme-zenna #screen .pt-ref-liste { padding: 0 14px; }
+body.theme-zenna #screen .pt-ref-item {
+  display: flex; align-items: flex-start; gap: 12px; padding: 13px 4px;
+  border-bottom: 1px solid var(--zn-filet);
+}
+body.theme-zenna #screen .pt-ref-liste .pt-ref-item:last-child { border-bottom: 0; }
+/* Le repère cherché porte le CHÂSSIS de la carte en relief (fond `--zn-surface`, rayon,
+   bordure d'accent) — même hiérarchie de surface que le reste de l'app : un seul objet en
+   relief par écran, même ici, dans un overlay. */
+body.theme-zenna #screen .pt-ref-courant .pt-ref-item {
+  background: var(--zn-surface); border: 1px solid var(--zn-orange); border-radius: 14px;
+  padding: 14px 14px 14px 12px; border-bottom: 1px solid var(--zn-orange);
+}
+body.theme-zenna #screen .pt-ref-num {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-lg);
+  color: var(--zn-faint); flex: 0 0 auto; width: 20px; font-variant-numeric: tabular-nums;
+}
+body.theme-zenna #screen .pt-ref-actif .pt-ref-num { color: var(--zn-orange); }
+body.theme-zenna #screen .pt-ref-txt { flex: 1; min-width: 0; }
+body.theme-zenna #screen .pt-ref-txt b {
+  display: block; font-size: var(--fs-sm); font-weight: 600; color: var(--zn-text);
+}
+body.theme-zenna #screen .pt-ref-txt i {
+  display: block; font-style: normal; font-family: var(--zn-mono); font-size: var(--fs-micro);
+  color: var(--zn-faint2); margin-top: 2px;
+}
+body.theme-zenna #screen .pt-ref-txt span {
+  display: block; font-size: var(--fs-xs); line-height: 1.5; color: var(--zn-muted); margin-top: 6px;
+}
