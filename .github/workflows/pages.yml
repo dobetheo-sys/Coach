@@ -40,6 +40,16 @@ jobs:
       url: ${{ steps.config.outputs.base_url }}
     steps:
       - uses: actions/checkout@v4
+      # Bikefitting (bikefitting/) est une sous-app isolée, avec ses propres dépendances npm
+      # (React/Vite/MediaPipe) — voir INTEGRATION_HANDOFF.md et bikefitting/README.md. Elle
+      # n'est PAS committée construite : le build tourne ICI, à chaque déploiement, et sa
+      # sortie est copiée sous endurabuild/bikefitting/ avant l'upload de l'artefact Pages.
+      # Zéro effet sur le build zéro-dépendance du moteur (`build:app`) : node_modules de
+      # Bikefitting reste dans son propre répertoire, jamais installé à la racine du dépôt.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm run build:bikefitting
       # enablement: true — active Pages tout seul au premier passage ; si jamais le
       # jeton n'y suffit pas : Settings → Pages → Source « GitHub Actions » (une fois).
       - id: config
