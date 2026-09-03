@@ -7393,7 +7393,7 @@
   "history": "ancien",
   "level": "debutant",
   "intent": "competition",
-  "score": 70,
+  "score": 100,
   "peakRatio": 1.0067619047619047,
   "peakDeclaredH": 3.5,
   "peakPrescribedH": 3.5166666666666666,
@@ -7401,18 +7401,13 @@
   "taperVsPeak": 0.5497630331753555,
   "weeksOver": 0,
   "weeksUnder": 0,
-  "easyShare": 0.724777773479667,
+  "easyShare": 0.7387912366224343,
   "repairs": 0,
   "warnings": [
-   "C29d — 2 jour(s) facile(s) rendu(s) à des semaines de décharge qui étaient tombées sous le quart de leurs voisines : une décharge se fait par le contenu (volume réduit, tout facile), pas par l'interruption.",
    "Le volume promis (6.5 h/sem au pic) n'est pas atteignable : les plafonds de séance bornent chaque semaine — le plan livrable culmine à 3.5 h/sem. C'est ce chiffre-là qui compte.",
-   "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif.",
-   "Plan rendu avec réserves (contraintes insatisfaisables après 3 réparations) :",
-   "· C26d : 1 semaine(s) à plus de 40% de temps MODÉRÉ (zone grise, hors nage — voir C26d-disc) — pire : S3 à 43%"
+   "Les semaines de charge de ce plan sont quasi identiques (l'écart entre la plus grosse et la plus petite est inférieur à 35 %) : les contraintes de séance empêchent une vraie périodisation. Le plan reste sûr, mais un objectif plus court — ou un avis sur la contrainte qui borne tes séances — le rendrait plus progressif."
   ],
-  "hardViolations": [
-   "C26d : 1 semaine(s) à plus de 40% de temps MODÉRÉ (zone grise, hors nage — voir C26d-disc) — pire : S3 à 43%"
-  ]
+  "hardViolations": []
  },
  {
   "sport": "tri",

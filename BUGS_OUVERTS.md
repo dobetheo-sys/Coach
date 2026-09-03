@@ -12390,3 +12390,51 @@ quoi: la CSP admet le WASM précompilé sans jamais admettre eval() sur du texte
 attendu: /wasm oui, eval texte non/
 cmd: node --input-type=module -e "import('node:fs').then(({readFileSync})=>{const h=readFileSync('endurabuild/index.html','utf8');const csp=(/<meta http-equiv=\"Content-Security-Policy\" content=\"([^\"]+)\"/.exec(h)||[])[1]||'';const wasm=/script-src[^;]*'wasm-unsafe-eval'/.test(csp);const evalTexte=/script-src[^;]*(?<!wasm-)'unsafe-eval'/.test(csp);console.log('wasm '+(wasm?'oui':'non')+', eval texte '+(evalTexte?'oui':'non'));})"
 ```
+
+## O-119 · C26d appliqué (pas seulement mesuré) — trois écritures dans `sports/tri/index.ts` retirées · 🟢 FERMÉ 03/09/2026
+
+**Le défaut** : `tri/S/ancien/debutant/competition` violait C26d (temps modéré pooled ≤ 40 %,
+R20.4) — S3 à **43 %**, deux séances vélo modérées la même semaine (`dur1` « Tempo vélo »,
+gradué par niveau depuis toujours, ET `dur2` « Sweetspot vélo », qui ne l'était PAS : sa branche
+`phase === "dev"` ne distinguait aucun niveau, écrite pour un triathlon longue distance —
+« le jour J se roule plus bas » dit son propre commentaire — mais appliquée sans garde au
+Sprint). C26d était donc AUDITÉ depuis R20.4 sans jamais être TENU : rien dans le générateur ne
+savait qu'un plafond existait, contrairement à C26c (`enforceHardTimeCap`) qui a son pendant
+depuis le même lot.
+
+**Trois correctifs essayés DANS `sports/tri/index.ts`, tous mesurés et retirés — la même cause
+à chaque fois** : cette branche alimente la sonde de capacité (V2.1/`structBrut`), qui recalibre
+TOUTE la courbe du plan. Un changement, même minuscule, à cet endroit précis a un rayon plus
+large que le créneau qu'il touche (la forme extrême de la leçon O-43/O-94) :
+  1. changer le TEMPLATE (Sweetspot → Force basse cadence, comme en phase base) pour ce
+     niveau : ferme C26d, ROUVRE `tri/S/confirme/debutant/finir` sur « S5 (spec) dépasse le pic
+     de plus de 5 % » (spec audit 2) — un axe totalement différent ;
+  2. réduire `repCap` (4 → 2, une dose plus petite mais un COMPTE de répétitions, donc une
+     grandeur structurelle) : ferme C26d, ROUVRE deux régressions d'`audit:monotonie`
+     (`MONO-tri-vol_max-debutant`, `MONO-tri-css-debutant` — le CSS doit être INVARIANT au
+     volume livré, O-21) ;
+  3. raccourcir la fourchette par répétition (`PT(12,20)` → `PT(8,14)`, une dose continue) :
+     ferme C26d ET les deux gates précédents, ROUVRE un brick vélo hors bornes de format (C21b)
+     sur un TROISIÈME profil (`tri/S/confirme/debutant/plaisir`).
+
+**Le correctif retenu ne touche plus `sports/tri/index.ts` du tout** (revenu au code d'origine,
+octet pour octet) : `enforceModShareCap` (`src/generator/planGenerator.ts`, à côté
+d'`enforceHardTimeCap`) tourne APRÈS que la courbe et la sonde ont fini leur travail — il ne peut
+donc pas les perturber, il ne fait que retirer un peu de ce qu'elles ont déjà produit. Même geste
+que C26c : cession par palier (répétitions, puis durée jusqu'à un plancher, puis déclassement en
+facile — jamais la nage, qui a sa propre borne `C26D_MOD_SHARE_MAX_PAR_DISCIPLINE.sw`, absente
+aujourd'hui), minutes retirées rendues aux séances faciles de la même semaine
+(`refillEasyAfterLabelCap`, neutralité de volume, R4.1).
+
+**Vérifié sans régression** : `audit:v2` 594/594 (était 1 violation dure), `audit:v1` 459/459,
+`audit:monotonie` 42 verts · 9 dettes déclarées · **0 régression** (deux critères de plus qu'avant
+le lot, aucun de moins), `audit:v6` 75 verts · 1 dette · 0 régression, `lotPhysio` 33 verts · 24
+rouges attendus · 0 régression, `audit:invariants` 22/22, golden recapturé (88 profils, tous
+`tri/*/debutant/*` — exactement la population touchée).
+
+```verify
+id: O-119
+quoi: aucune combinaison de audit:v2 (594) ne viole C26d ni aucune autre règle dure
+attendu: /0 violation dure sur 594/
+cmd: node src/audit/runV2Audit.ts 2>&1 | tail -3
+```

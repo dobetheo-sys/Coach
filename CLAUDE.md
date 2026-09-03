@@ -611,6 +611,25 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**O-119 FERMÉ — C26d appliqué, pas seulement mesuré ; trois correctifs dans `sports/tri/index.ts`
+essayés et retirés avant le bon** (03/09/2026 — voir `BUGS_OUVERTS.md` « O-119 », fonction
+`enforceModShareCap` dans `src/generator/planGenerator.ts`) : `tri/S/ancien/debutant/competition`
+violait le plafond de temps modéré (R20.4, 40 % pooled) — `dur1` « Tempo vélo » (déjà gradué par
+niveau) et `dur2` « Sweetspot vélo » (pas gradué, écrit pour la longue distance et appliqué sans
+garde au Sprint) empilaient deux séances vélo modérées la même semaine, S3 à 43 %. **Trois
+écritures dans le module tri, trois cascades DIFFÉRENTES** : changer le gabarit de séance rouvrait
+un autre profil sur « S5 dépasse le pic de >5 % » ; réduire `repCap` rouvrait deux régressions
+`audit:monotonie` (O-21, l'invariance au CSS) ; raccourcir la fourchette de répétition rouvrait un
+brick vélo hors bornes sur un troisième profil — la même cause à chaque fois : ce créneau alimente
+la sonde de capacité (V2.1/`structBrut`) qui recalibre toute la courbe, donc tout changement là
+a un rayon plus large que lui-même (forme extrême d'O-43/O-94). Le correctif qui tient ne touche
+plus le module tri (revenu identique à l'original) : `enforceModShareCap`, calqué sur
+`enforceHardTimeCap` (C26c), tourne APRÈS la courbe et la sonde — il ne peut donc pas les
+perturber, il ne fait que reprendre un peu de ce qu'elles ont produit (cession par palier,
+minutes rendues au facile de la même semaine, R4.1). `audit:v2` 594/594, `audit:v1` 459/459,
+`audit:monotonie` 0 régression (42 verts, deux de plus qu'avant), `audit:v6`/`lotPhysio`/
+`audit:invariants` inchangés, golden recapturé (88 profils, tous `tri/*/debutant/*`).
+
 **O-83 FERMÉ (informer + progression bornée) et V-08/B-02a FERMÉ (sw.aero reclassé, table
 C26d par discipline) — et le gate de monotonie perd ses deux axes morts** (fiche 55, 02/09/2026 —
 voir `syntheses/50-fiche55-…`, registre O-83 et V-08/B-02a fermés, gardes `audit:monotonie`

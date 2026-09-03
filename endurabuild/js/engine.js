@@ -8378,6 +8378,17 @@ function buildTriSessions(kit            )              {
     // sweetspot, ce qu'un entraîneur prescrit pour cette épreuve. Aucune séance n'est supprimée,
     // c'est une question de PHASE — la même forme que R13.4 (« l'affûtage est branché
     // explicitement, plus jamais par un `else` attrape-tout »).
+    //
+    // C26d (03/09/2026) — trois écritures ESSAYÉES ICI ET RETIRÉES (voir BUGS_OUVERTS.md
+    // « O-119 » pour le détail chiffré) : changer le TEMPLATE (Sweetspot → Force) casse
+    // `tri/S/confirme/debutant/finir` (S5 spec > pic de >5 %) ; réduire `repCap` (4→2) casse
+    // `audit:monotonie` sur deux axes (`vol_max`, `css` — O-21, l'invariance au CSS) ; raccourcir
+    // la fourchette (`PT(12,20)`→`PT(8,14)`) casse un brick vélo (C21b) sur un TROISIÈME profil.
+    // Les trois échouent pour la MÊME raison : cette branche alimente la sonde de capacité
+    // (V2.1/structBrut), qui recalibre TOUTE la courbe du plan — un changement, même une simple
+    // dose, à cet endroit précis a un rayon bien plus large que le créneau qu'il touche (leçon
+    // O-43/O-94, poussée à sa limite). Le correctif retenu vit donc APRÈS la construction, dans
+    // la boucle du point fixe, comme C26c (`enforceHardTimeCap`) : voir `enforceModShareCap`.
     else if (phase === "dev") S2.push({ d: "bk", name: "Sweetspot vélo", note: "L'allure qui construit un long : soutenu mais tenable, cadence 85-95 rpm. C'est le cœur de la préparation vélo d'un triathlon longue distance — le jour J se roule plus bas, mais c'est ici que le plafond se construit.", det: "", steps: [W(15, "montée progressive"), Object.assign(B(PT(2, 3), PT(12, 20), "bk.ss", "5min souple"), { repCap: 4 }), C(10, "décrassage")] });
     else S2.push({ d: "bk", name: "Force basse cadence", note: "Gros braquet, cadence basse : musculaire, pas cardio. Sans forcer sur les genoux.", det: "", steps: [W(15, "+ montée en intensité"), Object.assign(B(PT(4, 6), ({ S: 5, M: 5, "70.3": 6, Full: 7 }                          )[fmt] || 5, "bk.frc", "3min souple", " à 50-60 rpm"), { repCap: 8 }), C(10, "moulinage")] });
   } else if (slot === "durLong") {
@@ -13330,6 +13341,18 @@ function reconcileDeclaredVolume(
       for (const [num] of coupe) cibles.set(num, avant.get(num) || 0);
       refillEasyAfterLabelCap(coupe, cibles);
     }
+    // C26d — même geste, pour le plafond de temps MODÉRÉ (voir `enforceModShareCap`) : appelé
+    // APRÈS C26c et sa restitution, sur un `avant` recalculé, pour ne pas confondre les deux
+    // sources de minutes rendues.
+    const avantMod = new Map                ();
+    for (const w of plan.weeks) avantMod.set(w.num, w.days.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.min || 0), 0), 0));
+    const refsMod              = { cssSecPer100m: ctx?.refs?.cssSecPer100m || 130, thrPaceSecPerKm: ctx?.refs?.thrPaceSecPerKm || 330 };
+    const coupeMod = enforceModShareCap(plan, refsMod, render);
+    if (coupeMod.size) {
+      const ciblesMod = new Map                ();
+      for (const [num] of coupeMod) ciblesMod.set(num, avantMod.get(num) || 0);
+      refillEasyAfterLabelCap(coupeMod, ciblesMod);
+    }
   }
   // …et une dernière fois APRÈS toutes les passes de ce point de convergence : elles peuvent
   // recomposer une séance (déclassement C13d, remplacement de course, greffe).
@@ -14096,6 +14119,92 @@ function enforceHardTimeCap(
       }
       if (render) render(cible);
     }
+    const perdu = avantSemaine - totalOf(w);
+    if (perdu > 1) coupe.set(w.num, perdu);
+  }
+  return coupe;
+}
+
+/**
+ * C26d (03/09/2026) — LE PLAFOND DE TEMPS MODÉRÉ SE FAIT RESPECTER, PAS SEULEMENT MESURER.
+ *
+ * `auditPlan` borne le pooled `(mod − modSw) / tot` à `C26d_MOD_SHARE_MAX` (40 %) depuis R20.4,
+ * mais aucune passe ne le TENAIT — l'auditeur pouvait rougir sans que rien dans le générateur ne
+ * le sache. Trouvé sur `tri/S/ancien/debutant/competition` (S3 à 43 %, deux séances vélo
+ * modérées — `dur1` « Tempo vélo » et `dur2` « Sweetspot vélo » — la même semaine).
+ *
+ * ⚠ TROIS ÉCRITURES DIFFÉRENTES DANS `sports/tri/index.ts` ONT ÉTÉ ESSAYÉES ET RETIRÉES (voir
+ * le commentaire du créneau `dur2`/dev) : changer quel gabarit de séance porte le modéré déplace
+ * la sonde de capacité (V2.1/structBrut) qui recalibre TOUTE la courbe du plan — un rayon bien
+ * plus large que le créneau visé, à chaque fois une garde DIFFÉRENTE rouverte ailleurs. Le
+ * patron qui fonctionne déjà pour C26c (`enforceHardTimeCap`, ci-dessus) évite ce problème par
+ * construction : il tourne APRÈS que la courbe et la sonde ont fini leur travail, donc il ne
+ * peut pas les perturber — il ne fait que RETIRER un peu de ce qu'elles ont produit.
+ *
+ * Même geste que C26c : on cède par PALIER (reps d'abord, puis durée jusqu'à un plancher, puis
+ * déclassement en facile — jamais la fréquence, jamais la nage puisqu'elle a sa PROPRE borne
+ * `C26D_MOD_SHARE_MAX_PAR_DISCIPLINE.sw`, ci-dessous), et les minutes retirées sont rendues aux
+ * séances faciles de la même semaine (`refillEasyAfterLabelCap`, neutralité de volume, R4.1).
+ */
+function enforceModShareCap(
+  plan        ,
+  refs             ,
+  render                         ,
+)                      {
+  const coupe = new Map                ();
+  const cap = C26d_MOD_SHARE_MAX;
+  const swCap = C26D_MOD_SHARE_MAX_PAR_DISCIPLINE.sw;
+  const totalOf = (w        ) => w.days.reduce((t, d) => t + d.sessions.reduce((u, s) => u + (s.min || 0), 0), 0);
+  const pooled = (w        ) => {
+    let mod = 0, modSw = 0, tot = 0;
+    for (const d of w.days)
+      for (const s of d.sessions) {
+        const sp = intensitySplit(s, refs);
+        tot += sp.easyMin + sp.modMin + sp.hardMin;
+        mod += sp.modMin;
+        modSw += sp.modByDisc.sw ?? 0;
+      }
+    return { pooled: tot > 0 ? (mod - modSw) / tot : 0, tot };
+  };
+  for (const w of plan.weeks) {
+    if (w.isRecup || w.phase.id === "taper") continue;
+    const avantSemaine = totalOf(w);
+    for (let tour = 0; tour < 200 && pooled(w).pooled > cap; tour++) {
+      // La plus grosse séance de qualité MODÉRÉE, hors nage (sa propre borne, ci-dessus) et
+      // hors course/séance verrouillée — même exclusion que C26c.
+      let cible                   = null, cibleMod = 0;
+      for (const d of w.days)
+        for (const s of d.sessions) {
+          if (s.d === "rs" || s.d === "sw" || (s                      ).race) continue;
+          const sp = intensitySplit(s, refs);
+          if (sp.modMin > cibleMod) { cibleMod = sp.modMin; cible = s; }
+        }
+      if (!cible || cibleMod <= 0) break;
+      // R20.5 — la coupe et la mesure doivent classer pareil : `bk.rp`/`rn.mara` sont "mod" ou
+      // "hard" selon la bande de l'épreuve, jamais par suffixe seul (même garde qu'enforceHardTimeCap).
+      const mods = (cible.steps || []).filter((b) => b.role === "body"
+        && zoneClass(b.zone, false, (b                                           ).rpBand, (b                                             ).maraBand) === "mod");
+      if (!mods.length) break;
+      const b = mods.reduce((x, y) => ((y.reps || 1) * (y.durationMin || 0) > (x.reps || 1) * (x.durationMin || 0) ? y : x));
+      if ((b.reps || 1) > 1) {
+        b.reps = (b.reps || 1) - 1;
+      } else if ((b.durationMin || 0) > C26C_PLANCHER_CONTINU_MIN) {
+        b.durationMin = Math.max(C26C_PLANCHER_CONTINU_MIN, Math.round((b.durationMin || 0) * 0.8));
+      } else {
+        // Même geste que C26c : plus rien à retirer sans mentir, la séance DEVIENT ce qu'elle
+        // est réellement devenue (nom + note suivent, R19.5).
+        const disc = String(b.d ?? cible.d);
+        b.zone = disc === "sw" ? "sw.easy" : disc === "bk" ? "bk.z2" : "rn.easy";
+        b.intensity = "easy"                     ;
+        cible.name = disc === "sw" ? "Nage endurance" : disc === "bk" ? "Vélo endurance" : "Footing endurance";
+        cible.note = "Le plafond de temps modéré de ta semaine est atteint : cette séance passe en endurance. Ce n'est pas une punition — c'est ce qui garde ta charge assimilable.";
+      }
+      if (render) render(cible);
+    }
+    // La borne par discipline nage, si elle existe un jour (aujourd'hui `swCap` est `undefined`,
+    // absence MESURÉE — voir sa justification dans constraintMatrix.ts) : même structure, jamais
+    // appliquée tant que le chiffre n'est pas sourcé.
+    void swCap;
     const perdu = avantSemaine - totalOf(w);
     if (perdu > 1) coupe.set(w.num, perdu);
   }
