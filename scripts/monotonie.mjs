@@ -54,11 +54,16 @@ const build = globalThis.EBV2.buildPlan;
  * `vol_max` — déclarer plus de temps disponible ne doit RACCOURCIR aucune séance.
  */
 const AXES = [
-  { cle: "vol_max",   famille: "plus",       portee: "semaine+seance", valeurs: (s) => bornes(s, [0.10, 0.21, 0.31, 0.47]) },
+  // FICHE 55 (tâche 0) — `vol_max`, `pace` et `css` portent désormais `niveaux` : un axe qui
+  // n'agit QUE sous une condition dérivée (ici `beginner`, via `swimCapDebutantM`) est invisible
+  // tant qu'on ne le balaie qu'au niveau par défaut du banc (`inter`). C'est exactement ce qui a
+  // laissé la discontinuité CSS≈2:06 et l'inversion vol_max invisibles (fiche 54, A.4c) : le
+  // mécanisme concerné n'existe qu'en débutant, le banc ne testait que `inter`.
+  { cle: "vol_max",   famille: "plus",       portee: "semaine+seance", valeurs: (s) => bornes(s, [0.10, 0.21, 0.31, 0.47]), niveaux: ["inter", "debutant"] },
   { cle: "level",     famille: "plus",       portee: "semaine",        valeurs: (s) => s.domain ?? [] },
   { cle: "history",   famille: "plus",       portee: "semaine",        valeurs: (s) => s.domain ?? [] },
-  { cle: "pace",      famille: "invariant",  portee: "semaine",        valeurs: () => ["4:00", "5:30", "7:00"] },
-  { cle: "css",       famille: "invariant",  portee: "semaine",        valeurs: () => ["1:35", "2:00", "2:25"] },
+  { cle: "pace",      famille: "invariant",  portee: "semaine",        valeurs: () => ["4:00", "5:30", "7:00"], niveaux: ["inter", "debutant"] },
+  { cle: "css",       famille: "invariant",  portee: "semaine",        valeurs: () => ["1:35", "2:00", "2:25"], niveaux: ["inter", "debutant"] },
 ];
 /**
  * Des valeurs prises DANS les bornes déclarées par le schéma — jamais des chiffres inventés.
@@ -133,8 +138,22 @@ const DETTES = {
   // FICHE 52 — `MONO-bike-vol_max` (O-113) est PAYÉE. La dette restante des fiches 49-51 est
   // fermée non pas en retouchant `sessionScale` (fiche 51 : calibration discontinue, payée en
   // fréquence) mais en bornant le RÉCEPTEUR : la sortie longue rend aux séances faciles de sa
-  // semaine tout ce qu'elle porte au-delà de sa part. Le registre du gate est vide — toute
-  // inversion qui apparaîtra désormais est une régression, pas une dette.
+  // semaine tout ce qu'elle porte au-delà de sa part.
+  //
+  // FICHE 55 (tâche 0) — les axes `css`/`pace` étaient MORTS depuis la fiche 47 (aucune entrée
+  // dans `ANSWER_SCHEMA`, sautés en silence) et le croisement `level: debutant` n'existait pas.
+  // Les réparer fait apparaître d'un coup 9 critères rouges qui n'ont jamais pu être vus — ce
+  // n'est PAS une régression du moteur, c'est un instrument qui se met enfin à mesurer. Chacun
+  // est attribué à son ticket, aucun n'est inventé pour l'occasion :
+  "MONO-swim-css-debutant": "O-83/O-21 — la fiche 55 (tâche 2) a fermé le SAUT instantané à CSS≈2:06 (`swimSessionCapCoherenceAtWeek`, une progression au taux C22 plutôt qu'un jump) mais le profil de CE critère (CSS 2:00, hérité de BASE) ne franchit JAMAIS le seuil de déclenchement (19,0 min < 20 min de plancher) — la garde qui protège les nageurs rapides (D5, banc v6 externe) l'exclut EXPLICITEMENT. Ce qui reste est le résidu O-21 (mètres→minutes), inchangé.",
+  "MONO-swim-vol_max-debutant": "O-83/O-77 — même situation : le profil de ce critère (CSS 2:00) ne franchit jamais le seuil qui active la progression de la tâche 2 (la garde D5 l'exige). Mesuré sur le corpus réel : 0 des 78 profils d'O-83 ne franchissent ce seuil non plus (tous déclarent un CSS ≤ 2:00) — la tâche 2 ferme le MÉCANISME, mais ne change AUCUN plan livré du corpus actuel. Résidu O-77 mineur (1 inversion sur 3230 comparaisons), inchangé.",
+  "MONO-swim-css-inter": "O-21 — la nage est prescrite en MÈTRES (C15/C24b/CAP_SWIM), donc un nageur plus lent met mécaniquement plus de MINUTES pour le même volume déclaré : la famille exacte que la fiche 21 documente sur l'allure course à pied, jamais mesurée sur la natation faute d'axe vivant. Résidu connu, hors périmètre de la fiche 55 (qui ne touche pas la conversion mètres↔minutes).",
+  "MONO-run-pace-debutant": "O-21 — résidu déjà connu (« ramené à +5,0 % », registre), mesuré ici pour la première fois au croisement débutant. Hors périmètre de la fiche 55.",
+  "MONO-trail-pace-debutant": "O-21 — même résidu, mesuré pour la première fois sur trail/débutant. Hors périmètre de la fiche 55.",
+  "MONO-trail-vol_max-debutant": "O-77 — résidu non balayé jusqu'ici sur le croisement trail/débutant (1 inversion sur 3230 comparaisons, S12 course 180→156 min). Hors périmètre de la fiche 55 : le lot O-77/capScaleAtWeek ne portait pas sur cette combinaison.",
+  "MONO-swimrun-pace-inter": "O-21 — même résidu, jamais mesuré sur swimrun faute d'axe vivant. Hors périmètre de la fiche 55.",
+  "MONO-swimrun-pace-debutant": "O-21 — idem, au croisement débutant.",
+  "MONO-swimrun-css-debutant": "O-21 — même mécanisme mètres↔minutes que MONO-swim-css-inter, sur le leg nage du swimrun. Hors périmètre de la fiche 55.",
 };
 
 
@@ -146,44 +165,67 @@ function T(id, attendu, quoi, fn) {
   RESULTATS.push({ id, attendu, quoi, ok: r.ok, detail: r.detail });
 }
 
+// FICHE 55 (tâche 0) — UN AXE DÉCLARÉ QUI NE PEUT PAS SE RÉSOUDRE ÉCHOUE BRUYAMMENT, IL NE SE
+// SAUTE PLUS EN SILENCE. C'est exactement le défaut trouvé en fiche 54 (A.4b) : `pace` et `css`
+// n'ont pas d'entrée dans `ANSWER_SCHEMA` (ce sont des valeurs LIBRES, saisies quand
+// `pace_known`/`css_known` valent « oui », jamais un champ à `min`/`max`/`domain`) — la ligne
+// `if (!spec) continue;` les a donc sautés pour LES DEUX sports où ils existent, depuis la
+// création de ce gate (fiche 47), sans qu'aucun compteur ne le signale : « 28 verts / 1628
+// comparaisons » ne dit jamais QUELS axes ont contribué. Un axe sans entrée de schéma déclare
+// donc désormais sa résolution ICI, dans `AXE_SPORTS` — la seule liste de portée qui existe pour
+// ces deux axes — et l'absence des DEUX (ANSWER_SCHEMA ET AXE_SPORTS) est un ARRÊT, pas un skip.
+for (const axe of AXES) {
+  if (!ANSWER_SCHEMA[axe.cle] && !AXE_SPORTS[axe.cle]) {
+    console.error(`✖✖ AXE ${axe.cle} SANS RÉSOLUTION : ni ANSWER_SCHEMA["${axe.cle}"] ni AXE_SPORTS["${axe.cle}"] ne le portent — cet axe serait sauté en SILENCE sur tous les sports (la faute exacte qui a rendu pace/css invisibles depuis la fiche 47). Corrige l'un des deux avant de relancer.`);
+    process.exitCode = 1;
+  }
+}
+
 for (const sport of Object.keys(PAR_SPORT)) {
   const profil = (over) => ({ ...BASE, ...PAR_SPORT[sport], ...over });
   for (const axe of AXES) {
-    const spec = ANSWER_SCHEMA[axe.cle];
-    if (!spec) continue;
+    const spec = ANSWER_SCHEMA[axe.cle] ?? (AXE_SPORTS[axe.cle] ? { sports: AXE_SPORTS[axe.cle] } : null);
+    if (!spec) continue; // déjà signalé bruyamment ci-dessus, avec exitCode
     if (spec.sports && !spec.sports.includes(sport)) continue;
-    if (AXE_SPORTS[axe.cle] && !AXE_SPORTS[axe.cle].includes(sport)) continue;
     const valeurs = axe.valeurs(spec);
     if (valeurs.length < 2) continue;
     const ticket = { vol_max: "O-77", level: "I13", history: null, pace: "O-21", css: "O-21" }[axe.cle];
-    const attendu = DETTES[`MONO-${sport}-${axe.cle}`] ? "rouge" : "vert";
-    T(`MONO-${sport}-${axe.cle}`, attendu,
-      `${sport} · ${axe.cle} (${axe.famille})${ticket ? " — " + ticket : ""}`, () => {
-      const plans = [];
-      for (const v of valeurs) {
-        let p; try { p = build(sport, profil({ [axe.cle]: v })); } catch { p = null; }
-        if (p) plans.push({ v, m: mesures(p) });
-      }
-      if (plans.length < 2) return { ok: false, detail: "moins de deux plans générés — le critère ne mesure rien" };
-      const bad = [];
-      for (let i = 1; i < plans.length; i++) {
-        const A = plans[i - 1], B = plans[i];
-        const n = Math.min(A.m.length, B.m.length);
-        if (!n) return { ok: false, detail: "aucune semaine de charge comparable" };
-        const champs = axe.portee === "semaine" ? ["total"] : ["total", "sw", "bk", "rn"];
-        for (let k = 0; k < n; k++) for (const champ of champs) {
-          const av = A.m[k][champ], ap = B.m[k][champ];
-          if (av <= 0 && ap <= 0) continue;
-          comparaisons++;
-          if (axe.famille === "plus") {
-            if (franchi(av, ap)) bad.push(`S${k + 1} ${champ} ${A.v}→${B.v} : ${Math.round(av)}→${Math.round(ap)} min`);
-          } else if (franchi(av, ap) || franchi(ap, av)) {
-            bad.push(`S${k + 1} ${champ} ${A.v}→${B.v} : ${Math.round(av)}→${Math.round(ap)} min`);
+    // FICHE 55 — le CROISEMENT DE NIVEAU (fiche 54, A.4c) : un axe qui n'agit que sous une
+    // condition dérivée (`beginner`, via `swimCapDebutantM`) est invisible tant qu'on ne le
+    // balaie qu'au niveau par défaut (`inter`). `niveaux` fait tourner le MÊME critère à chaque
+    // niveau demandé, sous un identifiant distinct — jamais en silence sous le même id.
+    for (const niveau of axe.niveaux ?? [null]) {
+      const suffixe = niveau ? `-${niveau}` : "";
+      const id = `MONO-${sport}-${axe.cle}${suffixe}`;
+      const attendu = DETTES[id] ? "rouge" : "vert";
+      T(id, attendu,
+        `${sport} · ${axe.cle}${niveau ? ` (niveau ${niveau})` : ""} (${axe.famille})${ticket ? " — " + ticket : ""}`, () => {
+        const plans = [];
+        for (const v of valeurs) {
+          let p; try { p = build(sport, profil({ [axe.cle]: v, ...(niveau ? { level: niveau } : {}) })); } catch { p = null; }
+          if (p) plans.push({ v, m: mesures(p) });
+        }
+        if (plans.length < 2) return { ok: false, detail: "moins de deux plans générés — le critère ne mesure rien" };
+        const bad = [];
+        for (let i = 1; i < plans.length; i++) {
+          const A = plans[i - 1], B = plans[i];
+          const n = Math.min(A.m.length, B.m.length);
+          if (!n) return { ok: false, detail: "aucune semaine de charge comparable" };
+          const champs = axe.portee === "semaine" ? ["total"] : ["total", "sw", "bk", "rn"];
+          for (let k = 0; k < n; k++) for (const champ of champs) {
+            const av = A.m[k][champ], ap = B.m[k][champ];
+            if (av <= 0 && ap <= 0) continue;
+            comparaisons++;
+            if (axe.famille === "plus") {
+              if (franchi(av, ap)) bad.push(`S${k + 1} ${champ} ${A.v}→${B.v} : ${Math.round(av)}→${Math.round(ap)} min`);
+            } else if (franchi(av, ap) || franchi(ap, av)) {
+              bad.push(`S${k + 1} ${champ} ${A.v}→${B.v} : ${Math.round(av)}→${Math.round(ap)} min`);
+            }
           }
         }
-      }
-      return { ok: bad.length === 0, detail: bad.length ? `${bad.length} inversion(s) · ${bad.slice(0, 3).join(" ; ")}` : "monotone à toutes les positions" };
-    });
+        return { ok: bad.length === 0, detail: bad.length ? `${bad.length} inversion(s) · ${bad.slice(0, 3).join(" ; ")}` : "monotone à toutes les positions" };
+      });
+    }
   }
   // AXE DE POSITION — la phase : une décharge ne pèse jamais plus que la charge voisine (O-93).
   //

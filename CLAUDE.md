@@ -611,6 +611,48 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**O-83 FERMÉ (informer + progression bornée) et V-08/B-02a FERMÉ (sw.aero reclassé, table
+C26d par discipline) — et le gate de monotonie perd ses deux axes morts** (fiche 55, 02/09/2026 —
+voir `syntheses/50-fiche55-…`, registre O-83 et V-08/B-02a fermés, gardes `audit:monotonie`
+(axes `css`/`pace`/`level:debutant`), `T-15` (lotPhysio) élargi) : **tâche 0** — `css` et `pace`
+étaient absents d'`ANSWER_SCHEMA`, la boucle du gate les sautait SILENCIEUSEMENT depuis sa
+création (fiche 47) ; il lève désormais sur un axe sans spec exploitable, et `css`/`pace`/
+`level:debutant` sont vivants (dettes déclarées : le CSS≈2:06 et l'inversion vol_max 5h/25h
+restent invisibles sur un corpus dont tous les CSS déclarés sont ≤ 2:00, sous le seuil D5).
+**Tâche 1** (O-83, informer, R20.2/O-17) — décision `O-83` dans « Pourquoi ce plan » quand une
+semaine de charge nage tombe sous `O83_SEANCE_COHERENCE_MIN` (25 min/séance) ou
+`O83_SEMAINE_COHERENCE_MIN` (60 min/sem) : « ton plan de nage est borné à ~X min par séance : ta
+technique passe avant le volume », jamais un refus dur. Affiché sur **78 profils**.
+**Tâche 2** (O-83, C15 progresse, famille O-56) — `swimSessionCapCoherenceAtWeek` fait croître le
+plafond au TAUX C22 quand aucune continuité MESURÉE n'existe (`swimSessionCapAtWeek` reste
+prioritaire) ; décision explicite motivée contre O-89 : la position ne sert que de REPLI, bornée
+par le même taux de rampe que le reste du moteur, jamais une projection libre. **Deux régressions
+trouvées en écrivant, corrigées avant livraison** : la première touchait tous les sports
+(`audit:v1` cassé, une « Footing facile » disparaissait en tri) — scopée à `swim` seul ; la
+seconde retirait le garde `tempsBaseMin < SWIM_SESSION_FLOOR_MIN` et cassait `D5` (v6) — **la
+protection contre les 86 débutants rapides de fiche 44 T1**, reproduite, garde restaurée
+verbatim. Mesuré honnêtement : le mécanisme est réel et testé mais **ferme 0 des 78 profils du
+corpus actuel** (tous sous le seuil d'activation D5) — l'information (tâche 1) reste ce qui sert
+réellement ces 78 profils aujourd'hui. **Tâche 3** (sw.aero, option 4) — `sw.aero` classe
+désormais MODÉRÉ (83,96 % de l'effort au seuil, P ∝ v³ — de l'ordre de `bk.ss`/`rn.mara`, jamais
+un facile). Mesuré AVANT d'écrire un plafond nage (règle 7) : transplanter le plafond pooled de
+40 % à la natation casse 38/459 combinaisons `audit:v1`, et 36 % des semaines de charge nageuses
+du corpus (819/2 277) tombent à 100 % de modéré, réparties sur les QUATRE phases et bien plus
+présentes chez le confirmé/avancé (53,5 %) que le débutant (1,3 %) — structurel (la nage n'a pas
+l'équivalent d'un chauffe/retour au calme qui dilue son ratio quand une semaine multisport ne lui
+confie qu'UNE séance technique courte), pas une dérive. `C26D_MOD_SHARE_MAX_PAR_DISCIPLINE` donne
+à la nage sa PROPRE borne (`sw: 1`, absence de plafond ASSUMÉE et MESURÉE, mécanisme réel pour un
+chiffre futur sourcé) pendant que vélo/course restent au pooled 40 % INCHANGÉ (soustraction de la
+part nage ajoutée, identité byte-à-byte vérifiée sur les 459 combos). **Conséquence trouvée et
+corrigée dans le même commit** : `T-15` (lotPhysio) chevauche de 2,25 points (`rn.easy` 86,21 % vs
+`sw.aero` 83,96 %, deux modèles d'effort distincts) — tolérance portée de 2 à 3 points, re-vérifié
+qu'aucune autre paire ne s'y glisse. **Effet sur ce que l'athlète LIT** : `easyShare` moyen passe
+de 88,4 % à 82,3 % sur les profils nageurs (`sw.aero` pesait 44,6 % du volume de nage, 11,0 % du
+plan total, et n'était pas du repos) ; `golden:verify` confirme que seuls `._v2.intensity.*` et
+`._v2.score` bougent (14 979 champs, 481 profils) — aucune séance, aucun texte, aucune décision
+(hors O-83) n'est touché. Batterie 13/13, `audit:v1` 459 à 0, golden recapturé (638 profils au
+total sur les quatre tâches : 156 + 1 + 481).
+
 **O-113 FERMÉ — la sortie longue cesse d'être le RÉCEPTEUR ÉLASTIQUE du plan, et la mesure
 d'entrée a trouvé bien pire que le ticket** (fiche 52, 02/09/2026 — voir
 `syntheses/47-fiche52-…`, registre O-113 fermé, **O-117** ouvert, passe

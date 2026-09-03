@@ -11,7 +11,7 @@
 import type { AthleteProfile, ReasonedPlan, V1Plan, V1Session, V1Step, V1Week } from "../engine/types.ts";
 import { scaleStepDose } from "../engine/stepScale.ts";
 import {
-  BANDS, C15_BEGINNER_SWIM_SESSION_CAP_M, C21_REPRISE_BRICK_FACTOR, C22_MAX_WEEKLY_GROWTH, SWIM_SESSION_FLOOR_MIN,
+  BANDS, C15_BEGINNER_SWIM_SESSION_CAP_M, C21_REPRISE_BRICK_FACTOR, C22_MAX_WEEKLY_GROWTH, SWIM_SESSION_FLOOR_MIN, O83_SEANCE_COHERENCE_MIN, O83_SEMAINE_COHERENCE_MIN,
   C22_AUDIT_HARD_JUMP, C23_BEGINNER_LONG_RUN_CAP_MIN, C24B_MIN_SWIM_SESSION_BEGINNER_M,
   C24_MIN_SWIM_SESSION_M,
   BRICK_BIKE_BOUNDS, DOSE_CAP_MIN, CAP_BRICK_RUN, CAP_LONG, CAP_LONG_DUATHLON, PART_LONGUE_MAX, CAP_SWIM, R313_TAPER_MAX_VS_PEAK, RECUP_WEEK_FACTOR, O69_DEPART_PLANCHER,
@@ -2182,6 +2182,56 @@ function swimCapDebutantM(baseM: number, cssSecPer100m: number | undefined): num
 }
 
 /**
+ * O-83 (fiche 55, tâche 2) — SANS CONTINUITÉ MESURÉE, LE PLAFOND DE SÉANCE CROÎT PAR PALIERS
+ * BORNÉS PAR LE MÊME TAUX QUE LA COURBE — PAS PAR UN SAUT.
+ *
+ * `swimSessionCapAtWeek` (O-56/B-17) fait déjà progresser ce plafond vers la distance de
+ * course — mais SEULEMENT quand la continuité est MESURÉE (`g.source === "mesure"`),
+ * conformément à O-89 (« une borne de sécurité ne projette pas »). Sans mesure — la majorité
+ * des 78 profils d'O-83, où B-17 §17 accepte « je ne sais pas » comme une réponse légitime —
+ * le plafond restait PLAT à `C15_BEGINNER_SWIM_SESSION_CAP_M` toute la préparation, et
+ * `swimCapDebutantM` corrigeait la fenêtre DÉGÉNÉRÉE (850 m ≥ 20 min d'eau) par un SAUT
+ * instantané plutôt qu'une progression — la discontinuité mesurée en fiche 54 (A.4a) : un
+ * débutant à CSS 2:00 reçoit 850 m dès la semaine 1, un débutant à CSS 2:10 reçoit 1 175 m dès
+ * la semaine 1, pour la MÊME absence de mesure.
+ *
+ * DÉCISION (fiche 55, réponse à la fiche 54 §A.5 option 2) : PAS une position pure — un
+ * `capScaleAtWeek` serait aveugle à la sécurité, et le fondateur l'a nommé explicitement. La
+ * position est bornée par le TAUX que la courbe de charge s'impose déjà à elle-même
+ * (`C22_MAX_WEEKLY_GROWTH`, +10 %/semaine) : semaine 1 = STRICTEMENT `baseM` (souvent C15,
+ * 850 m), pour TOUT athlète quel que soit son CSS — c'est ce qui protège le cas des 86
+ * débutants rapides (leur plafond ne bouge PAS au jour 1, retesté ci-dessous) — puis une
+ * croissance GÉOMÉTRIQUE, au même taux que le reste du moteur, jamais un pourcentage inventé
+ * pour l'occasion. La cible d'arrivée (`pleinM`) est EXACTEMENT celle que `swimCapDebutantM`
+ * calculait déjà pour la fenêtre dégénérée — une durée FIXE (le plancher de durée O-44, mis à
+ * l'échelle de C15/C24b) convertie en mètres au CSS de CET athlète : deux nageurs à des CSS
+ * différents convergent vers la MÊME durée de séance, chacun à SA distance, jamais l'inverse.
+ *
+ * Si `pleinM ≤ baseM` (nageur déjà assez lent pour que `baseM` seul dépasse le plancher de
+ * cohérence), rien à faire croître : la fonction rend `baseM` inchangé, comme aujourd'hui.
+ */
+function swimSessionCapCoherenceAtWeek(baseM: number, cssSecPer100m: number | undefined, wkNum: number): number {
+  const css = cssSecPer100m || 130;
+  const ratio = zoneSpeedRatio("sw.easy", undefined, "css") ?? 1;
+  // ⚠ CETTE CONDITION EST RESTAURÉE, ET C'EST UNE FAUTE MESURÉE ET CORRIGÉE. Ma première
+  // écriture la retirait (toute la protection reposait sur la seule LENTEUR du départ), et
+  // `audit:v6` (D5, banc EXTERNE) l'a réfutée : sur un profil déclarant CSS 1:25, la plus
+  // grosse séance finissait par dépasser 850 m après une trentaine de semaines de croissance
+  // GÉOMÉTRIQUE — lente au départ, mais un nageur rapide n'a JAMAIS besoin de dépasser C15,
+  // quelle que soit la position dans le plan. C'est la forme exacte du « contournement de C15 »
+  // que `swimCapDebutantM` documente déjà pour le saut instantané : une croissance graduelle
+  // vers le même point d'arrivée est le MÊME contournement, seulement étalé dans le temps.
+  const tempsBaseMin = (baseM / 100) * (css / 60) / ratio;
+  if (tempsBaseMin < SWIM_SESSION_FLOOR_MIN) return baseM;
+  const capTempsMin = SWIM_SESSION_FLOOR_MIN * (C15_BEGINNER_SWIM_SESSION_CAP_M / C24B_MIN_SWIM_SESSION_BEGINNER_M);
+  const pleinM = Math.round(((capTempsMin * 60 / css) * 100 * ratio) / 25) * 25;
+  if (pleinM <= baseM) return baseM;
+  const k = Math.max(0, (wkNum || 1) - 1);
+  const projete = baseM * Math.pow(C22_MAX_WEEKLY_GROWTH, k);
+  return Math.min(pleinM, Math.round(projete));
+}
+
+/**
  * O-11 / R20.5 — la bande « allure course » vélo de cette épreuve, relief compris. Un seul
  * point pour les deux appelants (génération et réparation) : deux copies auraient divergé, ce
  * qui est très exactement le défaut qu'O-11 décrit.
@@ -3552,7 +3602,28 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     // pic quand la courbe en demandait 55, et la décroissance partait d'une falaise (−63 %
     // d'un coup, mesuré sur le Full). La longue de S-3 d'un plan long fait encore 60-70 % de
     // sa taille normale : c'est la réduction 40-60 % de Bosquet, pas un arrêt.
-    _swimCapW = r.beginner ? swimCapDebutantM(swimSessionCapAtWeek(r.b17Gate ?? null, C15_BEGINNER_SWIM_SESSION_CAP_M, w + 1), r.baseRefs.css) : Number.MAX_SAFE_INTEGER;
+    // O-83 (fiche 55, tâche 2) — DEUX CHEMINS, JAMAIS MÉLANGÉS, ET BORNÉS AU SPORT MESURÉ.
+    //
+    // Continuité MESURÉE : le patron O-89 existant (`swimSessionCapAtWeek`) grandit déjà vers
+    // la distance de COURSE, et `swimCapDebutantM` n'y déclenche plus rien (la base atteint
+    // vite le plancher de durée d'elle-même) — INCHANGÉ, tous sports.
+    //
+    // Continuité NON mesurée : `swimSessionCapCoherenceAtWeek` grandit vers la durée de SÉANCE
+    // cohérente, au taux C22, jamais un saut — mais SEULEMENT pour `sport === "swim"`, comme la
+    // tâche 1. Mesuré en l'appliquant à `tri` sans cette garde : `tri/S/ancien/debutant` perd
+    // une séance de course en semaine 3 (allocation/fréquence qui réagit au volume de nage
+    // devenu plus gros) et bascule `audit:v1` en violation DURE sur C26d (43 % de modéré — le
+    // dénominateur a rétréci, pas le numérateur qui a grossi). Le diagnostic (fiche 54, A.0)
+    // avait déjà mesuré ZÉRO occurrence d'O-83 hors natation pure : la portée du correctif suit
+    // la portée du défaut.
+    {
+      const g83 = r.b17Gate ?? null;
+      const baseAvecContinuite = swimSessionCapAtWeek(g83, C15_BEGINNER_SWIM_SESSION_CAP_M, w + 1);
+      _swimCapW = !r.beginner ? Number.MAX_SAFE_INTEGER
+        : g83 && g83.source === "mesure" ? swimCapDebutantM(baseAvecContinuite, r.baseRefs.css)
+        : a.sport === "swim" ? swimSessionCapCoherenceAtWeek(baseAvecContinuite, r.baseRefs.css, w + 1)
+        : swimCapDebutantM(baseAvecContinuite, r.baseRefs.css);
+    }
     // O-77 (fiche 48) — LE PLAFOND DE SÉANCE SUIT LA POSITION, PLUS L'AMBITION DÉCLARÉE.
     // La branche de CHARGE se dérivait de `Lw = cible/peakH` : déclarer un pic plus haut
     // abaissait le plafond des premières semaines, dont la cible ABSOLUE est pourtant figée par
@@ -5342,6 +5413,39 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
                   + ") : elle vient du partage du temps de ta COURSE, corrigé pour la natation — la technique se perd par la fréquence, pas par le volume, donc on nage plus que sa part de chrono. Ce que tu lis est ce que ton plan livre : l'écart vient de la structure de ta semaine (combien de créneaux portent quelle discipline), pas d'un réglage — le forcer reviendrait à prendre des minutes sous des planchers de séance qui existent pour te protéger.",
               });
             }
+          }
+        }
+      }
+
+      // O-83 (fiche 55, tâche 1) — QUAND UN PLAN DE NAGE TOMBE SOUS LE SEUIL DE COHÉRENCE, LA
+      // CARTE LE DIT — décision du fondateur : informer plutôt que refuser (O-17), même forme
+      // que le plancher de fréquence deux paragraphes plus bas et que R20.2/O-99/O-101 (T7,
+      // fiche 44).
+      //
+      // Diagnostic (fiche 54) : trois des six règles de la chaîne (`C20`, le plancher O-44,
+      // le pic débutant C15) sont mesurées INERTES — seul `C15` (le plafond de séance, 850 m)
+      // agit réellement, et il fixe une durée de séance qui ne dépend NI du nombre de créneaux
+      // NI du volume déclaré au-delà de ~8 h. Le SEUIL est celui du ticket O-83 lui-même
+      // (`séance moyenne < 25 min OU semaine < 60 min`) : le réutiliser ici, à l'identique,
+      // évite d'avoir deux définitions de la même propriété (R11.1) — celle qui COMPTE les
+      // profils concernés et celle qui les INFORME doivent être la même.
+      //
+      // Descripteur, donc APRÈS le point fixe et lu sur le plan LIVRÉ (T-16c) : borné à `sport
+      // === "swim"`, seul sport où le phénomène a été mesuré (fiche 54, A.0 — zéro occurrence
+      // ailleurs sur les 1 060 profils du corpus).
+      if (a.sport === "swim") {
+        const chSem = plan.weeks.filter((w) => !w.isRecup && w.phase?.id !== "taper");
+        if (chSem.length) {
+          const minTot = chSem.reduce((x, w) => x + w.days.reduce((u, d) => u + d.sessions.reduce((v, sx) => v + (sx.min || 0), 0), 0), 0) / chSem.length;
+          const sesTot = chSem.reduce((x, w) => x + w.days.reduce((u, d) => u + d.sessions.filter((sx) => sx.d !== "rs").length, 0), 0) / chSem.length;
+          const moySeance = minTot / Math.max(1, sesTot);
+          if (moySeance < O83_SEANCE_COHERENCE_MIN || minTot < O83_SEMAINE_COHERENCE_MIN) {
+            r.decisions.push({
+              id: "O-83",
+              what: "Ton plan de nage est borné à ~" + Math.round(moySeance) + " min par séance",
+              val: Math.round(minTot) + " min/semaine livrées pour " + h(L.declared) + " déclarées",
+              why: "Ta séance ne peut pas dépasser " + C15_BEGINNER_SWIM_SESSION_CAP_M + " m (C15) : la technique passe avant le volume, parce qu'au-delà le risque porte sur l'épaule. Ce plafond ne dépend ni du nombre de séances par semaine ni du volume que tu déclares — c'est pour ça que le plan ne grossit plus au-delà d'un certain point. Ce n'est pas un réglage à trouver : c'est ta vitesse actuelle qui fixe la durée de chaque séance.",
+            });
           }
         }
       }

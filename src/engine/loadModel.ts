@@ -308,6 +308,17 @@ export interface IntensitySplit {
    * qu'aucun consommateur n'ait à refaire le parcours (R11.1).
    */
   hardByDisc: Record<string, number>;
+  /**
+   * Fiche 55 (O-83/sw.aero) — même ventilation que `hardByDisc`, pour le MODÉRÉ. Nécessaire
+   * depuis que `sw.aero` classe modéré (V-08/B-02a) : C26d ne peut plus juger la natation sur
+   * le même plafond pooled que vélo/course sans re-dériver ce que chaque discipline y met — la
+   * ventilation est produite ICI, par le même classificateur, pour la même raison que B-02.
+   */
+  modByDisc: Record<string, number>;
+  /** Fiche 55 — minutes de CORPS (tous rôles confondus) par discipline : le dénominateur du
+   * plafond par discipline (`modByDisc[d] / totByDisc[d]`), jamais le total de la semaine
+   * entière (qui mélangerait des disciplines aux coûts physiologiques différents — règle 14). */
+  totByDisc: Record<string, number>;
 }
 const HARD_SUFFIX = [".vo2", ".thr", ".speed", ".css"];
 const MOD_SUFFIX = [".ss", ".rp", ".frc", ".mara"];
@@ -347,6 +358,16 @@ export function zoneClass(zone: unknown, runLegNoZone = false, rpBand?: { lo: nu
   // GARDÉE par T-20 (elle rougit si l'une bouge sans l'autre). En allure, PLUS PETIT = PLUS
   // RAPIDE : la bande atteint le seuil si son bord rapide (lo) passe sous cette frontière.
   if (z === "rn.mara" && maraBand) return maraBand.lo <= RN_THR_FRONTIERE_LENTE ? "hard" : "mod";
+  // V-08/B-02a (fiche 39, rouverte fiche 54, tranchée fiche 55 — O-83) — `sw.aero` VAUT DE
+  // L'EFFORT : comparer un rapport d'ALLURE (vélo/course) à un rapport de PUISSANCE (natation,
+  // P ∝ v³) est la faute d'unité de la règle 14. Mesuré : à 1,06 × CSS, `sw.aero` coûte ~84 %
+  // de l'effort au SEUIL — loin d'un simple facile, plus proche d'un tempo/sweetspot que d'une
+  // récupération. La classer « facile » comptait comme repos une séance qui ne l'est pas ; elle
+  // classe désormais modérée, comme `bk.ss`/`bk.rp`/`rn.mara`. C26d (ci-dessous, ce fichier
+  // n'a pas le plafond — il vit dans `constraintMatrix.ts`) lui donne sa PROPRE borne, parce que
+  // la nage produit ce modéré en continu (le geste aérobie de base), pas en pointe ponctuelle
+  // comme un bloc sweetspot vélo : un seul plafond pooled punirait la nage pour ce qu'elle EST.
+  if (z === "sw.aero") return "mod";
   if (TRAIL_HARD.includes(z) || HARD_SUFFIX.some((s) => z.endsWith(s))) return "hard";
   if (TRAIL_MOD.includes(z) || MOD_SUFFIX.some((s) => z.endsWith(s)) || runLegNoZone) return "mod";
   return "easy";
@@ -365,7 +386,7 @@ export function zoneClass(zone: unknown, runLegNoZone = false, rpBand?: { lo: nu
 const TRAIL_HARD = ["tr.vam", "tr.asc", "tr.flatthr"];
 const TRAIL_MOD = ["tr.climb"];
 export function intensitySplit(s: RawSession, refs: AthleteRefs = DEFAULT_REFS): IntensitySplit {
-  const out: IntensitySplit = { easyMin: 0, modMin: 0, hardMin: 0, hardByDisc: {} };
+  const out: IntensitySplit = { easyMin: 0, modMin: 0, hardMin: 0, hardByDisc: {}, modByDisc: {}, totByDisc: {} };
   if (!s.steps || !s.steps.length || s.d === "rs") {
     out.easyMin = sessionLoad(s, refs).minutes; // texte/repos : compté facile (prudence)
     return out;
@@ -390,12 +411,16 @@ export function intensitySplit(s: RawSession, refs: AthleteRefs = DEFAULT_REFS):
     // plan qui est en réalité polarisé. La zone déclarée est toujours plus précise que l'indice.
     const runLegNoZone = st.leg === "run" && !zone;
     const cls = zoneClass(zone, runLegNoZone, (st as { rpBand?: { lo: number; hi: number } }).rpBand, (st as { maraBand?: { lo: number; hi: number } }).maraBand);
+    const disc = String((st as { d?: string }).d || s.d || "");
+    out.totByDisc[disc] = (out.totByDisc[disc] ?? 0) + stMin; // fiche 55 — dénominateur par discipline, tous rôles « body »
     if (cls === "hard") {
       out.hardMin += stMin;
-      const disc = String((st as { d?: string }).d || s.d || "");
       out.hardByDisc[disc] = (out.hardByDisc[disc] ?? 0) + stMin;
     }
-    else if (cls === "mod") out.modMin += stMin;
+    else if (cls === "mod") {
+      out.modMin += stMin;
+      out.modByDisc[disc] = (out.modByDisc[disc] ?? 0) + stMin; // fiche 55 — C26d par discipline
+    }
     else out.easyMin += stMin;
     if (reps > 1) out.easyMin += (st.recoveryMin ?? recoveryMinFromText(st.recoveryText)) * (reps - 1); // la récup est facile
   }
