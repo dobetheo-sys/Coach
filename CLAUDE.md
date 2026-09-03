@@ -37,6 +37,7 @@ régularité est priorité 3, pas priorité 7.
 | `src/sports/registry.ts` + `src/sports/<sport>/` | **Le registre de sports** (R10) : un sport = un module qui DÉCLARE ses séances, sa prédiction, ses tests et ses `guards` (garde-fous). Un sport inconnu lève. |
 | `src/engine/trailModel.ts` + `src/generator/trailLibrary.ts` | **Le module trail** (R7) : catégorie déduite, charge à 3 axes (temps/D+/D−), 14 séances |
 | `endurabuild/` | **La PWA** — même produit en modules ES, mobile-first, installable/offline, 5 onglets (Profil/Plan/Aujourd'hui/Semaine/Outils, voir ses RAPPORT-MIGRATION-PWA.md, RAPPORT-ONGLETS.md et RAPPORT-R4.md) ; UI = source de vérité désormais |
+| `bikefitting/` | **Bikefitting** — bilan de position aéro vélo/triathlon, sous-app React/Vite ISOLÉE (ses propres dépendances npm, jamais celles du moteur — voir `bikefitting/docs/INTEGRATION_HANDOFF.md`). Accessible depuis 🧰 Outils › 🚴 Position (`endurabuild/js/ui/tab-bikefitting.js`, un lien, pas un montage). `npm run build:bikefitting` la construit et la copie sous `endurabuild/bikefitting/` (généré, jamais commité) ; le workflow `pages.yml` le fait à chaque déploiement. |
 | `ARCHITECTURE.md` | Choix techniques : pipeline du moteur, registre des règles R3.x/Cn, auditeur, conventions |
 | `src/` + `npm run audit:v1` | L'auditeur de cohérence — la spec exécutable (486 combinaisons) |
 | `ROADMAP-V2.md` | La cible V2 (raisonner → générer → auditer → adapter) |
@@ -629,6 +630,28 @@ perturber, il ne fait que reprendre un peu de ce qu'elles ont produit (cession p
 minutes rendues au facile de la même semaine, R4.1). `audit:v2` 594/594, `audit:v1` 459/459,
 `audit:monotonie` 0 régression (42 verts, deux de plus qu'avant), `audit:v6`/`lotPhysio`/
 `audit:invariants` inchangés, golden recapturé (88 profils, tous `tri/*/debutant/*`).
+
+**ARBITRAGE — deux implémentations parallèles du bilan bikefitting, une seule reste branchée**
+(03/09/2026) : `main` avait reçu, indépendamment de cette branche et sans passer par le handoff
+`design_handoff_bilan_posture_zenna`, une intégration concurrente (`bikefitting/`, sous-app
+React/Vite/MediaPipe séparée, entrée de navigation `tab-bikefitting.js` vers
+`bikefitting/index.html`, voir `bikefitting/docs/INTEGRATION_HANDOFF.md`) sur le MÊME créneau
+Outils › Position que le bilan natif de cette branche (18 écrans, `tab-posture.js`, moteur
+`src/bikefit/`). Décision du fondateur, après comparaison écran à écran des deux : **garder le
+bilan natif**, retirer l'entrée de navigation concurrente. Raisons mesurées : le bilan natif suit
+le handoff commandé au mot près (thème orange Zenna, palette et pilules identiques aux captures
+du handoff) quand la sous-app est restée sur l'ancienne palette du dépôt Bikefiting d'origine
+(`#f2481b`/or) et ne migre pas le thème R-ZENNA de l'onglet Outils ; il fonctionne aujourd'hui
+sans étape de build séparée (la sous-app nécessite `npm run build:bikefitting`, non exécuté par
+la CI à ce jour) ; le moteur de scoring est déjà porté et branché (`src/bikefit/`, 61 tests) côté
+natif. Ce que la sous-app apporte et que le natif n'a pas encore : une segmentation AUTOMATIQUE
+de la photo de face par MediaPipe (voir `bikefitting/src/capture/mediapipe-vision.ts`) — le natif
+reste au pointage manuel (O-118, WASM non vendu dans le service worker Zenna).
+**`bikefitting/` reste dans le dépôt** (code réel, testé, buildable — vérifié : `npm install` +
+`npm run build` réussissent) mais n'est plus référencé depuis `tab-outils.js` : `tab-bikefitting.js`
+est retiré (code mort une fois débranché), `smoke-bikefitting.mjs` retiré de `run-all.mjs` pour la
+même raison. Rien n'empêche de reprendre la segmentation MediaPipe de cette sous-app pour
+compléter le bilan natif plus tard — c'est une ressource parquée, pas perdue.
 
 **O-83 FERMÉ (informer + progression bornée) et V-08/B-02a FERMÉ (sw.aero reclassé, table
 C26d par discipline) — et le gate de monotonie perd ses deux axes morts** (fiche 55, 02/09/2026 —

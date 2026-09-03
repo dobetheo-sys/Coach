@@ -40,6 +40,12 @@ jobs:
       url: ${{ steps.config.outputs.base_url }}
     steps:
       - uses: actions/checkout@v4
+      # `bikefitting/` (sous-app React/Vite/MediaPipe isolée, voir CLAUDE.md « ARBITRAGE —
+      # deux implémentations parallèles du bilan bikefitting ») n'est plus reliée depuis
+      # l'app (le bilan natif d'Outils › Position l'a remplacée sur ce créneau, 03/09/2026) :
+      # la construire et la copier ici serait des octets morts dans l'artefact Pages. Le
+      # code reste dans le dépôt (parqué, pas perdu) mais son build n'a plus sa place dans
+      # CE déploiement tant que rien ne le sert.
       # enablement: true — active Pages tout seul au premier passage ; si jamais le
       # jeton n'y suffit pas : Settings → Pages → Source « GitHub Actions » (une fois).
       - id: config

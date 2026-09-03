@@ -3,3 +3,10 @@ package-lock.json
 Zenna-standalone.html
 golden/plans.full.json
 tests/fixtures/baseline/plans.full.json
+
+# Bikefitting (bikefitting/) — sous-app isolée avec ses propres dépendances npm (voir
+# INTEGRATION_HANDOFF.md). dist/ et le WASM MediaPipe copié sont des artefacts générés par
+# `npm run build:bikefitting`, jamais commités — comme sa copie servie, endurabuild/bikefitting/.
+bikefitting/dist/
+bikefitting/public/
+endurabuild/bikefitting/

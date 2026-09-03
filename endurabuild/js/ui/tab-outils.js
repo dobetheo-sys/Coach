@@ -14,6 +14,16 @@ import { renderTabNutrition } from "./tab-nutrition.js";
 import { renderTabEducatifs } from "./tab-educatifs.js";
 import { renderTabPosture } from "./tab-posture.js";
 
+// ARBITRAGE (03/09/2026) — deux implémentations du bilan bikefitting sont arrivées en
+// parallèle sur ce même créneau : celle-ci (18 écrans natifs, suivant au mot près le handoff
+// `design_handoff_bilan_posture_zenna`, moteur porté et branché dans `src/bikefit/`) et une
+// carte de navigation vers une sous-app séparée (`bikefitting/`, React/Vite, voir
+// `docs/INTEGRATION_HANDOFF.md` de ce sous-dossier) ajoutée directement sur `main` sans
+// passer par ce handoff. Décision du fondateur : garder celle-ci — elle suit le design brief
+// commandé, elle est intégrée au thème Zenna (l'autre en est encore à l'ancienne palette
+// `#f2481b`/or), et elle fonctionne aujourd'hui sans étape de build séparée. La sous-app
+// `bikefitting/` reste dans le dépôt (code réel, testé, avec une segmentation MediaPipe que
+// celle-ci n'a pas encore — voir O-118) mais n'est plus reliée depuis Outils.
 const SUBTOOLS = [
   ["nutrition", "\u{1F957}", "Nutrition", renderTabNutrition],
   // R26 — module riche à six disciplines (paliers/blocs sourcés, badges de preuve), même
