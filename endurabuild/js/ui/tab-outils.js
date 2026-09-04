@@ -36,11 +36,16 @@ const SUBTOOLS = [
   ["position", "\u{1F6B4}", "Position", renderTabPosture],
 ];
 
+// FOUNDATION (04/09/2026) — la rangée porte la primitive `.zn-seg > .zn-seg-btn` du canevas
+// (16a / 22c : « NUTRITION / ÉDUCATIFS », pilules pleines). `.subtab`, `.btn` et
+// `data-subtool` RESTENT : smoke-tabs et smoke-posture les lisent. L'emoji quitte
+// l'AFFICHAGE (aucun sous-onglet du canevas n'en porte) mais reste dans la table SUBTOOLS,
+// que rien d'autre ne lit aujourd'hui — vérifié — et qui garde sa forme à trois colonnes.
 function subtabsHTML(active) {
-  return '<div class="subtabs" role="tablist" aria-label="Outils">'
-    + SUBTOOLS.map(([id, ico, label]) =>
-        '<button type="button" role="tab" class="btn subtab' + (id === active ? " active" : "") + '" data-subtool="' + id + '" aria-selected="' + (id === active) + '">'
-        + ico + " " + label + "</button>").join("")
+  return '<div class="subtabs zn-seg" role="tablist" aria-label="Outils">'
+    + SUBTOOLS.map(([id, , label]) =>
+        '<button type="button" role="tab" class="btn subtab zn-seg-btn' + (id === active ? " active" : "") + '" data-subtool="' + id + '" aria-selected="' + (id === active) + '">'
+        + label + "</button>").join("")
     + "</div>";
 }
 

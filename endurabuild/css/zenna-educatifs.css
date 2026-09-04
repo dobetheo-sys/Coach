@@ -1,0 +1,23 @@
+/* ============================================================
+   ZENNA — 🧰 Outils › Éducatifs (feuille de ZONE, phase 2 de la refonte)
+   ============================================================
+   Cible(s) du canevas « Noir apaisé · le reçu » : 16a, 16b, 17a-d, 21a-c.
+   Modules concernés : tab-educatifs.js.
+
+   PRÉ-CRÉÉE VIDE par la FOUNDATION (04/09/2026) et déjà ENREGISTRÉE : `app.js` la charge
+   APRÈS `zenna-today.css` / `zenna-tabs.css` / `zenna-posture.css` (donc elle gagne à
+   spécificité égale), `scripts/checkZennaTokens.mjs` la tient à ZÉRO littéral (`hex: 0,
+   durees: 0`), `build:sw` la précache. L'agent de zone n'enregistre rien.
+
+   RÈGLES DE LA ZONE
+     · les jetons viennent du bloc `body.theme-zenna` de `zenna-today.css` (l'autorité) —
+       aucun `--zn-*` redéclaré ici, aucun `#hex`, aucune durée en `ms`/`s` ;
+     · les tailles viennent des paliers `--fs-*` de `styles.css` (dont --fs-hero / --fs-num /
+       --fs-big pour les rôles display) — `smoke-typo` refuse un littéral ;
+     · composer avec les primitives (`.zn-sec`, `.zn-relief`, `.zn-panel`, `.zn-creux`,
+       `.zn-list` / `.zn-row`, `.zn-btn` / `.zn-btn-2`, `.zn-chip`, `.zn-seg`, `.zn-display` /
+       `.zn-mono` / `.zn-body`) plutôt que de les réécrire — le guide d'usage est dans
+       `zenna-today.css`, section « PRIMITIVES DU CANEVAS » ;
+     · préfixer `body.theme-zenna #screen …` ; ajouter ici plutôt qu'éditer les deux feuilles
+       du socle.
+   ============================================================ */

@@ -27,7 +27,25 @@ const { ok, info, report } = makeReporter();
 const sansCommentaires = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "");
 const css = sansCommentaires(readFileSync(new URL("../../endurabuild/css/styles.css", import.meta.url), "utf8"));
 const paliers = [...css.matchAll(/--fs-[a-z]+:\s*([0-9.]+)px/g)].map((m) => +m[1]);
-ok(paliers.length >= 6 && paliers.length <= 9, "l'échelle compte 6 à 9 paliers (" + paliers.length + " : " + paliers.join(" / ") + "px)");
+// FOUNDATION de la refonte (04/09/2026) — le critère « 6 à 9 paliers » photographiait un
+// COMPTE, pas la propriété qu'il gardait : « une échelle, pas une accumulation ». Trois rôles
+// display du canevas (héros, chiffre, grand chiffre) portent le compte à 11, et le correctif
+// le moins coûteux pour rester sous 9 aurait été de les écrire en littéral — exactement ce que
+// cette suite refuse deux lignes plus bas (règle 19). La propriété se dit donc en deux moitiés :
+// la liste reste COURTE et BORNÉE (jamais les 21 tailles d'avant R16.8), et chaque palier est
+// DISTINCT et porte son RÔLE en commentaire — deux paliers de même valeur, ou un palier muet,
+// c'est l'accumulation qui revient sous un nom de variable. Vérifié rouge : un `--fs-x:13px`
+// doublon de --fs-md rougit la seconde moitié, un 13ᵉ palier la première.
+ok(paliers.length >= 6 && paliers.length <= 12, "l'échelle reste courte : 6 à 12 paliers (" + paliers.length + " : " + paliers.join(" / ") + "px)");
+{
+  const brut = readFileSync(new URL("../../endurabuild/css/styles.css", import.meta.url), "utf8");
+  const decl = [...brut.matchAll(/^\s*(--fs-[a-z]+):\s*([0-9.]+)px;\s*(\/\*[^*]*\*\/)?/gm)].map((m) => ({ nom: m[1], v: +m[2], role: !!m[3] }));
+  const doublons = decl.filter((d, i) => decl.findIndex((e) => e.v === d.v) !== i).map((d) => d.nom + "=" + d.v);
+  const muets = decl.filter((d) => !d.role).map((d) => d.nom);
+  ok(decl.length === paliers.length && doublons.length === 0 && muets.length === 0,
+    "chaque palier est DISTINCT et porte son rôle en commentaire (" + decl.length + " déclarés"
+    + (doublons.length ? " — doublons : " + doublons.join(", ") : "") + (muets.length ? " — sans rôle : " + muets.join(", ") : "") + ")");
+}
 ok(Math.min(...paliers) >= 9, "aucun palier sous 9 px (plus petit : " + Math.min(...paliers) + "px)");
 const durs = [...css.matchAll(/font-size:([0-9.]+)px/g)].map((m) => m[1]);
 ok(durs.length === 0, "aucune taille littérale dans la feuille" + (durs.length ? " — reste : " + durs.join(", ") : ""));

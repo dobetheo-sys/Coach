@@ -62,26 +62,62 @@
 @font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 700; font-display: swap; src: url("../assets/fonts/ibm-plex-mono-700.woff2") format("woff2"); }
 
 body.theme-zenna {
-  /* ---- palette (maquette) ---- */
-  --zn-bg: #000;
-  --zn-surface: #111318;
-  --zn-surface-2: #181c22;
+  /* ---- palette — LE CANEVAS « NOIR APAISÉ · LE REÇU » (FOUNDATION de la refonte, 04/09/2026)
+     Les valeurs suivent la table §3 du brief (écrans 18a, 18b, 22a-c, 16a du canevas Claude
+     Design). Ce bloc est L'AUTORITÉ : les huit feuilles de zone (`zenna-<zone>.css`) n'en
+     redéclarent aucune et n'écrivent aucun littéral (`check:tokens`, plafond 0 sur chacune).
+     Ce qui NE bouge PAS, et pourquoi : les accents de discipline (`DISC[*].ac` et le bleu
+     natation du socle) et la table `CHARGE` — Z-11 (`check:disc`, qui compte les mentions du
+     jeton natation JUSQUE DANS les commentaires) et `smoke-charge` les gardent : une couleur
+     de discipline ne porte que le sens de sa discipline.
+     Le fond passe de #000 à #0b0b0c : le canevas n'est pas un noir absolu mais un noir
+     « apaisé » (luminance 0,0034) — `smoke-zenna` §3 le mesure sur la PROPRIÉTÉ (fond sombre,
+     égal à ce jeton), plus sur un littéral. ---- */
+  --zn-bg: #0b0b0c;
+  --zn-surface: #131417;
+  /* ⚠ `--zn-surface-2` devient PLUS SOMBRE que `--zn-surface` (#101215 < #131417) : c'est
+     l'ordre du canevas (panneau secondaire en léger retrait), l'inverse de la maquette v4 où
+     surface-2 était la teinte la plus claire. `--zn-surface-3` reste la plus claire des trois
+     (champs, pistes). Tout texte posé sur l'une ou l'autre garde son AA — mesuré : le plus
+     sourd (`--zn-faint`) rend 4,63:1 sur surface-2 et 4,54:1 sur surface. */
+  --zn-surface-2: #101215;
   --zn-surface-3: #20252c;
-  --zn-border: #26292f;
-  --zn-orange: #ff3d00;
+  /* Le creux : un bloc EN RETRAIT, plus sombre que la page elle-même (18a : la courbe de
+     zones ; 18b : les volumes de la semaine). Bordé par `--zn-filet`, jamais par `--zn-border`. */
+  --zn-creux: #08090a;
+  --zn-border: #22262b;
+  --zn-border-2: #262a30;
+  /* Bordure de CONTRÔLE (puces d'allure, bouton secondaire) : un cran plus visible que celle
+     des surfaces, parce qu'un contrôle doit se lire comme touchable. */
+  --zn-border-3: #2f343b;
+  /* L'accent du canevas : #f2481b — l'orange du logo (`brand.js`, #f04808 échantillonné) à
+     une distance de 2/442. Il porte l'ACTION (CTA, onglet actif, relief du jour). `check:disc`
+     lit cette ligne par regex : la valeur reste un LITTÉRAL ici, jamais un `var()`. */
+  --zn-orange: #f2481b;
+  --zn-accent: var(--zn-orange);
   --zn-orange-2: #ff7a3d;
   --zn-orange-tint: #ffb199;
-  --zn-orange-glow: rgba(255, 61, 0, .4);
+  --zn-orange-glow: rgba(242, 72, 27, .4);
+  /* L'ombre de la carte en relief (18a : le héros) — la SEULE ombre du canevas. */
+  --zn-shadow-hero: 0 14px 30px -14px rgba(242, 72, 27, .55);
   --zn-cyan: #00e0c6;
   --zn-gold: #ffd23d;
   --zn-gold-dot: #ffd23d;
   --zn-violet: #9b72ff;
   --zn-text: #f5f1ea;
-  --zn-muted: #b4b9c0;
+  /* Le texte atténué des paragraphes (canevas : 9,54:1 sur le fond). */
+  --zn-muted: #b0b5bc;
   --zn-muted-2: #9aa0a8;
   --zn-ink: #f5f1ea;
   --zn-ink-2: #d7d2c6;
   --zn-good: #1fb8a6;
+  /* Les trois teintes d'INTENSITÉ du canevas (18a : la courbe de zones et sa légende). Elles
+     colorent des BARRES et des FONDS ; en texte, seul `--zn-easy` (5,70:1 sur surface) et
+     `--zn-warn` (9,88:1) passent AA — `--zn-hard` rend 4,42:1 sur surface, SOUS le seuil :
+     un texte rouge prend `--zn-bad`, jamais `--zn-hard`. */
+  --zn-easy: #00a376;
+  --zn-warn: #f0b429;
+  --zn-hard: #e63946;
   /* Le rouge d'alerte du thème papier (#e63946) mesure 4,46:1 sur --zn-surface : SOUS le
      seuil AA de 4,5. Éclairci ici (7,61:1), c'est la seule valeur admise dans le sombre —
      le repli visuel `[style*="color:#e63946"]` de zenna-tabs.css la posait déjà. */
@@ -98,8 +134,25 @@ body.theme-zenna {
      que `--zn-bad` deux lignes plus haut ; `smoke-zenna` mesure ces deux fonds par onglet. */
   --zn-faint: #787f86;
   --zn-faint2: #8e939a;
+  /* Le gris DÉCORATIF du canevas (chevrons de liste, axes de graphe, tirets) : 2,49:1 sur le
+     fond — il n'est PAS un texte et ne doit jamais en porter un. `smoke-zenna` mesure le
+     contraste de tout nœud qui porte du texte : un libellé dans cette couleur rougit. */
+  --zn-faint3: #4c525a;
   /* Le filet de séparation du même handoff : une ligne de 1 px, jamais un fond. */
   --zn-filet: #1a1c20;
+  /* ---- RAYONS et GOUTTIÈRES du canevas (§3 du brief) ----
+     Carte en relief 20 · surface et creux 14 · contrôle (bouton, champ) 13 · pilule 100.
+     Gouttière 18 px pour les listes et le texte, 14 px pour les cartes en relief et les
+     creux — un bloc qui a un bord PROPRE (fond, filet) se pose plus près du bord de l'écran
+     qu'un texte à nu. Le fond de la barre d'onglets porte son opacité (0,97) : elle laisse
+     deviner ce qui défile dessous, avec `backdrop-filter`. */
+  --r-card: 20px;
+  --r-surface: 14px;
+  --r-control: 13px;
+  --r-pill: 100px;
+  --zn-gutter: 18px;
+  --zn-gutter-card: 14px;
+  --zn-bar-bg: rgba(11, 11, 12, .97);
   --zn-good-dark: #0f8f81;
   --zn-track-bg: #20252c;
   --zn-sep: rgba(255, 255, 255, .18);
@@ -121,7 +174,7 @@ body.theme-zenna {
   --zn-charge-dur-papier: #ffe3e0;
   --zn-charge-facile-papier: #d9f3e1;
   --zn-charge-recup-papier: #e9defc;
-  --zn-bg-race: rgba(255, 61, 0, .14);
+  --zn-bg-race: rgba(242, 72, 27, .14); /* dérivé de --zn-orange (#f2481b) à 14 % */
   --zn-bg-eve: rgba(255, 210, 61, .10);
   --zn-bg-taper: rgba(155, 114, 255, .14);
   --zn-gold-text: #ffd23d;
@@ -147,16 +200,26 @@ body.theme-zenna {
   --zn-body: 'Inter', 'Space Grotesk', -apple-system, sans-serif;
   --zn-mono: 'IBM Plex Mono', ui-monospace, monospace;
 
-  /* ---- formes signature ---- */
-  --zn-skew: -4deg;
+  /* ---- formes signature ----
+     FOUNDATION (04/09/2026) : le canevas « Noir apaisé » n'a NI titre incliné NI coin coupé
+     sur le héros (18a : un bloc en relief, rayon 20, ombre orange — c'est tout). Les deux
+     jetons restent DÉCLARÉS, parce que 6 règles lisent `skewX(var(--zn-skew))` et 1 lit
+     `clip-path: var(--cut-hero)` : les neutraliser ICI (0deg, `none` — valeurs valides pour
+     les deux propriétés) neutralise les sept sites d'un coup, sans réécrire chacun. Le
+     retour arrière est le changement de deux valeurs. `--cut-tile` reste : les tuiles à
+     coin coupé (micro-défi, badges gagnés) ne sont pas du chrome et n'ont pas été
+     arbitrées ici. */
+  --zn-skew: 0deg;
   --cut-tile: polygon(0 0, 100% 0, 100% 78%, 78% 100%, 0 100%);
-  --cut-hero: polygon(0 0, 100% 0, 100% 82%, 55% 96%, 0 100%);
+  --cut-hero: none;
   /* Réponse au STOP de Phase 1 (§5) — trois rôles qui existaient dans les FAITS sans exister
      dans le vocabulaire : l'encre posée SUR un accent (mesurée ×17 en littéral), le biseau fin
      (le seul clip-path hors token), et la durée d'entrée de la chorégraphie R28/R29 (420 ms
      ×13, jamais dérivée du tempo — vérifiée : les 13 sont le MÊME rythme sémantique, des
      transitions/animations d'entrée, aucune coïncidence numérique). */
-  --zn-on-accent: #0a0a0a;
+  /* L'encre sur l'accent : le noir chaud du canevas (#14140f, 5,03:1 sur --zn-orange —
+     et 7,13:1 sur --zn-orange-2, l'autre arrêt du dégradé du héros). */
+  --zn-on-accent: #14140f;
   --cut-bevel: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
   --beat-35: calc(var(--beat) * 3.5);
 
@@ -196,18 +259,24 @@ body.theme-zenna {
      module ajoutera demain.
      C'est aussi ce qui répare `.aide-btn` (le « ? » de U18), qui n'a pas de règle dédiée ici et
      serait resté encre-sur-encre. */
-  --text: #f5f1ea;
-  --text2: #b4b9c0;
-  --muted: #9aa0a8;
-  --ink: #f5f1ea;
-  --bg: #000;
-  --bg2: #181c22;
-  --bg3: #111318;
-  --acc: #ff3d00;
-  --gold: #ffd23d;
-  --line: #26292f;
+  --text: var(--zn-text);
+  --text2: var(--zn-muted);
+  --muted: var(--zn-muted-2);
+  --ink: var(--zn-ink);
+  --bg: var(--zn-bg);
+  --bg2: var(--zn-surface-3);
+  --bg3: var(--zn-surface);
+  --acc: var(--zn-orange);
+  --gold: var(--zn-gold);
+  --line: var(--zn-border);
 
-  background: #000 radial-gradient(circle at 50% 0%, rgba(255, 61, 0, .13), transparent 55%) fixed;
+  /* FOUNDATION — le fond est PLAT. La maquette v4 posait un halo orange radial en haut de
+     page ; le canevas « Noir apaisé » n'en a pas (18a-22c : #0b0b0c d'un bord à l'autre), et
+     un halo derrière un héros orange en relief ferait deux oranges qui se disputent. Le
+     reliage du thème papier ci-dessus DÉRIVE désormais des jetons `--zn-*` au lieu d'en
+     recopier les valeurs : deux sources pour un même gris, c'est ce qui a fait diverger
+     `weekDistances` d'`_IFZ` (O-42). */
+  background: var(--zn-bg);
   color: var(--zn-text);
   font-family: var(--zn-body);
 }
@@ -220,7 +289,116 @@ body.theme-zenna::after {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
 }
 
-body.theme-zenna .wrap { padding-left: 14px; padding-right: 14px; }
+body.theme-zenna .wrap { padding-left: var(--zn-gutter-card); padding-right: var(--zn-gutter-card); }
+/* FOUNDATION — dans la vue à onglets, l'en-tête commun prend le haut de page (14 px, 18a) :
+   les 28 px de `.wrap` datent du questionnaire, dont le titre est masqué ici. */
+body.theme-zenna.has-tabs .wrap { padding-top: 0; }
+
+/* ============================================================
+   PRIMITIVES DU CANEVAS « NOIR APAISÉ » (FOUNDATION, 04/09/2026)
+   ============================================================
+   Ce que TOUS les écrans du canevas partagent, et que chaque feuille de zone COMPOSE au
+   lieu de le réécrire. Trois niveaux de matière, et une seule règle pour les hiérarchiser :
+   UN SEUL objet en RELIEF par écran (le fait du jour), tout le reste À NU sur des filets,
+   et les blocs de lecture secondaire (graphe, volumes) en CREUX, plus sombres que la page.
+
+   GUIDE D'USAGE (référence d'écran entre parenthèses)
+     .zn-sec      intertitre de section : « LE DÉTAIL DE LA SÉANCE ———— COURSE » (18a).
+                  <div class="zn-sec"><span>Titre</span><i></i><span>libellé droit</span></div>
+                  Le <i> est le filet ; le second <span> est optionnel.
+     .zn-relief   LA carte principale, orange, rayon --r-card, ombre --zn-shadow-hero, encre
+                  --zn-on-accent (18a : le héros ; 18b : la journée du jour). Une par écran.
+     .zn-panel    surface secondaire : fond --zn-surface, bordure --zn-border, rayon
+                  --r-surface (22b : une carte de plan ; 22c : la carte de vente).
+     .zn-creux    bloc en RETRAIT : fond --zn-creux (plus sombre que la page), bordure
+                  --zn-filet, rayon --r-surface (18a : la courbe ; 18b : les volumes).
+     .zn-list     liste à nu ; .zn-row = une ligne (padding 14px 0, filet bas --zn-filet,
+                  min-height 56 px, donc ≥ 44 tactile). `.zn-row > .zn-chev` = le chevron
+                  décoratif à droite, en --zn-faint3 (jamais un texte).
+     .zn-btn      LE bouton d'action : 52 px, --zn-orange, mono --fs-sm 700 capitales,
+                  rayon --r-control, `:active` scale(.97) au tempo --dur-tap (18a : VALIDER).
+     .zn-btn-2    le secondaire : --zn-surface + bordure --zn-border-3, même gabarit.
+     .zn-chip     la pilule d'information : --r-pill, mono --fs-micro, bordure --zn-border-3
+                  (18a : « 138–148 bpm », « tu dois pouvoir parler »). `.zn-chip.on` = pleine.
+     .zn-seg      les sous-onglets segmentés — voir zenna-tabs.css (chrome commun).
+     Rôles typographiques : .zn-display (Poppins, capitales, interlettrage −.01em,
+     interligne 1.05), .zn-mono (IBM Plex Mono), .zn-body (Inter). Les TAILLES viennent
+     toujours d'un palier --fs-* : la primitive donne la famille, l'écran donne le rôle.
+
+   Aucune de ces classes n'est scopée à `#screen` : l'en-tête, la barre et les modales
+   les emploient aussi. Elles n'écrivent AUCUN littéral — `check:tokens` le tient.
+   ============================================================ */
+body.theme-zenna .zn-display {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight);
+  text-transform: uppercase; letter-spacing: -.01em; line-height: 1.05;
+}
+body.theme-zenna .zn-mono { font-family: var(--zn-mono); }
+body.theme-zenna .zn-body { font-family: var(--zn-body); }
+
+body.theme-zenna .zn-sec {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 0 10px; margin: 0;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .16em;
+  text-transform: uppercase; color: var(--zn-faint);
+}
+body.theme-zenna .zn-sec > i { flex: 1; height: 1px; background: var(--zn-filet); display: block; }
+body.theme-zenna .zn-sec > span:last-child:not(:first-child) { letter-spacing: .05em; }
+
+body.theme-zenna .zn-relief {
+  position: relative;
+  background: var(--zn-orange); color: var(--zn-on-accent);
+  border: none; border-radius: var(--r-card);
+  padding: 18px 20px 20px;
+  box-shadow: var(--zn-shadow-hero);
+}
+body.theme-zenna .zn-panel {
+  background: var(--zn-surface); color: var(--zn-text);
+  border: 1px solid var(--zn-border); border-radius: var(--r-surface);
+}
+body.theme-zenna .zn-creux {
+  background: var(--zn-creux); color: var(--zn-text);
+  border: 1px solid var(--zn-filet); border-radius: var(--r-surface);
+}
+
+body.theme-zenna .zn-list { list-style: none; margin: 0; padding: 0; }
+body.theme-zenna .zn-row {
+  display: flex; align-items: center; gap: 12px;
+  min-height: 56px; padding: 14px 0;
+  border-bottom: 1px solid var(--zn-filet);
+  color: var(--zn-text);
+}
+body.theme-zenna .zn-row:last-child { border-bottom: none; }
+body.theme-zenna .zn-row > .zn-chev { margin-left: auto; color: var(--zn-faint3); flex: 0 0 auto; line-height: 1; }
+
+body.theme-zenna .zn-btn,
+body.theme-zenna .zn-btn-2 {
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+  width: 100%; min-height: 52px; padding: 0 16px;
+  border: none; border-radius: var(--r-control); cursor: pointer;
+  background: var(--zn-orange); color: var(--zn-on-accent);
+  font-family: var(--zn-mono); font-size: var(--fs-sm); font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase; box-shadow: none;
+  transition: transform var(--dur-tap) var(--ease-spring), background var(--dur-trans) var(--ease), border-color var(--dur-trans) var(--ease);
+}
+body.theme-zenna .zn-btn:active,
+body.theme-zenna .zn-btn-2:active { transform: scale(.97); }
+body.theme-zenna .zn-btn:focus-visible,
+body.theme-zenna .zn-btn-2:focus-visible { outline: 2px solid var(--zn-orange); outline-offset: 2px; }
+body.theme-zenna .zn-btn:disabled,
+body.theme-zenna .zn-btn-2:disabled { opacity: .45; cursor: default; }
+body.theme-zenna .zn-btn-2 {
+  background: var(--zn-surface); color: var(--zn-text);
+  border: 1px solid var(--zn-border-3);
+}
+
+body.theme-zenna .zn-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 10px; border-radius: var(--r-pill);
+  background: var(--zn-creux); border: 1px solid var(--zn-border-3);
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .05em;
+  color: var(--zn-muted); white-space: nowrap;
+}
+body.theme-zenna .zn-chip.on { background: var(--zn-orange); border-color: var(--zn-orange); color: var(--zn-on-accent); font-weight: 700; }
 
 /* ============================================================
    MOTION — apparition en cascade
@@ -364,8 +542,11 @@ body.theme-zenna #screen .zn-hero {
   overflow: hidden;
   background: linear-gradient(120deg, var(--zn-orange), var(--zn-orange-2)) !important;
   border: none !important;
-  box-shadow: 0 18px 44px -18px var(--zn-orange-glow) !important;
-  border-radius: 22px;
+  /* FOUNDATION — rayon et ombre du RELIEF du canevas (18a) ; `--cut-hero` vaut `none`
+     depuis le bloc de jetons : plus de coin coupé, la propriété reste lue pour que le retour
+     arrière soit le changement d'UNE valeur. */
+  box-shadow: var(--zn-shadow-hero) !important;
+  border-radius: var(--r-card);
   clip-path: var(--cut-hero);
   padding: 18px 20px 30px;
   color: var(--zn-on-accent);
@@ -701,7 +882,9 @@ body.theme-zenna #screen .zn-today-dot { animation: zn-tdp calc(var(--beat) * 16
    CTA COLLANT — en zone pouce, apparaît au scroll, disparaît une fois validé
    ============================================================ */
 .zn-sticky-cta {
-  position: fixed; left: 16px; right: 16px; bottom: calc(74px + env(safe-area-inset-bottom));
+  /* FOUNDATION — la tuile centrale déborde de 26 px au-dessus d'une barre de 58 : le CTA se
+     pose au-dessus des deux (58 + 26 + 12 de marge). */
+  position: fixed; left: 16px; right: 16px; bottom: calc(96px + env(safe-area-inset-bottom));
   z-index: 59; display: flex; align-items: center; justify-content: center; gap: 8px;
   min-height: 50px; border-radius: 15px;
   background: #ffb199; color: var(--zn-on-accent);
@@ -730,45 +913,71 @@ body.theme-zenna #screen .zn-today-dot { animation: zn-tdp calc(var(--beat) * 16
 .zn-toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 /* ============================================================
-   BARRE D'ONGLETS — reskin tant qu'Aujourd'hui est actif
-   ============================================================ */
-body.theme-zenna #ebTabbar { background: rgba(8, 9, 10, .98); border-top: 1px solid var(--zn-border); }
-/* R-ZENNA v7 — les icônes de nav sont des SVG au trait : elles prennent la couleur de l'état
-   (muet au repos, accent quand l'onglet est actif) au lieu des couleurs propres d'un emoji. */
-body.theme-zenna #ebTabbar .tabico svg { width: 21px; height: 21px; display: block; }
-body.theme-zenna #ebTabbar .tabbtn .tabico { color: var(--zn-muted-2); }
-body.theme-zenna #ebTabbar .tabbtn.active .tabico { color: var(--zn-orange-tint); }
-/* PAS de règle de couleur pour l'onglet CENTRAL ici. J'en avais écrit une (`color: #0a0a0a`) :
-   avec `#ebTabbar` elle pesait (0,1,3,1) contre (0,0,4,1) pour les règles qui gèrent déjà ce
-   cas plus bas — donc elle gagnait AUSSI à l'état inactif, où la tuile est sombre : icône
-   sombre sur fond sombre, invisible. C'est le piège de spécificité exact qui avait produit
-   l'écran noir de R-ZENNA v2. Les deux règles `.tabbtn.tab-central[.active] .tabico` du bas de
-   ce fichier font le travail : sombre sur la tuile orange active, clair sur la tuile au repos. */
-body.theme-zenna .tabbtn { color: var(--zn-muted-2); font-family: var(--zn-mono); font-size: 9px; letter-spacing: .02em; position: relative; }
-body.theme-zenna .tabbtn .tabico { transition: transform var(--dur-trans) var(--ease-spring); }
-body.theme-zenna .tabbtn:active .tabico { transform: scale(.84); }
-body.theme-zenna .tabbtn.active { color: var(--zn-orange-tint); box-shadow: none; font-weight: 700; }
-body.theme-zenna .tabbtn.active .tabico { transform: translateY(-2px); }
-body.theme-zenna .tabbtn.tab-central .tabico {
-  background: var(--zn-surface-2); color: var(--zn-text); border: 1px solid var(--zn-border);
-  border-radius: 0; clip-path: var(--cut-tile); width: 46px; height: 46px; margin-top: -20px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, .5);
+   BARRE D'ONGLETS — le chrome commun du canevas (FOUNDATION, 04/09/2026)
+   ============================================================
+   Cinq items, icône au trait 22 px (SVG `currentColor`, dessinés dans tabs.js — les MÊMES
+   tracés que le canevas 18a) et libellé mono dessous. Actif = --zn-orange (icône ET
+   libellé), inactif = --zn-faint2. L'item central est une TUILE carrée qui dépasse la barre
+   vers le haut : sombre au repos (--zn-surface, bordure --zn-border-2), orange quand
+   Aujourd'hui est actif, avec l'icône en --zn-on-accent (18a / 18b).
+   Barre : 58 px + safe-area, fond --zn-bar-bg (0,97 d'opacité, on devine ce qui défile
+   dessous) sous un `backdrop-filter`, bordure haute --zn-border-2.
+
+   TOUTES les règles portent `#ebTabbar` — c'est ce qui a manqué à la version d'avant : une
+   règle avec l'ID (1,1,3) pour l'état actif et une règle sans (0,5,0) pour la tuile
+   centrale, donc l'icône de la tuile active prenait la couleur de l'onglet actif au lieu
+   de l'encre sur orange. À spécificité égale, seul l'ORDRE tranche, et il est écrit ici :
+   repos → actif → tuile au repos → tuile active.
+   La classe `.tabbtn`, `.tab-central` et `data-tab` ne bougent pas : smoke-tabs,
+   smoke-usage et S-CACHE-b (le bandeau mesure la hauteur de la barre) les lisent. */
+body.theme-zenna #ebTabbar {
+  background: var(--zn-bar-bg); border-top: 1px solid var(--zn-border-2);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
 }
-body.theme-zenna .tabbtn.tab-central.active .tabico {
-  background: linear-gradient(145deg, var(--zn-orange), var(--zn-orange-2)); color: #000;
-  box-shadow: 0 6px 24px var(--zn-orange-glow); transform: translateY(-2px);
+body.theme-zenna #ebTabbar .tabbtn {
+  min-height: 58px; gap: 4px; position: relative; box-shadow: none;
+  color: var(--zn-faint2); font-family: var(--zn-mono); font-size: var(--fs-xs); letter-spacing: .03em;
+  font-weight: 400;
 }
-/* Pastille « une séance t'attend » — DÉLIBÉRÉMENT hors du scope `theme-zenna` : elle n'a
-   d'intérêt que vue depuis les AUTRES onglets. Ses couleurs sont donc littérales (les jetons
-   `--zn-*` n'existent pas ailleurs), et son positionnement ne dépend que de `.tabbtn`. */
+body.theme-zenna #ebTabbar .tabbtn .tabico {
+  color: var(--zn-faint2); display: flex; align-items: center; justify-content: center;
+  transition: transform var(--dur-trans) var(--ease-spring), background var(--dur-trans) var(--ease), color var(--dur-trans) var(--ease);
+}
+body.theme-zenna #ebTabbar .tabico svg { width: 22px; height: 22px; display: block; stroke-width: 1.8; }
+body.theme-zenna #ebTabbar .tabbtn:active .tabico { transform: scale(.9); }
+body.theme-zenna #ebTabbar .tabbtn.active { color: var(--zn-orange); font-weight: 700; box-shadow: none; }
+body.theme-zenna #ebTabbar .tabbtn.active .tabico { color: var(--zn-orange); transform: none; }
+/* La tuile centrale — sombre au repos… */
+body.theme-zenna #ebTabbar .tabbtn.tab-central .tabico {
+  width: 58px; height: 58px; margin-top: -26px;
+  background: var(--zn-surface); color: var(--zn-text);
+  border: 1px solid var(--zn-border-2); border-radius: var(--r-surface); clip-path: none;
+  box-shadow: 0 8px 22px -6px rgba(0, 0, 0, .6);
+}
+body.theme-zenna #ebTabbar .tabbtn.tab-central .tabico svg { width: 24px; height: 24px; }
+/* …orange quand Aujourd'hui est l'écran ouvert. */
+body.theme-zenna #ebTabbar .tabbtn.tab-central.active .tabico {
+  background: var(--zn-orange); color: var(--zn-on-accent); border-color: var(--zn-orange);
+  box-shadow: 0 8px 22px -6px var(--zn-orange-glow); transform: none;
+}
+/* Le contenu ne finit jamais sous la tuile qui dépasse (58 + 26 de débord + marge). */
+body.theme-zenna.has-tabs { padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
+/* Pastille « une séance t'attend ». Elle vivait HORS du scope `theme-zenna` avec des
+   littéraux, « parce que les jetons n'existent pas ailleurs » — c'était vrai tant que le
+   thème ne couvrait qu'un onglet ; `app.js` le pose désormais dès le chargement, sur toute
+   l'app. Les deux couleurs lisent donc les jetons (deux littéraux de moins au cliquet). */
 #ebTabbar .tabbtn { position: relative; }
 #ebTabbar .tabbtn .zn-nav-dot {
-  position: absolute; top: 4px; right: calc(50% - 18px); width: 7px; height: 7px; border-radius: 50%;
-  background: #ff3d00; box-shadow: 0 0 0 2px #08090a;
+  position: absolute; top: 6px; right: calc(50% - 18px); width: 7px; height: 7px; border-radius: 50%;
+  background: var(--zn-orange); box-shadow: 0 0 0 2px var(--zn-bg);
   opacity: 0; transform: scale(0);
   transition: opacity var(--beat-35) cubic-bezier(.4, 0, .2, 1), transform var(--beat-35) cubic-bezier(.34, 1.4, .64, 1);
 }
 #ebTabbar .tabbtn .zn-nav-dot.show { opacity: 1; transform: scale(1); }
+/* Sur la tuile centrale, la pastille se pose au COIN de la tuile (qui déborde de 26 px vers le
+   haut), pas sur l'icône — mesuré sur la capture de la foundation : au même `top` que les
+   autres onglets, elle recouvrait le cercle de la cible. */
+body.theme-zenna #ebTabbar .tabbtn.tab-central .zn-nav-dot { top: -22px; right: calc(50% - 30px); }
 /* Sur le thème clair, l'anneau de contraste doit être la couleur du fond de la barre. */
 body:not(.theme-zenna) #ebTabbar .tabbtn .zn-nav-dot { box-shadow: 0 0 0 2px var(--bg, #f1eadb); }
 

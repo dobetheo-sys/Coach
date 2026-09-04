@@ -30,12 +30,26 @@ const compte = (css) => {
 // PLAFONDS = l'état mesuré au 14/08/2026, après le routage §5 (on-accent, beat-35, cut-bevel).
 // Les abaisser est un progrès à committer ; les monter est un échec.
 const PLAFONDS = {
-  "zenna-today.css": { hex: 20, durees: 5 },
+  // 20 → 16 (FOUNDATION, 04/09/2026) : le fond `#000` et le halo radial du body, et les deux
+  // littéraux de la pastille de nav, lisent les jetons désormais.
+  "zenna-today.css": { hex: 16, durees: 5 },
   "zenna-tabs.css": { hex: 48, durees: 9 },
   // Le bilan posture (écran 2a) : recréé sur les jetons, pas sur la palette de sa référence
   // de design — 23 de ses 26 couleurs hors-jeton en étaient des quasi-doublons. D'où un
   // plafond qui NAÎT bas au lieu de photographier une dette.
   "zenna-posture.css": { hex: 0, durees: 0 },
+  // FOUNDATION de la refonte (04/09/2026) — les HUIT feuilles de ZONE naissent à ZÉRO et y
+  // restent : les jetons vivent dans le bloc `body.theme-zenna` de zenna-today.css (l'autorité),
+  // les tailles dans les paliers `--fs-*`. Un agent de zone qui a besoin d'une valeur qui
+  // n'existe pas déclare le JETON dans le socle, jamais un littéral chez lui.
+  "zenna-aujourdhui.css": { hex: 0, durees: 0 },
+  "zenna-semaine.css": { hex: 0, durees: 0 },
+  "zenna-plan.css": { hex: 0, durees: 0 },
+  "zenna-profil.css": { hex: 0, durees: 0 },
+  "zenna-boutique.css": { hex: 0, durees: 0 },
+  "zenna-educatifs.css": { hex: 0, durees: 0 },
+  "zenna-matin.css": { hex: 0, durees: 0 },
+  "zenna-questionnaire.css": { hex: 0, durees: 0 },
 };
 
 let echecs = 0;

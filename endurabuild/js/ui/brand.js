@@ -81,7 +81,9 @@ export function brandWordHTML(niveau = "petit") {
   return '<span class="zn-brand-word' + (niveau === "grand" ? " grand" : "") + '">' + MARQUE.mot + "</span>";
 }
 
-/** La marque complète — symbole + mot. C'est ce que consomment l'en-tête et l'accueil. */
-export function brandHTML(niveau = "petit") {
-  return '<span class="zn-brand">' + brandMarkHTML(niveau === "grand" ? 56 : 30) + brandWordHTML(niveau) + "</span>";
+/** La marque complète — symbole + mot. C'est ce que consomment l'en-tête et l'accueil.
+ *  `taille` (px) surcharge celle du niveau : l'en-tête du canevas (18a-22c) dessine le logo à
+ *  24 px, l'accueil garde ses 56. */
+export function brandHTML(niveau = "petit", taille = null) {
+  return '<span class="zn-brand">' + brandMarkHTML(taille || (niveau === "grand" ? 56 : 30)) + brandWordHTML(niveau) + "</span>";
 }

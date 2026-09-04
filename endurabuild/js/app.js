@@ -32,8 +32,15 @@ import("./ui/brand.js").then(({ brandHTML }) => {
   const h = document.getElementById("ebBrand");
   if (h) h.innerHTML = brandHTML("grand");
 });
+// FOUNDATION (04/09/2026) — les HUIT feuilles de ZONE de la refonte suivent le socle, dans cet
+// ordre (chargées APRÈS `zenna-posture.css`, donc gagnantes à spécificité égale). Elles sont
+// pré-créées vides et déjà tenues à zéro littéral par `check:tokens` ; chaque agent de zone
+// n'écrit que dans la sienne. `smoke-zenna` §0bis vérifie l'ORDRE (le thème après
+// styles/mobile), pas la liste : une feuille ajoutée ici n'y change rien.
 if (!globalThis.EB_STANDALONE) {
-  for (const f of ["css/zenna-today.css", "css/zenna-tabs.css", "css/zenna-posture.css"]) {
+  for (const f of ["css/zenna-today.css", "css/zenna-tabs.css", "css/zenna-posture.css",
+    "css/zenna-aujourdhui.css", "css/zenna-semaine.css", "css/zenna-plan.css", "css/zenna-profil.css",
+    "css/zenna-boutique.css", "css/zenna-educatifs.css", "css/zenna-matin.css", "css/zenna-questionnaire.css"]) {
     const l = document.createElement("link");
     l.rel = "stylesheet";
     l.href = f;

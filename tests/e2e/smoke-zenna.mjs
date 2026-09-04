@@ -424,11 +424,24 @@ async function boot(reducedMotion, jour = JOUR_SEANCE, repOver = null, saiOver =
     }
     return { titre: t ? Math.round(ratio(t)*100)/100 : null, sous: out.sort((a,b)=>a.rt-b.rt) };
   })()`);
-  // L'INSTRUMENT SE VÉRIFIE AVANT DE JUGER : 5,58 est la valeur calculée à la main pour
-  // #0a0a0a sur #ff3d00 (l'arrêt le plus sombre du dégradé du héros). Sans ce témoin, un
-  // instrument cassé rendrait « aucun défaut » et le critère serait satisfait par sa panne.
-  ok(c.titre !== null && Math.abs(c.titre - 5.58) < 0.15,
-    "§4 — l'instrument de contraste est juste (titre du héros : " + c.titre + ", attendu 5.58)");
+  // L'INSTRUMENT SE VÉRIFIE AVANT DE JUGER. La référence était « 5,58, calculée à la main pour
+  // #0a0a0a sur #ff3d00 » : deux LITTÉRAUX, et la FOUNDATION (04/09/2026) a changé les deux
+  // jetons qu'ils recopiaient (encre sur accent #14140f, accent #f2481b). La référence se
+  // DÉRIVE donc des jetons — lus sur la page, mais le rapport est calculé ICI, côté Node, par
+  // une seconde écriture de la formule WCAG : c'est ce qui en fait un témoin de l'instrument et
+  // non l'instrument qui se relit. Le dégradé du héros va de --zn-orange à --zn-orange-2, et
+  // l'instrument retient l'arrêt le plus proche de l'encre en luminance : l'accent lui-même.
+  // Le témoin exige aussi que cette référence passe AA — sinon il validerait un héros illisible.
+  const jetons = await page.evaluate(() => {
+    const cs = getComputedStyle(document.body);
+    return { encre: cs.getPropertyValue("--zn-on-accent").trim(), accent: cs.getPropertyValue("--zn-orange").trim() };
+  });
+  const hexRgb = (h) => { h = h.replace("#", ""); if (h.length === 3) h = h.split("").map((x) => x + x).join(""); return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)); };
+  const lumN = (rgb) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(rgb[0]) + 0.7152 * f(rgb[1]) + 0.0722 * f(rgb[2]); };
+  const ratioN = (a, b) => { const l1 = lumN(hexRgb(a)), l2 = lumN(hexRgb(b)); return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05); };
+  const attendu = /^#[0-9a-f]{3,6}$/i.test(jetons.encre) && /^#[0-9a-f]{3,6}$/i.test(jetons.accent) ? Math.round(ratioN(jetons.encre, jetons.accent) * 100) / 100 : null;
+  ok(attendu !== null && attendu >= 4.5 && c.titre !== null && Math.abs(c.titre - attendu) < 0.15,
+    "§4 — l'instrument de contraste est juste (titre du héros : " + c.titre + ", attendu " + attendu + " = " + jetons.encre + " sur " + jetons.accent + ", calculé hors page)");
   ok(c.sous.length === 0, "§4 — aucun texte sous le seuil AA sur 🎯 Aujourd'hui"
     + (c.sous.length ? " — " + c.sous.slice(0,4).map(x => x.rt + " «" + x.t + "»").join(" · ") : ""));
   await ctx.close();
@@ -479,15 +492,28 @@ async function boot(reducedMotion, jour = JOUR_SEANCE, repOver = null, saiOver =
   for (const t of ["profile", "general", "week", "outils"]) {
     await page.click('#ebTabbar .tabbtn[data-tab="' + t + '"]');
     await page.waitForTimeout(500);
-    const st = await page.evaluate(() => ({
-      theme: document.body.classList.contains("theme-zenna"),
-      bg: getComputedStyle(document.body).backgroundColor,
-      sticky: !!document.querySelector(".zn-sticky-cta"),
-      stamp: !!document.querySelector(".zn-stamp-layer"),
-      txt: (document.getElementById("screen").innerText || "").length,
-    }));
+    const st = await page.evaluate(() => {
+      // FOUNDATION (04/09/2026) — le fond n'est plus épinglé sur « rgb(0, 0, 0) » : le canevas
+      // « Noir apaisé » pose #0b0b0c, et la propriété gardée est double — le fond est SOMBRE
+      // (luminance relative < 0,05) ET c'est bien le JETON `--zn-bg` qui le peint (résolu par
+      // le navigateur sur un témoin, pour comparer deux rgb et non un hex à un rgb). Un fond
+      // qui passerait crème (styles.css `body[data-intent=competition]`, le défaut historique
+      // de §0bis) rougit la première moitié ; un littéral qui doublerait le jeton, la seconde.
+      const temoin = document.createElement("i"); temoin.style.color = "var(--zn-bg)"; document.body.appendChild(temoin);
+      const jeton = getComputedStyle(temoin).color; temoin.remove();
+      const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(getComputedStyle(document.body).backgroundColor) || [0, 0, 0, 0];
+      const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+      return {
+        theme: document.body.classList.contains("theme-zenna"),
+        bg: getComputedStyle(document.body).backgroundColor, jeton,
+        lum: 0.2126 * f(+m[1]) + 0.7152 * f(+m[2]) + 0.0722 * f(+m[3]),
+        sticky: !!document.querySelector(".zn-sticky-cta"),
+        stamp: !!document.querySelector(".zn-stamp-layer"),
+        txt: (document.getElementById("screen").innerText || "").length,
+      };
+    });
     ok(st.theme, "onglet " + t + " : le thème est posé");
-    ok(st.bg === "rgb(0, 0, 0)", "onglet " + t + " : fond sombre (" + st.bg + ")");
+    ok(st.lum < 0.05 && st.bg === st.jeton, "onglet " + t + " : fond sombre, peint par --zn-bg (" + st.bg + ", luminance " + st.lum.toFixed(4) + ")");
     ok(!st.sticky && !st.stamp, "onglet " + t + " : aucun élément flottant d'Aujourd'hui ne traîne");
     // RÉPONSE AU STOP DE PHASE 1 (§2) — L'ASSERTION ÉTAIT FAUSSE SUR SON ÉCHANTILLONNAGE,
     // PAS SUR SON INTENTION. Elle comptait les opacités nulles à +500 ms — or la chorégraphie
@@ -526,6 +552,7 @@ async function boot(reducedMotion, jour = JOUR_SEANCE, repOver = null, saiOver =
         const r = h.getBoundingClientRect();
         return { tab, absent: false, marque: /ZENNA/.test(h.innerText),
           logo: !!h.querySelector(".zn-logo-mark svg path"), lignes: Math.round(r.height),
+          deborde: h.scrollWidth > h.clientWidth + 1,
           puce: !!p, puceH: p ? Math.round(p.getBoundingClientRect().height) : 0,
           cliquable: p ? p.getAttribute("role") === "button" : null,
           dansEcran: !!document.querySelector("#screen #ebAppHeader") };
@@ -542,10 +569,19 @@ async function boot(reducedMotion, jour = JOUR_SEANCE, repOver = null, saiOver =
     // texte resterait invisible pour une assertion de texte.
     ok(vus.every((v) => v.logo), "…et le symbole du logo est rendu (pas seulement le mot)");
     ok(vus.every((v) => !v.dansEcran), "…il vit HORS de #screen, sinon chaque changement d'onglet l'effacerait");
-    // Il doit tenir sur UNE ligne : à deux lignes il mange l'écran qu'il est censé cadrer.
-    const hauts = vus.filter((v) => v.lignes > 70);
-    ok(hauts.length === 0, "…et tient sur une seule ligne"
+    // Il ne doit pas manger l'écran qu'il est censé cadrer. Le critère disait « une seule
+    // ligne » (≤ 70 px) ; l'en-tête du canevas (18a-22c) porte DEUX lignes à droite — nom de
+    // l'onglet + « HALF · 70.3 · J−25 », ou date + format + tuile J−28 — et la propriété qui
+    // compte est la HAUTEUR BORNÉE (deux lignes de texte et leurs gouttières, jamais un bloc)
+    // et l'absence de DÉBORDEMENT horizontal (une marque qui pousserait la puce hors écran).
+    // Vérifié rouge : un troisième rang de texte à droite (≈ 90 px) et une marque non
+    // tronquable (débordement) rougissent chacun leur moitié. (FOUNDATION, 04/09/2026)
+    const hauts = vus.filter((v) => v.lignes > 80);
+    ok(hauts.length === 0, "…et sa hauteur reste bornée (≤ 80 px : deux lignes à droite au plus — "
+      + vus.map((v) => v.tab + " " + v.lignes + "px").join(" · ") + ")"
       + (hauts.length ? " — trop haut sur : " + hauts.map((v) => v.tab + " (" + v.lignes + "px)").join(", ") : ""));
+    ok(vus.every((v) => !v.deborde), "…sans déborder horizontalement"
+      + (vus.some((v) => v.deborde) ? " — déborde sur : " + vus.filter((v) => v.deborde).map((v) => v.tab).join(", ") : ""));
     ok(vus.every((v) => v.puce), "la puce de course est là quand une date est déclarée");
     ok(vus.every((v) => v.puceH >= 44), "…au gabarit tactile de U4 (44 px), et pas aux 30 px de la maquette");
     // Sur l'onglet Plan elle mènerait là où l'on est déjà : elle s'y tait comme bouton.
