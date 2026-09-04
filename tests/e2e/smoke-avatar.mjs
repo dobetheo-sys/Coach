@@ -20,7 +20,14 @@ const PORT = 8592;
 const server = await startServer(PORT);
 const { ok, info, report } = makeReporter();
 const browser = await launchBrowser();
-const page = await (await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "fr-FR" })).newPage();
+// `serviceWorkers: "block"` — cette suite lit des MODULES (avatar.js) par `page.evaluate` sur
+// une page ouverte sans état ; elle ne mesure rien du service worker. Or à la PREMIÈRE
+// installation le worker s'active, appelle `clients.claim()`, et `app.js` recharge la page sur
+// `controllerchange` (S-CACHE) : un `evaluate` pris dans ce rechargement meurt sur « Execution
+// context was destroyed » — mesuré 1 tirage rouge sur 7 (04/09/2026), sous charge concurrente.
+// Le worker a ses propres gardes (smoke-nofallback, smoke-securite, check:sw) ; ici, on retire
+// la course, pas une mesure.
+const page = await (await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "fr-FR", serviceWorkers: "block" })).newPage();
 const errs = [];
 page.on("pageerror", (e) => errs.push(String(e)));
 page.on("console", (m) => { if (m.type() === "error") errs.push(m.text()); });

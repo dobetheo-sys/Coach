@@ -109,23 +109,39 @@ ok(cibles.cta >= 44 && cibles.ligne >= 44,
 // ── §5 — CONTRASTE. Le gris de la référence (#6d737a) mesure 4,38:1 sur le fond et 3,88 sur
 // la surface : SOUS le seuil AA, sur un texte de 9 px en capitales. Il a été éclairci ; ce
 // critère est ce qui empêche de le remettre. Mesuré sur le texte RENDU, tous éléments.
+//
+// NOTE D'INSTRUMENT (04/09/2026, vérification de la foundation). La première écriture lisait
+// `rgba(10, 10, 10, .75)` comme un rgb OPAQUE (elle jetait le 4ᵉ composant) et mesurait donc
+// l'eyebrow de la carte orange à ≈ 15:1 — quand il vaut 4,25:1 sur l'ancien orange et 4,10:1
+// sur le nouveau. Elle ne lisait pas non plus les arrêts d'un dégradé. Règle 15 : elle mesurait
+// ce qui est ÉCRIT, pas ce qui est PEINT. Le bloc ci-dessous compose l'alpha sur les fonds
+// remontés (ancêtres + arrêts de `background-image`), même écriture que `smoke-zenna` §4 —
+// contre-prouvé ROUGE sur l'encre semi-transparente avant que le CSS ne passe au jeton.
 const sousAA = await page.evaluate(() => {
-  const lum = (c) => { const [r, g, b] = c.map((v) => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }); return .2126 * r + .7152 * g + .0722 * b; };
-  const rgb = (s) => (s.match(/\d+(\.\d+)?/g) || []).slice(0, 3).map(Number);
-  const fondDe = (el) => {
-    for (let n = el; n; n = n.parentElement) {
-      const b = getComputedStyle(n).backgroundColor;
-      const a = (b.match(/[\d.]+/g) || [])[3];
-      if (b && b !== "rgba(0, 0, 0, 0)" && a !== "0") return rgb(b);
+  const px = (c) => { const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/.exec(c); return m ? { r: +m[1], g: +m[2], b: +m[3], a: m[4] === undefined ? 1 : +m[4] } : null; };
+  const lum = (c) => { const f = (v) => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }; return .2126 * f(c.r) + .7152 * f(c.g) + .0722 * f(c.b); };
+  const over = (fg, a, bg) => a >= 1 ? { r: fg.r, g: fg.g, b: fg.b, a: 1 } : { r: fg.r * a + bg.r * (1 - a), g: fg.g * a + bg.g * (1 - a), b: fg.b * a + bg.b * (1 - a), a: 1 };
+  const stops = (bi) => { const out = []; const re = /rgba?\([^)]*\)/g; let m; while ((m = re.exec(bi))) out.push(px(m[0])); return out.filter(Boolean); };
+  const bgOf = (el, fg) => {
+    const k = [];
+    for (let n = el; n && n !== document.documentElement; n = n.parentElement) {
+      const cs = getComputedStyle(n), bi = cs.backgroundImage;
+      if (bi && bi !== "none") { const st = stops(bi).filter((c) => c.a > .05); if (st.length) { st.sort((a, b) => Math.abs(lum(a) - lum(fg)) - Math.abs(lum(b) - lum(fg))); k.push(st[0]); if (st[0].a > .98) break; } }
+      const c = px(cs.backgroundColor); if (c && c.a > .01) { k.push(c); if (c.a > .98) break; }
     }
-    return [0, 0, 0];
+    let base = { r: 0, g: 0, b: 0, a: 1 };
+    for (let i = k.length - 1; i >= 0; i--) base = over(k[i], k[i].a, base);
+    return base;
   };
   const out = [];
   for (const el of document.querySelectorAll("#screen *")) {
     const t = [...el.childNodes].filter((n) => n.nodeType === 3 && n.textContent.trim()).map((n) => n.textContent.trim()).join("");
     if (!t) continue;
     const cs = getComputedStyle(el);
-    const f = lum(rgb(cs.color)), b = lum(fondDe(el));
+    if (cs.visibility === "hidden" || cs.opacity === "0") continue;
+    const c0 = px(cs.color) || { r: 0, g: 0, b: 0, a: 1 };
+    const bg = bgOf(el, c0), fg = over(c0, c0.a, bg);
+    const f = lum(fg), b = lum(bg);
     const ratio = (Math.max(f, b) + .05) / (Math.min(f, b) + .05);
     if (ratio < 4.5) out.push(t.slice(0, 28) + " (" + ratio.toFixed(2) + ":1, " + cs.fontSize + ")");
   }

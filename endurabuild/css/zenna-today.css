@@ -314,7 +314,8 @@ body.theme-zenna.has-tabs .wrap { padding-top: 0; }
                   --zn-filet, rayon --r-surface (18a : la courbe ; 18b : les volumes).
      .zn-list     liste à nu ; .zn-row = une ligne (padding 14px 0, filet bas --zn-filet,
                   min-height 56 px, donc ≥ 44 tactile). `.zn-row > .zn-chev` = le chevron
-                  décoratif à droite, en --zn-faint3 (jamais un texte).
+                  à droite, en --zn-faint (un « › » est un nœud texte ET une affordance :
+                  3:1 minimum — --zn-faint3 ne se pose JAMAIS en `color`, trait seulement).
      .zn-btn      LE bouton d'action : 52 px, --zn-orange, mono --fs-sm 700 capitales,
                   rayon --r-control, `:active` scale(.97) au tempo --dur-tap (18a : VALIDER).
      .zn-btn-2    le secondaire : --zn-surface + bordure --zn-border-3, même gabarit.
@@ -368,7 +369,10 @@ body.theme-zenna .zn-row {
   color: var(--zn-text);
 }
 body.theme-zenna .zn-row:last-child { border-bottom: none; }
-body.theme-zenna .zn-row > .zn-chev { margin-left: auto; color: var(--zn-faint3); flex: 0 0 auto; line-height: 1; }
+/* Le chevron est un nœud TEXTE (« › ») et un indicateur d'affordance (WCAG 1.4.11, 3:1) :
+   `--zn-faint3` (2,33:1 sur surface) ne convient pas — `--zn-faint` (4,54). Règle des primitives :
+   --zn-faint3 ne se pose jamais en `color`, seulement sur un trait (`stroke`, `border`, fond). */
+body.theme-zenna .zn-row > .zn-chev { margin-left: auto; color: var(--zn-faint); flex: 0 0 auto; line-height: 1; }
 
 body.theme-zenna .zn-btn,
 body.theme-zenna .zn-btn-2 {
@@ -660,7 +664,12 @@ body.theme-zenna #screen .zseg {
      et le déroulé sous la barre (O-60). */
   overflow: hidden;
 }
-body.theme-zenna #screen .znum { font-family: var(--zn-mono); font-size: 9px; font-weight: 700; color: rgba(0, 0, 0, .6); position: relative; z-index: 2; white-space: nowrap; }
+/* L'encre des segments est OPAQUE (04/09/2026). `rgba(0,0,0,.6)` composé sur chaque zone rendait
+   4,10:1 sur --z2 (aéro, teal), 3,57 sur --z4 et 3,39 sur --z5 — sous AA sur du 9 px, et
+   invisible à smoke-zenna §4 dont la fixture est un jour de VÉLO (segments Z2/Z4 différents) :
+   la mesure dépend de la discipline du jour, d'où le jour de NAGE ajouté à la garde.
+   `--zn-on-accent` mesuré : z2 7,45 · z3 10,56 · z4 5,51 · z5 4,88 ; z1 garde `.light` (8,96). */
+body.theme-zenna #screen .znum { font-family: var(--zn-mono); font-size: 9px; font-weight: 700; color: var(--zn-on-accent); position: relative; z-index: 2; white-space: nowrap; }
 body.theme-zenna #screen .znum.light { color: rgba(255, 255, 255, .9); }
 body.theme-zenna #screen .zlabels { display: flex; justify-content: space-between; margin-top: 10px; gap: 8px; }
 body.theme-zenna #screen .zlabels span { font-family: var(--zn-mono); font-size: 9.5px; color: var(--zn-muted); }

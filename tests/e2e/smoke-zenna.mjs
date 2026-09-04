@@ -168,6 +168,7 @@ const SAI = { age: "35", weight: "78", height: "180", vol_max: "10", vol_recent:
 // PAS d'XP.
 const JOUR_SEANCE = "2026-08-11"; // mardi — Sweetspot vélo, 24 min
 const JOUR_REPOS  = "2026-08-12"; // mercredi — Repos
+const JOUR_NAGE   = "2026-08-13"; // jeudi — nage (le troisième jour du balayage ci-dessus)
 
 async function boot(reducedMotion, jour = JOUR_SEANCE, repOver = null, saiOver = null) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "fr-FR", isMobile: true, hasTouch: true, reducedMotion });
@@ -408,9 +409,9 @@ async function boot(reducedMotion, jour = JOUR_SEANCE, repOver = null, saiOver =
 }
 
 // ─────────── 1bis. Contraste (WCAG AA) sur le rendu réel ───────────
-{
-  const { ctx, page } = await boot("no-preference");
-  const c = await page.evaluate(`(() => {${WCAG}
+// Le balayage est une CHAÎNE réutilisée telle quelle sur deux jours (vélo, nage) : deux
+// fixtures, un seul instrument — sinon la seconde mesurerait une grandeur voisine.
+const SCAN_AA = `(() => {${WCAG}
     const t = document.querySelector(".zn-hero-title");
     const out = [];
     for (const el of [...document.querySelectorAll("#screen *, .zn-sticky-cta")]) {
@@ -422,8 +423,12 @@ async function boot(reducedMotion, jour = JOUR_SEANCE, repOver = null, saiOver =
       const rt = ratio(el);
       if (rt < seuil) out.push({ t: el.textContent.trim().slice(0, 34), rt: Math.round(rt*100)/100, seuil, cls: (el.className||"").toString().slice(0,26) });
     }
-    return { titre: t ? Math.round(ratio(t)*100)/100 : null, sous: out.sort((a,b)=>a.rt-b.rt) };
-  })()`);
+    const segs = [...document.querySelectorAll("#screen .zbar .zseg")].map(z => ({ bg: getComputedStyle(z).backgroundColor, t: z.textContent.trim(), rt: z.querySelector(".znum") ? Math.round(ratio(z.querySelector(".znum"))*100)/100 : null }));
+    return { titre: t ? Math.round(ratio(t)*100)/100 : null, hero: t ? t.textContent.trim() : "", segs, sous: out.sort((a,b)=>a.rt-b.rt) };
+  })()`;
+{
+  const { ctx, page } = await boot("no-preference");
+  const c = await page.evaluate(SCAN_AA);
   // L'INSTRUMENT SE VÉRIFIE AVANT DE JUGER. La référence était « 5,58, calculée à la main pour
   // #0a0a0a sur #ff3d00 » : deux LITTÉRAUX, et la FOUNDATION (04/09/2026) a changé les deux
   // jetons qu'ils recopiaient (encre sur accent #14140f, accent #f2481b). La référence se
@@ -443,6 +448,24 @@ async function boot(reducedMotion, jour = JOUR_SEANCE, repOver = null, saiOver =
   ok(attendu !== null && attendu >= 4.5 && c.titre !== null && Math.abs(c.titre - attendu) < 0.15,
     "§4 — l'instrument de contraste est juste (titre du héros : " + c.titre + ", attendu " + attendu + " = " + jetons.encre + " sur " + jetons.accent + ", calculé hors page)");
   ok(c.sous.length === 0, "§4 — aucun texte sous le seuil AA sur 🎯 Aujourd'hui"
+    + (c.sous.length ? " — " + c.sous.slice(0,4).map(x => x.rt + " «" + x.t + "»").join(" · ") : ""));
+  await ctx.close();
+}
+// LA MESURE DÉPENDAIT DE LA DISCIPLINE DU JOUR (04/09/2026, vérification de la foundation). La
+// barre de zones peint chaque segment de la couleur de SA zone (--z1…--z5) et le jour de vélo
+// ci-dessus n'en exerce que deux : l'encre `rgba(0,0,0,.6)` des segments rendait 4,10:1 sur le
+// teal aérobie (--z2), 3,57 sur --z4, 3,39 sur --z5 — sous AA sur du 9 px — et la garde était
+// verte parce que sa fixture ne peignait jamais ces zones. Second jour, en NAGE : le témoin
+// d'abord (le jour ancré porte bien une nage avec sa barre — sinon le critère mesurerait
+// l'absence, leçon T-47, et une périodisation qui bouge désigne sa cause), le critère ensuite.
+{
+  const { ctx, page } = await boot("no-preference", JOUR_NAGE);
+  const c = await page.evaluate(SCAN_AA);
+  const nage = /nage|natation|swim/i.test(c.hero);
+  ok(nage && c.segs.length >= 2,
+    "§4 — TÉMOIN : le jour ancré " + JOUR_NAGE + " porte une NAGE avec sa barre de zones (« " + c.hero + " », "
+    + c.segs.length + " segments : " + c.segs.map(z => z.t + " " + z.rt + " sur " + z.bg).join(" · ") + ")");
+  ok(c.sous.length === 0, "§4 — aucun texte sous le seuil AA sur 🎯 Aujourd'hui un jour de NAGE (segments compris)"
     + (c.sous.length ? " — " + c.sous.slice(0,4).map(x => x.rt + " «" + x.t + "»").join(" · ") : ""));
   await ctx.close();
 }
