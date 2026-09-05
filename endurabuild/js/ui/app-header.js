@@ -47,8 +47,19 @@ export function raceCountdown(answers, today) {
   // seule source (R11.1) — jamais une seconde table de noms.
   const fmts = (SPORTS[S.sport] && SPORTS[S.sport].formats) || [];
   const entree = fmts.find((f) => f[0] === answers.format);
-  const format = entree ? entree[1].split(" (")[0] : (answers.format || "");
+  const format = entree ? libelleFormat(entree) : (answers.format || "");
   return { jours, format, date: rd };
+}
+
+/**
+ * « Half · 70.3 » (18a, 18b, 22a-c, 16a) : le canevas écrit le nom du format PUIS son code
+ * quand ce code est un NOMBRE qui nomme l'épreuve (70.3 — c'est ainsi que les triathlètes
+ * l'appellent). Un code-lettre (« S », « M », « Full ») ou un code qui répète le libellé
+ * (« 5k » pour « 5 km ») n'apporte rien et n'est pas ajouté. Source unique : SPORTS[].formats.
+ */
+function libelleFormat(entree) {
+  const nom = entree[1].split(" (")[0];
+  return /^\d+(\.\d+)?$/.test(entree[0]) ? nom + " · " + entree[0] : nom;
 }
 
 const JOURS = ["dim", "lun", "mar", "mer", "jeu", "ven", "sam"];
@@ -79,7 +90,7 @@ function libelleJ(c) {
 function libelleEpreuve() {
   const fmts = (SPORTS[S.sport] && SPORTS[S.sport].formats) || [];
   const entree = fmts.find((f) => f[0] === S.answers.format);
-  if (entree) return entree[1].split(" (")[0];
+  if (entree) return libelleFormat(entree);
   return (SPORTS[S.sport] && SPORTS[S.sport].nom) || "";
 }
 
