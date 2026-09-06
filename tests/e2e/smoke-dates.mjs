@@ -57,7 +57,11 @@ ok(!vTxt || vTxt.includes(local.dm), "carte « Valider ma journée » datée du 
 // dépend d'une position se recasse au prochain.
 await page.evaluate(async () => { const { setTab } = await import("./js/ui/tabs.js"); setTab("week"); });
 await page.waitForTimeout(400);
-const semaine = page.locator("#screen .card").filter({ hasText: "Ta semaine" }).first();
+// REFONTE 18b (05/09/2026) — la grille ne vit plus dans une carte titrée « Ta semaine » : elle
+// est À NU sous une navigation. Le critère trouvait sa cible par un LIBELLÉ (règle 17) ; il la
+// trouve par ce qu'elle EST — la grille des journées (`.gw-grid`, le seul producteur de cases)
+// et la navigation de semaine (`[data-week-nav]`, qui porte les bornes calendaires).
+const semaine = page.locator("#screen .gw-grid").first();
 const cells = await semaine.locator(".gd .gd-top i").allTextContents();
 ok(cells.length === 7 && cells.every((c) => /\d{2}\/\d{2}/.test(c)), "les 7 jours de la semaine sont annotés de leur date (dd/mm)");
 const todayCell = await page.locator("#screen .gd.today").first().textContent().catch(() => null);
@@ -79,7 +83,7 @@ ok(dayCheck.okAll, "chaque étiquette de jour (Lun/Mar/…) correspond au vrai j
 ok(dayCheck.found, "le jour calendaire local existe bien dans le plan (pas de décalage de semaine)");
 
 // 4. En-têtes de semaine : bornes « du dd/mm au dd/mm » présentes (Semaine + Plan)
-ok(/du \d{2}\/\d{2} au \d{2}\/\d{2}/.test(await semaine.textContent()), "l'en-tête de semaine affiche ses bornes calendaires");
+ok(/du \d{2}\/\d{2} au \d{2}\/\d{2}/.test(await page.locator("#screen [data-week-nav]").first().textContent()), "l'en-tête de semaine affiche ses bornes calendaires");
 await page.evaluate(async () => { const { setTab } = await import("./js/ui/tabs.js"); setTab("general"); });
 await page.waitForTimeout(400);
 // AUDIT UX 11/08/2026 — ce critère lisait les en-têtes de semaine du PROGRAMME DE PHASE, qui

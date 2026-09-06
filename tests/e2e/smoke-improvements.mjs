@@ -30,7 +30,9 @@ await page.waitForTimeout(600);
 // prochain changement d'ordre, et c'est ce qui vient d'arriver à cette ligne.
 await page.evaluate(async () => { const { setTab } = await import("./js/ui/tabs.js"); setTab("week"); });
 await page.waitForTimeout(400);
-const carteSemaine = page.locator("#screen .card").filter({ hasText: "Ta semaine" }).first();
+// REFONTE 18b (05/09/2026) — plus de carte « Ta semaine » : la grille est à nu. On la trouve par
+// ce qu'elle est (`.gw-grid`, le seul producteur de cases), pas par un libellé (règle 17).
+const carteSemaine = page.locator("#screen .gw-grid").first();
 ok((await carteSemaine.locator("[data-swap]").count()) === 7, "un bouton ⇄ par jour de la semaine courante");
 const before = await page.evaluate(async () => {
   const { S } = await import("./js/state.js");

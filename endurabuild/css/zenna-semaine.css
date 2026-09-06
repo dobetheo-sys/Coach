@@ -21,3 +21,360 @@
      · préfixer `body.theme-zenna #screen …` ; ajouter ici plutôt qu'éditer les deux feuilles
        du socle.
    ============================================================ */
+
+/* ============================================================
+   18b — LA SEMAINE : trois niveaux de matière, et un seul relief
+   ============================================================
+   Tout vit sous `.zn-week` (le conteneur que `tab-week.js` pose autour de l'onglet) : la grille
+   de `weekGridHTML` est la MÊME que celle de 🗓 Plan, ces règles n'atteignent donc jamais
+   l'onglet Plan — c'est le point de vue qui change d'habillage, pas le dessin partagé.
+   Gouttières du canevas : 18 px pour ce qui est à nu (`.wrap` en donne 14, on ajoute 4),
+   14 px pour un bloc qui a un bord propre (le creux, le relief).
+   Rapports mesurés sur le rendu (smoke-zenna) : les gris de TEXTE sont `--zn-faint` (4,54 sur
+   la surface, 5,18 sur le fond) et `--zn-faint2` ; le `#4c525a` des dates du canevas ne passe
+   pas AA (2,49) et n'est posé nulle part en `color`. */
+body.theme-zenna #screen .zn-week { padding-bottom: 8px; }
+body.theme-zenna #screen .zn-week .zn-week-sec { padding: 0 4px 10px; }
+body.theme-zenna #screen .zn-week .zn-week-sec-days { padding-top: 16px; padding-bottom: 4px; }
+
+/* ---- la navigation de semaine, À NU sur un filet (18b) ---- */
+body.theme-zenna #screen .zn-wknav {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin: 0 4px 14px; padding: 0 0 14px;
+  border-bottom: 1px solid var(--zn-filet);
+}
+body.theme-zenna #screen .zn-wknav-btn {
+  flex: 0 0 auto; min-width: 44px; min-height: 44px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--zn-surface); border: 1px solid var(--zn-border-2); border-radius: var(--r-control);
+  color: var(--zn-muted); font-family: var(--zn-mono); font-size: var(--fs-md); line-height: 1;
+  cursor: pointer; box-shadow: none;
+  transition: transform var(--dur-tap) var(--ease-spring), background var(--dur-trans) var(--ease);
+}
+body.theme-zenna #screen .zn-wknav-btn:active { transform: scale(.94); }
+body.theme-zenna #screen .zn-wknav-btn:disabled { opacity: .35; cursor: default; }
+body.theme-zenna #screen .zn-wknav-btn:focus-visible { outline: 2px solid var(--zn-orange); outline-offset: 2px; }
+body.theme-zenna #screen .zn-wknav-c { flex: 1; min-width: 0; text-align: center; }
+body.theme-zenna #screen .zn-wknav-title {
+  font-size: var(--fs-hand); line-height: 1; color: var(--zn-text);
+}
+body.theme-zenna #screen .zn-wknav-meta {
+  display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0 6px;
+  margin-top: 7px;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--zn-faint);
+}
+body.theme-zenna #screen .zn-wknav-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--zn-orange); display: inline-block; margin-right: 1px; }
+body.theme-zenna #screen .zn-wknav-here { color: var(--zn-muted); letter-spacing: .09em; }
+body.theme-zenna #screen .zn-wknav-race { color: var(--zn-text); font-weight: 700; }
+body.theme-zenna #screen .zn-wknav-post { color: var(--zn-violet); text-transform: none; letter-spacing: .02em; }
+body.theme-zenna #screen .zn-wknav-range {
+  margin-top: 5px; font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .04em;
+  color: var(--zn-faint); font-variant-numeric: tabular-nums;
+}
+/* Hors semaine courante, le retour existe (smoke-tabs) : une pilule secondaire, jamais un CTA. */
+body.theme-zenna #screen .zn-wknav-now {
+  display: inline-flex; margin-top: 9px; min-height: 36px; padding: 0 12px;
+  background: var(--zn-creux); border: 1px solid var(--zn-border-3); border-radius: var(--r-pill);
+  color: var(--zn-muted); font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase; box-shadow: none;
+}
+
+/* ---- les volumes de la semaine, en CREUX (18b) ---- */
+body.theme-zenna #screen .zn-vol { margin: 0 0 8px; padding: 14px 16px 15px; }
+body.theme-zenna #screen .zn-vol-cols { display: flex; }
+body.theme-zenna #screen .zn-vol-col { flex: 1; min-width: 0; padding: 0 12px; border-right: 1px solid var(--zn-filet); }
+body.theme-zenna #screen .zn-vol-col:first-child { padding-left: 0; }
+body.theme-zenna #screen .zn-vol-col:last-child { padding-right: 0; border-right: none; }
+body.theme-zenna #screen .zn-vol-head {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--zn-faint2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+body.theme-zenna #screen .zn-disc-sq { width: 9px; height: 9px; border-radius: 2px; display: inline-block; flex: 0 0 auto; }
+body.theme-zenna #screen .zn-vol-head .zn-disc-sq { width: 8px; height: 8px; }
+/* Un chiffre n'est pas un titre : `.zn-display` donne la famille et la graisse, pas ses
+   capitales (« 1 h 25 », « 2,6 km » — le canevas les écrit en bas de casse). */
+body.theme-zenna #screen .zn-vol-num {
+  margin-top: 8px; font-size: var(--fs-hand); color: var(--zn-text); font-variant-numeric: tabular-nums;
+  white-space: nowrap; text-transform: none;
+}
+body.theme-zenna #screen .zn-vol-unit { font-size: var(--fs-xs); margin-left: 3px; }
+body.theme-zenna #screen .zn-vol-meta {
+  margin-top: 5px; font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint);
+  font-variant-numeric: tabular-nums;
+}
+body.theme-zenna #screen .zn-vol-note {
+  margin-top: 13px; padding-top: 12px; border-top: 1px solid var(--zn-filet);
+  font-family: var(--zn-mono); font-size: var(--fs-micro); line-height: 1.6; color: var(--zn-faint);
+}
+
+/* ---- les sept journées : une LIGNE à nu par jour, rail de charge, jour + date à gauche ----
+   `weekGridHTML` rend `<div class="gd charge [today]"><div class="gd-top"><b>Lun</b><i>date</i>
+   <button ⇄></div><div class="gd-n">séances</div></div>` : on ne touche pas au DOM, on le place.
+   `.gd-top` passe en `display: contents` pour que le jour, la date et le ⇄ deviennent des
+   cellules de la grille de la journée — l'ordre du DOM (que smoke-dates et smoke-typo lisent)
+   ne bouge pas. */
+body.theme-zenna #screen .zn-week .gw-grid { display: block; margin: 0 4px; }
+body.theme-zenna #screen .zn-week .gd {
+  position: relative;
+  display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; column-gap: 12px;
+  grid-template-areas: "day n swap" "date n swap"; align-items: start; align-content: start;
+  min-height: 52px; padding: 13px 0 13px 15px; margin: 0;
+  background: var(--zn-bg);
+  border-width: 0 0 1px; border-bottom-color: var(--zn-filet); border-radius: 0; box-shadow: none;
+  opacity: 1;
+}
+body.theme-zenna #screen .zn-week .gd:last-child { border-bottom-width: 0; }
+/* LE RAIL DE CHARGE — la couleur du jour, lue sur les jetons `--zn-charge-*-rgb` (jumeaux de la
+   table `CHARGE`, gardés identiques par smoke-charge §1 ; le §2 lit ce pseudo-élément, c'est-à-
+   dire ce qui est PEINT). Le repos prend la couleur « repos » de la légende du canevas, qui est
+   `--zn-easy` (= l'accent `DISC.rs`) : un jour OFF n'est pas une charge, il n'a pas de jeton
+   de charge. */
+body.theme-zenna #screen .zn-week .gd::before {
+  content: ""; position: absolute; left: 0; top: 16px; bottom: 16px; width: 3px; border-radius: 2px;
+  background: var(--zn-border-3);
+}
+body.theme-zenna #screen .zn-week .gd.dur::before    { background: rgb(var(--zn-charge-dur-rgb)); }
+body.theme-zenna #screen .zn-week .gd.facile::before { background: rgb(var(--zn-charge-facile-rgb)); }
+body.theme-zenna #screen .zn-week .gd.recup::before  { background: rgb(var(--zn-charge-recup-rgb)); }
+body.theme-zenna #screen .zn-week .gd.off::before    { background: var(--zn-easy); }
+body.theme-zenna #screen .zn-week .gd-top { display: contents; }
+body.theme-zenna #screen .zn-week .gd-top b {
+  grid-area: day; align-self: start; padding-top: 1px;
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-md);
+  text-transform: uppercase; letter-spacing: -.01em; line-height: 1.1; color: var(--zn-muted);
+}
+body.theme-zenna #screen .zn-week .gd-top i {
+  grid-area: date; font-family: var(--zn-mono); font-style: normal; font-weight: 400;
+  font-size: var(--fs-micro); color: var(--zn-faint); margin-top: 2px; line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+body.theme-zenna #screen .zn-week .gd-n { grid-area: n; min-width: 0; color: var(--zn-text); font-size: var(--fs-sm); }
+/* Le ⇄ : à droite de la ligne, gris de texte, 44 px au doigt (mobile.css garde son ::after).
+   Sa couleur est posée EN LIGNE par le producteur (armé / au repos) : hors état armé, seul un
+   `!important` la remplace — borné à ce bouton et à cette vue. */
+body.theme-zenna #screen .zn-week .swapBtn { grid-area: swap; align-self: start; margin-top: -2px; }
+body.theme-zenna #screen .zn-week .gd:not(.swap-pend) .swapBtn { color: var(--zn-faint) !important; }
+/* Un jour de repos se lit en retrait — par la COULEUR, jamais par une opacité (elle abaisse le
+   contraste sous AA sans que la sonde de couleur le voie). */
+body.theme-zenna #screen .zn-week .gd.off .gd-top b { color: var(--zn-faint); }
+body.theme-zenna #screen .zn-week .gd.off .gd-sess summary b,
+body.theme-zenna #screen .zn-week .gd.off .gd-row > b { color: var(--zn-faint2); font-weight: 500; }
+
+/* ---- la séance : pastille de discipline · titre · durée, puis l'aperçu du déroulé ---- */
+body.theme-zenna #screen .zn-week .gd-row { display: flex; align-items: flex-start; gap: 10px; }
+body.theme-zenna #screen .zn-week .gd-row + .gd-row { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--zn-filet); }
+body.theme-zenna #screen .zn-week .gd-row > details { flex: 1; min-width: 0; }
+body.theme-zenna #screen .zn-week .gd-sess { margin: 0; }
+/* U17 : la cible la plus fréquente garde ses 44 px — portés ici par `min-height` sur le
+   résumé lui-même (deux lignes : titre, aperçu), plus par le padding de mobile.css. */
+body.theme-zenna #screen .zn-week .gd-sess summary {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0 8px;
+  min-height: 44px; padding: 2px 0; border-bottom: none;
+}
+body.theme-zenna #screen .zn-week .gd-sess summary::before,
+body.theme-zenna #screen .zn-week .gd-sess summary::after { content: none; }
+/* La pastille de 9 px (18b) sur la tuile `.gd-ic` du producteur : la tuile garde son fond (la
+   couleur descend de `DISC[*].ac`, smoke-carte-seance §3/§6) et son pictogramme, que le texte
+   décalé hors cadre rend invisible sans changer sa taille de police (plancher R16.8). */
+body.theme-zenna #screen .zn-week .gd-ic {
+  display: block; width: 9px; height: 9px; border-radius: 2px; margin: 0; flex: 0 0 auto;
+  overflow: hidden; text-indent: -999px; white-space: nowrap; font-size: var(--fs-micro); line-height: 1;
+}
+body.theme-zenna #screen .zn-week .gd-sess summary b,
+body.theme-zenna #screen .zn-week .gd-row > b {
+  flex: 1; min-width: 0; font-family: var(--zn-body); font-size: var(--fs-md); font-weight: 600;
+  color: var(--zn-text); line-height: 1.3;
+}
+body.theme-zenna #screen .zn-week .gd-dur {
+  display: inline; flex: 0 0 auto; font-family: var(--zn-mono); font-size: var(--fs-xs);
+  color: var(--zn-faint2); font-variant-numeric: tabular-nums;
+}
+body.theme-zenna #screen .zn-week .gd-prev {
+  flex: 0 0 100%; margin-top: 5px;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); line-height: 1.5; color: var(--zn-faint);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+body.theme-zenna #screen .zn-week .gd-sess[open] summary .gd-prev { display: none; }
+body.theme-zenna #screen .zn-week .gd-why { color: var(--zn-muted); font-size: var(--fs-sm); margin: 6px 0; }
+body.theme-zenna #screen .zn-week .gd-det,
+body.theme-zenna #screen .zn-week .gd-steps { font-family: var(--zn-mono); font-size: var(--fs-xs); color: var(--zn-muted); }
+body.theme-zenna #screen .zn-week .gd-steps li::before { color: var(--zn-faint3); opacity: 1; }
+/* La coche : un cercle fin au repos, la coche teal (« validé », `--zn-good`) sans fond une fois
+   faite — comme le ✓ du canevas ; 44 px au doigt par le ::after de mobile.css. */
+body.theme-zenna #screen .zn-week .doneBtn {
+  width: 26px; height: 26px; margin-top: 4px; flex: 0 0 auto;
+  background: transparent; border: 1.5px solid var(--zn-border-3); color: var(--zn-faint);
+  font-size: var(--fs-xs);
+}
+body.theme-zenna #screen .zn-week .doneBtn.done {
+  background: transparent; border-color: transparent; color: var(--zn-good);
+  font-size: var(--fs-lg); font-weight: 800;
+}
+
+/* ---- LA JOURNÉE DU JOUR : le seul RELIEF de l'écran (18b) ---- */
+body.theme-zenna #screen .zn-week .gd.today {
+  margin: 14px 0; padding: 14px 15px 14px 30px;
+  background: var(--zn-surface); border-radius: var(--r-surface); border-bottom-width: 0;
+  outline: 1px solid var(--zn-orange); outline-offset: -1px;
+  /* Pas l'ombre orange du héros : le canevas pose une ombre NOIRE sous la journée en relief,
+     et l'orange y est déjà la bordure — deux oranges empilés feraient un second héros. */
+  box-shadow: none;
+}
+body.theme-zenna #screen .zn-week .gd.today::before { left: 15px; top: 17px; bottom: 17px; }
+body.theme-zenna #screen .zn-week .gd.today .gd-top b,
+body.theme-zenna #screen .zn-week .gd.today .gd-top i { color: var(--zn-orange); }
+body.theme-zenna #screen .zn-week .gd.today .gd-sess summary b,
+body.theme-zenna #screen .zn-week .gd.today .gd-row > b { font-weight: 700; }
+body.theme-zenna #screen .zn-week .gd.today .gd-dur { color: var(--zn-text); font-weight: 700; }
+body.theme-zenna #screen .zn-week .gd.today .gd-prev { color: var(--zn-faint2); }
+body.theme-zenna #screen .zn-week .gd.today .gd-row + .gd-row { border-top-color: var(--zn-border); }
+body.theme-zenna #screen .zn-week .gd.today .doneBtn { border-color: var(--zn-border-3); }
+body.theme-zenna #screen .zn-week .gd-today-pill {
+  display: inline-flex; align-items: center; margin-top: 9px; padding: 6px 9px;
+  background: color-mix(in srgb, var(--zn-gold) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--zn-gold) 28%, transparent); border-radius: 8px;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--zn-gold);
+}
+
+/* ---- la légende des charges, et la ligne d'aide ---- */
+body.theme-zenna #screen .zn-legend {
+  display: flex; gap: 14px; flex-wrap: wrap; margin: 16px 4px 0; padding-top: 14px;
+  border-top: 1px solid var(--zn-filet);
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--zn-faint2);
+}
+body.theme-zenna #screen .zn-leg-item { display: inline-flex; align-items: center; gap: 6px; }
+body.theme-zenna #screen .zn-leg-rail { width: 3px; height: 12px; border-radius: 2px; display: inline-block; background: var(--zn-border-3); }
+body.theme-zenna #screen .zn-leg-rail.dur    { background: rgb(var(--zn-charge-dur-rgb)); }
+body.theme-zenna #screen .zn-leg-rail.facile { background: rgb(var(--zn-charge-facile-rgb)); }
+body.theme-zenna #screen .zn-leg-rail.recup  { background: rgb(var(--zn-charge-recup-rgb)); }
+body.theme-zenna #screen .zn-leg-rail.off    { background: var(--zn-easy); }
+body.theme-zenna #screen .zn-week-hint,
+body.theme-zenna #screen .zn-week .load-sub {
+  margin: 12px 4px 0; font-family: var(--zn-mono); font-size: var(--fs-micro); line-height: 1.6;
+  color: var(--zn-faint);
+}
+/* L'invitation au point du matin (quand il n'est pas fait) : un panneau, pas une carte de plus. */
+body.theme-zenna #screen .zn-week-invite { padding: 14px 16px; margin: 0 0 14px; }
+body.theme-zenna #screen .zn-week-invite-eyebrow {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .13em; text-transform: uppercase; color: var(--zn-faint2);
+}
+body.theme-zenna #screen .zn-week-invite-txt { margin: 8px 0 12px; font-size: var(--fs-sm); line-height: 1.5; color: var(--zn-muted); }
+
+/* ---- 23d — le changement de semaine glisse LATÉRALEMENT, dans le sens du temps ----
+   `zenna-tabs.css` fait entrer la grille par le bas (la cadence commune) ; quand le rendu vient
+   d'une flèche, le conteneur porte `.zn-week-next` (les journées entrent par la droite) ou
+   `.zn-week-prev` (par la gauche), le titre de la semaine avec elles. Cinq pas de décalage puis
+   le reste ensemble — c'est `zenna-tabs.css` qui pose les délais, on ne change que le chemin.
+   Le repli reduced-motion remet l'état FINAL (jamais `opacity: 0`) ; `znPlayDays` ne pose
+   d'ailleurs pas la classe en reduced-motion, et `renderTabWeek` n'y pose pas le sens. */
+body.theme-zenna #screen .zn-week-next .gw-grid.zn-days > * { animation-name: zn-week-in-r; }
+body.theme-zenna #screen .zn-week-prev .gw-grid.zn-days > * { animation-name: zn-week-in-l; }
+body.theme-zenna #screen .zn-week-next .zn-wknav-in { animation: zn-week-in-r calc(var(--beat) * 3) var(--ease-enter) both; }
+body.theme-zenna #screen .zn-week-prev .zn-wknav-in { animation: zn-week-in-l calc(var(--beat) * 3) var(--ease-enter) both; }
+@keyframes zn-week-in-r {
+  0%   { opacity: 0; transform: translateX(28px); }
+  45%  { opacity: 1; }
+  100% { opacity: 1; transform: translateX(0); }
+}
+@keyframes zn-week-in-l {
+  0%   { opacity: 0; transform: translateX(-28px); }
+  45%  { opacity: 1; }
+  100% { opacity: 1; transform: translateX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.theme-zenna #screen .zn-week-next .gw-grid.zn-days > *,
+  body.theme-zenna #screen .zn-week-prev .gw-grid.zn-days > *,
+  body.theme-zenna #screen .zn-week .zn-wknav-in { opacity: 1; transform: none; animation: none; }
+}
+
+/* ============================================================
+   9b — LE BILAN : série, deux chiffres, cible/réalisé, la semaine portée, par discipline, l'écart
+   ============================================================
+   Les identifiants (`bilNumS`, `bilBarCible`, `bilDisc-*`…) sont ceux de la chorégraphie
+   `znBilanSequence` ; les classes `.zn-bilan-*` reprennent celles de zenna-tabs.css (qui garde
+   le repli reduced-motion des états `.on`) et n'en changent que la matière. */
+body.theme-zenna #screen .zn-bilan .zn-bil-streak {
+  display: flex; align-items: center; gap: 9px; margin: 0 0 12px; padding: 11px 14px;
+  background: var(--zn-surface); border: 1px solid color-mix(in srgb, var(--zn-gold) 30%, transparent);
+  border-radius: var(--r-pill); font-family: var(--zn-mono); font-size: var(--fs-xs); font-weight: 400;
+  letter-spacing: .04em; color: var(--zn-text);
+}
+body.theme-zenna #screen .zn-bilan .zn-bil-streak svg { color: var(--zn-gold); flex: 0 0 auto; }
+body.theme-zenna #screen .zn-bilan .zn-bil-streak b { color: var(--zn-text); }
+body.theme-zenna #screen .zn-bilan-hero { display: flex; gap: 8px; margin: 0 0 12px; }
+body.theme-zenna #screen .zn-bilan .zn-bilan-num-card {
+  flex: 1; min-width: 0; padding: 16px; text-align: left; border-radius: var(--r-surface);
+}
+body.theme-zenna #screen .zn-bilan-numline { display: flex; align-items: baseline; gap: 1px; }
+body.theme-zenna #screen .zn-bilan .zn-bilan-num { font-size: var(--fs-hero); line-height: 1; color: var(--zn-text); font-variant-numeric: tabular-nums; text-transform: none; }
+/* Le chiffre « au programme » : `--zn-good` (validé / bon), jamais l'accent d'une discipline —
+   le canevas le peint en bleu natation, ce que Z-11 interdit hors natation. */
+body.theme-zenna #screen .zn-bilan .zn-bilan-num.cy { color: var(--zn-good); }
+body.theme-zenna #screen .zn-bilan-den {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-hand);
+  color: var(--zn-faint2); font-variant-numeric: tabular-nums;
+}
+body.theme-zenna #screen .zn-bilan .zn-bilan-num-lab {
+  margin-top: 8px; font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .11em;
+  text-transform: uppercase; color: var(--zn-faint2);
+}
+body.theme-zenna #screen .zn-bil-panel { margin: 0 0 12px; padding: 15px 16px; border-radius: 18px; }
+body.theme-zenna #screen .zn-bil-eyebrow {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .13em; text-transform: uppercase; color: var(--zn-faint2);
+}
+body.theme-zenna #screen .zn-bil-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+body.theme-zenna #screen .zn-bil-right { font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-muted); font-variant-numeric: tabular-nums; }
+body.theme-zenna #screen .zn-bilan .zn-bilan-bar-row { display: flex; align-items: center; gap: 11px; margin: 14px 0 0; }
+body.theme-zenna #screen .zn-bilan .zn-bilan-bar-row + .zn-bilan-bar-row { margin-top: 9px; }
+body.theme-zenna #screen .zn-bilan .zn-bilan-bar-tag {
+  flex: 0 0 54px; width: auto; font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .09em;
+  text-transform: uppercase; color: var(--zn-faint2);
+}
+body.theme-zenna #screen .zn-bilan .zn-bilan-bar-track { flex: 1; height: 9px; border-radius: 5px; background: var(--zn-border); overflow: hidden; }
+body.theme-zenna #screen .zn-bilan .zn-bilan-bar-fill { height: 100%; border-radius: 5px; }
+body.theme-zenna #screen .zn-bilan .zn-bilan-bar-fill.cible { background: var(--zn-easy); opacity: .5; }
+body.theme-zenna #screen .zn-bilan .zn-bilan-bar-fill.reel { background: var(--zn-easy); }
+body.theme-zenna #screen .zn-bilan .zn-bilan-bar-val {
+  flex: 0 0 38px; width: auto; text-align: right; font-size: var(--fs-lg); color: var(--zn-muted);
+  font-variant-numeric: tabular-nums; text-transform: none;
+}
+body.theme-zenna #screen .zn-bilan .zn-bilan-bar-val.reel { color: var(--zn-easy); }
+body.theme-zenna #screen .zn-bil-note {
+  margin-top: 13px; padding: 11px 12px; border-radius: 12px; border-color: var(--zn-border);
+  font-family: var(--zn-mono); font-size: var(--fs-micro); line-height: 1.65; color: var(--zn-faint2);
+}
+body.theme-zenna #screen .zn-bil-note b { color: var(--zn-text); }
+body.theme-zenna #screen .zn-bil-note b.c { color: var(--zn-muted); }
+body.theme-zenna #screen .zn-bil-chart { margin: 14px 0 0; }
+body.theme-zenna #screen .zn-bil-chart svg { width: 100%; height: auto; }
+body.theme-zenna #screen .zn-bil-days {
+  display: flex; gap: 5px; margin-top: 4px;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .04em; color: var(--zn-faint);
+}
+body.theme-zenna #screen .zn-bil-days span { flex: 1; text-align: center; }
+body.theme-zenna #screen .zn-bil-days span.on { color: var(--zn-orange); font-weight: 700; }
+body.theme-zenna #screen .zn-bil-foot {
+  margin-top: 11px; font-family: var(--zn-mono); font-size: var(--fs-micro); line-height: 1.6; color: var(--zn-faint);
+}
+body.theme-zenna #screen .zn-bil-disc { padding: 6px 16px; }
+body.theme-zenna #screen .zn-bil-disc .zn-bil-eyebrow { padding: 11px 0 4px; }
+body.theme-zenna #screen .zn-bilan .zn-bilan-disc-row {
+  display: flex; align-items: center; gap: 11px; padding: 12px 0; border-top: 1px solid var(--zn-border); border-bottom: none;
+}
+body.theme-zenna #screen .zn-bilan .zn-bilan-disc-name { flex: 1; min-width: 0; font-family: var(--zn-body); font-size: var(--fs-sm); color: var(--zn-text); }
+body.theme-zenna #screen .zn-bilan .zn-bilan-disc-vals { display: flex; align-items: center; gap: 6px; font-family: var(--zn-mono); font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
+body.theme-zenna #screen .zn-bilan .zn-bilan-disc-vals .prevu { font-size: var(--fs-xs); color: var(--zn-faint); }
+body.theme-zenna #screen .zn-bilan .zn-bilan-disc-vals .arrow { color: var(--zn-faint3); margin: 0; }
+body.theme-zenna #screen .zn-bilan .zn-bilan-disc-vals .reel { min-width: 38px; text-align: right; font-weight: 700; }
+body.theme-zenna #screen .zn-bilan .zn-bilan-disc-vals .reel-none { min-width: 38px; text-align: right; color: var(--zn-faint); }
+body.theme-zenna #screen .zn-bilan .zn-bilan-delta {
+  display: flex; align-items: center; gap: 9px; margin: 0 0 12px; padding: 12px 15px;
+  border-radius: var(--r-surface); border-color: var(--zn-border);
+  font-family: var(--zn-mono); font-size: var(--fs-micro); line-height: 1.5; color: var(--zn-muted);
+}
+body.theme-zenna #screen .zn-bilan .zn-bilan-delta svg { color: var(--zn-easy); flex: 0 0 auto; }
+body.theme-zenna #screen .zn-bilan .zn-bilan-delta b { color: var(--zn-text); }

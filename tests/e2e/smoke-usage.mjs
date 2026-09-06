@@ -789,12 +789,25 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   // portent le « ~ » qui signale une estimation dérivée des références.
   await page.click('#ebTabbar .tabbtn[data-tab="week"]').catch(() => {});
   await page.waitForTimeout(700);
+  // REFONTE 18b (05/09/2026) — les distances vivent dans le creux « Volumes de la semaine », une
+  // colonne par discipline (`[data-disc]`, avec `data-km`/`data-approx` posés par le rendu depuis
+  // `EBV2.weekDistances`) ; le pictogramme a laissé place à une pastille de couleur. Le critère
+  // lisait un LIBELLÉ (« 🏃 ~17,1 km ») ; il lit la PROPRIÉTÉ : les trois disciplines ont leur
+  // colonne, une distance convertie porte le « ~ » et l'unité, une distance prescrite l'unité
+  // seule. Vérifié rouge en retirant le « ~ » du rendu.
   const km24 = await page.evaluate(() => {
-    const t = (document.querySelector("#screen").textContent || "").replace(/\s+/g, " ");
-    return { run: /🏃 ~[\d,]+ km/.test(t), bike: /🚴 ~[\d,]+ km/.test(t), swim: /🏊 ~?[\d,]+ km/.test(t) };
+    const col = (k) => {
+      const c = document.querySelector('#screen [data-disc="' + k + '"]');
+      if (!c) return null;
+      const t = (c.textContent || "").replace(/\s+/g, " ");
+      return { km: c.dataset.km != null, approx: c.dataset.approx === "1", tilde: /~[\d,]+ km/.test(t), unite: /[\d,]+ km/.test(t) };
+    };
+    return { run: col("rn"), bike: col("bk"), swim: col("sw") };
   });
-  ok(km24.run && km24.bike && km24.swim,
-    "R24.8 — 📅 Semaine ouvre sur les distances par discipline (course, vélo, nage), estimations marquées ~");
+  const coherent = (c) => c && c.km && c.unite && (c.approx ? c.tilde : !c.tilde);
+  ok(coherent(km24.run) && coherent(km24.bike) && coherent(km24.swim) && km24.run.approx && km24.bike.approx,
+    "R24.8 — 📅 Semaine ouvre sur les distances par discipline (course, vélo, nage), estimations marquées ~ ("
+      + ["run", "bike", "swim"].map((k) => k + (km24[k] ? (km24[k].approx ? " ~" : " mesuré") : " ∅")).join(" · ") + ")");
   ok(!auj.intens, "R23.9 — idem pour la répartition des intensités");
   // MESURE SUR LE MODULE, PAS SUR UN JOUR ÉCHANTILLONNÉ. Ma première écriture lisait le texte
   // rendu — et elle passait alors que le bloc était TOUJOURS LÀ : le jour tiré au sort n'avait
