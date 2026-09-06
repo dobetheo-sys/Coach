@@ -12487,6 +12487,43 @@ attendu: /^endurabuild\/js\/engine\.js$/ (une seule ligne)
 cmd: grep -rln "coachOnIngest" endurabuild/js/ 2>/dev/null
 ```
 
+**Chiffrage de l'option A (`syntheses/55-chiffrage-option-a-r21.md`, 06/09/2026)** : l'étendue
+réelle est plus large que les trois fichiers anticipés — `adjustTodayV2` (`src/app/bridge.ts`)
+régénère sa PROPRE copie du plan en interne (jamais `S.currentPlan`) et applique déjà
+`daySwaps` pour cette raison précise ; un rejeu R21 doit donc vivre à DEUX endroits
+(`tabs.js` ET `bridge.ts`), pas un. `{session_id, facteur, raison}` seul ne suffit pas —
+`reduceDay()` a besoin de `reasoned.baseRefs`/`hz`, absent du cache PWA. Piste « recalculer R21
+à la volée depuis les données déjà persistées » explorée et écartée : composerait les
+réductions à chaque régénération (contrairement à `adjustDay`, borné à un seul jour sans état
+cumulatif). Ordre de grandeur : ~3-4× `daySwaps`, dont 2 fichiers `src/` sous gates CI.
+
+**Décision d'arbitrage (`syntheses/ad3c8dd7-decisionlancementoptiona.md` transmis par
+l'utilisateur, 06/09/2026) : lancer l'option A, séquencée en 2 vagues.**
+
+**Vague 1 LIVRÉE le 06/09/2026** (faible risque, indépendantes du reste du chantier) :
+1. **Cache `S.currentReasoned`** (`endurabuild/js/ui/tabs.js`, `ensureReasoned()`, appelée par
+   `ensurePlan()`, invalidée dans `invalidatePlan()`) — obtenu via un nouvel export bridge,
+   `EBV2.getReasonedForCoach(sport, answers)` (`src/app/bridge.ts`), qui reproduit EXACTEMENT le
+   prétraitement de `buildPlanV2` (validation + troncature R22) puis appelle `generatePlan()`
+   directement (sans passer par la boucle de réparation, qui ne réévalue jamais `reasoned` après
+   son premier calcul — `repairLoop.ts:319`). Robuste à l'échec (try/catch, `null` en cas
+   d'erreur) : cette infrastructure n'est consommée par personne dans cette passe, une panne ici
+   ne doit jamais empêcher le plan de s'afficher.
+2. **`coachOnIngestV2` applique `answers.daySwaps`** avant de calculer ses `session_id`
+   (`src/app/bridge.ts`) — corrige le bug latent nommé dans le chiffrage (l'identité de séance
+   par position de créneau devient ambiguë après un échange de jours). Extrait en fonction
+   partagée `applyDaySwapsToPlan()` (R11.1) : `adjustTodayV2` la consommait déjà en la
+   recopiant, `coachOnIngestV2` en aurait fait une TROISIÈME copie sans cette extraction.
+
+Vérifié : `check:app`/`check:sw` synchronisés, `audit:v1` 459 à 0, batterie 13/13,
+`demo:proactif` 39 critères verts (dont les 8 nouveaux du §5 GPX/TCX), `demo:readiness` tous
+scénarios verts, E2E `smoke-tabs`/`smoke-boucle`/`smoke-checkin`/`smoke-usage`/`smoke-r4`/
+`smoke-questionnaires` verts (aucune régression).
+
+**Vague 2 (conditionnée à la vague 1, non livrée)** : persistance + rejeu
+(`S.answers.r21Recalcs`, `applyR21Recalcs()` dans `ensurePlan()` ET `adjustTodayV2` — les deux
+points identifiés en Q1), câblage du gestionnaire d'import FIT, notification, suite E2E dédiée.
+
 ## Décision #1 (backlog conseiller externe) · Rappel de retest — FERMÉ le 06/09/2026
 
 Le calcul « dernière référence mesurée (FTP/allure/CSS) + 42 jours » existait déjà en affichage

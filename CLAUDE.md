@@ -612,6 +612,24 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**Chantier R21 (coach proactif), option A lancée — Vague 1 LIVRÉE** (06/09/2026, chiffrage
+`syntheses/55-chiffrage-option-a-r21.md`, décision d'arbitrage externe séquencée en 2 vagues —
+voir `BUGS_OUVERTS.md` « R21 ») : deux étapes indépendantes, faible risque. **(1)** Cache
+`S.currentReasoned` à côté de `S.currentPlan` (`tabs.js`, `ensureReasoned()`), obtenu via un
+nouvel export bridge `EBV2.getReasonedForCoach()` (`src/app/bridge.ts`) qui reproduit
+EXACTEMENT le prétraitement de `buildPlanV2` (validation + troncature R22) puis appelle
+`generatePlan()` directement — la boucle de réparation ne réévalue jamais `reasoned` après son
+premier calcul, l'obtenir ainsi est donc équivalent, sans son coût. Infrastructure pure, robuste
+à l'échec (try/catch, jamais de panne visible), rien ne la consomme encore. **(2)**
+`coachOnIngestV2` applique désormais `answers.daySwaps` avant de calculer ses `session_id`
+(le bug latent nommé dans le chiffrage — l'identité de séance par position de créneau devient
+ambiguë après un échange de jours) : extrait en fonction partagée `applyDaySwapsToPlan()`
+(R11.1), qu'`adjustTodayV2` consommait déjà et que `coachOnIngestV2` aurait sinon recopiée une
+troisième fois. Batterie 13/13, `audit:v1` 459 à 0, `check:app`/`check:sw` synchronisés,
+`demo:proactif` 39 verts, `demo:readiness` tous scénarios verts, 6 suites E2E vérifiées sans
+régression. **Vague 2 (persistance + rejeu des réductions, câblage FIT, notification) reste
+conditionnée à cette vague 1** — non livrée dans cette passe.
+
 **Rappel de retest livré + R21 (coach proactif) trouvé JAMAIS câblé dans la PWA réelle**
 (06/09/2026, décision #1 d'un backlog de conseiller externe — voir `BUGS_OUVERTS.md` « R21 »,
 `syntheses/54-r21-jamais-cable-et-persistance.md`) : le calcul « dernière référence + 42 jours »

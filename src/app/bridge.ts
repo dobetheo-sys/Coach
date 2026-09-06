@@ -199,10 +199,59 @@ export function buildPlanV2(sport: string, answers: AppAnswers): V1Plan & { _v2?
   return plan;
 }
 
+/**
+ * Vague 1, étape 1 (chantier R21 §54/§55, 06/09/2026) — expose `reasoned` (références/zones de
+ * l'athlète : `baseRefs`, `hz`) pour que la PWA puisse le mettre en cache À CÔTÉ de son plan
+ * (`S.currentReasoned`, `tabs.js`), sur le modèle de ce qui manquait pour activer R21 pour de
+ * vrai : `recalculerFenetre()` (`src/coach/proactiveCoach.ts`) a besoin de `reasoned` pour
+ * réduire une séance, et la PWA ne conservait jusqu'ici que le `V1Plan` brut.
+ *
+ * Reproduit EXACTEMENT le prétraitement de `buildPlanV2` (validation, préparation de la
+ * troncature R22) pour que le `reasoned` obtenu soit celui du plan que `S.currentPlan` a
+ * réellement construit — une divergence entre les deux serait la faute R11.1 que ce dépôt
+ * s'interdit. `generatePlan` est appelée directement, SANS passer par la boucle de réparation
+ * (`generateAudited`) : celle-ci ne réévalue jamais `reasoned` après son premier calcul
+ * (`repairLoop.ts:319`), donc l'obtenir ainsi est équivalent, sans payer le coût de l'audit et
+ * des itérations de réparation pour une donnée qu'elles ne modifient pas.
+ *
+ * Étape 1 SEULE : cette fonction n'est consommée par personne dans cette passe — c'est de
+ * l'infrastructure pure, aucun comportement observable ne change. Les étapes suivantes (rejeu
+ * des réductions R21) la consommeront.
+ */
+export function getReasonedForCoach(sport: string, answers: AppAnswers) {
+  const vr = validateAnswers(sport, answers as Record<string, unknown>, localTodayISO());
+  const troncature = prepareTroncature(sport, vr.answers as unknown as AppAnswers);
+  return generatePlan(toProfile(sport, (troncature ? troncature.answers : vr.answers) as unknown as AppAnswers)).reasoned;
+}
+
 export interface TodayAdjustment {
   adjustment: DayAdjustment;
   sessions: { name: string; det: string; d: string; steps?: V1Step[] }[];
   jour: string | null;
+}
+
+/**
+ * R10 — les échanges de jours ⇄ de l'utilisateur (`answers.daySwaps`) s'appliquent à TOUTE
+ * régénération interne du plan côté moteur, pas seulement à celle de la PWA (`tabs.js`,
+ * `applyDaySwaps`) : sans ça, un écran qui régénère son propre plan en interne (la « séance du
+ * jour adaptée », et depuis le 06/09/2026 le coach proactif R21) montrerait la séance d'AVANT
+ * échange pendant que la grille (qui lit `S.currentPlan`, déjà rejoué) montrerait celle d'après
+ * — désalignement jour réel / jour du plan. Point unique (R11.1) : deux appelants la lisaient
+ * déjà en la recopiant identiquement (`adjustTodayV2` ici, `applyDaySwaps` dans la PWA) ; un
+ * troisième appelant (`coachOnIngestV2`) en aurait fait une troisième copie sans cette
+ * extraction — et la sienne avait un besoin de plus que les deux autres : calculer un
+ * `session_id` par POSITION DE CRÉNEAU (`weekNum|jour|index`) après un échange sans être passé
+ * par lui rendrait cet identifiant ambigu (il désignerait le contenu d'AVANT l'échange).
+ */
+function applyDaySwapsToPlan(plan: V1Plan, answers: AppAnswers): void {
+  const swaps = (answers.daySwaps as [number, string, string][] | undefined) || [];
+  for (const [wn, jA, jB] of swaps) {
+    const w = plan.weeks.find((x) => x.num === wn);
+    if (!w) continue;
+    const da = w.days.find((d) => d.jour === jA), db = w.days.find((d) => d.jour === jB);
+    if (!da || !db) continue;
+    const t = da.sessions; da.sessions = db.sessions; db.sessions = t;
+  }
 }
 
 /** Adapte la journée `snapshot.date` à l'état de forme — « recalcul du matin ». */
@@ -212,17 +261,7 @@ export function adjustTodayV2(sport: string, answers: AppAnswers, snapshot: Read
   const unknown = validateSnapshot(snapshot as unknown as Record<string, unknown>);
   if (unknown.length) console.warn("Photo du matin : clé(s) non reconnue(s) et donc IGNORÉE(S) — " + unknown.join(", "));
   const { plan, reasoned } = generatePlan(toProfile(sport, answers));
-  // R10 — les échanges de jours ⇄ de l'utilisateur (answers.daySwaps) s'appliquent AUSSI
-  // ici : sans ça, la « séance du jour » montrait la séance d'AVANT échange pendant que
-  // la grille montrait celle d'après (désalignement jour réel / jour du plan).
-  const swaps = (answers.daySwaps as [number, string, string][] | undefined) || [];
-  for (const [wn, jA, jB] of swaps) {
-    const w = plan.weeks.find((x) => x.num === wn);
-    if (!w) continue;
-    const da = w.days.find((d) => d.jour === jA), db = w.days.find((d) => d.jour === jB);
-    if (!da || !db) continue;
-    const t = da.sessions; da.sessions = db.sessions; db.sessions = t;
-  }
+  applyDaySwapsToPlan(plan, answers);
   // R4.5/R4.7 — le drapeau douleur et le RPE de la dernière séance validée entrent
   // AUTOMATIQUEMENT dans la photo du jour (aucun appelant ne peut les oublier) :
   // douleur active → rouge forcé ; RPE ≥8 hier → signal de fatigue annoncé.
@@ -1149,6 +1188,10 @@ declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
  */
 function coachOnIngestV2(sport: string, answers: AppAnswers, ingested: IngestedSession[], today: string) {
   const { plan, reasoned } = generatePlan(toProfile(sport, answers));
+  // Vague 1, étape 2 (chantier R21, 06/09/2026) — voir `applyDaySwapsToPlan` : sans elle, le
+  // `session_id` (`weekNum|jour|index`) calculé par `detectDeviations()`/`recalculerFenetre()`
+  // désignerait un créneau dont le contenu réel a changé de place après un échange de jours ⇄.
+  applyDaySwapsToPlan(plan, answers);
   const completed = (answers.completed as CompletedSession[] | undefined)
     || completedFromDone(plan, answers, today);
   const sink = new InAppSink();
@@ -1168,6 +1211,7 @@ function coachOnIngestV2(sport: string, answers: AppAnswers, ingested: IngestedS
   ftpFromBest20,
   adjustToday: adjustTodayV2,
   coachOnIngest: coachOnIngestV2,
+  getReasonedForCoach,
   // S-8 — l'UI contrôle la taille AVANT de lire le fichier : la borne est celle du moteur,
   // pas une seconde valeur écrite dans l'interface.
   maxImportBytes: MAX_IMPORT_BYTES,

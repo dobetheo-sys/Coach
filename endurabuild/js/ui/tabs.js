@@ -118,8 +118,28 @@ export function ensurePlan() {
     // fois — jamais en boucle, le plan reste une fonction pure de ses entrées.
     if (refreshMeasured(S.currentPlan)) S.currentPlan = buildPlan(S.answers);
     applyDaySwaps(S.currentPlan); // déplacements de séances persistants (voir plus bas)
+    ensureReasoned();
   }
   return S.currentPlan;
+}
+
+// Vague 1, étape 1 (chantier R21, 06/09/2026 — voir BUGS_OUVERTS.md « R21 »,
+// syntheses/55-chiffrage-option-a-r21.md) : `reasoned` (références/zones de l'athlète —
+// `baseRefs`, `hz`) mis en cache À CÔTÉ de `S.currentPlan`, posé et invalidé EN MÊME TEMPS que
+// lui. Infrastructure pure : rien ne consomme encore `S.currentReasoned` dans cette passe — les
+// étapes suivantes du chantier (rejeu des réductions R21) en auront besoin, exactement comme
+// `reduceDay()` (`src/coach/proactiveCoach.ts`) en a besoin pour réduire une séance. Un échec
+// ne doit JAMAIS empêcher le plan lui-même de s'afficher : cette infrastructure est encore
+// inutilisée, la faire échouer en silence est strictement moins risqué que de la faire lever.
+function ensureReasoned() {
+  try {
+    S.currentReasoned = (globalThis.EBV2 && globalThis.EBV2.getReasonedForCoach)
+      ? globalThis.EBV2.getReasonedForCoach(S.sport, S.answers)
+      : null;
+  } catch (e) {
+    console.warn("S.currentReasoned indisponible :", e);
+    S.currentReasoned = null;
+  }
 }
 
 // Déplacement de séance persistant (spec rétention §8) : l'utilisateur peut échanger deux
@@ -140,6 +160,7 @@ export function applyDaySwaps(plan) {
 }
 export function invalidatePlan() {
   S.currentPlan = null;
+  S.currentReasoned = null;
 }
 
 // Décision #1 (backlog conseiller externe, 06/09/2026) — l'indicateur persistant demandé en
