@@ -19,42 +19,62 @@
 import { SPORTS } from "../config.js";
 import { $, S, ebSave, esc, fmtDay, todayISO } from "../state.js";
 import { curSteps, renderStep, reset, evalRules, rulesGrouped} from "./steps.js";
-import { driverBand, downloadPlan, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML, predictionViewHTML, journaliserProjection, intensityCardHTML } from "./plan-view.js";
+import { driverBand, downloadPlan, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML, predictionViewHTML, journaliserProjection, intensityCardHTML, truncatedBannerHTML } from "./plan-view.js";
 import { exportICS, exportJSON, exportPNG } from "../export.js";
 
-// R23.5 — L'AVANCEMENT ET LE DECOMPTE, EN TETE DE L'ONGLET PLAN.
+// REFONTE 22a (05/09/2026) — LES BRIQUES DE LA VUE D'ENSEMBLE.
 //
-// Trois informations et rien d'autre : dans combien de jours, ou j'en suis, et de quoi partager.
-// Le decompte ne s'affiche que si une date de course est declaree — sans elle il n'a pas d'objet,
-// et inventer un « J−? » serait pire que se taire.
-/** Replie une carte deja rendue derriere son titre. Meme mecanisme que le Profil depuis R5 :
- *  on transforme la carte plutot que de dupliquer son rendu — un second chemin serait un second
- *  endroit a corriger (R11.1). Si la carte est vide, on ne fabrique pas un titre pour rien. */
-function replier(h, titre) {
+// Le canevas « Noir apaisé » (22a) ordonne l'écran ainsi : sous-onglets · bandeau R22 (s'il
+// existe) · PANNEAU « Ta saison » (titre display, phrase, frise proportionnelle, « tu es ici ») ·
+// LES PHASES à nu · CE QUI BORNE TON PLAN en creux · COURBE DE VOLUME en creux · SEMAINE EN
+// COURS à nu. Chaque brique ci-dessous rend UNE de ces sections, avec les DONNÉES du moteur —
+// jamais un chiffre du canevas. Les identifiants et classes que les gardes lisent (#expPng,
+// .zn-jminus, .zn-prog-fill, .ph-line/.ph-seg[data-phseg], .ph-obj[data-ph], .vol-bars/.vb,
+// .zn-wk-card/#openWk, #allW…) sont CONSERVÉS : c'est la forme qui change, pas les propriétés.
+
+/** Un repli à nu (une ligne de liste qui s'ouvre) — remplace `replier`, qui posait une carte. */
+function pli(h, titre, cls) {
   if (!h || !h.trim()) return h;
-  return '<details class="load-card" style="margin-top:10px"><summary class="load-title" style="cursor:pointer">'
-    + titre + "</summary>" + h + "</details>";
+  return '<details class="zn-plan-fold' + (cls ? " " + cls : "") + '"><summary><span>' + titre
+    + '</span><span class="zn-chev" aria-hidden="true">⌄</span></summary><div class="zn-plan-fold-b">' + h + "</div></details>";
 }
-function avancementPlanHTML(plan, today) {
+/** Le nombre de semaines en toutes lettres pour un titre (« 10 semaines » reste en chiffres :
+ *  c'est la forme du canevas, et un chiffre se lit plus vite qu'un mot dans un titre display). */
+function fmtH(h) {
+  if (h == null || isNaN(h)) return "";
+  const t = Math.round(h * 60), hh = Math.floor(t / 60), mm = t % 60;
+  return mm ? hh + " h " + String(mm).padStart(2, "0") : hh + " h";
+}
+/** Identifiant de phase → clé CSS (`--ph-<clé>`) : `id` d'abord, le nom en repli. */
+function phaseKey(p) {
+  const id = (p && p.id ? String(p.id) : "").toLowerCase();
+  if (id) return id;
+  const n = (p && p.nom ? p.nom : "").toLowerCase();
+  return n.startsWith("dév") ? "dev" : n.startsWith("spé") ? "spec" : n.startsWith("aff") ? "taper" : n.startsWith("peak") || n.startsWith("pic") ? "peak" : "base";
+}
+const ABBR = { "Développement": "DÉV.", "Spécifique": "SPÉ.", "Affûtage": "AFF.", "Peak": "PIC", "Base": "BASE" };
+/** « du spécifique », « de l'affûtage », « de la base », « du pic » — le nom du moteur, décliné. */
+function deLaPhase(p) {
+  const nom = p.nom === "Peak" ? "pic" : String(p.nom || "").toLowerCase();
+  if (nom === "base") return "de la base";
+  return (/^[aeiouyéèê]/.test(nom) ? "de l’" : "du ") + nom;
+}
+
+/** Le décompte et l'avancement (R23.5), portés par le panneau « Ta saison » (22a) : le J− garde
+ *  sa classe `.zn-jminus` (entrée sur l'opacité, jamais sur le texte — voir `znPlanSequence`),
+ *  la barre garde `.zn-prog-fill` (elle se remplit dans la chorégraphie). */
+function avancementHTML(plan, today) {
   const rd = S.answers.race_date;
   let tete = "";
   if (rd) {
-    // R-ZENNA v5 — le décompte et le libellé de format sont EXTRAITS dans `app-header.js` :
-    // l'en-tête partagé affiche le même « J−281 · 70.3 » en haut de chaque onglet, et deux
-    // écritures du même calcul divergeraient (R11.1). Le rendu ci-dessous ne bouge pas.
     const c = raceCountdown(S.answers, today);
     const j = c.jours;
     const fmtLabel = c.format || "ta course";
-    // R-ZENNA v7 — LE DÉCOMPTE EN HÉROS (décision du fondateur : suivre la maquette).
-    // Il était en `--fs-xl` au milieu d'une carte parmi d'autres ; la maquette en fait la
-    // première chose qu'on lit sur cet onglet, parce que c'est la seule qui ne change pas de
-    // sens : « dans combien de jours ». Le sous-titre nomme la course, pas seulement le format.
-    const dateJ = rd ? " · " + fmtDay(rd) + "/" + rd.slice(0, 4) : "";
-    tete = j > 1 ? '<div class="zn-jminus">J−' + j + "</div>"
-        + '<div class="zn-jminus-sub">avant ' + esc(fmtLabel) + esc(dateJ) + "</div>"
+    const dateJ = " · " + fmtDay(rd) + "/" + rd.slice(0, 4);
+    tete = j > 1 ? '<div class="zn-jminus">J−' + j + '</div><div class="zn-jminus-sub">avant ' + esc(fmtLabel) + esc(dateJ) + "</div>"
       : j === 1 ? '<div class="zn-jminus petit">Demain, jour J</div>'
       : j === 0 ? '<div class="zn-jminus petit">🏁 C’est aujourd’hui</div>'
-      : '<div class="load-sub">Course passée le ' + esc(fmtDay(rd)) + "</div>";
+      : '<div class="zn-jminus-sub">Course passée le ' + esc(fmtDay(rd)) + "</div>";
   }
   let barre = "";
   try {
@@ -64,8 +84,8 @@ function avancementPlanHTML(plan, today) {
       + ' · <span>' + pg.pctLoad + " % de la charge accomplie</span></div>"
       + '<div class="zn-prog-track"><div class="zn-prog-fill" style="width:' + pct + '%"></div></div>';
   } catch (e) {}
-  return '<div class="load-card zn-count-hero">' + tete + barre
-    + '<div class="nav" style="margin-top:13px"><button class="btn" id="expPng" type="button">📤 Partage</button></div></div>';
+  return '<div class="zn-count-hero"><div class="zn-saison-av">' + tete + "</div>" + barre
+    + '<button class="zn-btn-2 zn-saison-partage" id="expPng" type="button">Partager mon avancement</button></div>';
 }
 import { momentHTML, painBannerHTML, bindPainBanner, toggleDone } from "./session-life.js";
 import { retestBannerHTML, bindRetestBanner } from "./retest.js";
@@ -212,26 +232,6 @@ function phaseStats(plan, p) {
   })));
   return { wks, total, done, validated: total > 0 && done === total };
 }
-function phaseObjectivesHTML(plan) {
-  let h = '<div class="load-card"><div class="load-title">🎯 Sous-objectifs — une phase à la fois</div>'
-    + '<div class="load-sub" style="margin-top:4px">Touche une phase (ici ou dans la frise ci-dessus) pour dérouler son programme. Coche toutes ses séances : la phase se valide.</div>';
-  plan.phases.forEach((p) => {
-    const st = phaseStats(plan, p);
-    const pct = st.total ? Math.round((st.done / st.total) * 100) : 0;
-    const state = st.validated ? "✅ Phase validée" : st.done > 0 ? st.done + "/" + st.total + " séances ✓" : "à venir";
-    const open = S._phOpen === p.nom;
-    h += '<details class="ph-obj" data-ph="' + p.nom + '"' + (open ? " open" : "") + ' style="margin-top:8px;border-left:4px solid ' + p.c + ';padding-left:10px"><summary style="cursor:pointer;font-size:var(--fs-md)"><b>' + p.nom + "</b> · " + st.wks.length + " sem — <i>" + state + "</i>"
-      + '<div style="background:var(--bg2,#e8e0cf);border:1px solid #16130e;border-radius:4px;height:8px;overflow:hidden;margin-top:4px"><div style="height:100%;width:' + pct + "%;background:" + p.c + '"></div></div></summary>'
-      + '<div class="load-sub" style="margin-top:6px">' + (PHASE_GOALS[(p.id || "").toLowerCase()] || PHASE_GOALS[p.nom ? p.nom.toLowerCase().slice(0, 4) : ""] || "Une étape du plan, au service de la suivante.") + "</div>";
-    // LE PROGRAMME n'est construit QUE si la phase est ouverte (voir `programmePhaseHTML`).
-    h += '<div class="ph-prog">' + (open ? programmePhaseHTML(st) : "") + "</div>";
-    if (st.validated) h += '<div style="margin-top:8px;font-size:var(--fs-md);font-weight:700;color:#00734f">✅ Phase validée — tout est fait. La suivante s’appuie sur ce travail.</div>';
-    h += "</details>";
-  });
-  h += "</div>";
-  return h;
-}
-
 /**
  * AUDIT UX 11/08/2026 — LE PROGRAMME D'UNE PHASE SE CONSTRUIT À SON OUVERTURE.
  *
@@ -257,27 +257,189 @@ function programmePhaseHTML(st) {
           const chk = s.d !== "rs" ? '<button class="doneBtn' + (dn ? " done" : "") + '" type="button" data-dk="' + k + '" title="Marquer fait">' + (dn ? "✓" : "○") + "</button> " : "";
           return chk + s.name;
         }).join(" · ");
-        h += '<div style="font-size:var(--fs-sm);margin:3px 0 0 4px;color:#3f3a30"><b style="display:inline-block;width:34px">' + d.jour + '</b><span style="display:inline-block;width:44px;color:#999">' + fmtDay(d.date) + "</span> " + items + "</div>";
+        // Refonte 22a — les couleurs papier (#3f3a30 / #999) posées en INLINE ici rendaient un
+        // programme illisible sur le fond sombre (elles gagnaient sur toute règle de thème) ; la
+        // ligne porte désormais des classes, `zenna-plan.css` leur donne l'encre du thème.
+        h += '<div class="zn-prog-day"><b class="zn-prog-day-j">' + d.jour + '</b><span class="zn-prog-day-d">' + fmtDay(d.date) + "</span> " + items + "</div>";
     });
   });
   return h;
 }
 
 
-// R28 — LA FRISE DE PHASES, extraite pour pouvoir être émise en 2e position (elle vivait au
-// milieu du rendu). Le contenu est INCHANGÉ, seule sa place bouge.
-function phaseFriseHTML(plan) {
-  let html = "";
-  html += '<div class="ph-line">';
-  // R16.4 — LES PASTILLES DE PHASE TRONQUAIENT SUR MOBILE (« SPÉCIFIQ… », « P… » à 390 px).
-  // La frise est PROPORTIONNELLE à la longueur des phases (`flex: p.weeks`), ce qui est une
-  // information en soi : on la garde, et c'est le LIBELLÉ qui s'abrège. Les deux versions sont
-  // émises, le CSS bascule ; `title` + `aria-label` portent toujours le nom complet, donc rien
-  // n'est perdu ni pour la souris ni pour un lecteur d'écran.
-  const ABBR = { "Développement": "DÉV.", "Spécifique": "SPÉ.", "Affûtage": "AFF.", "Peak": "PIC", "Base": "BASE" };
-  plan.phases.forEach((p) => { html += '<button type="button" class="ph-seg" data-phseg="' + p.nom + '" title="' + p.nom + '" aria-label="' + p.nom + ", " + p.weeks + ' semaines" style="flex:' + p.weeks + ";background:" + p.c + "22;border-color:" + p.c + ';cursor:pointer;font:inherit"><span class="ph-full">' + p.nom + '</span><span class="ph-abbr">' + (ABBR[p.nom] || p.nom) + "</span><em>" + p.weeks + "sem</em></button>"; });
+/** La semaine qui contient aujourd'hui (ou la première à venir) et sa PHASE — le repère de
+ *  « tu es ici » (frise), de « en cours » (phases) et de la barre orange (courbe). */
+function repereCourant(plan, today) {
+  const sem = plan.weeks.find((w) => w.days.some((d) => d.date === today))
+    || plan.weeks.find((w) => w.days.some((d) => d.date >= today)) || null;
+  if (!sem) return { sem: null, phase: null, rang: 0 };
+  const memePhase = plan.weeks.filter((w) => w.phase && w.phase.nom === sem.phase.nom);
+  return { sem, phase: sem.phase, rang: memePhase.findIndex((w) => w.num === sem.num) + 1, sur: memePhase.length };
+}
+
+/** LES PHASES À NU (22a) : un rail de la couleur de la phase, le nom en display, la durée et
+ *  l'état, l'intention. Chaque ligne reste le `<details class="ph-obj" data-ph>` de R6 — le
+ *  clic déroule le PROGRAMME de la phase (coches ✓ comprises), construit à l'ouverture (audit UX
+ *  du 11/08/2026). La phase est « validée » quand TOUTES ses séances sont cochées. */
+function phaseObjectivesHTML(plan, today) {
+  const rep = repereCourant(plan, today);
+  let h = '<div class="zn-plan-phases">';
+  plan.phases.forEach((p) => {
+    const st = phaseStats(plan, p);
+    if (!st.wks.length) return; // phase entièrement retirée par la troncature (R22)
+    const pct = st.total ? Math.round((st.done / st.total) * 100) : 0;
+    const enCours = rep.phase && rep.phase.nom === p.nom;
+    const passee = !enCours && st.wks.length && st.wks.every((w) => w.days.length && w.days[w.days.length - 1].date < today);
+    const etat = st.validated ? "validé" : enCours ? "en cours" : st.done > 0 ? st.done + "/" + st.total + " séances ✓" : passee ? "passée" : "à venir";
+    const cls = st.validated ? " ok" : enCours ? " now" : "";
+    const open = S._phOpen === p.nom;
+    h += '<details class="ph-obj' + cls + '" data-ph="' + esc(p.nom) + '"' + (open ? " open" : "") + ' style="--ph:var(--ph-' + phaseKey(p) + ')">'
+      + '<summary><i class="zn-rail" aria-hidden="true"></i><div class="zn-ph-body">'
+      + '<div class="zn-ph-head"><b class="zn-ph-nom">' + esc(p.nom) + "</b><span class=\"zn-ph-meta\">" + st.wks.length + " sem. · <i>" + etat + "</i></span></div>"
+      + '<div class="zn-ph-goal">' + (PHASE_GOALS[phaseKey(p)] || "Une étape du plan, au service de la suivante.") + "</div>"
+      + (st.done > 0 ? '<div class="zn-ph-track" aria-hidden="true"><i style="width:' + pct + '%"></i></div>' : "")
+      + "</div></summary>";
+    // LE PROGRAMME n'est construit QUE si la phase est ouverte (voir `programmePhaseHTML`).
+    h += '<div class="ph-prog">' + (open ? programmePhaseHTML(st) : "") + "</div>";
+    if (st.validated) h += '<div class="zn-ph-valide">Phase validée — tout est fait. La suivante s’appuie sur ce travail.</div>';
+    h += "</details>";
+  });
+  // Le mode d'emploi, en pied (R5/R6) — la phrase « Sous-objectifs — une phase à la fois » est
+  // celle que le produit tient depuis R5 ; `smoke-retention` la lit.
+  h += '<div class="zn-plan-hint">Sous-objectifs — une phase à la fois : touche une phase pour dérouler son programme. Coche toutes ses séances, la phase se valide.</div>';
+  return h + "</div>";
+}
+
+/** LA FRISE (22a) : un segment par phase, large comme sa durée (`flex: p.weeks`), coloré par la
+ *  phase, avec le marqueur « tu es ici » dans le segment courant. Chaque segment reste le
+ *  bouton `[data-phseg]` de R6 (il ouvre le programme de la phase), avec ses deux libellés
+ *  (R16.4 : le long et l'abrégé, `title`/`aria-label` portent toujours le nom complet). */
+function phaseFriseHTML(plan, today) {
+  const rep = repereCourant(plan, today);
+  let html = '<div class="ph-line">';
+  plan.phases.forEach((p) => {
+    // Le nombre de semaines LIVRÉES de la phase (une prépa raccourcie, R22, retire des semaines
+    // de base : `p.weeks` est l'original) ; une phase entièrement retirée n'a pas de segment.
+    const nb = phaseStats(plan, p).wks.length;
+    if (!nb) return;
+    const ici = rep.phase && rep.phase.nom === p.nom;
+    const pos = ici ? ((rep.rang - 0.5) / nb) * 100 : 0;
+    html += '<button type="button" class="ph-seg' + (ici ? " now" : "") + '" data-phseg="' + esc(p.nom) + '" title="' + esc(p.nom) + '" aria-label="' + esc(p.nom) + ", " + nb + ' semaines" style="flex:' + nb + ";--ph:var(--ph-" + phaseKey(p) + ')">'
+      + '<span class="ph-full">' + esc(p.nom) + '</span><span class="ph-abbr">' + esc(ABBR[p.nom] || p.nom) + "</span><em>" + p.weeks + "sem</em>"
+      + (ici ? '<i class="zn-ici" aria-hidden="true" style="left:' + pos.toFixed(1) + '%"></i>' : "") + "</button>";
+  });
   html += "</div>";
-  return '<div class="zn-plan-frise">' + html + "</div>";
+  const note = rep.phase ? " Tu es à la " + rep.rang + (rep.rang === 1 ? "re" : "e") + " semaine " + deLaPhase(rep.phase) + "." : "";
+  return '<div class="zn-plan-frise">' + html + '<div class="zn-saison-note">La largeur d’un segment est sa durée réelle.' + note + "</div></div>";
+}
+
+/** LE PANNEAU « TA SAISON » (22a) — le seul bloc en surface bordée de la vue : titre display
+ *  « N SEMAINES, DE X H À Y H », la phrase, la frise, puis le décompte et l'avancement (R23.5)
+ *  et « ce qui pilote ton plan » (R4, conservé en pilules). */
+function saisonPanelHTML(plan, today) {
+  return '<section class="zn-panel zn-saison">'
+    + '<div class="zn-eyebrow">Ta saison</div>'
+    // `plan.weeks.length`, pas `plan.totalWeeks` : sur une prépa raccourcie (R22) `totalWeeks`
+    // reste l'original (20) quand 17 semaines sont livrées — le titre dit ce que l'athlète reçoit,
+    // et le bandeau R22 juste au-dessus dit la même chose (« raccourcie à 17 semaines »).
+    + '<div class="zn-saison-titre zn-display">' + plan.weeks.length + " semaines,<br>de " + esc(fmtH(plan.volBase)) + " à " + esc(fmtH(plan.volPeak)) + "</div>"
+    + '<div class="zn-saison-p">Semaines de 7 jours. Le volume monte jusqu’au pic, puis l’affûtage le fait redescendre.</div>'
+    + phaseFriseHTML(plan, today)
+    + avancementHTML(plan, today)
+    + driverBand(S.answers)
+    + "</section>";
+}
+
+/** CE QUI BORNE TON PLAN (22a) — les maillons R20.2 en creux : le pic livré, les séances par
+ *  semaine (prescrites ET livrées, O-87/O-96), le départ (la rampe R10/O-69), les jours d'appui.
+ *  Chaque ligne cite la DÉCISION du moteur qui la produit ; aucun chiffre n'est calculé ici. La
+ *  dernière ligne ouvre le détail : « Pourquoi ce plan » (le résumé, R6/R23.6), « Les décisions
+ *  du moteur » (le détail, #motorDecisions) et les conseils personnalisés (R23.10). */
+function bornesHTML(plan) {
+  const v2 = plan && plan._v2;
+  const D = {};
+  ((v2 && v2.decisions) || []).forEach((d) => { D[d.id] = d; });
+  const rows = [];
+  const row = (val, lab, txt) => rows.push('<div class="zn-borne"><b class="zn-borne-v zn-display">' + val + '</b><span class="zn-borne-t"><b>' + lab + "</b> — " + txt + "</span></div>");
+  // Pic : la phrase du maillon R20.2 quand il existe (il nomme ce qui borne ET le levier),
+  // sinon les deux plafonds dont le pic est le minimum (R20.2 / whyPlanCardHTML).
+  const pic = D["R20.2"] ? esc(D["R20.2"].val) + "."
+    : D.capacite && D.utile ? "le plus petit de ce que ton historique encaisse (" + esc(D.capacite.val) + ") et de ce que ton objectif demande vraiment (" + esc(D.utile.val) + ")."
+    : D.capacite ? "le plafond que ton historique encaisse (" + esc(D.capacite.val) + ")." : "la semaine la plus haute du plan.";
+  row(esc(fmtH(plan.volPeak)), "Pic", pic);
+  if (D.budget) {
+    const livre = D.budget.livre != null ? D.budget.livre : D.budget.val;
+    row(esc(String(livre)), "Séances / sem.", "le rythme que ta semaine tient"
+      + (D.recup ? ", avec une semaine allégée " + esc(D.recup.val) : "")
+      + (D.budget.livre != null && D.budget.livre !== +D.budget.val ? " — " + esc(String(D.budget.val)) + " prescrites, ta semaine la plus fournie en livre " + esc(String(D.budget.livre)) : "") + ".");
+  }
+  const depart = D["R10-depart"] ? "ton volume réel des derniers mois, pas ta cible : " + esc(D["R10-depart"].val) + "."
+    : D["O69-ancrage"] ? esc(D["O69-ancrage"].val) + "." : "la première semaine du plan, d’où la courbe monte.";
+  row(esc(fmtH(plan.volBase)), "Départ", depart);
+  if (D.impact) row(esc(String(D.impact.val).split("/")[0]), "Jours d’appui", "au plus par semaine : c’est l’impact qui blesse, pas le volume.");
+  const nD = (v2 && v2.decisions && v2.decisions.length) || 0, nW = (v2 && v2.warnings && v2.warnings.length) || 0;
+  const rules = evalRules(S.answers, S.tier);
+  let more = whyPlanCardHTML(plan) + decisionsCardHTML(plan);
+  if (rules.length)
+    more += '<details class="load-card zn-conseils"><summary class="load-title" style="cursor:pointer">🧭 Conseils personnalisés ('
+      + rules.length + ")</summary><div style=\"margin-top:8px\"><div class=\"load-sub\">Issus de tes réponses au questionnaire — avant génération, ce qu'elles impliquent.</div>" + rulesGrouped(rules) + "</div></details>";
+  return '<div class="zn-creux zn-bornes">' + rows.join("")
+    + '<details class="zn-bornes-more"><summary><span>' + nD + " décision" + (nD > 1 ? "s" : "") + " · " + nW + " limite" + (nW > 1 ? "s" : "") + " connue" + (nW > 1 ? "s" : "")
+    + '</span><span class="zn-chev" aria-hidden="true">⌄</span></summary><div class="zn-bornes-more-b">' + more + "</div></details></div>";
+}
+
+/** LA COURBE DE VOLUME (22a) — une barre par semaine, colorée par son RÔLE et non par sa
+ *  phase (audit UX du 11/08/2026 : cinq teintes sur quarante barres saturent) : récup en
+ *  violet, semaine courante en orange, pic en jaune, le reste en gris ; le FILET sous les
+ *  barres reprend les couleurs de la frise, c'est lui qui dit quelle phase porte quel volume.
+ *  Les hauteurs sont des pourcentages du pic LIVRÉ (`plan.volPeak`). */
+function courbeVolumeHTML(plan, today) {
+  const rep = repereCourant(plan, today);
+  const semC = rep.sem;
+  const peak = Math.max(0.1, plan.volPeak || Math.max(...plan.weeks.map((w) => w.vol)));
+  const iPic = plan.weeks.reduce((best, w, i) => (w.vol > plan.weeks[best].vol ? i : best), 0);
+  const n = plan.weeks.length, pas = Math.max(1, Math.ceil(n / 10));
+  let bars = "", axe = "";
+  plan.weeks.forEach((w, i) => {
+    const pct = Math.max(4, Math.round((w.vol / peak) * 100));
+    const ici = semC && w.num === semC.num, pic = i === iPic;
+    const cls = ici ? " now" : pic ? " pic" : w.isRecup ? " recup" : "";
+    bars += '<div class="vb' + cls + '" style="height:' + pct + '%;--i:' + i + '" title="S' + w.num + " " + w.vol + "h · " + esc(w.phase.nom) + (w.isRecup ? " · récup" : "") + '"></div>';
+    const lab = ici || pic || i === 0 || i === n - 1 || (i % pas === 0);
+    axe += '<span' + (ici ? ' class="now"' : pic ? ' class="pic"' : "") + ">" + (lab ? w.num : "") + "</span>";
+  });
+  let filet = "";
+  plan.phases.forEach((p) => { const nb = phaseStats(plan, p).wks.length; if (nb) filet += '<i style="flex:' + nb + ";--ph:var(--ph-" + phaseKey(p) + ')"></i>'; });
+  const recupW = plan.weeks.filter((w) => w.isRecup);
+  const recupRef = recupW.length ? (semC ? recupW.reduce((b, w) => (Math.abs(w.num - semC.num) < Math.abs(b.num - semC.num) ? w : b), recupW[0]) : recupW[0]) : null;
+  const basePct = Math.round((plan.volBase / peak) * 100);
+  let legende = "";
+  if (semC) legende += '<span><i class="now"></i>Semaine ' + semC.num + " · " + esc(fmtH(semC.vol)) + "</span>";
+  legende += '<span><i class="pic"></i>Pic · ' + esc(fmtH(plan.weeks[iPic].vol)) + "</span>";
+  if (recupRef) legende += '<span><i class="recup"></i>Récup · ' + esc(fmtH(recupRef.vol)) + "</span>";
+  // `.dense` : au-delà de 20 semaines, la gouttière de 4 px du canevas (dessiné sur 10 barres)
+  // mangerait la moitié des barres — la feuille la resserre à 2 px.
+  return '<div class="zn-creux zn-courbe' + (n > 20 ? " dense" : "") + '">'
+    + '<div class="zn-courbe-plot"><span class="zn-courbe-ymax">' + esc(fmtH(plan.weeks[iPic].vol)) + "</span>"
+    + '<i class="zn-courbe-lmax" aria-hidden="true"></i>'
+    + '<div class="zn-courbe-zone"><i class="zn-courbe-lbase" style="bottom:' + basePct + '%" aria-hidden="true"></i><span class="zn-courbe-ybase" style="bottom:' + basePct + '%">' + esc(fmtH(plan.volBase)) + "</span>"
+    + '<div class="vol-bars">' + bars + "</div></div>"
+    + '<div class="zn-courbe-filet" aria-hidden="true">' + filet + "</div>"
+    + '<div class="zn-courbe-axe" aria-hidden="true">' + axe + "</div></div>"
+    + '<div class="zn-courbe-leg">' + legende + "</div>"
+    + '<div class="zn-courbe-note">Le filet sous les barres reprend les couleurs de la frise : tu vois d’un coup quelle phase porte quel volume.</div>'
+    + "</div>";
+}
+
+/** SEMAINE EN COURS (22a) — une ligne à nu, rail orange, qui OUVRE 📅 Semaine (R-ZENNA v6 : la
+ *  grille et la coche vivent là-bas, un seul dessin, un seul geste). `.zn-wk-card` et `#openWk`
+ *  sont les crochets que les gardes lisent (U15, smoke-checkin). */
+function semaineEnCoursHTML(courante) {
+  const d0 = courante.days[0], dN = courante.days[courante.days.length - 1];
+  return '<div class="zn-list"><button type="button" class="zn-row zn-wk-card" id="openWk"><i class="zn-rail" aria-hidden="true"></i>'
+    + '<div class="zn-wk-body"><div class="zn-wk-title">S' + courante.num + " · " + esc(courante.phase.nom) + (courante.isRecup ? " · récup" : "") + "</div>"
+    + '<div class="zn-wk-range">' + (d0 ? fmtDay(d0.date) + " – " + fmtDay(dN.date) : "") + " · " + esc(fmtH(courante.vol)) + " au programme</div></div>"
+    + '<span class="zn-chev" aria-hidden="true">›</span></button></div>';
 }
 
 
@@ -396,8 +558,9 @@ export function renderTabPlanGeneral(plan) {
   const today = todayISO();
   let html = momentHTML(plan, today) + painBannerHTML() + retestBannerHTML(today);
   // R28 — PLAN GAGNE DEUX SOUS-ONGLETS (décision du fondateur, 12/08/2026). Le composant est
-  // repris À L'IDENTIQUE de celui d'Outils (`.subtabs`/`.subtab`) — même classes, même
-  // comportement : on n'invente pas une seconde forme de bascule pour la même idée.
+  // repris À L'IDENTIQUE de celui d'Outils — depuis la FOUNDATION (04/09/2026) c'est la
+  // primitive `.zn-seg > .zn-seg-btn` du canevas (22a : « VUE D'ENSEMBLE / PRÉDICTION ») ;
+  // `.subtab`, `.btn` et `data-plansub` restent, ce sont eux que les gardes lisent.
   const sub = S._planSub === "pred" ? "pred" : "overview";
   // CORRECTION D'UNE RÉGRESSION (12/08/2026) — le journal A-5 s'appelait UNIQUEMENT depuis
   // `predictionViewHTML`, donc UNIQUEMENT quand l'athlète clique sur le sous-onglet Prédiction.
@@ -408,193 +571,81 @@ export function renderTabPlanGeneral(plan) {
   // — et on passe le résultat à `predictionViewHTML` pour ne pas appeler `predict()` deux fois
   // quand `sub === "pred"`.
   const prJournal = journaliserProjection(plan);
-  html += '<div class="subtabs" role="tablist">'
-    + '<button type="button" class="subtab' + (sub === "overview" ? " active" : "") + '" data-plansub="overview"'
-    + ' role="tab" aria-selected="' + (sub === "overview") + '">📊 Vue d’ensemble</button>'
-    + '<button type="button" class="subtab' + (sub === "pred" ? " active" : "") + '" data-plansub="pred"'
-    + ' role="tab" aria-selected="' + (sub === "pred") + '">🎯 Prédiction</button></div>';
+  html += '<div class="subtabs zn-seg" role="tablist" aria-label="Plan">'
+    + '<button type="button" class="btn subtab zn-seg-btn' + (sub === "overview" ? " active" : "") + '" data-plansub="overview"'
+    + ' role="tab" aria-selected="' + (sub === "overview") + '">Vue d’ensemble</button>'
+    + '<button type="button" class="btn subtab zn-seg-btn' + (sub === "pred" ? " active" : "") + '" data-plansub="pred"'
+    + ' role="tab" aria-selected="' + (sub === "pred") + '">Prédiction</button></div>';
   if (sub === "pred") {
-    html += '<div class="zn-fadeview" id="planPred">' + predictionViewHTML(plan, prJournal) + "</div>";
+    html += '<div class="zn-fadeview zn-plan" id="planPred">' + predictionViewHTML(plan, prJournal) + "</div>";
     $("screen").innerHTML = html;
     bindPlanSubtabs(plan);
     znPredSequence();
     return;
   }
-  // R28 — L'ORDRE DES BLOCS : le DÉCOMPTE ouvre la vue, la frise suit, l'intro recule en 3e.
-  // Ce qu'on vient chercher en premier est « dans combien de jours, et où j'en suis » — pas la
-  // description du plan, qui ne change jamais.
-  html += avancementPlanHTML(plan, today);
-  html += phaseFriseHTML(plan);
-  html += '<div class="card"><div class="eyebrow">Plan général — ' + SPORTS[S.sport].nom + "</div><h2>Ta saison en un coup d’œil</h2>"
-    + '<div class="why">' + plan.totalWeeks + " semaines en " + "semaines de 7 jours" + ", volume " + plan.volBase + "h → " + plan.volPeak + "h.</div>";
-  html += driverBand(a);
-  // R23.5 / R23.12 — CE QU'ON VIENT VOIR EN PREMIER : ou j'en suis, et dans combien de jours.
-  //
-  // Retour du fondateur (06/08/2026) : « je veux en haut de la page la vision de l'avancement du
-  // plan avec le decompte des jours avant la course », et « l'export PNG est interessant dans
-  // l'idee mais mal nomme et devrait peut-etre etre sous l'avancement du plan sous le nom
-  // Partage ». Les deux vont ensemble : on partage ce qu'on vient de regarder.
-  // (`avancementPlanHTML` est désormais émis EN TÊTE — R28.)
-  // R23.6 — « POURQUOI CE PLAN » DESCEND, ET C'EST UNE DECISION QUI EN REVISE UNE AUTRE.
-  //
-  // R6 l'avait mise EN TETE, dépliée, au motif que « l'explicabilité est le contre-positionnement
-  // du produit, pas une option de confort ». Le fondateur tranche l'inverse (06/08/2026) :
-  // « Pourquoi ce plan trop tot, l'utilisateur veut d'abord les infos ». Les deux ont raison sur
-  // leur objet — l'explicabilité RESTE (elle n'est ni repliée ni retirée), elle cesse seulement
-  // d'etre ce qu'on lit AVANT son plan. Elle se place donc juste avant le détail des décisions,
-  // dont elle est le résumé : les deux vivent cote a cote au lieu d'encadrer tout l'onglet.
-  // RV — le chrono visé et son verdict, juste après « pourquoi ce plan » : c'est la même
-  // question posée dans l'autre sens. Absente hors course à pied (le prototype inverse Riegel).
+  // ═══ LA VUE D'ENSEMBLE (22a) — l'ORDRE est celui du canevas, et il tient les arbitrages
+  // antérieurs : le décompte et l'avancement viennent en tête (R23.5, dans le panneau « Ta
+  // saison »), « Pourquoi ce plan » vient APRÈS (R23.6, derrière « ce qui borne »), la prédiction
+  // a son sous-onglet (R28), la grille vit dans 📅 Semaine (R-ZENNA v6) et le plan ENTIER reste
+  // à un bouton (U15). ═══
+  const courante = currentWeek(plan);
+  const rep = repereCourant(plan, today);
+  html += '<div class="zn-plan">';
+  // R22 — le bandeau de préparation tronquée, en tête et hors de tout repliable.
+  html += truncatedBannerHTML(plan);
+  html += saisonPanelHTML(plan, today);
+  const nPhases = plan.phases.filter((p) => phaseStats(plan, p).wks.length).length;
+  html += '<div class="zn-sec"><span>Les ' + nPhases + " phases</span><i></i><span>" + (rep.phase ? esc(rep.phase.nom) + " en cours" : "") + "</span></div>";
+  html += phaseObjectivesHTML(plan, today);
+  html += '<div class="zn-sec zn-sec-espace"><span>Ce qui borne ton plan</span><i></i></div>';
+  html += bornesHTML(plan);
+  // RV — le chrono visé et son verdict, juste après ce qui borne : c'est la même question posée
+  // dans l'autre sens. Absente hors des sports que le prototype sait inverser.
   html += feasibilityCardHTML(plan);
-  // R16.5 — RACCOURCI VERS LA SEMAINE EN COURS. Sur un plan de 59 semaines, l'atteindre
-  // depuis le haut de l'onglet demande de passer devant les badges, le « pourquoi », la frise
-  // et le graphique. Le repère est la vraie date du jour (`todayISO`, la même ancre que partout
-  // depuis R7) : le bouton n'apparaît que si cette semaine existe dans ce qui est affiché.
-  {
-    // U15 — le raccourci n'a d'objet que dans la vue COMPLÈTE : en vue par défaut, la semaine
-    // en cours est la seule affichée, donc « y aller » n'a plus de sens.
-    const cur = S.showAllWeeks && plan.weeks.find((w) => w.days.some((d) => d.date === today));
-    if (cur) html += '<div style="margin:6px 0 2px"><button class="btn" id="goCurWk" type="button" '
-      + 'data-wk="' + cur.num + '">↓ Aller à la semaine en cours (S' + cur.num + ")</button></div>";
-  }
-  // R16.9-a — la frise s'ouvre APRÈS le bouton. Émis à l'intérieur de `.ph-line` (flex), il
-  // en devenait un item et raflait la place : les cinq segments se tassaient à droite et
-  // s'abrégeaient tous, y compris sur grand écran. Défaut introduit par R16.5, visible sur
-  // la capture de contrôle de R16.8 — deux corrections successives d'un même symptôme (les
-  // libellés tronqués) dont aucune ne regardait la vraie cause : la largeur disponible.
-  // (la frise est émise EN TÊTE — R28, `phaseFriseHTML`.)
-  // R23.7 / R23.9 — LA PREDICTION ET LA REPARTITION DES INTENSITES APPARTIENNENT AU PLAN.
-  //
-  // « L'onglet prediction et charge devrait apparaitre dans plan juste sous l'etat d'avancement
-  // du plan, pas dans aujourd'hui » · « repartition des intensites appartient a l'onglet plan et
-  // pas aujourd'hui ». C'est juste : ce sont des proprietes de la PREPARATION, pas du jour. Elles
-  // sont retirees de 🎯 Aujourd'hui, qui redevient « ce que je fais maintenant ».
-  // ... et elles arrivent REPLIEES, comme la demande le precise : « dans une version plus compacte
-  // avec juste les temps actuels et les temps projetes, puis un deroulable avec les explications ».
-  // Mesure a l'appui : deployees, l'onglet passait de 3,8 a 5,2 ecrans — la garde U15 (« le Plan
-  // tient sous 5 ecrans ») est passee ROUGE, ce qui est exactement son role. On ne relache pas la
-  // garde, on tient la demande : `<details>` ferme, un geste pour tout voir.
-  // R28 — la prédiction a quitté cette vue : elle est le sous-onglet « 🎯 Prédiction ».
-  html += replier(intensityCardHTML(plan), "⚡ Répartition des intensités");
-  html += phaseObjectivesHTML(plan);
-  html += '<div class="vol-bars">';
-  // AUDIT UX 11/08/2026 — DEUX TEINTES, PAS CINQ (décision du fondateur).
-  // Le graphique portait la couleur de PHASE : 40 barres en 5 teintes, pour une légende qui
-  // n'en expliquait qu'une (« violet = récup »). La couleur de phase porte du sens — mais elle
-  // le porte déjà sur la FRISE, juste au-dessus, où cinq segments larges se lisent. Répétée
-  // sur 40 barres de 3 px, elle sature au lieu d'informer. Ici on garde les deux seules
-  // distinctions qui aident à lire une COURBE DE CHARGE : ce qui est une décharge, et où j'en
-  // suis. C'est le parti de la maquette.
-  const semCourante = plan.weeks.find((w) => w.days.some((d) => d.date === today));
-  plan.weeks.forEach((w) => {
-    const h = Math.max(8, Math.round((w.vol / plan.volPeak) * 52));
-    const ici = semCourante && w.num === semCourante.num;
-    const c = ici ? "var(--zn-orange, #ff3d00)" : w.isRecup ? "#9b72ff" : "var(--zn-surface-3, #20252c)";
-    html += '<div class="vb" style="height:' + h + "px;background:" + c + '" title="S' + w.num + " " + w.vol + "h · " + esc(w.phase.nom) + '"></div>';
-  });
-  html += '</div><div class="vol-cap">1 barre = 1 semaine · violet = récup'
-    + (semCourante ? " · orange = où tu en es" : "") + "</div>";
-  // U15 — L'ONGLET S'OUVRE SUR LA SEMAINE EN COURS, PAS SUR QUATRE SEMAINES.
-  //
-  // Mesuré sur un marathon à 390 px : l'onglet faisait 5 164 px (6,1 écrans de défilement) et
-  // **56 % de cette hauteur était les grilles de semaines** — quatre étaient dépliées d'office
-  // (les trois premières, plus la dernière). Ce n'est ni le « pourquoi » (10 %) ni le graphique
-  // (1 %) qui font le mur : ce sont les semaines qu'on ne regarde pas.
-  //
-  // La semaine 1 n'a d'intérêt qu'au premier jour ; ensuite c'est la semaine COURANTE qu'on
-  // vient voir. Le bouton « Voir les N semaines » n'a pas bougé — on change le défaut, pas la
-  // possibilité.
-  const courante = plan.weeks.find((w) => w.days.some((d) => d.date === today)) || plan.weeks[0];
-  // R-ZENNA v6 — LA GRILLE QUITTE LA VUE PAR DÉFAUT DE 🗓 PLAN (décision du fondateur,
-  // 11/08/2026 : « suivre la maquette »). Elle y résumait la semaine en cours ; la maquette
-  // met à sa place une CARTE de résumé et un bouton qui ouvre 📅 Semaine.
-  //
-  // CE QUE ÇA NE FAIT PAS, et c'est ce qui rend la décision peu coûteuse : ça ne crée AUCUN
-  // second chemin de rendu. R16.9 avait trouvé un vrai défaut — la coche existait en deux
-  // versions, celle de Plan basculant un booléen en silence sans produire de `completion`, donc
-  // sans RPE, donc l'ajusteur du lendemain sous-estimait la fatigue. On RETIRE un consommateur
-  // de `weekGridHTML`, on n'en ajoute pas : le danger que R16.9 nommait ne peut pas revenir.
-  // La maquette dit d'ailleurs elle-même, dans cette carte, « même dessin, même geste, jamais
-  // deux comportements » — c'est le principe de R16.9, appliqué à une seule vue.
-  //
-  // Ce qu'on PERD est réel et assumé : le geste « je coche depuis Plan sans changer d'onglet ».
-  // La vue complète (« Voir les N semaines ») garde les grilles — rien ne devient inatteignable.
+  html += '<div class="zn-sec zn-sec-espace"><span>Courbe de volume</span><i></i><span>' + esc(fmtH(plan.volBase)) + " → " + esc(fmtH(plan.volPeak))
+    + (plan.weeks.length ? " → " + esc(fmtH(plan.weeks[plan.weeks.length - 1].vol)) : "") + "</span></div>";
+  html += courbeVolumeHTML(plan, today);
+  // R23.7 / R23.9 — la répartition des intensités appartient au plan, repliée (« une version
+  // plus compacte, puis un déroulable avec les explications »).
+  html += '<div class="zn-list zn-plan-folds">' + pli(intensityCardHTML(plan), "Répartition des intensités") + "</div>";
   if (S.showAllWeeks) {
+    // U15 — LA VUE COMPLÈTE : toutes les semaines, avec leurs grilles (le SEUL producteur de
+    // cases est `weekGridHTML`, consommé aussi par 📅 Semaine — un seul dessin).
+    html += '<div class="zn-sec zn-sec-espace"><span>Les ' + plan.weeks.length + " semaines</span><i></i></div>";
+    // R16.5 — le raccourci vers la semaine en cours n'a d'objet que dans cette vue.
+    const cur = plan.weeks.find((w) => w.days.some((d) => d.date === today));
+    if (cur) html += '<div class="zn-plan-actions"><button class="zn-btn-2" id="goCurWk" type="button" data-wk="' + cur.num + '">↓ Aller à la semaine en cours (S' + cur.num + ")</button></div>";
     plan.weeks.forEach((w) => {
       html += '<div class="gw" id="gw' + w.num + '">' + weekHeaderHTML(w) + weekGridHTML(plan, w, today) + "</div>";
     });
   } else {
-    const d0 = courante.days[0], dN = courante.days[courante.days.length - 1];
-    html += '<div class="load-card zn-wk-card">'
-      + '<div class="zn-wk-head"><div class="zn-wk-title">Semaine en cours · S' + courante.num + "</div>"
-      + '<div class="zn-wk-range">' + (d0 ? fmtDay(d0.date) + " – " + fmtDay(dN.date) : "")
-      + " · " + esc(courante.phase.nom) + (courante.isRecup ? " · récup" : "") + "</div></div>"
-      + '<div class="load-sub">' + courante.vol + " h au programme. La grille complète et la coche vivent dans 📅 Semaine — un seul dessin, un seul geste.</div>"
-      + '<div class="nav" style="margin-top:12px"><button class="btn" id="openWk" type="button">📅 Ouvrir la semaine</button></div>'
-      + "</div>";
+    html += '<div class="zn-sec zn-sec-espace"><span>Semaine en cours</span><i></i></div>';
+    html += semaineEnCoursHTML(courante);
   }
-  // Retour utilisateur (08/08/2026) : « on redonne la semaine du jour ? double emploi ? ».
-  // C'est un doublon ASSUMÉ (R16.9 : « un seul dessin, deux points de vue », weekGridHTML sert
-  // les deux onglets), pas un oubli — retirer la grille d'ici casserait le geste « je coche
-  // depuis Plan sans changer d'onglet », et R16.9 documente déjà pourquoi un DEUXIÈME chemin de
-  // rendu serait pire (deux comportements pour un même clic). Ce que 📅 Semaine ajoute
-  // (navigation semaine par semaine, bilan chiffré) n'existe nulle part ici : un pointeur plutôt
-  // qu'une duplication silencieuse.
-  if (!S.showAllWeeks && plan.totalWeeks > 1)
-    html += '<div class="wk-skip">⋯ ' + (plan.totalWeeks - 1) + " autre" + (plan.totalWeeks > 2 ? "s" : "")
-      + " semaine" + (plan.totalWeeks > 2 ? "s" : "") + " — « Voir les " + plan.totalWeeks + " semaines » ci-dessous ⋯</div>";
-  // R23.10 — LES CONSEILS PERSONNALISÉS ARRIVENT ICI, venus du Profil : ce sont des conseils sur
-  // la PRÉPARATION, pas des données d'identité. Repliés, comme au Profil — on ne les impose pas.
-  //
-  // Retour utilisateur (08/08/2026) : « Conseils personnalisés / Pourquoi ce plan / Décisions du
-  // moteur se répètent beaucoup ». Vérifié : « Pourquoi ce plan » EST le résumé de « Décisions du
-  // moteur » par construction (R23.6, même source `plan._v2.decisions[]`, l'un cite l'autre) —
-  // un sommaire redit forcément une partie du détail, ce n'est pas le doublon visé. « Conseils
-  // personnalisés » est la vraie source SÉPARÉE : `evalRules` relit `S.answers` (le
-  // QUESTIONNAIRE), pas le plan calculé — deux moteurs, un même sujet (ex. plafond de volume),
-  // qui peuvent se répéter en substance sans jamais se contredire (une seule source de vérité au
-  // niveau du CALCUL, R11.1 ; deux niveaux de LECTURE : ce que tu as répondu / ce que le plan en
-  // a fait). Nommer la différence plutôt que fusionner deux moteurs à la logique distincte —
-  // une fusion mal faite risquerait de faire disparaître un garde-fou de sécurité (ferritine,
-  // cycle) que `evalRules` porte seul.
-  {
-    const rules = evalRules(a, S.tier);
-    if (rules.length)
-      html += '<details class="load-card"><summary class="load-title" style="cursor:pointer">🧭 Conseils personnalisés ('
-        + rules.length + ")</summary><div style=\"margin-top:8px\"><div class=\"load-sub\">Issus de tes réponses au questionnaire — avant génération, ce qu'elles impliquent.</div>" + rulesGrouped(rules) + "</div></details>";
-  }
-  html += whyPlanCardHTML(plan); // R23.6 — descendue ici, juste avant le détail dont elle est le résumé
-  html += decisionsCardHTML(plan); // « Les décisions du moteur » — la transparence, en langage neutre
-  // Retour utilisateur (08/08/2026, 2e passage) : « n'ont toujours pas leur place ici, à
-  // effacer ». MAIS R23.12b (06/08) les avait explicitement fait QUITTER le Profil pour ici,
-  // avec la raison inverse : les garder aux deux endroits, c'était « deux chemins vers le même
-  // geste, dans deux onglets ». Les remettre au Profil referait exactement ce que R23.12b vient
-  // de corriger — et les supprimer purement et simplement retirerait le SEUL chemin pour éditer
-  // ses réponses ou changer de sport. Ils restent donc ICI (seul chemin, R11.1), mais derrière
-  // un repli fermé par défaut au lieu d'une rangée atténuée toujours visible : ce sont des
-  // gestes de compte (éditer ses réponses, exporter les données brutes, tout réinitialiser),
-  // pas des actions sur CE plan — on les CHERCHE, on ne les subit pas à chaque ouverture.
-  html += '<div class="warn" style="background:var(--bg2)">Intensités calibrées sur tes données. Les exports fonctionnent depuis cet onglet, quel que soit l’onglet consulté ensuite.</div>'
-    + '<div class="nav" style="flex-wrap:wrap;gap:10px"><button class="btn gold" id="allW" type="button">' + (S.showAllWeeks ? "Revenir à la semaine en cours" : "Voir tout le plan (" + plan.totalWeeks + " semaines)") + '</button><button class="btn" id="prn" type="button">🖨 Version imprimable</button><button class="btn" id="expIcs" type="button">📅 Ajouter à mon agenda</button></div>'
-    + '<details style="margin-top:8px"><summary class="load-sub" style="cursor:pointer">⚙ Réglages avancés (réponses, export brut, changer de sport)</summary><div class="nav" style="flex-wrap:wrap;gap:8px;margin-top:8px"><button class="btn" id="backBp" type="button" style="font-size:var(--fs-sm);padding:9px 12px">← Modifier mes réponses</button><button class="btn" id="expJson" type="button" style="font-size:var(--fs-sm);padding:9px 12px">{ } JSON</button><button class="btn" id="restartBtn" type="button" style="font-size:var(--fs-sm);padding:9px 12px">Changer de sport</button></div></details></div>';
+  // Les gestes sur le plan entier, puis les gestes de COMPTE derrière un repli (R23.12b : un
+  // seul chemin pour éditer ses réponses ou changer de sport, qu'on CHERCHE et qu'on ne subit pas).
+  html += '<div class="zn-plan-actions"><button class="zn-btn-2" id="allW" type="button">' + (S.showAllWeeks ? "Revenir à la semaine en cours" : "Voir les " + plan.weeks.length + " semaines") + "</button>"
+    + '<div class="zn-plan-actions-2"><button class="zn-btn-2" id="prn" type="button">Version imprimable</button><button class="zn-btn-2" id="expIcs" type="button">Ajouter à mon agenda</button></div></div>'
+    + '<div class="zn-plan-fine">Intensités calibrées sur tes données. Les exports fonctionnent depuis cet onglet, quel que soit l’onglet consulté ensuite.</div>'
+    + '<details class="zn-plan-fold zn-plan-reglages"><summary><span>Réglages avancés — réponses, export brut, changer de sport</span><span class="zn-chev" aria-hidden="true">⌄</span></summary>'
+    + '<div class="zn-plan-fold-b zn-plan-actions-2"><button class="zn-btn-2" id="backBp" type="button">← Modifier mes réponses</button><button class="zn-btn-2" id="expJson" type="button">{ } JSON</button><button class="zn-btn-2" id="restartBtn" type="button">Changer de sport</button></div></details>';
+  html += "</div>";
   $("screen").innerHTML = html;
   bindPlanSubtabs(plan);
   znPlanSequence();
   const rerender = () => renderTabPlanGeneral(plan);
   bindPainBanner(plan, rerender);
   bindFeasibility(rerender);
-  bindFeasibility(rerender);
   bindRetestBanner(today, () => renderTabPlanGeneral(ensurePlan())); // le retest a pu régénérer le plan
-  // R6 — la frise de phases est cliquable : ouvre le programme de la phase et y descend.
   {
     const g = document.getElementById("goCurWk");
     if (g) g.onclick = () => {
-      // Si la semaine n'est pas rendue (vue repliée), on déplie d'abord puis on y va.
       const aller = () => { const el = document.getElementById("gw" + g.dataset.wk); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); };
       if (!document.getElementById("gw" + g.dataset.wk)) { S.showAllWeeks = true; renderTabPlanGeneral(plan); setTimeout(aller, 60); }
       else aller();
     };
   }
+  // R6 — la frise de phases est cliquable : ouvre le programme de la phase et y descend.
   document.querySelectorAll("#screen [data-phseg]").forEach((b) => {
     b.onclick = () => {
       S._phOpen = S._phOpen === b.dataset.phseg ? null : b.dataset.phseg;
@@ -622,7 +673,7 @@ export function renderTabPlanGeneral(plan) {
   });
   $("backBp").onclick = () => { S.step = curSteps().length - 1; renderStep(); };
   $("allW").onclick = () => { S.showAllWeeks = !S.showAllWeeks; renderTabPlanGeneral(plan); window.scrollTo(0, 0); }; // re-rend la VUE — pas de buildPlan
-  // R-ZENNA v6 — la carte de résumé emmène vers 📅 Semaine, où vivent la grille et la coche.
+  // R-ZENNA v6 — la ligne « semaine en cours » emmène vers 📅 Semaine, où vivent la grille et la coche.
   const ouvrirSem = $("openWk");
   if (ouvrirSem) ouvrirSem.onclick = () => setTab("week");
   $("prn").onclick = () => downloadPlan();
