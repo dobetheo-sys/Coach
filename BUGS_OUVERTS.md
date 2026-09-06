@@ -12438,3 +12438,76 @@ quoi: aucune combinaison de audit:v2 (594) ne viole C26d ni aucune autre règle 
 attendu: /0 violation dure sur 594/
 cmd: node src/audit/runV2Audit.ts 2>&1 | tail -3
 ```
+
+## R21 · `coachOnIngestV2` jamais appelé dans la PWA réelle — 0 % de portée en production · 🟡 OUVERT (trouvaille du 06/09/2026, `syntheses/54-r21-jamais-cable-et-persistance.md`)
+
+En étudiant la décision #1 d'un backlog de conseiller externe (« retest → notification proactive
+R21 »), avant tout code : `coachOnIngestV2`/`onSessionIngested` (le coach proactif complet —
+détection de déviation, recalcul de fenêtre 14 j, notification) existe dans `src/coach/`, est
+testé (`npm run demo:proactif`, 25ᵉ gate CI), est présent dans le bundle livré — et **n'est appelé
+nulle part dans `endurabuild/js/*` réel**. Le seul point d'import de séances effectuées (le
+gestionnaire `.FIT`, `tab-profile.js`, `fitInput.onchange`) alimente `S.answers.fitSessions` mais
+ne passe jamais ce qui vient d'être importé à `coachOnIngestV2`. L'import Strava n'alimente même
+pas la forme `IngestedSession[]` dont R21 aurait besoin. **Conséquence : aujourd'hui, aucune
+notification de déviation (écart d'intensité, séance manquée, charge 7 jours) ne peut jamais
+apparaître pour un athlète réel**, quelle que soit l'ampleur de l'écart importé.
+
+**Second problème, plus profond, trouvé en cherchant où brancher l'appel** : même câblé,
+`recalculerFenetre()` a besoin de `reasoned.baseRefs`/`hz` pour réduire une séance
+(`reduceDay(...)`) — or le cache de plan de la PWA (`S.currentPlan`, `tabs.js`) ne conserve que le
+`V1Plan` brut, jamais `reasoned`. Le seul mécanisme qui survit à une régénération complète du plan
+(les échanges de jours ⇄) le fait en persistant la DÉCISION dans `S.answers.daySwaps` et en la
+REJOUANT après coup (`applyDaySwaps()`) — jamais en gardant l'objet muté en mémoire. Activer R21
+correctement (réduction durable, pas perdue à la prochaine régénération) demande donc d'étendre ce
+mécanisme de rejeu : conserver `reasoned` à côté de `S.currentPlan`, persister les réductions R21,
+les rejouer via une fonction analogue à `applyDaySwaps()`. Ce n'est pas câbler un appel de
+fonction, c'est un chantier d'architecture séparé.
+
+**Arbitré (avis externe du 06/09/2026)** : traiter comme un chantier à part, scopé et estimé
+séparément (touche `tabs.js`/`app.js`/l'import FIT, bénéfice limité aux 3 signaux de déviation).
+Ne PAS implémenter de raccourci qui remplacerait `S.currentPlan` par le plan réduit sans
+persistance — reproduirait sciemment le défaut déjà corrigé pour `daySwaps` (réduction perdue à la
+prochaine régénération).
+
+**Conséquence sur le reste du backlog** : la question ouverte « Go/Adapt/Recover » (un système de
+décision automatique à trois états, proposé par le même conseiller) recoupe très largement
+`assessReadiness`/`dailyAdjuster` (déjà en production, lui) et R21 (jamais en production) — tant
+que R21 n'est câblé nulle part, affiner son agrégation (jour vs tendance sur plusieurs jours) est
+secondaire. Câbler d'abord, affiner ensuite.
+
+**Non affecté par ce défaut** : le rappel de retest (décision #1) ne mute jamais le plan — il a
+été implémenté séparément, sur `notifications.js` (mécanisme RÉELLEMENT câblé et affiché dans
+l'app, contrairement au canal `NotificationSink`/`InAppSink` de R21 que rien ne rend jamais) —
+voir plus bas.
+
+```verify
+id: R21-jamais-cable
+quoi: coachOnIngestV2/onSessionIngested n'est appelé par aucun fichier de endurabuild/js/ (hors bundle engine.js)
+attendu: /^endurabuild\/js\/engine\.js$/ (une seule ligne)
+cmd: grep -rln "coachOnIngest" endurabuild/js/ 2>/dev/null
+```
+
+## Décision #1 (backlog conseiller externe) · Rappel de retest — FERMÉ le 06/09/2026
+
+Le calcul « dernière référence mesurée (FTP/allure/CSS) + 42 jours » existait déjà en affichage
+passif (`tab-profile.js`, `retestSuggestionHTML`) mais n'était jamais poussé activement à
+l'athlète. Extrait en une fonction pure unique, `retestSuggestion(tests, today)`
+(`endurabuild/js/notifications.js`, R11.1 — un seul point de calcul, lu par le Profil ET par le
+nouveau rappel), avec deux sorties : **(1)** `retestReminderHTML(tests)`, même patron que
+`weeklyReviewHTML` (carte in-app + notification navigateur si permission), dédoublonné par
+**semaine ISO** (`semaineISO()`, `projection-log.js`) — jamais plus d'une fois par semaine tant que
+le retest reste en retard, jamais si aucun test n'a encore été fait ; rendu dans l'onglet 🎯
+Aujourd'hui. **(2)** un petit indicateur visuel PERSISTANT (badge, `.tab-retest-due`) sur l'icône
+de l'onglet Profil, jamais dédoublonné (il décrit un état, pas un évènement) — `#f0b429`
+(thème papier) / `var(--zn-gold)` (thème Zenna, le ton d'attention modérée déjà en place pour le
+verdict orange du check-in, jamais l'orange de marque qui porte déjà trois autres sens, V5).
+
+Décision explicitement PAS suivie : le canal `NotificationSink`/`InAppSink` (R21) nommé dans le
+backlog initial n'a aucun écran qui le rend nulle part dans la PWA (voir l'entrée R21 ci-dessus) —
+brancher le retest dessus l'aurait rendu invisible. Vérifié avant d'écrire (règle 15) puis confirmé
+par avis externe.
+
+Vérifié : `check:sw` reconstruit (`eb-pwa-7655c8c84d8d`, 79 assets, même compte), batterie 13/13,
+E2E `smoke-tabs`/`smoke-checkin`/`smoke-r4`/`smoke-questionnaires`/`smoke-boucle`/`smoke-usage`/
+`smoke-zenna` verts (aucune régression — la plupart des fixtures n'ont pas de `S.answers.tests`
+déclaré, donc le badge/rappel restent silencieux par défaut, comme voulu).

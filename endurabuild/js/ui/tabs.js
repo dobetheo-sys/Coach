@@ -2,6 +2,7 @@
 // RÈGLE DE FOND : le plan est généré UNE fois (S.currentPlan) ; un changement
 // d'onglet ne rappelle JAMAIS buildPlan — les onglets sont des vues du même objet.
 import { S, $, ebSave, todayISO } from "../state.js";
+import { retestSuggestion } from "../notifications.js";
 import { refreshMeasured } from "../measured.js";
 import { buildPlan, EBGenerationError } from "../app.js";
 import { renderTabProfile } from "./tab-profile.js";
@@ -141,11 +142,24 @@ export function invalidatePlan() {
   S.currentPlan = null;
 }
 
+// Décision #1 (backlog conseiller externe, 06/09/2026) — l'indicateur persistant demandé en
+// plus du rappel hebdomadaire (notifications.js, `retestReminderHTML`) : contrairement à ce
+// dernier, il n'est jamais dédoublonné — il DÉCRIT un état (« un retest est en retard »), il
+// ne l'ANNONCE pas, donc rien à répéter ni à faire taire. `--zn-gold` est le ton du canevas
+// déjà en place pour une attention modérée (verdict orange du check-in, bandeau de veille de
+// course) — pas l'orange de marque, qui porte trois autres sens (V5, CLAUDE.md).
+function retestDue() {
+  const sug = retestSuggestion(S.answers.tests, todayISO());
+  return !!(sug && sug.overdue);
+}
 function tabbarHTML() {
+  const due = retestDue();
   return TABS.map(
-    ([id, ico, label]) =>
-      '<button type="button" role="tab" class="tabbtn' + (id === activeTab ? " active" : "") + (id === "today" ? " tab-central" : "") + '" data-tab="' + id + '" aria-selected="' + (id === activeTab) + '" aria-label="' + label + '">' +
-      '<span class="tabico" aria-hidden="true">' + ico + '</span><span class="tablbl">' + label + "</span></button>"
+    ([id, ico, label]) => {
+      const badge = id === "profile" && due;
+      return '<button type="button" role="tab" class="tabbtn' + (id === activeTab ? " active" : "") + (id === "today" ? " tab-central" : "") + '" data-tab="' + id + '" aria-selected="' + (id === activeTab) + '" aria-label="' + label + (badge ? " — retest suggéré" : "") + '">' +
+        '<span class="tabico" aria-hidden="true">' + ico + (badge ? '<span class="tab-retest-due" aria-hidden="true"></span>' : "") + '</span><span class="tablbl">' + label + "</span></button>";
+    }
   ).join("");
 }
 

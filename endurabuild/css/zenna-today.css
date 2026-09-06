@@ -953,6 +953,11 @@ body.theme-zenna #ebTabbar .tabbtn .tabico {
   transition: transform var(--dur-trans) var(--ease-spring), background var(--dur-trans) var(--ease), color var(--dur-trans) var(--ease);
 }
 body.theme-zenna #ebTabbar .tabico svg { width: 22px; height: 22px; display: block; stroke-width: 1.8; }
+/* Décision #1 (backlog conseiller externe, 06/09/2026) — même indicateur que mobile.css
+   (« retest en retard », onglet Profil), sur le token d'attention modérée déjà en place
+   (verdict orange du check-in, bandeau de veille) — jamais l'orange de marque, qui porte
+   déjà trois autres sens (V5, CLAUDE.md). */
+body.theme-zenna #ebTabbar .tab-retest-due { position: absolute; top: -2px; right: -4px; width: 8px; height: 8px; border-radius: 50%; background: var(--zn-gold); border: 1.5px solid var(--zn-bg); }
 body.theme-zenna #ebTabbar .tabbtn:active .tabico { transform: scale(.9); }
 body.theme-zenna #ebTabbar .tabbtn.active { color: var(--zn-orange); font-weight: 700; box-shadow: none; }
 body.theme-zenna #ebTabbar .tabbtn.active .tabico { color: var(--zn-orange); transform: none; }

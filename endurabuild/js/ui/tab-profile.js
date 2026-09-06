@@ -11,7 +11,7 @@ import { renderPlan } from "./plan-view.js";
 import { retestPlannerHTML, bindRetestPlanner } from "./retest.js";
 import { aide } from "./help.js";
 import { stravaConnect, stravaAccessToken, stravaDisconnect, stravaRelayUrl } from "../strava.js";
-import { requestNotifyPermission } from "../notifications.js";
+import { requestNotifyPermission, retestSuggestion } from "../notifications.js";
 import { avatarTriDataFor } from "./avatar.js";
 import { planEndDate } from "./session-life.js";
 // R25 étape 4 — le COMPOSITE remplace l'ancien rendu 16 niveaux sur la carte (l'ancien
@@ -459,14 +459,13 @@ function planDeadlineHTML(plan) {
 }
 // Date de retest suggérée : dernière référence mesurée + 6 semaines (42 j) — jamais
 // imposée, c'est une suggestion à planifier dans la carte retest ci-dessous.
+// Calcul délégué à `retestSuggestion()` (notifications.js, R11.1) : c'est aussi la fonction
+// qui alimente le rappel actif de l'onglet Aujourd'hui (décision #1, conseiller externe,
+// 06/09/2026) — une seule définition de « 42 jours », jamais deux qui pourraient diverger.
 function retestSuggestionHTML() {
-  const tests = Array.isArray(S.answers.tests) ? S.answers.tests.filter((t) => ["ftp", "thrPace", "css"].includes(t.type)) : [];
-  if (!tests.length) return '<div class="load-sub" style="margin-top:4px">💡 Suggestion : pas encore de référence mesurée — un premier test peut se planifier dès maintenant.</div>';
-  const last = tests.map((t) => String(t.date || "")).sort().pop();
-  if (!last) return "";
-  const sug = new Date(new Date(last + "T00:00:00Z").getTime() + 42 * 864e5).toISOString().slice(0, 10);
-  const overdue = sug <= todayISO();
-  return '<div class="load-sub" style="margin-top:4px">💡 Dernière référence mesurée le <b>' + last + "</b> → retest suggéré autour du <b>" + sug + "</b>" + (overdue ? " (c’est le moment !)" : "") + ".</div>";
+  const sug = retestSuggestion(S.answers.tests, todayISO());
+  if (!sug) return '<div class="load-sub" style="margin-top:4px">💡 Suggestion : pas encore de référence mesurée — un premier test peut se planifier dès maintenant.</div>';
+  return '<div class="load-sub" style="margin-top:4px">💡 Dernière référence mesurée le <b>' + sug.last + "</b> → retest suggéré autour du <b>" + sug.suggested + "</b>" + (sug.overdue ? " (c’est le moment !)" : "") + ".</div>";
 }
 
 // R7 TRAIL — les données qui structurent la prépa, éditables : distance, D+, technicité,

@@ -20,7 +20,7 @@ import { chargeChartSVG, historyCardHTML, readinessCardHTML } from "./plan-view.
 import { momentHTML, painBannerHTML, bindPainBanner, sickToggleHTML, bindSickToggle, heroSessionHTML, etatDuJourHTML, feedbackModal, showCongrats } from "./session-life.js";
 import { readinessDoneToday, applyReadiness, fetchWeather } from "./readiness.js";
 import { dailyContentHTML, microDefiHTML } from "./daily-content.js";
-import { scheduleDailyNotification, weeklyReviewHTML, missedSessionsCheck } from "../notifications.js";
+import { scheduleDailyNotification, weeklyReviewHTML, missedSessionsCheck, retestReminderHTML } from "../notifications.js";
 import { retestBannerHTML, bindRetestBanner } from "./retest.js";
 import { ensurePlan, setTab } from "./tabs.js";
 import { VERDICT_ICON } from "./icons.js";
@@ -398,6 +398,7 @@ export function renderTabToday(plan) {
   html += preparationHTML(plan, today);
   html += dailyContentHTML(plan, today);       // R4.9 — anecdote / physio / stat perso (le micro-défi a sa propre carte, plus haut)
   html += weeklyReviewHTML(plan);              // R4.10 — bilan hebdo (dimanche)
+  html += retestReminderHTML(S.answers.tests); // décision #1 (conseiller externe) — retest en retard, ≤1×/semaine
   // R24.7 — le réglage du rappel a quitté Aujourd'hui (retour fondateur, 06/08 : « je veux que
   // l'onglet rappel de séance bascule dans profil »). C'est un RÉGLAGE de l'app, pas un fait du
   // jour — et le Profil porte déjà sa carte « 🔔 Rappel quotidien » (R23.11). L'y laisser aussi

@@ -8,6 +8,7 @@
 //   · bilan hebdo le dimanche (carte in-app + notification si permission).
 // Aucune autre notification : chaque interruption doit mériter sa place (spec §11).
 import { S, ebSave } from "./state.js";
+import { semaineISO } from "./projection-log.js";
 
 function canNotify() { return "Notification" in window && Notification.permission === "granted"; }
 function notify(title, body) {
@@ -163,6 +164,48 @@ export function weeklyReviewHTML(plan) {
   return '<div class="load-card"><div class="load-title">🗞 Bilan de la semaine</div>'
     + '<div class="load-sub" style="margin-top:6px"><b>' + Math.round(cur.minDone / 6) / 10 + "h réalisées / " + Math.round(cur.minTotal / 6) / 10 + "h prévues (" + pct + "%)</b> — " + trend + "."
     + (keyNext ? "<br>Séance clé de la semaine prochaine : <b>" + keyNext.name + "</b>." : "") + "</div></div>";
+}
+
+// Décision #1 (backlog conseiller externe, 06/09/2026) — le rappel de retest. Le coach
+// proactif R21 (src/coach/) est construit et testé côté moteur mais n'est appelé nulle part
+// dans cette PWA, et rien n'affiche jamais son canal `InAppSink` (voir BUGS_OUVERTS.md « R21 »
+// et `syntheses/54-r21-jamais-cable-et-persistance.md`) : le brancher là aurait produit un
+// rappel invisible. `notifications.js`, lui, est RÉELLEMENT câblé et affiché (onglet
+// Aujourd'hui) — le rappel de retest suit donc ce patron-ci, celui de `weeklyReviewHTML`
+// juste au-dessus (carte in-app + notification si permission, dédoublonné par clé).
+//
+// Point unique (R11.1) : `retestSuggestion()` est la SEULE définition de « dernière
+// référence mesurée + 42 jours » — `tab-profile.js` (`retestSuggestionHTML`, affichage
+// passif au Profil) l'appelle aussi, au lieu de porter sa propre copie du calcul.
+const RETEST_DELAI_J = 42;
+const RETEST_TYPES = ["ftp", "thrPace", "css"];
+export function retestSuggestion(tests, today) {
+  const list = Array.isArray(tests) ? tests.filter((t) => RETEST_TYPES.includes(t.type)) : [];
+  if (!list.length) return null;
+  const last = list.map((t) => String(t.date || "")).sort().pop();
+  if (!last) return null;
+  const suggested = new Date(new Date(last + "T00:00:00Z").getTime() + RETEST_DELAI_J * 864e5).toISOString().slice(0, 10);
+  return { last, suggested, overdue: suggested <= today };
+}
+
+/**
+ * Rappel de retest EN RETARD — au plus une fois par semaine ISO, jamais si aucun test n'a
+ * encore été fait (ce cas est déjà servi, en passif, par `retestSuggestionHTML` au Profil ;
+ * le nager ici ferait du bruit dès la création du plan, sans référence à comparer).
+ * Dédoublonnage par clé de SEMAINE (pas de jour) : un retest en retard le reste identiquement
+ * d'un jour à l'autre — le notifier chaque jour reproduirait le défaut d'U10 (« 64 jours
+ * d'affilée ») pour un signal qui, lui, ne s'éteint jamais tout seul.
+ */
+export function retestReminderHTML(tests) {
+  const sug = retestSuggestion(tests, todayISO());
+  if (!sug || !sug.overdue) return "";
+  const key = "retest-" + semaineISO(todayISO());
+  if (S.answers.retestNotifLastWeek === key) return "";
+  S.answers.retestNotifLastWeek = key;
+  ebSave();
+  if (canNotify()) notify("Retest suggéré", "Dernière référence mesurée le " + sug.last + " — un retest ferait le point.");
+  return '<div class="load-card"><div class="load-title">🎯 Retest suggéré</div>'
+    + '<div class="load-sub" style="margin-top:6px">Dernière référence mesurée le <b>' + sug.last + '</b> (il y a plus de ' + RETEST_DELAI_J + ' jours) — un retest ferait le point sur ta forme actuelle.</div></div>';
 }
 
 // R24.7 — la carte de premier réglage du rappel (notifySetupHTML/bindNotifySetup) est

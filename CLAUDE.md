@@ -612,6 +612,21 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**Rappel de retest livré + R21 (coach proactif) trouvé JAMAIS câblé dans la PWA réelle**
+(06/09/2026, décision #1 d'un backlog de conseiller externe — voir `BUGS_OUVERTS.md` « R21 »,
+`syntheses/54-r21-jamais-cable-et-persistance.md`) : le calcul « dernière référence + 42 jours »
+existait déjà en passif (`tab-profile.js`) ; extrait en fonction unique
+`retestSuggestion()` (`notifications.js`, R11.1), il alimente désormais un rappel ACTIF —
+carte in-app + notification navigateur, ≤1×/semaine ISO — et un badge persistant sur l'onglet
+Profil. **Trouvaille en cherchant où le brancher** : le mécanisme R21 complet
+(`coachOnIngestV2`/`onSessionIngested`, détection de déviation + recalcul 14 j) est construit et
+testé (25ᵉ gate CI) mais **appelé nulle part dans `endurabuild/js/*`** — 0 % de portée en
+production, et son canal `NotificationSink`/`InAppSink` n'est rendu par aucun écran. Le retest a
+donc été branché sur `notifications.js` (mécanisme réellement câblé et affiché), pas sur R21.
+Activer R21 pour de vrai demande en plus d'étendre le mécanisme de persistance-et-rejeu qui fait
+déjà survivre les échanges de jours ⇄ (`daySwaps`) — un chantier séparé, arbitré comme tel plutôt
+que bricolé en raccourci. Batterie 13/13, `check:sw` reconstruit, E2E vérifiés sans régression.
+
 **REFONTE VISUELLE « NOIR APAISÉ » LIVRÉE — les huit zones de la PWA suivent désormais le
 canevas Claude Design « Zenna — tous les écrans », le moteur INTACT** (05-06/09/2026, branche
 `claude/integration-travail-visuel-bjvugr`) : demande du fondateur — le résultat visuel du
