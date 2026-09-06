@@ -179,7 +179,18 @@ function buildFreeSteps(){
          +'<div class="row"><div class="q"><span class="q-label">D+ total (m)</span><input type="number" min="0" max="8000" data-input="race_dplus_m" placeholder="250"></div>'
          +'<div class="q"><span class="q-label">Segments nagés</span><input type="number" min="1" max="60" data-input="segments_n" placeholder="10"></div></div>'
          +'<div class="row"><div class="q"><span class="q-label">La plus longue nage (m)</span><div class="q-def">C\'est elle qui dimensionne ta prépa : thermiquement et mentalement.</div><input type="number" min="50" max="5000" data-input="longest_swim_m" placeholder="600"></div>'
-         +'<div class="q"><span class="q-label">Température d\'eau prévue (°C)</span><input type="number" min="4" max="30" data-input="water_temp_c" placeholder="16"></div></div>'
+         +'<div class="q"><span class="q-label">Température d\'eau prévue (°C)</span><input type="number" min="4" max="30" data-input="water_temp_c" placeholder="16"></div></div></div>'
+         // ⚠ BUG PRÉ-EXISTANT FERMÉ ICI (trouvé en construisant `decorateQuestions()`, hors
+         // du périmètre qui l'a introduit) — la `</div>` ajoutée juste au-dessus ferme le `.q`
+         // ouvert en amont (« Les données de ta course », ligne 176) : sans elle, TOUT ce qui
+         // suit (Solo ou binôme, Écart de niveau, Accès à l'eau libre, les deux tests de
+         // continuité, jusqu'à la Date) devenait un DESCENDANT de cette question au lieu d'un
+         // frère — un `<div class="opts" data-key="team_mode">` profondément niché reste
+         // fonctionnellement identique (les sélecteurs `.opts[data-key]`/`[data-input]` ne
+         // regardent pas la profondeur), donc `valid()`, `S.answers` et `audit:*` n'y voyaient
+         // que du feu ; seul `decorateQuestions()` — qui énumère les `.q` ENFANTS DIRECTS du
+         // panneau pour les numéroter — le rendait visible (« Solo ou binôme » hérite alors du
+         // badge REQUIS de la question n°3 par accident de nesting, cf. `swimrun_dom_debug.mjs`).
          +'<div class="q"><span class="q-label">Solo ou binôme ?</span><div class="q-def">La plupart des épreuves se courent en binôme, attachés par une longe — et ça change toute la prescription.</div><div class="opts" data-key="team_mode">'+opt("binome","En binôme")+opt("solo","En solo")+'</div></div><div id="teamB"></div>'
          +'<div class="q"><span class="q-label">Accès à l\'eau libre à l\'entraînement ?</span><div class="opts" data-key="openwater_access">'+opt("toute_annee","Toute l\'année")+opt("saisonnier","En saison seulement")+opt("aucun","Aucun")+'</div></div>'
          +'<div class="q"><span class="q-label">Tu nages 30min (~1200m) sans t\'arrêter ?</span><div class="opts" data-key="swim_continuous">'+opt("oui","Oui")+opt("non","Pas encore")+'</div></div>'

@@ -375,23 +375,39 @@ body.theme-zenna:not(.has-tabs) #screen .warn {
 /* ============================================================
    12. LE REFUS TYPÉ (partagé, `tabs.js:renderGenerationFailure`) — carte en creux, motif nommé,
        deux issues. Le HTML reste dans le module partagé (shared_changes) ; ce bloc l'habille.
-   ============================================================ */
-body.theme-zenna:not(.has-tabs) #screen .card[role="alert"] {
+   ============================================================
+   ⚠ TROUVÉ EN CAPTURANT CET ÉCRAN — un correctif d'une AUTRE zone (`zenna-tabs.css`,
+   `[style*="color:#c0392b"] { color: #ff9d8d !important }`, posé pour recolorer le
+   `branch-tag` swimrun qui porte VRAIMENT `style="color:#c0392b"`) fait un match de
+   SOUS-CHAÎNE : `style="border-color:#c0392b"` (posé ici, sur la carte de refus)
+   CONTIENT le texte "color:#c0392b" et se fait donc, lui aussi, recolorer — tout le
+   texte de la carte hérite d'un salmon (#ff9d8d) qui n'a rien à voir avec sa bordure.
+   Un bug pré-existant, hors de ma zone (ni le sélecteur ni le HTML ne sont d'ici) ;
+   je ne touche pas `zenna-tabs.css` (fichier partagé, correctif minimal préférable
+   ICI) — `color` est repris explicitement, `!important` pour battre l'`!important`
+   qui cause le problème (ma sélecteur est de toute façon plus spécifique). */
+body.theme-zenna #screen .card[role="alert"] {
   border: 1px solid var(--zn-border); border-left: 2px solid var(--zn-bad); background: var(--zn-creux);
+  color: var(--zn-text) !important;
+  /* `style="border-color:#c0392b"` (inline, voir tabs.js) bat un `border` externe sur le
+     LONGHAND `border-color` précisément — le shorthand ci-dessus pose la largeur/le style,
+     jamais la couleur des trois autres côtés tant que l'inline n'est pas repris ici aussi. */
+  border-color: var(--zn-border) !important;
+  border-left-color: var(--zn-bad) !important;
 }
-body.theme-zenna:not(.has-tabs) #screen .card[role="alert"] h2 { color: var(--zn-text); }
-body.theme-zenna:not(.has-tabs) #screen .card[role="alert"] code {
+body.theme-zenna #screen .card[role="alert"] h2 { color: var(--zn-text); }
+body.theme-zenna #screen .card[role="alert"] code {
   font-family: var(--zn-mono); background: var(--zn-surface-2); border-radius: 4px; padding: 1px 5px;
   color: var(--zn-text);
 }
-body.theme-zenna:not(.has-tabs) #screen .card[role="alert"] .nav { flex-direction: row; border-top: none; padding-top: 0; margin-top: 16px; }
-body.theme-zenna:not(.has-tabs) #screen .card[role="alert"] .nav > * { flex: 1; }
-body.theme-zenna:not(.has-tabs) #screen .card[role="alert"] #ebFixInput {
+body.theme-zenna #screen .card[role="alert"] .nav { flex-direction: row; border-top: none; padding-top: 0; margin-top: 16px; }
+body.theme-zenna #screen .card[role="alert"] .nav > * { flex: 1; }
+body.theme-zenna #screen .card[role="alert"] #ebFixInput {
   min-height: 52px; border-radius: var(--r-control); background: var(--zn-orange); color: var(--zn-on-accent);
   border: none; font-family: var(--zn-mono); font-size: var(--fs-sm); font-weight: 700;
   letter-spacing: .06em; text-transform: uppercase; box-shadow: none;
 }
-body.theme-zenna:not(.has-tabs) #screen .card[role="alert"] #ebRetryGen {
+body.theme-zenna #screen .card[role="alert"] #ebRetryGen {
   min-height: 52px; border-radius: var(--r-control); background: var(--zn-surface-2); color: var(--zn-text);
   border: 1px solid var(--zn-border-2); font-family: var(--zn-mono); font-size: var(--fs-sm);
   font-weight: 600; box-shadow: none;
