@@ -145,6 +145,47 @@ export function estimateTotalNeed(plan, weightKg, todayISO, sport) {
 }
 
 /**
+ * LE RELEVÉ GROUPÉ (écrans 2a/3a/22c, 04/09/2026) — la maquette montre le devis en au plus
+ * QUATRE lignes, une par séance RÉPÉTÉE (« Natation, footings faciles × 3 ») plutôt qu'une
+ * par occurrence. Grouper par NOM EXACT est la seule opération qui ne fabrique rien : deux
+ * séances qui portent le même nom sont RÉELLEMENT la même chose pour l'athlète, et leurs
+ * comptes de gels/boissons s'additionnent sans qu'on ait à inventer une catégorie qui
+ * n'existe pas dans le plan. Au-delà de `max` groupes, le reste est fondu dans UNE dernière
+ * ligne générique (« + N autres séances ») — trié pour montrer d'abord ce qui pèse le plus
+ * (R4.1 dans son sens inverse : ce qui compte se voit, ce qui est accessoire se résume) —
+ * plutôt que de partager un intitulé qui ne serait plus vrai pour toutes les séances qu'il
+ * couvrirait. Le détail complet, ligne par ligne, reste accessible via `periodLinesHTML`
+ * (tab-nutrition.js) : ce n'est pas une seconde estimation, seulement un second AFFICHAGE
+ * du même tableau `detail.sessions`.
+ */
+export function groupPeriodSessions(sessions, max = 4) {
+  if (!Array.isArray(sessions) || !sessions.length) return [];
+  const parOrdre = [];
+  const parNom = new Map();
+  sessions.forEach((s) => {
+    let g = parNom.get(s.name);
+    if (!g) {
+      g = { name: s.name, count: 0, gelUnits: 0, drinkUnits: 0 };
+      parNom.set(s.name, g);
+      parOrdre.push(g);
+    }
+    g.count += 1;
+    g.gelUnits += s.gelUnits;
+    g.drinkUnits += s.drinkUnits;
+  });
+  // Ce qui a un besoin réel (gel ou boisson) d'abord, les séances à l'eau seule ensuite —
+  // c'est ce que l'athlète vient vérifier en premier : d'où vient le prix.
+  const tries = parOrdre.slice().sort((a, b) => (b.gelUnits + b.drinkUnits) - (a.gelUnits + a.drinkUnits));
+  if (tries.length <= max) return tries;
+  const tete = tries.slice(0, max - 1);
+  const reste = tries.slice(max - 1);
+  const fondu = reste.reduce((t, g) => ({
+    name: null, count: t.count + g.count, gelUnits: t.gelUnits + g.gelUnits, drinkUnits: t.drinkUnits + g.drinkUnits,
+  }), { name: null, count: 0, gelUnits: 0, drinkUnits: 0 });
+  return [...tete, fondu];
+}
+
+/**
  * Date de la PROCHAINE échéance depuis le départ de l'abonnement — DÉRIVÉE de startedAt +
  * cadence à chaque appel, jamais stockée ni avancée par une boucle (R11.1 : une seule
  * horloge). Une échéance n'existe qu'à un multiple entier de la cadence depuis le départ.

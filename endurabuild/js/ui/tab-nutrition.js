@@ -7,12 +7,12 @@
 import { S, $, esc, ebSave, todayISO, fmtDay } from "../state.js";
 import { fetchWeather } from "./readiness.js";
 import {
-  estimateTotalNeed, estimatePeriodDetail, nextEcheance, subscriptionView,
+  estimateTotalNeed, estimatePeriodDetail, groupPeriodSessions, nextEcheance, subscriptionView,
   shopPromptDue, shopEndOfPlanPromptDue, submitOrder, CADENCES, FLAVOR_OPTIONS, FORMAT_OPTIONS, venteAutorisee,
 } from "../shop-order.js";
 import { planEndDate } from "./session-life.js";
 import { sachetHTML, ATOUTS_GEL } from "./sachet.js";
-import { GEL_ZENNA } from "../shop-catalog.js";
+import { GEL_ZENNA, SACHET_ARGUMENTS, saveurGel } from "../shop-catalog.js";
 // R6 — le journal alimentaire (Open Food Facts + CSV) est RETIRÉ sur décision
 // utilisateur : trop de saisie pour trop peu de valeur ; l'onglet reste
 // estimations + ravitaillement. (Les données foodLog éventuelles restent
@@ -58,21 +58,54 @@ function foldHTML(titre, valeur, corps, open, id) {
  * un visuel ferait croire à une cinquième saveur. Le créneau reste alors vide plutôt que rempli
  * par défaut avec le sachet neutre, qui, lui, EXISTE.
  */
-function productTileHTML(flavor) {
-  const s = sachetHTML(flavor, "grand", 58);
+function productTileHTML(flavor, taille) {
+  const s = sachetHTML(flavor, "grand", taille || 58);
   return s ? '<div class="product-tile">' + s + "</div>" : "";
 }
-/** Les trois promesses tenables — reprises de la maquette, formulées sur ce que le service
- *  fait RÉELLEMENT (livré avant la période, résiliable à l'échéance, calé sur le plan). */
-const TRUST_ROW = '<div class="trust-row">'
-  + '<div class="trust"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 6h9v8H2zM11 9h4l3 3v2h-7z"/><circle cx="5.5" cy="16" r="1.6"/><circle cx="14.5" cy="16" r="1.6"/></svg><span>Livré avant<br>la période</span></div>'
-  + '<div class="trust"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M7 11l2 2 4-4.5"/></svg><span>Résiliable à<br>chaque échéance</span></div>'
-  + '<div class="trust"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4v4h-4M4 16v-4h4"/><path d="M16 8a6.5 6.5 0 0 0-11.5-2.5M4 12a6.5 6.5 0 0 0 11.5 2.5"/></svg><span>Calé sur<br>ton plan</span></div>'
-  + "</div>";
+/**
+ * LE PACKSHOT DE LA PROPOSITION (22c/3a) — un sachet plus grand, seul, sans la pile de texte
+ * du chip (qui vit à côté sur la carte repliée). Les quatre packshots du canevas pèsent
+ * 540-570 Ko chacun (mesuré sur les fichiers du paquet), très au-dessus des ~150 Ko qui
+ * justifieraient de les embarquer dans le précache — `sachetHTML` (SVG, quelques centaines
+ * d'octets) reste donc le rendu réel, jamais un repli provisoire.
+ */
+function heroSachetHTML(flavor) {
+  return sachetHTML(flavor, "grand", 128);
+}
+/** Intertitre de section, primitive `.zn-sec` du socle : un mot-clé mono, un filet, rien
+ *  de plus — jamais réécrite ici, seulement composée (22c : « Ce qu'il y a dans le sachet »,
+ *  « Cadence d'envoi », « Bon à savoir »). */
+function znSecHTML(titre, droite) {
+  return '<div class="zn-sec"><span>' + esc(titre) + "</span><i></i>" + (droite ? "<span>" + esc(droite) + "</span>" : "") + "</div>";
+}
+/**
+ * « CE QU'IL Y A DANS LE SACHET » — les quatre arguments à nu de 22c/3a, lus depuis
+ * `SACHET_ARGUMENTS` (shop-catalog.js, seul endroit qui les porte — R11.1). Liste À NU sur la
+ * primitive `.zn-list`/`.zn-row` du socle : plus de carte autour, c'est le relevé qui reçoit
+ * le relief de l'écran.
+ */
+function sachetArgumentsHTML() {
+  return '<ul class="zn-list">' + SACHET_ARGUMENTS.map((a) =>
+    '<li class="zn-row bq-arg-row"><span class="bq-arg-mot zn-mono">' + esc(a.mot) + '</span>'
+    + '<span class="bq-arg-phrase">' + esc(a.phrase) + "</span></li>").join("") + "</ul>";
+}
+/** « BON À SAVOIR » — les trois faits courts de `ATOUTS_GEL` (sachet.js), en pied de carte
+ *  (22c), sur la même primitive de liste que les arguments du haut. */
+function bonASavoirHTML() {
+  return znSecHTML("Bon à savoir") + '<ul class="zn-list">' + ATOUTS_GEL.map((a) =>
+    '<li class="zn-row bq-savoir-row"><b class="bq-savoir-lab zn-mono">' + esc(a.t) + '</b>'
+    + '<span class="bq-savoir-val">' + esc(a.d) + "</span></li>").join("") + "</ul>";
+}
+// Les « trois promesses » (livré avant la période / résiliable à l'échéance / calé sur le
+// plan) n'apparaissent plus dans la direction retenue du canevas (22c/3a ne les dessinent
+// plus — vérifié sur les deux écrans) : elles sont dites autrement, dans le pied de carte et
+// la mention `.soc-proof`. Le bandeau `.trust-row`/`.trust` de `zenna-tabs.css` n'a donc plus
+// d'appelant ici ; il n'a jamais eu d'autre consommateur (vérifié), une classe MORTE plutôt
+// qu'une fonction — rien à retirer côté partagé pour autant (périmètre de cette zone).
 const eur = (n) => n.toFixed(2).replace(".", ",") + " €";
 
-/** Le devis de la période : une ligne par séance, puis le total. C'est la pièce centrale de la
- *  maquette — elle montre D'OÙ vient le chiffre, séance par séance, au lieu d'annoncer un prix.
+/** Le devis de la période, ligne par ligne — le détail COMPLET, jamais résumé (c'est ce que
+ *  `<summary>Voir les N séances</summary>` déplie en dessous du relevé groupé, écran 22c).
  *  Aucune quantité n'est inventée : `estimatePeriodDetail` les tire de ce que chaque séance
  *  affiche déjà dans sa carte de ravitaillement (R11.1). */
 function periodLinesHTML(detail) {
@@ -88,6 +121,28 @@ function periodLinesHTML(detail) {
       + '<span class="pl-n">' + esc(x.name) + '</span><span class="pl-q">' + (eau ? "eau seule" : parts.join(" + ")) + "</span></div>";
   }).join("");
 }
+/**
+ * LE RELEVÉ GROUPÉ (22c/2a) — au plus quatre lignes, une par séance RÉPÉTÉE plutôt qu'une par
+ * occurrence (`groupPeriodSessions`, shop-order.js — grouper par nom exact, jamais inventer une
+ * catégorie). Même tableau que `periodLinesHTML`, un second AFFICHAGE seulement.
+ */
+function groupedPeriodLinesHTML(detail) {
+  if (!detail || !detail.sessions.length) return "";
+  // Format COMPACT (« 3 × Zenna gel glucide » plutôt que le poids en plus, réservé au détail
+  // complet) mais le NOM DU PRODUIT reste écrit en toutes lettres, ici comme dans le détail —
+  // smoke-shop §10 refuse un « gel » générique dans une ligne de devis (R11.1 : une seule
+  // identité produit, jamais un raccourci qui la tait).
+  return groupPeriodSessions(detail.sessions, 4).map((g) => {
+    const parts = [];
+    if (g.gelUnits) parts.push(g.gelUnits + " × " + esc(GEL_ZENNA.nom));
+    if (g.drinkUnits) parts.push((parts.length ? "+ " : "") + g.drinkUnits + " boisson" + (g.drinkUnits > 1 ? "s" : ""));
+    const eau = !parts.length;
+    const nom = g.name ? esc(g.name) : g.count + " autres séances";
+    const count = g.name && g.count > 1 ? '<span class="bq-count">× ' + g.count + "</span>" : "";
+    return '<div class="period-line' + (eau ? " water" : "") + '">'
+      + '<span class="pl-n">' + nom + count + '</span><span class="pl-q">' + (eau ? "eau seule" : parts.join("<br>")) + "</span></div>";
+  }).join("");
+}
 function periodTotalHTML(detail) {
   if (!detail) return "";
   const t = detail.totals, parts = [];
@@ -100,6 +155,30 @@ function periodTotalHTML(detail) {
     // il répète le total au centime près sous un autre nom — mesuré (« 6,30 € » / « ≈ 6,30 €
     // par séance couverte »). Un chiffre qui se répète se lit comme un second argument.
     + (n >= 2 ? '<div class="per-session">soit <b>≈ ' + eur(t.priceEUR / n) + " / séance couverte</b></div>" : "");
+}
+/**
+ * LE CORPS DU RELEVÉ — le relevé groupé (≤ 4 lignes), le total, puis le détail COMPLET replié
+ * dessous (« Voir les N séances, une par une », 22c). Fonction PARTAGÉE par la proposition et
+ * l'abonnement actif (R11.1) : les deux cartes montrent le même tableau `detail.sessions`,
+ * seul l'EN-TÊTE qui l'introduit change de mots selon le contexte (voir `releveHTML`).
+ */
+function releveBodyHTML(detail) {
+  const n = detail ? detail.sessions.length : 0;
+  if (!detail || !n) {
+    return '<div class="load-sub" style="padding:2px 0 0">Ce plan-ci n’a plus de séance à venir — le premier envoi s’ajustera à ton prochain plan ou à tes sorties libres.</div>';
+  }
+  return groupedPeriodLinesHTML(detail) + periodTotalHTML(detail)
+    + (n > 1
+        ? '<details class="bq-devis-detail"><summary><span>Voir les ' + n + " séances, une par une</span><span class=\"chev\" aria-hidden=\"true\">⌄</span></summary>"
+          + periodLinesHTML(detail) + "</details>"
+        : "");
+}
+/** Le panneau EN CREUX qui porte le relevé (22c : « le relevé […] devient l'unique objet en
+ *  relief » de l'écran — posé un cran plus sombre que la carte qui le contient, la teinte du
+ *  socle pour un bloc de lecture secondaire). `headHTML` est l'en-tête déjà composé : la
+ *  proposition et l'abonnement actif n'annoncent pas la même chose au-dessus du même tableau. */
+function releveHTML(detail, headHTML) {
+  return '<div class="zn-creux bq-releve">' + headHTML + releveBodyHTML(detail) + "</div>";
 }
 
 // Estimation énergétique du jour (décision utilisateur 28/07/2026) — dépense, jamais cible.
@@ -204,6 +283,20 @@ let shopConfirmCancel = false; // bandeau « Résilier à l’échéance ? » �
 // et un bouton la rouvre (consulter reste gratuit).
 let shopExpanded = false;
 
+/**
+ * LA LÉGENDE DE SAVEUR (3b) — la maquette porte, sous la rangée de sachets, un paragraphe de
+ * quatre phrases par goût (« Citron — goût naturel et léger… »). Ce texte n'existe nulle part
+ * dans le moteur : l'écrire pour les quatre saveurs serait fabriquer du contenu que
+ * `GEL_ZENNA` ne porte pas, exactement ce que ce dépôt interdit (jamais un chiffre — ou ici
+ * une phrase — de la maquette recopié en dur sans source). Ce qui EXISTE déjà et est
+ * VÉRIFIABLE, c'est l'arôme (`s.arome`, « Arôme naturel » / « Sans arôme ») : la légende s'y
+ * limite. « peu d'importance » n'a pas de sachet et n'a donc pas de légende non plus.
+ */
+function flavorCaptionHTML(flavor) {
+  const s = saveurGel(flavor);
+  if (!s) return "";
+  return '<div class="bq-flavor-caption"><b>' + esc(s.libelle) + "</b> — " + esc(s.arome) + "</div>";
+}
 /** Un groupe de choix mutuellement exclusifs — libellé RELIÉ au groupe, sélection ANNONCÉE. */
 function choixHTML(libelle, attr, options, choisi, vignette) {
   const id = "choix-" + attr;
@@ -256,8 +349,19 @@ function shopSubscriptionCardHTML(plan, today) {
   const echec = sub && sub.paymentFailure && sub.paymentFailure.at ? sub.paymentFailure : null;
   if (echec && abonneActif && !shopEditing) {
     const cad = CADENCES[sub.cadence] || CADENCES.hebdo;
+    // « Avant / après » (19e) : le panneau ne s'affiche que si une date-limite EXISTE
+    // (`dueBy`) — sans elle, dessiner un seuil serait inventer une échéance que le prestataire
+    // n'a pas fournie (le contrat de `paymentFailure` la déclare optionnelle).
+    // `fmtDay` rend déjà le format compact « JJ/MM » (state.js) : pas de préfixe de jour à
+    // retirer, contrairement à ce que ma première écriture supposait.
+    const avantApres = echec.dueBy ? '<div class="zn-creux bq-pay-panel">'
+      + '<div class="bq-pay-row"><span class="bq-pay-when soon zn-mono">Avant le ' + esc(fmtDay(echec.dueBy)) + '</span>'
+      + '<span class="bq-pay-txt">Tu mets le paiement à jour' + (echec.shipmentAt ? ", l’envoi part le " + esc(fmtDay(echec.shipmentAt)) + " comme prévu." : ".") + "</span></div>"
+      + '<div class="bq-pay-row"><span class="bq-pay-when late zn-mono">Après</span>'
+      + '<span class="bq-pay-txt">L’envoi glisse à la période suivante. Tu n’es pas prélevé entre-temps.</span></div>'
+      + "</div>" : "";
     return '<div class="shop-card" id="shopCard" data-payment="failed">'
-      + '<div class="pay-head"><span class="pay-dot" aria-hidden="true"></span>'
+      + '<div class="pay-head"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--zn-bad)"><circle cx="10" cy="10" r="7.5"></circle><path d="M7.5 12.5l5-5M7.5 7.5l5 5"></path></svg>'
       + '<span class="pay-lab">Prélèvement refusé</span></div>'
       + '<div class="pay-title">' + (echec.shipmentAt ? "Envoi du " + esc(fmtDay(echec.shipmentAt)) : "Prochain envoi")
       + "<br>suspendu</div>"
@@ -269,8 +373,24 @@ function shopSubscriptionCardHTML(plan, today) {
       + "l’envoi part dès que le paiement aboutit"
       + (echec.dueBy ? ". Passé le " + esc(fmtDay(echec.dueBy)) + ", il saute et reprend à la période suivante." : ".")
       + "</div>"
-      + '<div class="btn-row" style="margin-top:14px"><button class="btn gold" id="shopFixPayment" type="button">Mettre à jour le paiement</button></div>'
-      + '<div class="shop-fine">Aucune relance automatique : le prélèvement n’est retenté qu’après ta mise à jour.</div>'
+      + avantApres
+      + '<button type="button" class="zn-btn" id="shopFixPayment" style="margin-top:14px">Mettre à jour le paiement</button>'
+      // 19e — « l'accès au plan n'est pas pris en otage » : le rappel explicite EST la garde
+      // contre l'inquiétude la plus probable d'un paiement refusé (« est-ce que je perds mon
+      // plan ? »), donc affirmé ici plutôt que laissé implicite.
+      + '<div class="bq-pay-note">Ton plan d’entraînement n’est pas concerné : il reste accessible, l’abonnement ne porte que sur la nutrition. Aucune relance automatique — le prélèvement n’est retenté qu’après ta mise à jour.</div>'
+      // « Modifier » / « Résilier » restent atteignables MÊME en paiement refusé (O-17,
+      // informer plutôt que bloquer) : mêmes ids que la carte active, la même liaison
+      // (`bindShopSubscription`) les active déjà sans code nouveau — `shopEditing`/
+      // `shopConfirmCancel` font sortir de CETTE branche au prochain rendu, exactement le
+      // comportement voulu (le paiement en échec n'empêche ni l'un ni l'autre).
+      + '<div class="zn-list" style="margin-top:16px">'
+      + znSecHTML("Ton abonnement")
+      + '<button type="button" class="zn-row bq-row-btn" id="shopEdit"><div style="flex:1;min-width:0;text-align:left"><div style="font-size:var(--fs-sm);font-weight:600;color:var(--zn-text)">Modifier le contenu de l’envoi</div>'
+      + '<div class="zn-mono" style="font-size:var(--fs-micro);color:var(--zn-faint2);margin-top:3px">' + esc(cad.label) + " · " + esc(sub.flavor) + " · " + esc(sub.format) + '</div></div><span class="zn-chev">›</span></button>'
+      + '<button type="button" class="zn-row bq-row-btn" id="shopAskCancel"><div style="flex:1;min-width:0;text-align:left"><div style="font-size:var(--fs-sm);font-weight:600;color:var(--zn-text)">Suspendre ou résilier</div>'
+      + '<div class="zn-mono" style="font-size:var(--fs-micro);color:var(--zn-faint2);margin-top:3px">Sans frais, à la prochaine échéance</div></div><span class="zn-chev">›</span></button>'
+      + "</div>"
       + "</div>";
   }
 
@@ -279,28 +399,28 @@ function shopSubscriptionCardHTML(plan, today) {
     const cad = CADENCES[sub.cadence] || CADENCES.hebdo;
     const echeance = nextEcheance(sub.startedAt, cad.days, today);
     const detail = estimatePeriodDetail(plan, wkg, cad.days, today, S.sport);
+    const enteteReleve = '<div class="period-lab"><span>Prochain envoi</span><span class="bq-releve-range" style="color:var(--zn-good);text-transform:none;font-weight:600">livré avant le début de la période</span></div>';
     return '<div class="shop-card" id="shopCard">'
       + '<div class="sub-active-head">'
-      + '<div class="sub-badge" aria-hidden="true">🛒</div>'
-      + '<div style="flex:1;min-width:0"><div class="sub-state">Abonnement actif</div>'
-      + '<div class="sub-params">' + esc(cad.label) + " · " + esc(sub.flavor) + " · " + esc(sub.format) + "</div></div>"
-      + productTileHTML(sub.flavor)
+      + productTileHTML(sub.flavor, 46)
+      + '<div style="flex:1;min-width:0"><div class="sub-state"><span class="sub-active-dot" aria-hidden="true"></span>Abonnement actif</div>'
+      + '<div class="sub-params">' + esc(sub.flavor) + " · " + esc(sub.format) + "</div>"
+      + '<div class="sub-since">' + esc(cad.label) + " · depuis le " + esc(fmtDay(sub.startedAt)) + "</div></div>"
       + "</div>"
-      + '<div class="period-lab">Prochain envoi — livré avant le début de la période</div>'
-      + periodLinesHTML(detail) + periodTotalHTML(detail)
-      + kvHTML("Prochaine échéance", esc(fmtDay(echeance)), "cy")
+      + releveHTML(detail, enteteReleve)
+      + kvHTML("Prochaine échéance", esc(fmtDay(echeance)))
       + (view.status === "cancel_pending"
           ? '<div class="cancel-note">⚠ Résiliation prévue le ' + esc(fmtDay(view.until)) + " — le prochain envoi a lieu, rien après.</div>"
           : "")
       + (shopConfirmCancel
           ? '<div class="confirm-strip"><span>Résilier à l’échéance ?</span><div style="display:flex;gap:7px">'
-            + '<button class="btn" id="shopCancel" type="button">Confirmer</button>'
-            + '<button class="btn gold" id="shopKeep" type="button">Garder</button></div></div>'
-          : '<div class="btn-row" style="margin-top:13px">'
-            + '<button class="btn" id="shopEdit" type="button">Modifier</button>'
+            + '<button class="zn-btn" id="shopCancel" type="button">Confirmer</button>'
+            + '<button class="zn-btn-2" id="shopKeep" type="button">Garder</button></div></div>'
+          : '<div class="btn-row">'
+            + '<button class="zn-btn-2" id="shopEdit" type="button">Modifier</button>'
             + (view.status === "cancel_pending"
-                ? '<button class="btn gold" id="shopUncancel" type="button">Continuer quand même</button>'
-                : '<button class="btn" id="shopAskCancel" type="button">Résilier</button>')
+                ? '<button class="zn-btn" id="shopUncancel" type="button">Continuer quand même</button>'
+                : '<button class="zn-btn-2" id="shopAskCancel" type="button">Résilier</button>')
             + "</div>")
       // Cette carte-ci affiche AUSSI un prix : elle porte donc la même réserve. Ne la mettre
       // que sur la proposition laisserait le chiffre se durcir une fois l'abonnement pris —
@@ -319,6 +439,7 @@ function shopSubscriptionCardHTML(plan, today) {
   const formatSel = (sub && sub.format) || FORMAT_OPTIONS[0];
   const detail = estimatePeriodDetail(plan, wkg, CADENCES[cadenceSel].days, today, S.sport);
   const echeance = nextEcheance(sub && sub.startedAt ? sub.startedAt : today, CADENCES[cadenceSel].days, today);
+  const debutPeriode = sub && sub.startedAt ? sub.startedAt : today;
   const cles = Object.keys(CADENCES);
   const iSel = Math.max(0, cles.indexOf(cadenceSel));
   const titre = abonneActif ? "Modifier l’abonnement" : planOver ? "Rester accompagné(e)" : "S’abonner au ravitaillement";
@@ -334,11 +455,6 @@ function shopSubscriptionCardHTML(plan, today) {
   const due = shopPromptDue(sub, S.answers.plan_start, today) || shopEndOfPlanPromptDue(sub, endDate, today);
   const deplie = abonneActif || shopEditing || shopExpanded || due;
 
-  // Les arguments du produit, tels que les maquettes les portent — vérifiables sur le sachet
-  // (une composition, un poids, une origine) et jamais un effet promis à l'athlète.
-  const atouts = '<div class="gel-facts">' + ATOUTS_GEL
-    .map((a) => '<div class="gel-fact"><b>' + esc(a.t) + "</b><span>" + esc(a.d) + "</span></div>").join("")
-    + "</div>";
   const enTete = '<div class="shop-head-row"><div style="flex:1;min-width:0">'
     + '<div class="shop-tag">Ravitaillement · abonnement</div>'
     + '<div class="shop-title">' + titre + "</div>"
@@ -353,72 +469,93 @@ function shopSubscriptionCardHTML(plan, today) {
       + "</div>";
   }
 
-  return '<div class="shop-card" id="shopCard">'
-    + enTete
-    + atouts
-    + TRUST_ROW
-    // Le sélecteur de cadence est un SEGMENTÉ, pas une liste déroulante : deux choix
-    // mutuellement exclusifs qu'on compare se montrent côte à côte. La pastille glisse d'un
-    // côté à l'autre — c'est ce mouvement qui dit « tu changes de régime », pas un menu.
-    // `role="tablist"` PROMETTAIT DES ONGLETS QUI N'EXISTENT PAS. Un tablist annonce à son
-    // lecteur qu'il pilote des `tabpanel` et qu'il se parcourt aux FLÈCHES ; mesuré, la carte
-    // n'en contient aucun (0 `role="tabpanel"`) et rien n'écoute les flèches. Deux choix
-    // mutuellement exclusifs qui ne révèlent pas de panneau, c'est un groupe de BOUTONS RADIO —
-    // et ce rôle-là porte l'information qui manquait vraiment : lequel est choisi (`aria-checked`).
-    + '<div class="seg" id="cadSeg" role="radiogroup" aria-label="Cadence d’envoi">'
-    + '<div class="seg-pill" style="left:calc(' + (iSel * 50) + '% + 3px)"></div>'
-    // LE SOUS-TITRE DISAIT UN JOUR FIXE, ET C'ÉTAIT FAUX. Il annonçait « envoi le samedi » et
-    // « envoi le 1er » — deux promesses qu'aucun calcul ne tient : `nextEcheance` compte des
-    // MULTIPLES DE LA CADENCE depuis `startedAt`, donc l'envoi tombe le jour où l'on s'est
-    // abonné. Mesuré sur les sept jours : abonné un lundi → échéance un lundi, un mardi → un
-    // mardi… « samedi » n'est vrai que pour qui s'abonne un samedi, soit 1 cas sur 7. Et le
-    // mensuel vaut 30 JOURS FIXES, pas un mois : abonné le 01/08, les échéances tombent les
-    // 31, 30, 30 — « le 1er » n'arrive jamais. Le sous-titre dit désormais ce que le code fait,
-    // ce qui a le mérite d'expliquer aussi pourquoi « chaque mois » n'est pas un quantième.
+  // ── LE HÉROS (22c/3a) — le packshot (repli SVG, voir `heroSachetHTML`), un eyebrow, un
+  // titre display dont le dernier segment porte l'accent, un paragraphe. ------------------
+  // Le titre marketing de la maquette ne vaut QUE pour la proposition standard : la fin de
+  // plan et l'édition d'un abonnement en cours restent CONTEXTUELLES (smoke-shop §2 vérifie
+  // « touche à sa fin » / « Rester accompagné » — un slogan fixe les aurait fait disparaître).
+  // `<br>` ne produit AUCUN espace en `textContent` (mesuré : smoke-shop lit « Rester
+  // accompagné » avec un espace littéral) — les deux mots contextuels restent sur UNE ligne.
+  const heroTitreHTML = (planOver && !abonneActif) ? "Rester <em>accompagné(e).</em>"
+    : abonneActif ? "Modifier <em>l’abonnement.</em>"
+    : "Des gels pensés<br>pour <em>ton effort.</em>";
+  const heroLeadTxt = (planOver && !abonneActif)
+    ? "Ta préparation touche à sa fin — si tu continues à t’entraîner, tu peux rester accompagné(e), à la cadence de ton choix."
+    : abonneActif ? "Modifie goût, format ou cadence — l’abonnement continue, rien n’est relancé ni perdu."
+    : "Des glucides simples et efficaces pour t’accompagner à chaque étape de ton entraînement et de ta progression.";
+  const hero = '<div class="bq-hero">' + heroSachetHTML(flavorSel)
+    + '<div class="bq-hero-tag zn-mono">Nutrition · abonnement</div>'
+    + '<div class="bq-hero-title zn-display">' + heroTitreHTML + "</div>"
+    + '<div class="bq-hero-lead">' + heroLeadTxt + "</div>"
+    + "</div>";
+
+  // ── LA CADENCE ET LE RELEVÉ (22c) — chaque pilule annonce déjà son compte de séances
+  // couvertes ; le relevé, groupé, est LE panneau en creux de l'écran. --------------------
+  const compteParCadence = {};
+  cles.forEach((k) => { const d = estimatePeriodDetail(plan, wkg, CADENCES[k].days, today, S.sport); compteParCadence[k] = d ? d.sessions.length : 0; });
+  const seg = '<div class="seg" id="cadSeg" role="radiogroup" aria-label="Cadence d’envoi">'
     + cles.map((k, i) => '<button type="button" role="radio" class="seg-opt' + (i === iSel ? " active" : "") + '" data-cadence="' + k + '" aria-checked="' + (i === iSel) + '">'
-        + '<span class="so-l">' + esc(CADENCES[k].label) + '</span><span class="so-s">tous les ' + CADENCES[k].days + " jours</span></button>").join("")
-    + "</div>"
-    + '<div class="period-lab">D’après ce que tes séances affichent déjà, ta prochaine période :</div>'
-    + (detail && detail.sessions.length
-        ? periodLinesHTML(detail) + periodTotalHTML(detail)
-        : '<div class="load-sub">Ce plan-ci n’a plus de séance à venir — le premier envoi s’ajustera à ton prochain plan ou à tes sorties libres.</div>')
+        + '<span class="so-l">' + esc(CADENCES[k].label) + '</span><span class="so-s">tous les ' + CADENCES[k].days + " jours</span>"
+        // Le compte de séances par cadence — présent dans le canevas (« 3 séances couvertes »
+        // / « 13 séances couvertes »), lu dans le TEXTE et non dans `.so-s` (que smoke-shop §8
+        // exige au format « N jours » — R11.1 : deux faits, deux porteurs).
+        + '<span class="zn-mono" style="display:block;font-size:var(--fs-micro);margin-top:2px;opacity:.85">' + compteParCadence[k] + " séance" + (compteParCadence[k] === 1 ? "" : "s") + " couverte" + (compteParCadence[k] === 1 ? "" : "s") + "</span>"
+        + "</button>").join("")
+    + "</div>";
+  const enteteReleveProp = '<div class="period-lab"><span>Relevé · ' + esc(CADENCES[cadenceSel].label.replace(/^chaque /i, "1 ")) + "</span>"
+    + '<span class="bq-releve-range">' + esc(fmtDay(today)) + " → " + esc(fmtDay(new Date(Date.parse(today) + (CADENCES[cadenceSel].days - 1) * 86400000).toISOString().slice(0, 10))) + "</span></div>";
+  const cadencePanel = '<div class="bq-cadence-panel">' + seg + releveHTML(detail, enteteReleveProp)
+    + '<button type="button" class="bq-cta-scroll" id="shopScrollFlavor">Choisir ma saveur <span aria-hidden="true">→</span></button>'
+    + '<div class="shop-fine">Le service de commande n’est pas encore actif : aucun paiement, aucune expédition. Prix estimé sur une référence générique.</div>'
+    + "</div>";
+
+  // ── LES RÉGLAGES (3b, réunis dans LA MÊME carte — smoke-shop §7 exige trois groupes de
+  // choix exclusifs réunis, jamais un second écran). -------------------------------------
+  const blocSaveur = '<div class="bq-block" id="bqFlavorBlock">'
+    + '<div class="bq-block-head"><span class="bq-block-num zn-mono">2</span>'
     // GOÛT ET FORMAT : le choix se voyait, mais ne s'ENTENDAIT pas. Mesuré : 8 boutons, 0
     // `aria-pressed`, 0 `role="radio"` — la sélection n'était portée que par la classe `.sel`,
-    // c'est-à-dire par de la couleur. Un lecteur d'écran annonçait huit boutons identiques sans
-    // dire lequel est actif, et le libellé du groupe (« Goût préféré ») n'était relié à rien.
-    // `radiogroup` + `aria-checked` + `aria-labelledby` disent les trois choses qui manquaient :
-    // que les choix s'excluent, lequel est pris, et de quoi le groupe parle.
-    + choixHTML("Goût préféré", "flavor", FLAVOR_OPTIONS, flavorSel, (f) => sachetHTML(f, "vignette", 24))
+    // c'est-à-dire par de la couleur. `radiogroup` + `aria-checked` + `aria-labelledby` disent
+    // les trois choses qui manquaient : que les choix s'excluent, lequel est pris, de quoi le
+    // groupe parle.
+    + '<span class="choice-lab" style="margin:0">Saveur</span><span class="bq-block-hint zn-mono">4 au lancement</span></div>'
+    + choixHTML("Goût préféré", "flavor", FLAVOR_OPTIONS, flavorSel, (f) => sachetHTML(f, "vignette", 52))
+    + flavorCaptionHTML(flavorSel)
+    + "</div>";
+  const blocFormat = '<div class="bq-block">'
+    + '<div class="bq-block-head"><span class="bq-block-num zn-mono">3</span><span class="choice-lab" style="margin:0">Format et départ</span></div>'
     + choixHTML("Format préféré", "format", FORMAT_OPTIONS, formatSel)
-    // LA RÉSERVE QUI COMPTE PASSE AVANT LE BOUTON, PAS APRÈS.
-    //
-    // Elle vivait sous le bouton, diluée dans 313 caractères de mention légale — le bloc le
-    // plus DENSE de toute l'app (3,63 car./px de hauteur rendue ; le pire relevé de l'audit
-    // par onglet était 3,00). Et elle était dite DEUX FOIS, dans deux paragraphes voisins de
-    // style identique (9 px, même gris, même interligne) : « rien n'est envoyé nulle part » /
-    // « aucune expédition », « reste sur cet appareil » / « intention enregistrée sur cet
-    // appareil ». Un fait répété dans deux blocs indistinguables se lit moins bien qu'une fois
-    // au bon endroit.
-    //
-    // Ce fait-là — le service n'existe pas encore — est celui qui décide. Il se lit donc AVANT
-    // qu'on s'engage, pas en petits caractères après. C'est la même règle que la carte applique
-    // déjà à la preuve sociale : on ne remplace pas un chiffre inventé par une promesse
-    // invérifiable, et une promesse qu'on ne peut pas tenir ne se met pas sous le bouton.
-    // Le créneau `.soc-proof` de la maquette est CONSERVÉ (il porte la décision « ce qui est
-    // vrai à la place d'une preuve fabriquée ») ; il change seulement de place.
+    + '<ul class="zn-list" style="margin-top:6px">'
+    + '<li class="zn-row">' + kvRowInline("1re période", esc(fmtDay(debutPeriode))) + "</li>"
+    + '<li class="zn-row">' + kvRowInline("Prochaine échéance", esc(fmtDay(echeance))) + "</li>"
+    + "</ul>"
+    + "</div>";
+
+  return '<div class="shop-card" id="shopCard">'
+    + hero
+    + sachetArgumentsHTML()
+    + znSecHTML("Cadence d’envoi")
+    + cadencePanel
+    + blocSaveur
+    + blocFormat
+    // LA RÉSERVE QUI COMPTE PASSE AVANT LE BOUTON, PAS APRÈS (héritée de V1 : un fait qui
+    // décide se lit avant qu'on s'engage, jamais en petits caractères après).
     + '<div class="soc-proof">Le service de commande n’est pas encore actif : <b>aucun paiement, aucune expédition</b>. Tu enregistres une intention, sur cet appareil.</div>'
-    + '<button type="button" class="shop-cta" id="shopOk">' + cta + "</button>"
-    + (abonneActif ? '<div class="btn-row" style="margin-top:9px"><button class="btn" id="shopEditCancel" type="button">Annuler</button></div>' : "")
+    + '<button type="button" id="shopOk">' + cta + "</button>"
+    + (abonneActif ? '<div class="btn-row" style="margin-top:9px"><button class="zn-btn-2" id="shopEditCancel" type="button">Annuler</button></div>' : "")
     // (La maquette affiche ici « 127 INTENTIONS DÉJÀ ENREGISTRÉES » avec trois avatars. Ce
     // chiffre n'existe pas : l'abonnement vit dans le `localStorage` de CHAQUE appareil, aucun
     // serveur n'en compte un seul. Fabriquer une preuve sociale est la ligne qu'on ne franchit
     // pas sur un produit dont le contre-positionnement est « chaque décision est traçable ».)
-    //
-    // Ce qui reste ici est la SEULE réserve qui n'a pas besoin d'être lue avant de cliquer :
-    // le prix est un ordre de grandeur, et l'engagement est réversible. Le taire ferait lire
-    // les « 68,10 € » comme un tarif ferme.
     + '<div class="shop-fine">Prix estimé sur une référence générique (gel de 30 g, boisson de 500 ml), remplacé par le vrai tarif dès qu’un fournisseur existe. Résiliable à chaque échéance, jamais engagé au-delà.</div>'
+    + bonASavoirHTML()
     + "</div>";
+}
+/** Une ligne intitulé/valeur au format `.zn-row` (période / échéance) — plus dense que
+ *  `.kv` (générique, partagée par d'autres sous-onglets d'Outils), et sans en dépendre. */
+function kvRowInline(k, v) {
+  return '<span style="font-size:var(--fs-sm);color:var(--zn-text)">' + esc(k) + '</span>'
+    + '<span class="zn-mono" style="font-size:var(--fs-sm);font-weight:600;color:var(--zn-text);margin-left:auto">' + v + "</span>";
 }
 
 /**
@@ -481,6 +618,15 @@ function bindShopSubscription(plan, today, rerender) {
       rerender();
     };
   });
+  // « Choisir ma saveur → » (22c) fait défiler jusqu'au bloc « 2 · Saveur » — il ne soumet
+  // rien : les trois groupes de choix restent réunis dans LA carte (smoke-shop §7), le seul
+  // point de conversion reste `#shopOk` en bas.
+  const scrollFlavor = $("shopScrollFlavor");
+  if (scrollFlavor) scrollFlavor.onclick = () => {
+    const b = $("bqFlavorBlock");
+    const reduit = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (b) b.scrollIntoView({ behavior: reduit ? "auto" : "smooth", block: "start" });
+  };
   // Goût et format : un choix se pose et se voit tout de suite, il ne se valide pas deux fois.
   // La capsule du flacon change de couleur avec le goût — c'est le seul retour immédiat qu'on
   // puisse donner sur un produit qu'on ne peut pas encore montrer.
