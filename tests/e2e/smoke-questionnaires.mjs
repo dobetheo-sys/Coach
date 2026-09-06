@@ -209,6 +209,15 @@ for (const sport of SPORTS) {
 // La garde tient les TROIS moitiés, et la troisième est celle qu'on oublierait : le message ne
 // doit jamais réclamer une réponse FACULTATIVE. C'est elle qui vérifie que « ce qui manque » est
 // dérivé du `valid()` de l'étape et non d'une liste de clés recopiée à côté.
+//
+// U19b (refonte visuelle, 05/09/2026, 5a/5b du canevas « Noir apaisé ») — LA FORME DE LA
+// TROISIÈME MOITIÉ CHANGE, LA PROPRIÉTÉ RESTE. Le message ne DISPARAÎT plus une fois complet :
+// il CONFIRME (« Tout est répondu » / « N requises sur N · M réponses qui affinent en
+// attente »), pour rejoindre l'état positif que 5a/5b affichent déjà sous « Continuer ». Ce qui
+// ne doit jamais changer, contre-prouvé ci-dessous en rejouant l'ANCIENNE assertion
+// (`!complet.visible`) contre le rendu NEUF — elle rougit, ce qui confirme qu'elle mesurait la
+// FORME (visible/caché) et non la PROPRIÉTÉ qu'elle gardait vraiment (jamais réclamer
+// l'optionnel) : c'est cette propriété, pas la forme, qui est réaffirmée plus bas.
 {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "fr-FR" });
   const page = await ctx.newPage();
@@ -255,8 +264,13 @@ for (const sport of SPORTS) {
   });
   await page.waitForTimeout(200);
   const complet = await lire();
-  ok(!complet.bloque && !complet.visible,
-    "U19 — tout le requis donné : le message disparaît et « Continuer » s'active");
+  ok(!complet.bloque, "U19 — tout le requis donné : « Continuer » s'active");
+  ok(complet.visible,
+    "U19b — une fois tout répondu, le message CONFIRME au lieu de disparaître (« " + complet.txt + " »)");
+  ok(!/manque/i.test(complet.txt),
+    "U19b — et il ne dit plus « il manque » : il confirme, jamais ne réclame (« " + complet.txt + " »)");
+  ok(!/si connue|optionnel/i.test(complet.txt),
+    "U19b — une question FACULTATIVE n'est jamais nommée, même dans l'état complet");
   await ctx.close();
 }
 
