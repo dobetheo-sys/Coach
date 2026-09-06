@@ -247,7 +247,9 @@ function verdictStampHTML(res) {
   h += '<div class="zn-ck-vtitre">' + c.titre + "</div>";
   // Le sous-titre est le `det` du moteur (la séance décrite en une ligne — 15c : « Chaussures,
   // 75 minutes tranquilles, allure libre ») ; à défaut le nom et les minutes.
-  const det = seances.length && seances[0].det ? seances[0].det : nom + (min ? ", " + min + " minutes" : "") + ".";
+  // Le `det` porte aussi la note du moteur après « — 💡 » (mesuré : 300 caractères sur un jour
+  // rouge) ; ici on ne garde que la CONSIGNE, la note vit dans le détail de la séance (18a).
+  const det = seances.length && seances[0].det ? String(seances[0].det).split(" — 💡")[0] : nom + (min ? ", " + min + " minutes" : "") + ".";
   h += '<div class="zn-ck-vsub">' + esc(det) + "</div>";
   h += '<div class="zn-ck-construit">';
   h += '<div class="zn-ck-construit-eyebrow">Ce que la journée construit</div>';
