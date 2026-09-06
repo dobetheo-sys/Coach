@@ -21,3 +21,332 @@
      · préfixer `body.theme-zenna #screen …` ; ajouter ici plutôt qu'éditer les deux feuilles
        du socle.
    ============================================================ */
+
+/* ============================================================
+   18a — AUJOURD'HUI : un relief, trois groupes à nu, un creux
+   ============================================================
+   Tout vit sous `.zn-today` (posé par `tab-today.js` autour de l'onglet, portillon compris) :
+   les classes nouvelles de `momentHTML` (`.zn-bandeau`) sont partagées avec 🗓 Plan et
+   📅 Semaine, ces règles ne les atteignent donc jamais là-bas.
+   Gouttières du canevas : 18 px pour ce qui est à nu (`.wrap` en donne 14, on ajoute 4),
+   14 px pour un bloc qui a un bord propre (le relief, le creux). */
+body.theme-zenna #screen .zn-today { padding-bottom: 8px; }
+body.theme-zenna #screen .zn-today .zn-sec { padding: 0 4px 12px; }
+body.theme-zenna #screen .zn-today .zn-sec-detail { padding-top: 2px; }
+body.theme-zenna #screen .zn-today .zn-sec-etat,
+body.theme-zenna #screen .zn-today .zn-sec-intendance,
+body.theme-zenna #screen .zn-today .zn-sec-prepa { padding-top: 24px; }
+body.theme-zenna #screen .zn-today .zn-sec-intendance { padding-bottom: 6px; }
+
+/* ---- LE HÉROS : orange plat, rayon --r-card, l'ombre du relief (18a) ----
+   Le socle pose un dégradé, un orbe, un skew et 30 px de bas : le canevas est PLAT, droit,
+   et s'arrête à 20 px. Le `!important` répond à celui du socle sur `background`. */
+body.theme-zenna #screen .zn-today .zn-hero {
+  background: var(--zn-orange) !important;
+  padding: 18px 20px 20px; margin: 6px 0 14px;
+}
+body.theme-zenna #screen .zn-today .zn-hero-top { align-items: baseline; flex-wrap: nowrap; }
+/* L'eyebrow de date : mono, capitales, encre sombre — ce que smoke-dates lit en premier. */
+body.theme-zenna #screen .zn-today .zn-hero .eyebrow {
+  font-size: var(--fs-micro); letter-spacing: .14em; text-transform: uppercase;
+  color: rgba(10, 10, 10, .78); font-weight: 700; line-height: 1.3;
+}
+/* La discipline : un TEXTE à droite de l'eyebrow (« Course · Z2 »), pas une pilule — et
+   jamais une tuile (V6, smoke-zenna §1bis). */
+body.theme-zenna #screen .zn-today .zn-disc-chip {
+  background: transparent; padding: 0; margin: 0; border-radius: 0; flex: 0 0 auto; max-width: 55%;
+}
+body.theme-zenna #screen .zn-today .zn-disc-chip span {
+  font-size: var(--fs-micro); letter-spacing: .06em; text-transform: uppercase; font-weight: 400;
+  color: rgba(10, 10, 10, .78); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;
+}
+body.theme-zenna #screen .zn-today .zn-hero-title {
+  font-size: var(--fs-hero); line-height: 1.04; letter-spacing: -.01em; margin-top: 12px;
+  transform: none; overflow-wrap: anywhere;
+}
+body.theme-zenna #screen .zn-today .zn-hero-metric { margin-top: 12px; gap: 7px; }
+body.theme-zenna #screen .zn-today .zn-hero-num { font-size: var(--fs-big); transform: none; }
+body.theme-zenna #screen .zn-today .zn-hero-unit { font-size: var(--fs-hand); color: rgba(20, 20, 15, .82); }
+body.theme-zenna #screen .zn-today .zn-hero-sub {
+  font-size: var(--fs-xs); color: rgba(20, 20, 15, .84); margin-top: 6px; line-height: 1.5;
+}
+/* Le verdict du point du matin : une phrase sous un filet, dans l'encre du relief. */
+body.theme-zenna #screen .zn-today .zn-hero-verdict {
+  position: relative; z-index: 2;
+  margin-top: 14px; padding-top: 13px; border-top: 1px solid rgba(20, 20, 15, .2);
+  font-size: var(--fs-sm); line-height: 1.5; color: rgba(20, 20, 15, .9); font-weight: 500;
+}
+/* 19a — le jour de repos : même relief, le titre dit « Repos », la phrase U8 en corps. */
+body.theme-zenna #screen .zn-today .zn-hero-rest { font-size: var(--fs-md); margin-top: 12px; }
+body.theme-zenna #screen .zn-today .zn-hero-next {
+  position: relative; z-index: 2;
+  margin-top: 14px; padding-top: 13px; border-top: 1px solid rgba(20, 20, 15, .2);
+}
+body.theme-zenna #screen .zn-today .zn-hero-next-lab {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .12em; text-transform: uppercase;
+  font-weight: 700; color: rgba(10, 10, 10, .78);
+}
+body.theme-zenna #screen .zn-today .zn-hero-next-val {
+  margin-top: 5px; font-size: var(--fs-sm); font-weight: 600; line-height: 1.45; color: rgba(20, 20, 15, .9);
+}
+
+/* ---- LE GESTE : le bouton de validation sous le relief, la série dessous (18a) ---- */
+body.theme-zenna #screen .zn-today .zn-geste { margin: 0 4px 22px; }
+body.theme-zenna #screen .zn-today .zn-geste .zn-btn,
+body.theme-zenna #screen .zn-today .zn-geste .zn-btn-2 { width: 100%; gap: 9px; }
+body.theme-zenna #screen .zn-today .zn-geste svg { flex: 0 0 auto; }
+body.theme-zenna #screen .zn-today .zn-geste .zn-btn--done { cursor: default; }
+body.theme-zenna #screen .zn-today .zn-serie {
+  display: flex; align-items: center; justify-content: center; gap: 7px; margin-top: 11px;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .05em; color: var(--zn-muted);
+}
+body.theme-zenna #screen .zn-today .zn-serie b { color: var(--zn-text); font-weight: 700; }
+
+/* ---- LE DÉTAIL DE LA SÉANCE, À NU : total · parts, le profil en creux, le rail (18a / 8a) ---- */
+body.theme-zenna #screen .zn-today .zn-detail { padding: 0 4px; margin-bottom: 4px; }
+body.theme-zenna #screen .zn-today .zn-detail + .zn-sec { padding-top: 24px; }
+body.theme-zenna #screen .zn-today .zn-detail-nom {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-lg);
+  text-transform: uppercase; letter-spacing: .01em; color: var(--zn-text); margin-bottom: 12px; line-height: 1.2;
+}
+body.theme-zenna #screen .zn-today .zn-det-head { display: flex; align-items: flex-end; gap: 16px; }
+body.theme-zenna #screen .zn-today .zn-det-total {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-num); line-height: 1;
+  color: var(--zn-text); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+body.theme-zenna #screen .zn-today .zn-det-total-u { font-size: var(--fs-hand); }
+body.theme-zenna #screen .zn-today .zn-det-parts { display: flex; gap: 14px; padding-bottom: 3px; }
+body.theme-zenna #screen .zn-today .zn-det-part-v {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-lg); line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+body.theme-zenna #screen .zn-today .zn-det-part.facile .zn-det-part-v { color: var(--zn-easy); }
+body.theme-zenna #screen .zn-today .zn-det-part.mod .zn-det-part-v { color: var(--zn-warn); }
+/* Un chiffre rouge est un TEXTE : `--zn-bad` (AA), jamais `--zn-hard` (réservé aux barres). */
+body.theme-zenna #screen .zn-today .zn-det-part.dur .zn-det-part-v { color: var(--zn-bad); }
+body.theme-zenna #screen .zn-today .zn-det-part-l {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--zn-faint); margin-top: 4px;
+}
+
+/* LE PROFIL D'INTENSITÉ (8a) — la même `.zbar` que lit smoke-zenna §4 (`.zbar .zseg`), dessinée
+   en HAUTEUR : un creux au coin coupé, deux repères Z2/Z4, une barre par bloc dont la hauteur
+   suit le niveau de zone et la largeur la durée. Le socle donne à `.zbar` 36 px de haut et un
+   biseau à chaque `.zseg` : les deux sont remis à plat ici. */
+body.theme-zenna #screen .zn-today .zbar.zn-zprof {
+  display: block; height: auto; gap: 0; margin-top: 15px; border-radius: 0; overflow: visible;
+  background: var(--zn-creux); border: 1px solid var(--zn-border-2);
+  clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 0 100%);
+  padding: 14px 14px 0;
+}
+body.theme-zenna #screen .zn-today .zn-zprof-plot { position: relative; height: 96px; }
+body.theme-zenna #screen .zn-today .zn-zprof-line { position: absolute; left: 0; right: 0; height: 1px; background: var(--zn-filet); display: block; }
+body.theme-zenna #screen .zn-today .zn-zprof-line.z4 { top: 16%; }
+body.theme-zenna #screen .zn-today .zn-zprof-line.z2 { top: 55%; }
+body.theme-zenna #screen .zn-today .zn-zprof-base { position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--zn-border-3); display: block; z-index: 2; }
+body.theme-zenna #screen .zn-today .zn-zprof-lab {
+  position: absolute; right: 0; transform: translateY(-50%); z-index: 3;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .08em; color: var(--zn-faint);
+  background: var(--zn-creux); padding-left: 5px; line-height: 1;
+}
+body.theme-zenna #screen .zn-today .zn-zprof-lab.z4 { top: 16%; }
+body.theme-zenna #screen .zn-today .zn-zprof-lab.z2 { top: 55%; }
+body.theme-zenna #screen .zn-today .zn-zprof-bars { position: absolute; inset: 0; display: flex; align-items: flex-end; gap: 2px; }
+body.theme-zenna #screen .zn-today .zseg.zn-zseg {
+  min-width: 0; display: block; clip-path: none; border-radius: 0; overflow: visible; box-sizing: border-box;
+  border-top: 2px solid var(--zn-easy);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--zn-easy) 42%, transparent), color-mix(in srgb, var(--zn-easy) 4%, transparent));
+}
+body.theme-zenna #screen .zn-today .zseg.zn-zseg.mod {
+  border-top-color: var(--zn-warn);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--zn-warn) 45%, transparent), color-mix(in srgb, var(--zn-warn) 5%, transparent));
+}
+body.theme-zenna #screen .zn-today .zseg.zn-zseg.dur {
+  border-top-color: var(--zn-hard);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--zn-hard) 50%, transparent), color-mix(in srgb, var(--zn-hard) 5%, transparent));
+}
+/* L'échauffement monte, le retour au calme descend : une rampe, pas un plateau. */
+body.theme-zenna #screen .zn-today .zseg.zn-zseg.zn-zseg-up { border-top: none; clip-path: polygon(0 100%, 100% 0, 100% 100%); }
+body.theme-zenna #screen .zn-today .zseg.zn-zseg.zn-zseg-down { border-top: none; clip-path: polygon(0 0, 100% 100%, 0 100%); }
+body.theme-zenna #screen .zn-today .zn-zprof-pic {
+  position: absolute; right: 12%; top: 2px; z-index: 3;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 700; letter-spacing: .06em; color: var(--zn-bad);
+}
+body.theme-zenna #screen .zn-today .zn-zprof-pic.mod { color: var(--zn-warn); }
+body.theme-zenna #screen .zn-today .zn-zprof-axis {
+  display: flex; justify-content: space-between; gap: 8px; padding: 8px 0 10px;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .06em; color: var(--zn-faint);
+}
+
+/* LE RAIL — une ligne par bloc : la durée à gauche, un trait dont l'épaisseur suit la zone,
+   le nom en display, la consigne du moteur dessous (18a). */
+body.theme-zenna #screen .zn-today .zn-deroule { display: flex; flex-direction: column; gap: 5px; margin-top: 17px; }
+body.theme-zenna #screen .zn-today .zn-rail-row { display: flex; gap: 13px; align-items: stretch; min-height: 44px; }
+body.theme-zenna #screen .zn-today .zn-rail-dur {
+  flex: 0 0 46px; text-align: right; padding-top: 2px;
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-hand); line-height: 1;
+  color: var(--zn-easy); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+body.theme-zenna #screen .zn-today .zn-rail-row.mod .zn-rail-dur { color: var(--zn-warn); }
+body.theme-zenna #screen .zn-today .zn-rail-row.dur .zn-rail-dur { color: var(--zn-bad); }
+body.theme-zenna #screen .zn-today .zn-rail-row.libre .zn-rail-dur { color: var(--zn-faint2); }
+body.theme-zenna #screen .zn-today .zn-rail-track { flex: 0 0 12px; display: flex; justify-content: center; }
+body.theme-zenna #screen .zn-today .zn-rail-track > i { display: block; width: 3px; border-radius: 2px; background: var(--zn-easy); }
+body.theme-zenna #screen .zn-today .zn-rail-row.lvl-3 .zn-rail-track > i { width: 5px; border-radius: 3px; }
+body.theme-zenna #screen .zn-today .zn-rail-row.lvl-4 .zn-rail-track > i,
+body.theme-zenna #screen .zn-today .zn-rail-row.lvl-5 .zn-rail-track > i { width: 11px; border-radius: 5px; }
+body.theme-zenna #screen .zn-today .zn-rail-row.mod .zn-rail-track > i { background: var(--zn-warn); }
+body.theme-zenna #screen .zn-today .zn-rail-row.dur .zn-rail-track > i { background: var(--zn-hard); }
+body.theme-zenna #screen .zn-today .zn-rail-row.libre .zn-rail-track > i { background: var(--zn-border-3); }
+body.theme-zenna #screen .zn-today .zn-rail-body { flex: 1; min-width: 0; padding-bottom: 5px; }
+body.theme-zenna #screen .zn-today .zn-rail-nom {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-md);
+  letter-spacing: .02em; text-transform: uppercase; color: var(--zn-text); line-height: 1.25;
+}
+body.theme-zenna #screen .zn-today .zn-rail-row.lvl-3 .zn-rail-nom,
+body.theme-zenna #screen .zn-today .zn-rail-row.lvl-4 .zn-rail-nom,
+body.theme-zenna #screen .zn-today .zn-rail-row.lvl-5 .zn-rail-nom { font-size: var(--fs-lg); }
+body.theme-zenna #screen .zn-today .zn-rail-q { color: var(--zn-faint2); }
+body.theme-zenna #screen .zn-today .zn-rail-txt { font-size: var(--fs-xs); line-height: 1.5; color: var(--zn-faint2); margin-top: 4px; }
+body.theme-zenna #screen .zn-today .zn-rail-note {
+  display: flex; gap: 13px; padding-left: 59px;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); line-height: 1.5; color: var(--zn-faint);
+}
+/* Le « pourquoi » du moteur (`.gd-why`, smoke-r4 §5) : une ampoule et la note, sous un filet. */
+body.theme-zenna #screen .zn-today .gd-why.zn-detail-note {
+  display: flex; gap: 10px; align-items: flex-start;
+  margin: 15px 0 0; padding: 14px 0 0; border-top: 1px solid var(--zn-filet);
+  font-size: var(--fs-xs); line-height: 1.5; color: var(--zn-muted); font-style: normal; background: none;
+}
+body.theme-zenna #screen .zn-today .gd-why.zn-detail-note svg { flex: 0 0 auto; margin-top: 1px; color: var(--zn-gold); }
+
+/* ---- TON ÉTAT DU JOUR, À NU : la forme du jour en ligne + jauge, puis les réglages (18a) ---- */
+body.theme-zenna #screen .zn-today .zn-etat { padding: 0 4px; }
+body.theme-zenna #screen .zn-today .zn-etat-row { padding: 2px 0 14px; }
+body.theme-zenna #screen .zn-today .zn-etat-main { flex: 1; min-width: 0; }
+body.theme-zenna #screen .zn-today .zn-etat-line { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+body.theme-zenna #screen .zn-today .zn-etat-nom { font-size: var(--fs-sm); font-weight: 600; color: var(--zn-text); }
+/* `.zn-form-val` vivait dans l'anneau du socle (absolu, centré) : ici c'est une valeur en ligne,
+   et son `span[data-val]` — celui que smoke-zenna §2 lit — hérite de la couleur du verdict. */
+body.theme-zenna #screen .zn-today .zn-form-val.zn-etat-val {
+  position: static; inset: auto; display: inline; flex: 0 0 auto;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--zn-good); line-height: 1.3; white-space: nowrap;
+}
+body.theme-zenna #screen .zn-today .zn-form-val.zn-etat-val span { font: inherit; color: inherit; line-height: inherit; }
+body.theme-zenna #screen .zn-today .zn-etat-val.lvl-orange { color: var(--zn-warn); }
+body.theme-zenna #screen .zn-today .zn-etat-val.lvl-rouge { color: var(--zn-bad); }
+body.theme-zenna #screen .zn-today .zn-etat-val.lvl-aucune { color: var(--zn-faint2); }
+body.theme-zenna #screen .zn-today .zn-gauge { height: 4px; border-radius: 3px; background: var(--zn-filet); margin-top: 9px; overflow: hidden; }
+body.theme-zenna #screen .zn-today .zn-gauge > i { display: block; height: 100%; background: var(--zn-good); }
+body.theme-zenna #screen .zn-today .zn-gauge.lvl-orange > i { background: var(--zn-warn); }
+body.theme-zenna #screen .zn-today .zn-gauge.lvl-rouge > i { background: var(--zn-hard); }
+body.theme-zenna #screen .zn-today .zn-gauge.lvl-aucune > i { background: var(--zn-border-3); }
+body.theme-zenna #screen .zn-today .zn-etat-sous {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); line-height: 1.5; color: var(--zn-faint2); margin-top: 8px;
+}
+/* Les cartes repliables (« Modifier ma forme du jour », « Adaptations quotidiennes ») deviennent
+   des LIGNES de la liste : la carte perd son fond, son bord, son liseré ; le résumé porte la
+   hauteur tactile et le chevron. Les classes que smoke-checkin / smoke-improvements lisent
+   (`details .load-title`) ne bougent pas. */
+body.theme-zenna #screen .zn-today .zn-row-details,
+body.theme-zenna #screen .zn-today details.zn-row-details {
+  background: none; border: none; border-radius: 0; padding: 0; margin: 0;
+  border-bottom: 1px solid var(--zn-filet);
+}
+body.theme-zenna #screen .zn-today .zn-row-details::before { display: none; }
+body.theme-zenna #screen .zn-today .zn-row-details > summary {
+  display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 6px 0;
+  list-style: none; cursor: pointer; border: none;
+  font-family: var(--zn-body); font-size: var(--fs-sm); font-weight: 600; letter-spacing: 0; color: var(--zn-text);
+}
+body.theme-zenna #screen .zn-today .zn-row-details > summary::-webkit-details-marker { display: none; }
+body.theme-zenna #screen .zn-today .zn-row-details > summary::before,
+body.theme-zenna #screen .zn-today .zn-row-details > summary::after { content: none; }
+body.theme-zenna #screen .zn-today .zn-row-details > summary .zn-chev { margin-left: auto; color: var(--zn-faint); transition: transform var(--dur-trans) var(--ease); }
+body.theme-zenna #screen .zn-today .zn-row-details[open] > summary .zn-chev { transform: rotate(90deg); }
+body.theme-zenna #screen .zn-today .zn-row-details > summary + * { margin-top: 4px; }
+body.theme-zenna #screen .zn-today .zn-row-details[open] > :last-child { margin-bottom: 14px; }
+body.theme-zenna #screen .zn-today .zn-row-sick label { display: flex; align-items: center; gap: 10px; width: 100%; font-size: var(--fs-sm); color: var(--zn-text); cursor: pointer; }
+body.theme-zenna #screen .zn-today .zn-row-redo { border-bottom: none; padding-top: 16px; }
+body.theme-zenna #screen .zn-today .zn-row-redo .zn-btn-2 { width: 100%; }
+
+/* ---- L'INTENDANCE, À NU : trois lignes qui mènent à 🧰 Outils › Nutrition (18a) ---- */
+body.theme-zenna #screen .zn-today .zn-intendance { padding: 0 4px; }
+/* Une ligne est un `<button>` (elle navigue) : on lui retire le chrome du bouton, elle garde
+   la hauteur tactile et le filet de `.zn-row`. */
+body.theme-zenna #screen .zn-today .zn-intendance-row {
+  width: 100%; text-align: left; background: none; border-width: 0 0 1px; border-style: solid; border-color: var(--zn-filet);
+  border-radius: 0; box-shadow: none; color: inherit; font: inherit; cursor: pointer; padding: 13px 0;
+  display: flex; align-items: center; gap: 11px; min-height: 56px; margin: 0; transform: none;
+}
+body.theme-zenna #screen .zn-today .zn-intendance-row:last-child { border-bottom-width: 0; }
+body.theme-zenna #screen .zn-today .zn-intendance-row:focus-visible { outline: 2px solid var(--zn-orange); outline-offset: 2px; }
+body.theme-zenna #screen .zn-today .zn-intendance-row:active { background: none; transform: none; }
+body.theme-zenna #screen .zn-today .zn-row-main { flex: 1; min-width: 0; }
+body.theme-zenna #screen .zn-today .zn-row-t { font-family: var(--zn-mono); font-size: var(--fs-xs); letter-spacing: .05em; color: var(--zn-text); line-height: 1.35; }
+body.theme-zenna #screen .zn-today .zn-row-s { font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint2); margin-top: 4px; line-height: 1.45; }
+body.theme-zenna #screen .zn-today .zn-row-s.ok { color: var(--zn-good); }
+body.theme-zenna #screen .zn-today .zn-row-ill { flex: 0 0 22px; display: flex; }
+body.theme-zenna #screen .zn-today .zn-row-ill svg { display: block; width: 22px; height: auto; }
+body.theme-zenna #screen .zn-today .zn-intendance-row .zn-chev { margin-left: auto; color: var(--zn-faint); font-size: var(--fs-lg); line-height: 1; }
+
+/* ---- TA PRÉPARATION, EN CREUX : le compte des séances, la jauge, la charge par intensité (18a) ---- */
+body.theme-zenna #screen .zn-today .zn-prepa { margin: 0 0 14px; padding: 15px 16px 16px; }
+body.theme-zenna #screen .zn-today .zn-prepa-head { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+body.theme-zenna #screen .zn-today .zn-prepa-n {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-num); line-height: 1;
+  color: var(--zn-text); font-variant-numeric: tabular-nums;
+}
+body.theme-zenna #screen .zn-today .zn-prepa-den { font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-lg); color: var(--zn-faint2); }
+body.theme-zenna #screen .zn-today .zn-prepa-lab { font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-muted); margin-left: 2px; }
+body.theme-zenna #screen .zn-today .zn-gauge.zn-prepa-bar { height: 5px; margin-top: 11px; }
+body.theme-zenna #screen .zn-today .zn-gauge.zn-prepa-bar > i { background: var(--zn-orange); }
+body.theme-zenna #screen .zn-today .zn-prepa-eyebrow {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .11em; text-transform: uppercase;
+  color: var(--zn-faint); margin: 16px 0 0;
+}
+body.theme-zenna #screen .zn-today .zn-prepa-chart { margin: 12px 0 9px; }
+body.theme-zenna #screen .zn-today .zn-prepa-chart svg { display: block; width: 100%; height: auto; }
+body.theme-zenna #screen .zn-today .zn-prepa-vide { margin-top: 10px; font-size: var(--fs-xs); line-height: 1.5; color: var(--zn-faint2); }
+body.theme-zenna #screen .zn-today .zn-prepa-legende {
+  display: flex; gap: 14px; flex-wrap: wrap;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .06em; text-transform: uppercase; color: var(--zn-faint2);
+}
+body.theme-zenna #screen .zn-today .zn-prepa-legende span { display: flex; align-items: center; gap: 5px; }
+body.theme-zenna #screen .zn-today .zn-prepa-legende i { width: 8px; height: 8px; border-radius: 2px; display: block; background: var(--zn-filet); }
+body.theme-zenna #screen .zn-today .zn-prepa-legende i.facile { background: var(--zn-easy); }
+body.theme-zenna #screen .zn-today .zn-prepa-legende i.mod { background: var(--zn-warn); }
+body.theme-zenna #screen .zn-today .zn-prepa-legende i.dur { background: var(--zn-hard); }
+/* Le résultat de course (20a) : un creux dans le creux, l'eyebrow en or tant qu'il manque. */
+body.theme-zenna #screen .zn-today .zn-resultat { margin: 0 0 14px; padding: 12px 14px 14px; }
+body.theme-zenna #screen .zn-today .zn-resultat-eyebrow {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .12em; text-transform: uppercase; font-weight: 700; color: var(--zn-gold);
+}
+body.theme-zenna #screen .zn-today .zn-resultat-eyebrow.ok { color: var(--zn-good); }
+body.theme-zenna #screen .zn-today .zn-resultat-txt { margin-top: 6px; font-size: var(--fs-xs); line-height: 1.5; color: var(--zn-muted); }
+body.theme-zenna #screen .zn-today .zn-resultat-form { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+body.theme-zenna #screen .zn-today .zn-resultat-form input { flex: 1 1 120px; min-width: 0; margin: 0; }
+body.theme-zenna #screen .zn-today .zn-resultat-form .zn-btn { flex: 1 1 auto; padding: 0 14px; }
+
+/* ---- LES BANDEAUX DU MOMENT (20a / 20b / 20c) : un creux, un point de couleur, la phrase ----
+   Le producteur pose son fond EN LIGNE (`--zn-bg-*`) : seul un `!important` le remplace, borné
+   à cette vue. Le point porte le sens que le fond portait. */
+body.theme-zenna #screen .zn-today .warn {
+  background: var(--zn-creux) !important; border: 1px solid var(--zn-filet); border-radius: var(--r-surface);
+  padding: 13px 14px; margin: 0 0 14px; color: var(--zn-text); font-size: var(--fs-sm); line-height: 1.5; font-weight: 500 !important;
+}
+body.theme-zenna #screen .zn-today .warn.zn-bandeau { display: flex; align-items: flex-start; gap: 10px; }
+body.theme-zenna #screen .zn-today .zn-bandeau-dot { flex: 0 0 8px; width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; background: var(--zn-orange); display: block; }
+body.theme-zenna #screen .zn-today .zn-bandeau--eve .zn-bandeau-dot { background: var(--zn-gold); }
+body.theme-zenna #screen .zn-today .zn-bandeau--done .zn-bandeau-dot { background: var(--zn-good); }
+body.theme-zenna #screen .zn-today .zn-bandeau--taper .zn-bandeau-dot { background: var(--zn-violet); }
+body.theme-zenna #screen .zn-today .zn-bandeau--tardif .zn-bandeau-dot { background: var(--zn-warn); }
+body.theme-zenna #screen .zn-today .zn-bandeau-eyebrow {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .12em; text-transform: uppercase; font-weight: 700; color: var(--zn-warn);
+}
+body.theme-zenna #screen .zn-today .zn-bandeau-note { margin-top: 4px; font-size: var(--fs-xs); color: var(--zn-faint2); font-weight: 400; }
+body.theme-zenna #screen .zn-today .zn-today-sick { margin-top: 14px; }
+
+/* ---- LE MICRO-DÉFI : la tuile d'or perd son coin coupé (le canevas n'en a plus) ---- */
+body.theme-zenna #screen .zn-today .zn-defi-ico { clip-path: none; border-radius: var(--r-control); }

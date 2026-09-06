@@ -439,9 +439,16 @@ const ZONE_LEVEL = {
 // n'était lisible que par qui connaissait la table. Cinq mots, un par niveau, même vocabulaire
 // que les zones du moteur (récup / aérobie / tempo / seuil / VO2).
 const ZONE_WORD = { 1: "Récup", 2: "Aéro", 3: "Tempo", 4: "Seuil", 5: "VO2" };
-export function znZoneBar(session, blkMin) {
-  if (!session || !Array.isArray(session.steps) || !session.steps.length) return "";
-  const segs = session.steps.map((st) => {
+/** REFONTE 18a/8a (06/09/2026) — LA DÉRIVATION DES SEGMENTS EST EXTRAITE ET EXPORTÉE.
+ *  Elle vivait dans `znZoneBar` ; le profil vertical du canevas (8a) et le déroulé à rail de
+ *  session-life.js lisent la MÊME liste — niveau, minutes, rôle, mot de zone — sans recopier
+ *  `ZONE_LEVEL` ni `ZONE_WORD` (le brief : « dérivée des steps via ZONE_LEVEL, jamais une
+ *  seconde table »). Rien n'est inventé ici : `blkMin` est la fonction de la courbe de charge,
+ *  la grandeur est celle de la prescription. Chaque segment porte aussi son `role` et son
+ *  `zone` (le libellé, lui, ne change pas d'un caractère). */
+export function znZoneSegs(session, blkMin) {
+  if (!session || !Array.isArray(session.steps) || !session.steps.length) return [];
+  return session.steps.map((st) => {
     const min = blkMin(st) || 0;
     const lvl = st.role === "warmup" || st.role === "cooldown" ? 1 : (ZONE_LEVEL[st.zone] || 2);
     // O-61 — le segment porte son libellé et sa GRANDEUR, tous deux lus sur le BLOC (jamais
@@ -452,8 +459,45 @@ export function znZoneBar(session, blkMin) {
       : st.distanceM != null ? Math.round(st.distanceM) + "m" : "";
     const grandeur = qty ? (reps > 1 ? reps + "×" + qty : qty) : "";
     const mot = st.role === "warmup" ? "Éch" : st.role === "cooldown" ? "RC" : (ZONE_WORD[lvl] || "");
-    return { min, lvl, label: (mot + " " + grandeur).trim() };
+    return { min, lvl, label: (mot + " " + grandeur).trim(), role: st.role || "body", zone: st.zone || null,
+      mot: st.role === "warmup" ? "Échauffement" : st.role === "cooldown" ? "Retour au calme" : (ZONE_WORD[lvl] || ""),
+      grandeur, reps };
   }).filter((x) => x.min > 0);
+}
+/** 8a — LE PROFIL DE ZONES : un bloc = une colonne, large comme sa durée, haute comme son
+ *  niveau, sur une grille Z2/Z4. Échauffement et retour au calme sont des RAMPES (le canevas
+ *  les dessine en biais : on monte vers le corps, on en redescend). Les classes `.zbar`/`.zseg`
+ *  sont GARDÉES : smoke-zenna §4 compte les segments de la barre du jour de nage par elles, et
+ *  la propriété (« la séance a ses segments à l'écran ») est la même — seule la forme change.
+ *  `grow-y` fait « se dresser » le profil à l'arrivée (23b), repli reduced-motion dans
+ *  zenna-today.css. Les hauteurs par niveau sont celles du canevas (Z2 à 45 %, Z4 à 84 %). */
+export function znZoneProfile(session, blkMin) {
+  const segs = znZoneSegs(session, blkMin);
+  if (segs.length < 2) return "";
+  const total = segs.reduce((t, x) => t + x.min, 0);
+  if (!total) return "";
+  const H = { 1: 24, 2: 45, 3: 64, 4: 84, 5: 100 };
+  const cls = (l) => l >= 4 ? "dur" : l === 3 ? "mod" : "facile";
+  // La rampe d'échauffement monte au niveau du bloc qui la suit, le retour au calme descend
+  // depuis celui qui le précède : c'est la forme du canevas, et c'est vrai physiologiquement.
+  const bars = segs.map((x, i) => {
+    const pct = Math.max(3, Math.round((x.min / total) * 100));
+    let h = H[x.lvl] || 45, forme = "";
+    if (x.role === "warmup") { const n = segs[i + 1]; h = H[Math.min(2, (n && n.lvl) || 2)] || 45; forme = " zn-zseg-up"; }
+    else if (x.role === "cooldown") { const p = segs[i - 1]; h = H[Math.min(2, (p && p.lvl) || 2)] || 45; forme = " zn-zseg-down"; }
+    return '<div class="zseg zn-zseg grow-y ' + cls(x.lvl) + forme + '" style="flex:' + pct + ' 0 auto;height:' + h + '%" title="' + x.label + '"></div>';
+  }).join("");
+  const pic = segs.reduce((m, x) => (x.lvl > m.lvl ? x : m), segs[0]);
+  const annot = pic.lvl >= 3 && pic.role === "body" ? '<span class="zn-zprof-pic ' + cls(pic.lvl) + '">' + pic.label.replace(/^\S+\s*/, "") + "</span>" : "";
+  const mid = Math.round(total / 2);
+  return '<div class="zbar zn-zprof" aria-hidden="true">'
+    + '<div class="zn-zprof-plot"><i class="zn-zprof-line z4"></i><span class="zn-zprof-lab z4">Z4</span>'
+    + '<i class="zn-zprof-line z2"></i><span class="zn-zprof-lab z2">Z2</span><i class="zn-zprof-base"></i>'
+    + '<div class="zn-zprof-bars">' + bars + "</div>" + annot + "</div>"
+    + '<div class="zn-zprof-axis"><span>0′</span><span>' + mid + "′</span><span>" + Math.round(total) + "′</span></div></div>";
+}
+export function znZoneBar(session, blkMin) {
+  const segs = znZoneSegs(session, blkMin);
   if (segs.length < 2) return "";
   const total = segs.reduce((t, x) => t + x.min, 0);
   if (!total) return "";
