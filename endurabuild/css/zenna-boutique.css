@@ -20,4 +20,275 @@
        `zenna-today.css`, section « PRIMITIVES DU CANEVAS » ;
      · préfixer `body.theme-zenna #screen …` ; ajouter ici plutôt qu'éditer les deux feuilles
        du socle.
+
+   POURQUOI CE FICHIER RÉÉCRIT DES SÉLECTEURS DÉJÀ DÉCLARÉS AILLEURS (`.shop-card`, `.seg`,
+   `.period-line`, `.choice`, `.pay-*`, `.sub-*`, `.cancel-note`, `.confirm-strip`…) :
+   `zenna-tabs.css` les porte depuis R-ZENNA v8/POC (avant la refonte « Noir apaisé »)
+   — accent CYAN concurrent (`--zn-cyan`), rayons et halos de l'ancienne direction. La
+   direction retenue du canevas (tour 1a : « on garde le noir, l'orange redescend au rang
+   d'accent unique — plus de cyan concurrent ») les périme entièrement. Ces classes
+   n'appartiennent qu'à CE module (aucune autre zone ne les émet — vérifié) : les redéclarer
+   ICI, à spécificité ÉGALE (`body.theme-zenna #screen .xxx`), les fait gagner par ORDRE DE
+   CASCADE (cette feuille charge après `zenna-tabs.css`) sans toucher un caractère du fichier
+   partagé — changement nul sur `shared_changes`, l'ancienne règle reste lisible comme
+   archive de ce qui a été remplacé et pourquoi.
    ============================================================ */
+/* ============================================================
+   1) LA CARTE — TROIS ÉTATS (repliée / proposition / active) + PAIEMENT REFUSÉ
+   ============================================================ */
+body.theme-zenna #screen .shop-card {
+  position: relative; overflow: hidden;
+  background: var(--zn-surface); border: 1px solid var(--zn-border-2);
+  border-radius: var(--r-card); padding: var(--zn-gutter-card); margin-bottom: var(--zn-gutter-card);
+}
+body.theme-zenna #screen .shop-card::before { content: none; } /* le halo cyan de l'ancienne direction disparaît avec elle */
+body.theme-zenna #screen .shop-card-min { padding: var(--zn-gutter-card); }
+body.theme-zenna #screen .shop-card-min .shop-lead { margin-bottom: 12px; }
+body.theme-zenna #screen .shop-head-row { display: flex; gap: 12px; align-items: flex-start; }
+body.theme-zenna #screen .shop-tag {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .16em;
+  text-transform: uppercase; color: var(--zn-orange); font-weight: 700; margin-bottom: 6px;
+}
+body.theme-zenna #screen .shop-title {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-xl);
+  line-height: 1.08; letter-spacing: -.01em; text-transform: uppercase; color: var(--zn-text);
+  margin-bottom: 6px;
+}
+body.theme-zenna #screen .shop-lead { font-size: var(--fs-sm); line-height: 1.55; color: var(--zn-muted); margin-bottom: 12px; }
+body.theme-zenna #screen .product-tile { flex-shrink: 0; display: flex; align-items: flex-start; }
+body.theme-zenna #screen .zn-sachet text { font-family: var(--zn-mono), ui-monospace, monospace; }
+body.theme-zenna #screen .zn-sachet { display: block; filter: drop-shadow(0 6px 14px rgba(0, 0, 0, .55)); }
+
+/* ---- Le héros de la proposition — packshot (repli SVG) + eyebrow + titre + paragraphe.
+   PAS de photo : les quatre packshots du canevas pèsent 540-570 Ko chacun (mesuré), très
+   au-dessus des ~150 Ko qui autoriseraient de les embarquer (précache `build:sw` compris) —
+   le sachet dessiné (`sachet.js`) reste le repli, comme prévu par sa propre en-tête. */
+body.theme-zenna #screen .bq-hero { text-align: center; padding: 4px 0 2px; }
+body.theme-zenna #screen .bq-hero .zn-sachet { margin: 0 auto 14px; filter: drop-shadow(0 10px 22px rgba(0, 0, 0, .6)); }
+body.theme-zenna #screen .bq-hero-tag {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .16em; text-transform: uppercase;
+  color: var(--zn-orange); font-weight: 700;
+}
+body.theme-zenna #screen .bq-hero-title {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-xl);
+  line-height: 1.08; letter-spacing: -.01em; text-transform: uppercase; color: var(--zn-text);
+  margin: 8px 0 0;
+}
+body.theme-zenna #screen .bq-hero-title em { font-style: normal; color: var(--zn-orange); }
+body.theme-zenna #screen .bq-hero-lead { font-size: var(--fs-sm); line-height: 1.55; color: var(--zn-muted); margin: 9px auto 0; max-width: 320px; }
+
+/* ---- « Ce qu'il y a dans le sachet » / « Bon à savoir » — listes À NU, deux gabarits de
+   ligne sur la même primitive `.zn-list`/`.zn-row` (structure de 22c : les arguments quittent
+   la carte pour une liste, le relevé devient l'unique objet en relief). */
+body.theme-zenna #screen .bq-arg-row { align-items: baseline; gap: 12px; }
+body.theme-zenna #screen .bq-arg-mot {
+  flex: 0 0 104px; font-family: var(--zn-mono); font-size: var(--fs-xs); font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase; color: var(--zn-orange); line-height: 1.3;
+}
+body.theme-zenna #screen .bq-arg-phrase { font-size: var(--fs-sm); line-height: 1.5; color: var(--zn-faint2); }
+body.theme-zenna #screen .bq-savoir-row { align-items: baseline; gap: 8px; }
+body.theme-zenna #screen .bq-savoir-lab {
+  flex: 0 0 90px; font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--zn-text);
+}
+body.theme-zenna #screen .bq-savoir-val { font-family: var(--zn-mono); font-size: var(--fs-xs); color: var(--zn-faint2); }
+
+/* ---- « Cadence d'envoi » — le panneau EN RELIEF (une carte principale par écran ; ici pas
+   `.zn-relief` orange plein — la carte de vente reste `.zn-panel`, c'est SON relevé, en creux
+   à l'intérieur, qui porte la décision, cf. 22c). Deux pilules bordées, pas un segmenté à
+   pastille glissante (l'ancienne direction) : chaque cadence montre déjà son compte de
+   séances, la sélection n'a pas besoin d'un mouvement de plus pour se lire. */
+body.theme-zenna #screen .bq-cadence-panel {
+  background: var(--zn-surface); border: 1px solid var(--zn-border-3); border-radius: var(--r-card);
+  padding: 16px 16px 18px; margin: 4px 0;
+}
+body.theme-zenna #screen .seg { display: flex; gap: 8px; position: static; background: none; padding: 0; margin: 0 0 15px; }
+body.theme-zenna #screen .seg-pill { display: none; } /* la pastille glissante disparaît avec le segmenté cyan */
+body.theme-zenna #screen .seg-opt {
+  flex: 1; min-height: 46px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center;
+  gap: 3px; padding: 10px 12px; border-radius: var(--r-control);
+  background: var(--zn-surface-2); border: 1px solid var(--zn-border-2); cursor: pointer;
+  font-family: var(--zn-mono); color: var(--zn-muted); text-align: left;
+  transition: transform var(--dur-tap) var(--ease-spring), background var(--dur-trans) var(--ease), border-color var(--dur-trans) var(--ease), color var(--dur-trans) var(--ease);
+}
+body.theme-zenna #screen .seg-opt:active { transform: scale(.97); }
+body.theme-zenna #screen .seg-opt.active {
+  background: color-mix(in srgb, var(--zn-orange) 10%, var(--zn-surface-2));
+  border-color: var(--zn-orange); color: var(--zn-orange);
+}
+body.theme-zenna #screen .seg-opt .so-l { font-size: var(--fs-sm); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+body.theme-zenna #screen .seg-opt .so-s { font-size: var(--fs-micro); margin-top: 1px; color: var(--zn-muted); }
+body.theme-zenna #screen .seg-opt.active .so-s { color: var(--zn-orange); opacity: .85; }
+
+/* ---- Le relevé — EN CREUX dans le panneau (structure de 22c : « le relevé […] devient
+   l'unique objet en relief » de l'écran, ici posé un cran plus sombre que le panneau qui le
+   contient, comme le reste du canevas pose ses blocs de lecture secondaire). */
+body.theme-zenna #screen .bq-releve { margin-top: 15px; padding: 14px 15px; }
+body.theme-zenna #screen .period-lab {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--zn-faint2); padding-bottom: 11px; border-bottom: 1px solid var(--zn-filet); margin-bottom: 0;
+}
+body.theme-zenna #screen .bq-releve-range { font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-muted); text-transform: none; letter-spacing: 0; }
+body.theme-zenna #screen .period-line {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 10px 0;
+  border-bottom: 1px dashed var(--zn-border-2);
+}
+body.theme-zenna #screen .period-line .pl-n { font-size: var(--fs-xs); font-weight: 600; color: var(--zn-text); }
+body.theme-zenna #screen .period-line .pl-n .bq-count { font-family: var(--zn-mono); font-weight: 400; color: var(--zn-faint2); font-size: var(--fs-micro); margin-left: 3px; }
+body.theme-zenna #screen .period-line .pl-q { font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-muted); text-align: right; line-height: 1.4; }
+body.theme-zenna #screen .period-line.water .pl-n,
+body.theme-zenna #screen .period-line.water .pl-q { color: var(--zn-faint2); font-weight: 400; }
+body.theme-zenna #screen .period-total { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding-top: 12px; }
+body.theme-zenna #screen .pt-lab { font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .05em; text-transform: uppercase; color: var(--zn-muted); }
+body.theme-zenna #screen .pt-val { font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-xl); color: var(--zn-orange); font-variant-numeric: tabular-nums; }
+body.theme-zenna #screen .per-session { display: flex; justify-content: flex-end; font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-muted); margin-top: 3px; }
+body.theme-zenna #screen .per-session b { color: var(--zn-good); margin-left: 4px; font-weight: 700; }
+
+/* Le détail complet, ligne par ligne — même tableau que le relevé groupé, un second AFFICHAGE
+   du même `detail.sessions` (R11.1), replié par défaut. `<details>` natif : pas d'état JS de
+   plus à tenir, et le clavier/lecteur d'écran l'ouvrent sans rien apprendre. */
+body.theme-zenna #screen .bq-devis-detail { margin-top: 6px; padding-top: 4px; border-top: 1px solid var(--zn-filet); }
+body.theme-zenna #screen .bq-devis-detail > summary {
+  list-style: none; cursor: pointer; min-height: 44px; padding: 7px 0;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-muted);
+}
+body.theme-zenna #screen .bq-devis-detail > summary::-webkit-details-marker { display: none; }
+body.theme-zenna #screen .bq-devis-detail > summary .chev { color: var(--zn-faint); transition: transform var(--dur-trans) var(--ease); }
+body.theme-zenna #screen .bq-devis-detail[open] > summary .chev { transform: rotate(180deg); }
+body.theme-zenna #screen .bq-devis-detail .period-line:first-of-type { border-top: 1px solid var(--zn-filet); }
+body.theme-zenna #screen .bq-devis-detail .period-line:last-of-type { border-bottom: none; }
+
+/* Le CTA d'ancrage : il fait défiler jusqu'à la saveur, il ne soumet rien — l'activation
+   réelle reste le bouton du bas (`#shopOk`), seul point de conversion (test smoke-shop §6). */
+body.theme-zenna #screen .bq-cta-scroll {
+  width: 100%; min-height: 52px; margin-top: 15px; border: none; border-radius: var(--r-control);
+  background: var(--zn-orange); color: var(--zn-on-accent);
+  font-family: var(--zn-mono); font-size: var(--fs-sm); font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 9px;
+  transition: transform var(--dur-tap) var(--ease-spring);
+}
+body.theme-zenna #screen .bq-cta-scroll:active { transform: scale(.97); }
+
+/* ---- Les blocs numérotés (2 · Saveur, 3 · Format et départ — structure de 3b, réglages en
+   une page, PAS un second écran : les trois groupes de choix restent réunis dans LA carte,
+   c'est ce que smoke-shop §7 vérifie — trois `radiogroup` visibles ensemble). ---- */
+body.theme-zenna #screen .bq-block { background: var(--zn-surface-2); border: 1px solid var(--zn-border-2); border-radius: var(--r-card); padding: 15px 16px; margin-top: 12px; }
+body.theme-zenna #screen .bq-block-head { display: flex; align-items: baseline; gap: 9px; margin-bottom: 12px; }
+body.theme-zenna #screen .bq-block-num { font-family: var(--zn-mono); font-size: var(--fs-sm); font-weight: 700; color: var(--zn-orange); }
+body.theme-zenna #screen .bq-block-head .choice-lab { margin: 0; }
+body.theme-zenna #screen .bq-block-hint { font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-muted); margin-left: auto; }
+body.theme-zenna #screen .choice-lab {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .1em; text-transform: uppercase; color: var(--zn-faint2);
+  margin: 13px 0 8px;
+}
+body.theme-zenna #screen .bq-block-head + .choice-row,
+body.theme-zenna #screen .bq-block-head + .choice-lab { margin-top: 0; }
+
+/* La rangée des goûts : les VRAIS sachets, en carte verticale (3b) — on choisit un produit
+   qu'on voit, pas une pastille. Cible 44 px conservée (U4). */
+body.theme-zenna #screen .choice-row { display: flex; gap: 7px; flex-wrap: wrap; }
+body.theme-zenna #screen .choice-row.avec-sachet { gap: 7px; flex-wrap: nowrap; }
+body.theme-zenna #screen .choice.a-sachet {
+  flex: 1; min-width: 0; flex-direction: column; align-items: center; gap: 6px;
+  padding: 10px 6px 10px; border-radius: var(--r-surface); min-height: 44px;
+  background: var(--zn-surface); border: 1.5px solid var(--zn-border-2);
+}
+body.theme-zenna #screen .choice.a-sachet .zn-sachet { filter: drop-shadow(0 3px 8px rgba(0, 0, 0, .55)); }
+body.theme-zenna #screen .choice.a-sachet.sel { background: color-mix(in srgb, var(--zn-orange) 8%, var(--zn-surface)); border-color: var(--zn-orange); }
+body.theme-zenna #screen .choice.a-sachet.sel .zn-sachet { filter: drop-shadow(0 3px 10px rgba(242, 72, 27, .35)); }
+body.theme-zenna #screen .choice.a-sachet span { font-size: var(--fs-micro); text-align: center; line-height: 1.25; }
+body.theme-zenna #screen .choice.a-sachet.sel span { color: var(--zn-orange); font-weight: 700; }
+
+/* Format : un choix, pas un produit à voir — la pilule reste la bonne forme. */
+body.theme-zenna #screen .choice {
+  padding: 11px 14px; min-height: 44px; border-radius: var(--r-pill);
+  background: var(--zn-surface); border: 1px solid var(--zn-border-2);
+  font-family: var(--zn-mono); font-size: var(--fs-xs); font-weight: 600; color: var(--zn-muted);
+  cursor: pointer; transition: transform var(--dur-tap) var(--ease-spring), background var(--dur-trans) var(--ease), color var(--dur-trans) var(--ease), border-color var(--dur-trans) var(--ease);
+}
+body.theme-zenna #screen .choice:active { transform: scale(.95); }
+body.theme-zenna #screen .choice.sel { background: color-mix(in srgb, var(--zn-orange) 10%, var(--zn-surface)); border-color: var(--zn-orange); color: var(--zn-orange); font-weight: 700; }
+
+body.theme-zenna #screen .shop-cta,
+body.theme-zenna #screen #shopOk {
+  width: 100%; min-height: 52px; border-radius: var(--r-control); border: none;
+  background: var(--zn-orange); color: var(--zn-on-accent);
+  font-family: var(--zn-mono); font-size: var(--fs-sm); font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; display: flex; align-items: center; justify-content: center; gap: 9px;
+  cursor: pointer; margin-top: 16px;
+  transition: transform var(--dur-tap) var(--ease-spring);
+}
+body.theme-zenna #screen .shop-cta:active,
+body.theme-zenna #screen #shopOk:active { transform: scale(.97); }
+body.theme-zenna #screen .soc-proof {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint2); letter-spacing: .02em;
+  line-height: 1.6; margin-top: 12px;
+}
+body.theme-zenna #screen .shop-fine {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint2); line-height: 1.6;
+  margin-top: 11px; letter-spacing: .02em;
+}
+
+/* ---- Abonnement en cours (3c) — plus de vente : un état, un contenu, un contrôle. ---- */
+body.theme-zenna #screen .sub-active-head {
+  display: flex; align-items: center; gap: 13px; margin: -2px -2px 13px; padding: 14px;
+  border-radius: calc(var(--r-card) - 2px);
+  background: color-mix(in srgb, var(--zn-good) 7%, transparent);
+}
+body.theme-zenna #screen .sub-badge { display: none; } /* le sachet réel (`.product-tile`) porte déjà l'identité du produit */
+body.theme-zenna #screen .sub-active-head .product-tile { flex: 0 0 auto; }
+body.theme-zenna #screen .sub-active-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--zn-good); display: inline-block; flex: 0 0 auto; }
+body.theme-zenna #screen .sub-state { display: flex; align-items: center; gap: 6px; font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .11em; color: var(--zn-good); font-weight: 700; text-transform: uppercase; }
+body.theme-zenna #screen .sub-params { font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-lg); letter-spacing: -.01em; text-transform: uppercase; color: var(--zn-text); margin-top: 6px; }
+body.theme-zenna #screen .sub-since { font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint2); margin-top: 3px; }
+body.theme-zenna #screen .bq-active-releve { padding: 14px 15px; }
+body.theme-zenna #screen .bq-active-releve .period-lab { color: var(--zn-good); }
+body.theme-zenna #screen .cancel-note {
+  background: color-mix(in srgb, var(--zn-warn) 10%, transparent); border: 1px solid color-mix(in srgb, var(--zn-warn) 35%, transparent);
+  border-radius: var(--r-surface); padding: 11px 12px; font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-warn);
+  line-height: 1.5; margin-top: 12px;
+}
+body.theme-zenna #screen .confirm-strip {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  background: color-mix(in srgb, var(--zn-hard) 9%, transparent); border: 1px solid color-mix(in srgb, var(--zn-hard) 38%, transparent);
+  border-radius: var(--r-surface); padding: 11px 12px; margin-top: 13px; flex-wrap: wrap;
+}
+body.theme-zenna #screen .confirm-strip span { font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 700; color: var(--zn-bad); letter-spacing: .04em; }
+body.theme-zenna #screen .confirm-strip .zn-btn,
+body.theme-zenna #screen .confirm-strip .zn-btn-2 { min-height: 40px; padding: 0 13px; font-size: var(--fs-micro); width: auto; }
+body.theme-zenna #screen .btn-row { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 14px; }
+body.theme-zenna #screen .btn-row .zn-btn,
+body.theme-zenna #screen .btn-row .zn-btn-2 { flex: 1; min-width: 0; }
+
+/* ---- Paiement refusé (19e) — l'envoi est SUSPENDU, jamais annulé : bordure et icône
+   d'alerte, jamais un fond plein rouge. ---- */
+body.theme-zenna #screen .shop-card[data-payment="failed"] { border-color: color-mix(in srgb, var(--zn-hard) 45%, var(--zn-border-2)); }
+body.theme-zenna #screen .pay-head { display: flex; align-items: center; gap: 8px; }
+body.theme-zenna #screen .pay-dot { display: none; } /* remplacé par l'icône SVG d'alerte, plus lisible que le point */
+body.theme-zenna #screen .pay-lab { font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .12em; text-transform: uppercase; color: var(--zn-bad); font-weight: 700; }
+body.theme-zenna #screen .pay-title {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-xl); line-height: 1.1;
+  text-transform: uppercase; color: var(--zn-text); margin: 13px 0 12px;
+}
+body.theme-zenna #screen .pay-body { font-size: var(--fs-sm); line-height: 1.55; color: var(--zn-muted); }
+body.theme-zenna #screen .pay-body b { color: var(--zn-text); }
+body.theme-zenna #screen .bq-pay-panel { margin-top: 15px; padding: 12px 13px; }
+body.theme-zenna #screen .bq-pay-row { display: flex; align-items: baseline; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--zn-filet); }
+body.theme-zenna #screen .bq-pay-row:last-child { border-bottom: none; }
+body.theme-zenna #screen .bq-pay-when { flex: 0 0 72px; font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .05em; text-transform: uppercase; }
+body.theme-zenna #screen .bq-pay-when.soon { color: var(--zn-warn); }
+body.theme-zenna #screen .bq-pay-when.late { color: var(--zn-faint2); }
+body.theme-zenna #screen .bq-pay-txt { flex: 1; min-width: 0; font-size: var(--fs-xs); line-height: 1.5; color: var(--zn-muted); }
+body.theme-zenna #screen .bq-pay-note { font-family: var(--zn-mono); font-size: var(--fs-micro); line-height: 1.6; color: var(--zn-faint); margin-top: 12px; }
+/* Une ligne de navigation qui est un VRAI `<button>` (Entrée/Espace natifs) plutôt qu'un `<li
+   role="button">` sans clavier — remet à zéro ce que `<button>` impose. */
+body.theme-zenna #screen .bq-row-btn { width: 100%; background: none; border: none; border-bottom: 1px solid var(--zn-filet); cursor: pointer; font: inherit; color: inherit; }
+body.theme-zenna #screen .bq-row-btn:last-child { border-bottom: none; }
+body.theme-zenna #screen .bq-row-btn:focus-visible { outline: 2px solid var(--zn-orange); outline-offset: -2px; }
+
+/* Un `<summary>` de `foldHTML` (dépense / ravitaillement) n'a pas besoin d'être touché ici —
+   `.load-card`/`.fold`/`.kv` sont des primitives GÉNÉRIQUES du socle (`zenna-today.css` /
+   `zenna-tabs.css`), partagées par d'autres sous-onglets d'Outils ; les redéfinir depuis cette
+   feuille de zone romprait leur cohérence ailleurs pour un gain nul ici. */
