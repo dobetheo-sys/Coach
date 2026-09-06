@@ -112,17 +112,26 @@ await page.waitForTimeout(900);
 await page.evaluate(async () => { const { setTab } = await import("./js/ui/tabs.js"); setTab("profile"); });
 await page.waitForTimeout(800);
 {
+  // REFONTE 14b (06/09/2026) — le badge vit dans le sous-onglet MES DONNÉES du Profil (les trois
+  // panneaux sont dans le DOM, les inactifs `hidden`) : on l'ouvre, comme l'athlète, et on
+  // PUBLIE le sous-onglet trouvé ; sans ça la mesure rendait « 0×0 px » — un badge présent dans
+  // le DOM mais jamais peint, ce que ce critère est justement là pour attraper.
   const m = await page.evaluate(async () => {
     const { DISC } = await import("./js/ui/icons.js");
     const b = document.querySelector("#avSvg svg");
     if (!b) return { absent: true };
+    const sec = b.closest("[data-pfpanel]");
+    if (sec) { const t = document.querySelector('[data-pfsub="' + sec.dataset.pfpanel + '"]'); if (t) t.click(); }
+    const sousOnglet = sec ? sec.dataset.pfpanel : null;
     const r = b.getBoundingClientRect();
     const cercles = [...b.querySelectorAll("circle")].map((c) => c.getAttribute("stroke"));
     return { w: Math.round(r.width), h: Math.round(r.height), aria: b.getAttribute("aria-label") || "",
-      cercles, table: [DISC.sw.ac, DISC.bk.ac, DISC.rn.ac] };
+      cercles, table: [DISC.sw.ac, DISC.bk.ac, DISC.rn.ac], sousOnglet };
   });
-  ok(!m.absent, "§5 — l'écran Profil porte bien le badge-anneau" + (m.absent ? "" : " (" + m.w + "×" + m.h + " px)"));
+  ok(!m.absent, "§5 — l'écran Profil porte bien le badge-anneau" + (m.absent ? "" : " (" + m.w + "×" + m.h + " px, sous-onglet " + m.sousOnglet + ")"));
   if (!m.absent) {
+    // Il est PEINT, pas seulement présent : 96 px de côté (R27), donc un rectangle rendu non nul.
+    ok(m.w >= 90 && m.h >= 90, "…et il est rendu à sa taille (" + m.w + "×" + m.h + " px ≥ 90) dans le sous-onglet « " + m.sousOnglet + " »");
     ok(/score \d+ sur 100|LÉGENDE/.test(m.aria), "…avec un libellé qui DIT le score : « " + m.aria.slice(0, 54) + "… »");
     const dispo = m.table.filter((c) => m.cercles.includes(c));
     ok(dispo.length >= 1, "…et ses anneaux portent les couleurs de la table DISC (" + dispo.join(" · ") + ")");

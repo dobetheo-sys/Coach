@@ -130,7 +130,8 @@ body.theme-zenna #screen .zn-pf-field > span { font-family: var(--zn-mono); font
 body.theme-zenna #screen .zn-pf-field > input,
 body.theme-zenna #screen .zn-pf-field > select { width: 100%; min-width: 0; margin: 0; }
 body.theme-zenna #screen .zn-pf-sub { margin: 6px 0 2px; font-family: var(--zn-mono); font-size: var(--fs-micro); line-height: 1.6; color: var(--zn-faint); }
-body.theme-zenna #screen .zn-pf-nav { margin-top: 14px; }
+body.theme-zenna #screen .zn-pf-nav { margin-top: 14px; background: none; justify-content: stretch; }
+body.theme-zenna #screen .zn-pf-nav-rows > .zn-btn-2 { background: var(--zn-surface-3); }
 body.theme-zenna #screen .zn-pf-nav > .zn-btn,
 body.theme-zenna #screen .zn-pf-nav > .zn-btn-2 { font-size: var(--fs-xs); }
 body.theme-zenna #screen .zn-pf-msg { margin-top: 8px; font-size: var(--fs-xs); line-height: 1.5; }

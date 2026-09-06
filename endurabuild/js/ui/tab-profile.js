@@ -213,6 +213,9 @@ function planNomDisplay(p) {
   const fmts = sp.formats || [];
   const f = fmts.find((x) => x[0] === (p.answers && p.answers.format));
   const nomFmt = f ? f[1].split(" (")[0] + (/^\d+(\.\d+)?$/.test(f[0]) ? " · " + f[0] : "") : (p.answers && p.answers.format ? esc(p.answers.format) : "");
+  // En triathlon le format NOMME l'épreuve (« Half · 70.3 », 22b) : le sport est dans l'en-tête ;
+  // ailleurs (« Course · 10 km ») le format seul ne dirait pas de quel sport on parle.
+  if (p.sport === "tri" && nomFmt) return nomFmt;
   return esc(sp.nom) + (nomFmt ? " · " + nomFmt : "");
 }
 /** Les séances VALIDÉES d'un plan (repos exclus) — le même compte que `EBV2.progress` (R11.1) :
@@ -876,21 +879,27 @@ function refsSousLigne(a, sp) {
 }
 function labelOf(k, v) { return (VLAB_Q[k] && VLAB_Q[k][v]) || VLAB[v] || v; }
 function epreuveSousLigne(a, sp) {
-  const E = globalThis.EBV2;
-  const km = (leg) => (E && E.raceDistanceKm ? E.raceDistanceKm(sp, a.format, leg) : null);
-  const kmTxt = (v) => (v == null ? "" : String(Math.round(v * 10) / 10).replace(".", ",") + " km");
+  // La distance de chaque segment vient du LIBELLÉ du format dans SPORTS[].formats — « Half
+  // (1.9/90/21) » —, seule source (R11.1) ; les tables du moteur ne sont pas toutes exposées
+  // (la nage du tri ne l'est pas) et on ne recopie pas une distance ici.
+  const fmts = (SPORTS[sp] && SPORTS[sp].formats) || [];
+  const f = fmts.find((x) => x[0] === a.format);
+  const lab = (k) => (a[k] ? " " + esc(labelOf(k, a[k])).toLowerCase() : "");
   const parts = [];
-  if (sp === "tri" || sp === "swimrun") { const s = km("swim"); if (s != null) parts.push(kmTxt(s) + (a.leg_swim_env ? " " + esc(labelOf("leg_swim_env", a.leg_swim_env)).toLowerCase() : "")); }
-  if (sp === "tri" || sp === "duathlon") { const b = km("bike"); if (b != null) parts.push(kmTxt(b) + (a.leg_bike_prof ? " " + esc(labelOf("leg_bike_prof", a.leg_bike_prof)).toLowerCase() : "")); }
-  const r = km(sp === "tri" || sp === "duathlon" || sp === "swimrun" ? "run" : undefined);
-  if (r != null) parts.push(kmTxt(r) + (a.leg_run_prof ? " " + esc(labelOf("leg_run_prof", a.leg_run_prof)).toLowerCase() : ""));
-  if (!parts.length) {
-    const fmts = (SPORTS[sp] && SPORTS[sp].formats) || [];
-    const f = fmts.find((x) => x[0] === a.format);
-    if (f) parts.push(esc(f[1]));
-    if (sp === "trail" && a.race_distance_km) parts.push(esc(a.race_distance_km) + " km · " + esc(a.race_dplus_m || "?") + " m D+");
+  const paren = f && /\(([^)]+)\)/.exec(f[1]);
+  const multi = sp === "tri" || sp === "duathlon" || sp === "swimrun";
+  if (multi && paren && paren[1].includes("/")) {
+    const seg = paren[1].split("/").map((x) => x.trim());
+    const legs = sp === "tri" ? ["leg_swim_env", "leg_bike_prof", "leg_run_prof"]
+      : sp === "duathlon" ? ["leg_run_prof", "leg_bike_prof", "leg_run_prof"] : ["leg_swim_env", "leg_run_prof"];
+    seg.forEach((d, k) => parts.push(esc(d) + (legs[k] ? lab(legs[k]) : "")));
+  } else if (f) {
+    parts.push(esc(f[1].split(" (")[0]) + (paren ? " " + esc(paren[1]) : ""));
   }
-  if (a.course_profile) parts.push(esc(labelOf("course_profile", a.course_profile)).toLowerCase());
+  if (sp === "trail" && a.race_distance_km) parts.push(esc(a.race_distance_km) + " km · " + esc(a.race_dplus_m || "?") + " m D+");
+  // Le profil GLOBAL du parcours ne s'ajoute que s'il n'est pas déjà dit par un segment.
+  if (a.course_profile && !(multi && (a.leg_bike_prof || a.leg_run_prof))) parts.push(esc(labelOf("course_profile", a.course_profile)).toLowerCase());
+  if (a.water_temp_c) parts.push("eau " + esc(a.water_temp_c) + " °C");
   return parts.join(" · ") || "format non renseigné";
 }
 function terrainSousLigne(a) {

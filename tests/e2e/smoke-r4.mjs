@@ -48,7 +48,19 @@ const dlBackup = page.waitForEvent("download", { timeout: 5000 }).catch(() => nu
 // R16.7 — la carte « 💾 Sauvegarde » est désormais repliée par défaut (bloc secondaire du
 // Profil). Le bouton existe, il n'est simplement plus visible tant que le `<details>` est
 // fermé : on l'ouvre, comme le ferait l'utilisateur. Les assertions ne bougent pas.
-await page.evaluate(() => { const b = document.getElementById("pfBackup"); const d = b && b.closest("details"); if (d) d.open = true; });
+// REFONTE 22b/14b/14c (06/09/2026) — le Profil est en TROIS sous-onglets (MES PLANS · MES DONNÉES ·
+// PARAMÈTRES) ; les trois panneaux sont dans le DOM, les deux inactifs portent `hidden`. Ce
+// critère épinglait « le bouton est sur l'écran d'arrivée » ; la propriété qu'il garde est « la
+// sauvegarde existe UNE fois et est ATTEIGNABLE » — on ouvre le sous-onglet qui la porte, comme
+// l'athlète, et on PUBLIE lequel. Contre-prouvé : sans la bascule, le clic expire (élément non
+// visible) ; un `#pfBackup` hors de tout panneau rendrait `null` et rougirait.
+const sousOngletBackup = await page.evaluate(() => {
+  const b = document.getElementById("pfBackup"); const sec = b && b.closest("[data-pfpanel]");
+  if (sec) { const t = document.querySelector('[data-pfsub="' + sec.dataset.pfpanel + '"]'); if (t) t.click(); }
+  const d = b && b.closest("details"); if (d) d.open = true;
+  return sec ? sec.dataset.pfpanel : null;
+});
+ok(sousOngletBackup === "params", "la sauvegarde vit dans un sous-onglet du Profil et s'y atteint (" + sousOngletBackup + ")");
 await page.click("#pfBackup");
 const bk = await dlBackup;
 ok(bk !== null && /endurabuild/.test(bk ? bk.suggestedFilename() : ""), "la sauvegarde télécharge un fichier (" + (bk ? bk.suggestedFilename() : "aucun") + ")");
@@ -78,6 +90,14 @@ ok(await page.locator("#avDownload").count() === 1, "un bouton de téléchargeme
 }
 
 // ---- 4. Multi-plans : nouveau plan → questionnaire vierge, retour au 1er sans perte ----
+// Même règle que pour la sauvegarde : « Nouveau plan » vit dans MES PLANS — on y revient (le
+// sous-onglet précédent était PARAMÈTRES) et on publie où il a été trouvé.
+const sousOngletNouveau = await page.evaluate(() => {
+  const b = document.getElementById("pfNewPlan"); const sec = b && b.closest("[data-pfpanel]");
+  if (sec) { const t = document.querySelector('[data-pfsub="' + sec.dataset.pfpanel + '"]'); if (t) t.click(); }
+  return sec ? sec.dataset.pfpanel : null;
+});
+ok(sousOngletNouveau === "plans", "« Nouveau plan » vit dans MES PLANS et s'y atteint (" + sousOngletNouveau + ")");
 await page.click("#pfNewPlan"); await page.waitForTimeout(300);
 ok(await page.locator(".sport-card").count() === N_SPORTS, "nouveau plan → choix du sport (questionnaire vierge) — " + N_SPORTS + " sports au périmètre courant");
 await page.click('.sport-card[data-sport="bike"]');
