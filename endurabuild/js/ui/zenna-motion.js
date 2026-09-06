@@ -317,7 +317,12 @@ export function znVerdictStamp(html, opts) {
     znRelease();
     setTimeout(() => ov.remove(), BEAT * 2.5);
   };
-  setTimeout(partir, znReduce() ? 600 : BEAT * 10);
+  // REFONTE 15c (zone « point du matin », 06/09/2026) — `dwellBeats` : la couche porte
+  // désormais l'ÉCRAN du verdict (ce que la journée construit, les tuiles, « Ouvrir ma
+  // séance »), qui se LIT ; le séjour se règle par l'appelant, en temps de `BEAT`, et vaut
+  // aussi sous reduced-motion (un écran sans mouvement reste un écran à lire). Sans l'option,
+  // rien ne change : 10 temps, 600 ms en mouvement réduit.
+  setTimeout(partir, o.dwellBeats ? BEAT * o.dwellBeats : (znReduce() ? 600 : BEAT * 10));
   ov.addEventListener("click", partir); // on peut toujours passer devant
 }
 

@@ -1,7 +1,6 @@
 // Module extrait de Coach_Pro_V1.5.html par scripts/splitPwa.py — extraction fidèle,
 // ne pas éditer la logique ici sans relancer les audits (npm run audit:v1 / audit:v2).
 import { $, S, ebSave, todayISO, jourEntrainementISO } from "../state.js";
-import { VERDICT_ICON } from "./icons.js";
 
 // U7 — LA MÉTÉO SE CHERCHE PENDANT QUE L'ATHLÈTE RÉPOND, PAS APRÈS.
 //
@@ -38,14 +37,24 @@ export function primeWeather(){
 }
 function fetchWeather(){return primeWeather();}
 /** Verdict lisible + séances du jour, en HTML — factorisé pour le rendu direct ET le
- *  ré-affichage (retour à l'onglet Semaine sans re-décrocher la météo). */
+ *  ré-affichage (retour à l'onglet Semaine sans re-décrocher la météo).
+ *  REFONTE (06/09/2026, zone « point du matin ») — le résultat du panneau « Modifier ma forme
+ *  du jour » prend la forme du verdict 15c en réduit : un creux, le verdict en display avec sa
+ *  pastille de niveau (la couleur porte le niveau, le texte reste en --zn-text : AA), l'action
+ *  du moteur en mono, ses motifs, la météo, puis la séance telle qu'elle sera. Aucun texte du
+ *  moteur n'est réécrit (verdict, drivers, nom, `det`) ; seuls les libellés d'interface (`lbl`)
+ *  et les classes changent. L'icône emoji du niveau (VERDICT_ICON) cède la place à la pastille —
+ *  c'est le même signal, dans le vocabulaire du canevas. */
 function verdictHTML(res,weather){
   const v=res.adjustment.verdict;
   const lbl={keep:"séance maintenue",reduce:"volume réduit, structure conservée",replace:"qualité remplacée par de l’endurance",rest:"repos aujourd’hui",off:"repos complet (affûtage)"};
-  let h='<div class="why" style="margin:0">'+(weather?'🌤 '+Math.round(weather.tmaxC)+'°C prévus'+(weather.precipMm>=5?' · pluie':'')+'<br>':'')+VERDICT_ICON[v.level]+' <b>Readiness '+v.level+'</b> — '+lbl[res.adjustment.action]+'<br><span style="color:var(--zn-muted,#555);font-size:var(--fs-sm)">'+v.drivers.join(" · ")+'</span></div>';
-  if(res.sessions.length)res.sessions.forEach(x=>{h+='<div style="font-size:var(--fs-sm);margin-top:6px"><b>'+(res.jour||"Aujourd’hui")+' · '+x.name+'</b><br>'+x.det+'</div>';});
-  else h+='<div style="font-size:var(--fs-sm);margin-top:6px">Aucune séance planifiée aujourd’hui.</div>';
-  return h;
+  let h='<div class="zn-creux zn-rd"><div class="zn-rd-verdict zn-v-'+v.level+'"><i aria-hidden="true"></i>Readiness '+v.level+'</div>'
+    +'<div class="zn-rd-action">'+lbl[res.adjustment.action]+'</div>'
+    +'<div class="zn-rd-why">'+v.drivers.join(" · ")+'</div>'
+    +(weather?'<div class="zn-rd-wx">🌤 '+Math.round(weather.tmaxC)+'°C prévus'+(weather.precipMm>=5?' · pluie':'')+'</div>':'');
+  if(res.sessions.length)res.sessions.forEach(x=>{h+='<div class="zn-rd-seance"><b>'+(res.jour||"Aujourd’hui")+' · '+x.name+'</b>'+x.det+'</div>';});
+  else h+='<div class="zn-rd-seance">Aucune séance planifiée aujourd’hui.</div>';
+  return h+'</div>';
 }
 /** Applique la forme du jour : lit les 4 sélecteurs (sommeil/VFC/énergie/ressenti), calcule
  *  le verdict, sauvegarde (daté — pas de nouvelle question tant que le jour ne change pas),

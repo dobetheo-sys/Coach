@@ -21,3 +21,260 @@
      · préfixer `body.theme-zenna #screen …` ; ajouter ici plutôt qu'éditer les deux feuilles
        du socle.
    ============================================================ */
+
+/* ============================================================
+   15a / 15b — LES QUESTIONS, À NU SUR LA PAGE (06/09/2026)
+   ============================================================
+   Le canevas ne met AUCUNE carte autour du diaporama : en-tête mono en haut de page, deux
+   lignes display, les options en grandes cartes de 58 px, le champ optionnel dans un panneau,
+   la barre de progression, la note. `#ckSlide` porte `.zn-ck` (plus `.card`) ; le socle
+   (zenna-today.css « CHECK-IN ») style encore `.zn-ck-head`, `.zn-ck-coach`, `.ck-opt`,
+   `.zn-ck-dots` — tout ce qui suit gagne à spécificité égale parce que chargé après.
+   Gouttières : `.wrap` donne 14 ; l'en-tête et le texte du canevas sont à 18/20, les cartes
+   d'option et le panneau à 16 — d'où les +4 / +6 / +2 ci-dessous. */
+body.theme-zenna #screen .zn-ck { padding: 2px 0 8px; }
+body.theme-zenna #screen .zn-ck-head {
+  padding: 0 4px; margin-bottom: 0;
+  font-size: var(--fs-micro); letter-spacing: .14em; text-transform: uppercase; color: var(--zn-faint2);
+}
+/* « POINT DU MATIN » en orange gras à gauche (15a) ; le compteur reste en --zn-faint2. */
+body.theme-zenna #screen .zn-ck-head > span:first-child { color: var(--zn-orange); font-weight: 700; }
+body.theme-zenna #screen .zn-ck-head > span:last-child { letter-spacing: .06em; }
+
+/* La phrase de coach en trois rôles (15b) : rappel · titre · question. Le <h2> ne porte plus
+   de taille inline ; ses enfants sont des blocs. Display SANS capitales : le canevas titre en
+   casse de phrase (« Salut. C'est l'heure… »), à 23 px → --fs-xl. */
+body.theme-zenna #screen .zn-ck-coach {
+  display: flex; flex-direction: column; gap: 0;
+  margin: 22px 6px 0; padding: 0; font-size: var(--fs-xl); line-height: 1.16;
+}
+body.theme-zenna #screen .zn-ck-rappel {
+  font-family: var(--zn-body); font-weight: 400; font-size: var(--fs-lg); line-height: 1.5;
+  color: var(--zn-faint2); margin-bottom: 12px;
+}
+body.theme-zenna #screen .zn-ck-titre,
+body.theme-zenna #screen .zn-ck-question {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight);
+  font-size: var(--fs-xl); line-height: 1.16; letter-spacing: -.01em; text-transform: none;
+  overflow-wrap: anywhere;
+}
+body.theme-zenna #screen .zn-ck-titre { color: var(--zn-text); }
+body.theme-zenna #screen .zn-ck-question { color: var(--zn-orange); margin-top: 10px; } /* 5,36:1 sur --zn-bg (foundation) */
+
+/* Les options : cartes de 58 px, libellé display 15 px, l'indicateur poussé à droite. La
+   sélection (`.on`, au retour sur une diapo déjà répondue) = bordure orange + fond
+   `--zn-surface-3` (le #16181c du canevas est ce ton). `:active` prend la même forme, pour que
+   le tap se VOIE avant que la diapo change. Le socle posait des emojis à 20 px : plus d'emoji. */
+body.theme-zenna #screen .zn-ck-options { display: flex; flex-direction: column; gap: 9px; margin: 22px 2px 0; }
+body.theme-zenna #screen .ck-opt {
+  min-height: 58px; padding: 0 16px; margin: 0; gap: 14px;
+  background: var(--zn-surface); border: 1px solid var(--zn-border-2); border-radius: 15px;
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-lg);
+  letter-spacing: 0; text-transform: none; color: var(--zn-text);
+}
+body.theme-zenna #screen .ck-opt .zn-ck-opt-lab { flex: 1; text-align: left; }
+body.theme-zenna #screen .ck-opt.on,
+body.theme-zenna #screen .ck-opt:active {
+  background: var(--zn-surface-3); border-color: var(--zn-orange); box-shadow: inset 0 0 0 .5px var(--zn-orange);
+  transform: none;
+}
+body.theme-zenna #screen .ck-opt:focus-visible { outline: 2px solid var(--zn-orange); outline-offset: 2px; }
+/* 15b : les options du ressenti sont en CAPITALES et 16 px (→ --fs-field), 66 px de haut, la
+   pastille à gauche du libellé. */
+body.theme-zenna #screen .ck-opt:has(.zn-ck-pastille) { min-height: 66px; padding: 0 18px; border-radius: 16px; }
+body.theme-zenna #screen .ck-opt:has(.zn-ck-pastille) .zn-ck-opt-lab { order: 2; text-transform: uppercase; font-size: var(--fs-field); }
+body.theme-zenna #screen .ck-opt .zn-ck-pastille { order: 1; width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+
+/* La jauge de sommeil (15a) : 5 barres de 4 px, hauteurs 8→20, allumées dans la teinte du
+   signal, éteintes en --zn-border. Décorative (`aria-hidden`) : le libellé porte le sens. */
+body.theme-zenna #screen .zn-ck-jauge { display: flex; gap: 3px; align-items: flex-end; flex: 0 0 auto; }
+body.theme-zenna #screen .zn-ck-jauge i { display: block; width: 4px; border-radius: 2px; background: var(--zn-border); }
+body.theme-zenna #screen .zn-ck-jauge i:nth-child(1) { height: 8px; }
+body.theme-zenna #screen .zn-ck-jauge i:nth-child(2) { height: 11px; }
+body.theme-zenna #screen .zn-ck-jauge i:nth-child(3) { height: 14px; }
+body.theme-zenna #screen .zn-ck-jauge i:nth-child(4) { height: 17px; }
+body.theme-zenna #screen .zn-ck-jauge i:nth-child(5) { height: 20px; }
+body.theme-zenna #screen .zn-ck-jauge--bon i.on { background: var(--zn-easy); }
+body.theme-zenna #screen .zn-ck-jauge--moyen i.on { background: var(--zn-warn); }
+body.theme-zenna #screen .zn-ck-jauge--court i.on { background: var(--zn-hard); }
+/* Les pastilles du ressenti (15b) : vert facile · aéro · alerte · rouge dur — les quatre
+   jetons de charge du canevas, du meilleur au pire. `neutre` (VFC « pas de mesure ») = filet. */
+body.theme-zenna #screen .zn-ck-pastille--bon { background: var(--zn-easy); }
+body.theme-zenna #screen .zn-ck-pastille--aero { background: var(--zn-good); }
+body.theme-zenna #screen .zn-ck-pastille--moyen { background: var(--zn-warn); }
+body.theme-zenna #screen .zn-ck-pastille--court { background: var(--zn-hard); }
+body.theme-zenna #screen .zn-ck-pastille--neutre { background: var(--zn-border-3); }
+
+/* Le champ optionnel (FC au réveil, VFC) dans son panneau (15a) : libellé mono + « optionnel »,
+   saisie 72×44 en creux à droite, unité, note mono dessous. `--fs-field` sur la saisie (R18.1 :
+   iOS zoome sous 16 px). Le socle peint les inputs en --zn-surface-3 / rayon 10 : ici le creux. */
+body.theme-zenna #screen .zn-ck-champ { margin: 20px 2px 0; padding: 14px 16px; border-color: var(--zn-border-2); border-radius: 15px; }
+body.theme-zenna #screen .zn-ck-champ-ligne { display: flex; align-items: center; gap: 12px; color: var(--zn-text); cursor: pointer; }
+body.theme-zenna #screen .zn-ck-champ-lib { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+body.theme-zenna #screen .zn-ck-champ-lib > span { font-family: var(--zn-mono); font-size: var(--fs-xs); letter-spacing: .05em; color: var(--zn-text); }
+body.theme-zenna #screen .zn-ck-champ-lib > small { font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint); }
+body.theme-zenna #screen .zn-ck-champ-saisie { display: flex; align-items: center; gap: 8px; }
+body.theme-zenna #screen .zn-ck-champ-saisie input {
+  width: 72px; min-height: 44px; margin: 0; padding: 0 10px; text-align: center;
+  background: var(--zn-creux); border: 1px solid var(--zn-border-3); border-radius: 11px;
+  font-family: var(--zn-mono); font-size: var(--fs-field); color: var(--zn-text);
+}
+body.theme-zenna #screen .zn-ck-champ-saisie input::placeholder { color: var(--zn-faint); }
+body.theme-zenna #screen .zn-ck-champ-saisie > span { font-family: var(--zn-mono); font-size: var(--fs-xs); color: var(--zn-faint2); }
+body.theme-zenna #screen .zn-ck-champ-note { font-family: var(--zn-mono); font-size: var(--fs-micro); line-height: 1.6; color: var(--zn-faint); margin-top: 10px; }
+
+/* La barre de progression (15a/15b) : traits 24×3, le courant orange, le passé orange éteint
+   (le #5a2a18 du canevas ≈ l'orange à 35 % sur le fond), le reste en --zn-border-3. */
+body.theme-zenna #screen .zn-ck-dots { display: flex; gap: 7px; justify-content: center; margin-top: 24px; }
+body.theme-zenna #screen .zn-ck-dot { width: 24px; height: 3px; border-radius: 2px; border: none; background: var(--zn-border-3); }
+body.theme-zenna #screen .zn-ck-dot.past { background: color-mix(in srgb, var(--zn-orange) 35%, var(--zn-bg)); }
+body.theme-zenna #screen .zn-ck-dot.now { background: var(--zn-orange); }
+/* Le pied : la note (15a) en mono muet ; « ← Revenir » (15b) en bouton nu de 44 px. Le canevas
+   pose ces deux textes en #4c525a / #6d737a — sous AA ; --zn-faint (4,85 sur --zn-bg) à la place. */
+body.theme-zenna #screen .zn-ck-pied { text-align: center; margin-top: 12px; }
+body.theme-zenna #screen .zn-ck-note { font-family: var(--zn-mono); font-size: var(--fs-micro); line-height: 1.6; color: var(--zn-faint); padding: 0 12px; }
+body.theme-zenna #screen .zn-ck-back {
+  background: none; border: none; min-height: 44px; padding: 0 18px; margin-top: 4px;
+  font-family: var(--zn-mono); font-size: var(--fs-xs); letter-spacing: .05em; text-transform: none; color: var(--zn-faint);
+}
+/* L'écran d'attente (« C'est noté 👍 … ta séance arrive… ») garde la même colonne. */
+body.theme-zenna #screen .zn-ck-attente { margin: 10px 6px 0; font-size: var(--fs-lg); color: var(--zn-faint2); }
+
+/* ============================================================
+   15c — LE VERDICT, TOURNÉ VERS L'AVANT (la couche `znVerdictStamp`)
+   ============================================================
+   La couche n'est plus un voile flou avec un tampon au centre : c'est l'ÉCRAN 15c, opaque,
+   ancré en haut, qui se lit puis se retire (16 temps, ou au tap — le bouton « Ouvrir ma
+   séance »). Hors `#screen` (posée sur <body>), d'où le préfixe `.zn-stamp-layer` seul. */
+body.theme-zenna .zn-stamp-layer {
+  align-items: flex-start; justify-content: center; padding: 0;
+  background: var(--zn-bg); backdrop-filter: none; overflow-y: auto;
+}
+body.theme-zenna .zn-stamp-layer .zn-ck-verdict {
+  width: 100%; max-width: 430px; margin: 0 auto; padding: 16px var(--zn-gutter-card) 24px;
+  display: block; gap: 0; color: var(--zn-text);
+}
+body.theme-zenna .zn-stamp-layer .zn-ck-verdict .zn-ck-head {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  padding: 0 4px; font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .14em;
+  text-transform: uppercase; color: var(--zn-faint2);
+}
+body.theme-zenna .zn-stamp-layer .zn-ck-verdict .zn-ck-head > span:first-child { color: var(--zn-orange); font-weight: 700; }
+body.theme-zenna .zn-stamp-layer .zn-ck-veyebrow {
+  margin-top: 26px; text-align: center; font-family: var(--zn-mono); font-size: var(--fs-micro);
+  letter-spacing: .14em; text-transform: uppercase; color: var(--zn-faint2);
+}
+/* Le tampon : pilule --r-pill, pastille + display 18 px capitales. La teinte suit le niveau du
+   verdict : vert = --zn-good, orange = --zn-gold (le jaune du canevas), rouge = --zn-hard en
+   pastille/bordure — le TEXTE reste --zn-text (AA), la couleur est dans la pastille et le cadre.
+   `.stamp` garde son animation (socle). */
+body.theme-zenna .zn-stamp-layer .zn-verdict-badge {
+  display: flex; width: fit-content; margin: 16px auto 0; align-items: center; gap: 11px;
+  padding: 14px 22px; border-radius: var(--r-pill); border-width: 1.5px;
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-hand);
+  letter-spacing: -.01em; text-transform: uppercase; color: var(--zn-text);
+  background: color-mix(in srgb, var(--zn-good) 9%, transparent); border-color: color-mix(in srgb, var(--zn-good) 45%, transparent);
+}
+body.theme-zenna .zn-stamp-layer .zn-verdict-badge .zn-ck-vdot { width: 11px; height: 11px; border-radius: 50%; background: var(--zn-good); flex: 0 0 auto; }
+body.theme-zenna .zn-stamp-layer .zn-verdict-badge.zn-v-orange {
+  color: var(--zn-text);
+  background: color-mix(in srgb, var(--zn-gold) 9%, transparent); border-color: color-mix(in srgb, var(--zn-gold) 45%, transparent);
+}
+body.theme-zenna .zn-stamp-layer .zn-verdict-badge.zn-v-orange .zn-ck-vdot { background: var(--zn-gold); }
+body.theme-zenna .zn-stamp-layer .zn-verdict-badge.zn-v-rouge {
+  color: var(--zn-text);
+  background: color-mix(in srgb, var(--zn-hard) 9%, transparent); border-color: color-mix(in srgb, var(--zn-hard) 45%, transparent);
+}
+body.theme-zenna .zn-stamp-layer .zn-verdict-badge.zn-v-rouge .zn-ck-vdot { background: var(--zn-hard); }
+/* Les motifs du moteur (drivers) : mono, casse conservée (le socle les mettait en capitales —
+   « FC au réveil 58 vs 52 bpm » se lit mieux tel que le moteur l'écrit). */
+body.theme-zenna .zn-stamp-layer .zn-verdict-why {
+  margin: 16px auto 0; max-width: 340px; text-align: center; text-transform: none;
+  font-family: var(--zn-mono); font-size: var(--fs-xs); line-height: 1.7; letter-spacing: 0; color: var(--zn-muted);
+}
+body.theme-zenna .zn-stamp-layer .zn-ck-vtitre {
+  margin: 20px 6px 0; text-align: center; text-wrap: pretty;
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-hand); line-height: 1.25; color: var(--zn-text);
+}
+body.theme-zenna .zn-stamp-layer .zn-ck-vsub { margin: 9px 6px 0; text-align: center; font-size: var(--fs-md); line-height: 1.55; color: var(--zn-muted); text-wrap: pretty; }
+
+/* « Ce que la journée construit » : le grand panneau (rayon --r-card, bordure --zn-border-3,
+   fond radial surface-3 → surface-2 comme le canevas), eyebrow en vert facile, display 23 px,
+   corps, trois tuiles en creux, filet, la séance, la note, le CTA. */
+body.theme-zenna .zn-stamp-layer .zn-ck-construit {
+  margin-top: 24px; padding: 18px 16px; border-radius: var(--r-card); border: 1px solid var(--zn-border-3);
+  background: radial-gradient(120% 90% at 50% 0%, var(--zn-surface-3), var(--zn-surface-2));
+}
+body.theme-zenna .zn-stamp-layer .zn-ck-construit-eyebrow {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .13em; text-transform: uppercase; color: var(--zn-easy); font-weight: 700;
+}
+body.theme-zenna .zn-stamp-layer .zn-ck-construit-titre { margin-top: 10px; font-size: var(--fs-xl); line-height: 1.08; color: var(--zn-text); overflow-wrap: anywhere; }
+body.theme-zenna .zn-stamp-layer .zn-ck-construit-corps { margin-top: 10px; font-size: var(--fs-sm); line-height: 1.55; color: var(--zn-muted); }
+body.theme-zenna .zn-stamp-layer .zn-ck-tuiles { display: flex; gap: 8px; margin-top: 15px; }
+body.theme-zenna .zn-stamp-layer .zn-ck-tuile { flex: 1; min-width: 0; padding: 12px 13px; border-radius: var(--r-control); }
+body.theme-zenna .zn-stamp-layer .zn-ck-tuile-val {
+  display: flex; align-items: baseline; gap: 4px;
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-xl); line-height: 1;
+  color: var(--zn-text); font-variant-numeric: tabular-nums;
+}
+body.theme-zenna .zn-stamp-layer .zn-ck-tuile-val small { font-size: var(--fs-xs); color: var(--zn-faint2); font-weight: var(--zn-display-weight); }
+body.theme-zenna .zn-stamp-layer .zn-ck-tuile-val--serie { color: var(--zn-warn); }
+body.theme-zenna .zn-stamp-layer .zn-ck-tuile-val--serie small { color: var(--zn-warn); }
+body.theme-zenna .zn-stamp-layer .zn-ck-tuile-val--j { color: var(--zn-orange); }
+body.theme-zenna .zn-stamp-layer .zn-ck-tuile-lab {
+  margin-top: 5px; font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .09em;
+  text-transform: uppercase; line-height: 1.4; color: var(--zn-faint2);
+}
+body.theme-zenna .zn-stamp-layer .zn-ck-seance {
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--zn-border);
+}
+body.theme-zenna .zn-stamp-layer .zn-ck-seance .zn-display { font-size: var(--fs-lg); color: var(--zn-text); }
+body.theme-zenna .zn-stamp-layer .zn-ck-seance .zn-mono { font-size: var(--fs-xs); color: var(--zn-muted); }
+body.theme-zenna .zn-stamp-layer .zn-ck-construit-note { margin-top: 5px; font-family: var(--zn-mono); font-size: var(--fs-micro); line-height: 1.6; color: var(--zn-faint); }
+body.theme-zenna .zn-stamp-layer .zn-ck-ouvrir { margin-top: 14px; min-height: 54px; border-radius: 15px; }
+body.theme-zenna .zn-stamp-layer .zn-ck-ouvrir span { font-size: var(--fs-lg); }
+/* « Le point est rejouable » : creux, pictogramme aéro, corps 10 px → --fs-xs. */
+body.theme-zenna .zn-stamp-layer .zn-ck-rejouable {
+  display: flex; gap: 10px; align-items: flex-start; margin-top: 14px; padding: 13px 15px;
+  font-size: var(--fs-xs); line-height: 1.55; color: var(--zn-faint2);
+}
+body.theme-zenna .zn-stamp-layer .zn-ck-rejouable-ico { color: var(--zn-good); font-family: var(--zn-mono); font-size: var(--fs-md); line-height: 1.2; flex: 0 0 auto; }
+@media (prefers-reduced-motion: reduce) {
+  /* L'écran 15c reste un écran : sans tampon animé, sans transition — jamais invisible. */
+  body.theme-zenna .zn-stamp-layer .zn-verdict-badge { animation: none; }
+}
+
+/* ============================================================
+   LE PANNEAU « MODIFIER MA FORME DU JOUR » (plan-view.js `readinessCardHTML`, readiness.js)
+   ============================================================
+   Le contenu du <details> d'Aujourd'hui (zone Aujourd'hui, non touchée) : sa carte interne perd
+   son cadre (elle est déjà DANS une ligne à nu), ses trois sélecteurs deviennent des contrôles
+   en creux de 44 px sur toute la largeur, le bouton prend le gabarit du secondaire, et le
+   résultat (`verdictHTML`) se lit en creux. Les identifiants (#rdSleep, #rdEnergy, #rdFeel,
+   #rdApply, #rdResult) sont le contrat des suites — `readinessCardHTML` vit dans plan-view.js
+   (zone Plan) : la forme est prise par le CSS, sur les classes qu'elle rend déjà. */
+body.theme-zenna #screen .zn-row-details .load-card:has(#rdApply) { background: none; border: none; padding: 4px 0 6px; box-shadow: none; }
+body.theme-zenna #screen .zn-row-details .load-card:has(#rdApply) > .load-title { display: none; } /* le titre est déjà le <summary> */
+body.theme-zenna #screen .zn-row-details .load-card:has(#rdApply) > .load-sub { font-size: var(--fs-sm); color: var(--zn-muted); margin-bottom: 12px; }
+body.theme-zenna #screen .zn-row-details .load-card:has(#rdApply) > div:has(#rdSleep) { display: flex; flex-direction: column; gap: 8px; }
+body.theme-zenna #screen .zn-row-details select.opt {
+  width: 100%; min-height: 44px; padding: 0 12px; margin: 0;
+  background: var(--zn-creux); border: 1px solid var(--zn-border-3); border-radius: var(--r-control);
+  font-family: var(--zn-mono); font-size: var(--fs-md); color: var(--zn-text);
+}
+body.theme-zenna #screen .zn-row-details #rdApply {
+  width: 100%; min-height: 48px; margin-top: 4px; border-radius: var(--r-control);
+  background: var(--zn-surface); border: 1px solid var(--zn-border-3); color: var(--zn-text);
+  font-family: var(--zn-mono); font-size: var(--fs-sm); font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+}
+body.theme-zenna #screen #rdResult .zn-rd { margin-top: 2px; padding: 13px 15px; }
+body.theme-zenna #screen .zn-rd-verdict { display: flex; align-items: center; gap: 9px; font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-lg); text-transform: uppercase; letter-spacing: -.01em; color: var(--zn-text); }
+body.theme-zenna #screen .zn-rd-verdict i { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; background: var(--zn-good); }
+body.theme-zenna #screen .zn-rd-verdict.zn-v-orange i { background: var(--zn-gold); }
+body.theme-zenna #screen .zn-rd-verdict.zn-v-rouge i { background: var(--zn-hard); }
+body.theme-zenna #screen .zn-rd-action { font-family: var(--zn-mono); font-size: var(--fs-xs); color: var(--zn-muted); margin-top: 4px; }
+body.theme-zenna #screen .zn-rd-why { font-family: var(--zn-mono); font-size: var(--fs-micro); line-height: 1.6; color: var(--zn-faint); margin-top: 6px; }
+body.theme-zenna #screen .zn-rd-wx { font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint2); margin-top: 6px; }
+body.theme-zenna #screen .zn-rd-seance { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--zn-filet); font-size: var(--fs-sm); line-height: 1.5; color: var(--zn-muted); }
+body.theme-zenna #screen .zn-rd-seance b { display: block; font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-md); text-transform: uppercase; letter-spacing: -.01em; color: var(--zn-text); margin-bottom: 3px; }
