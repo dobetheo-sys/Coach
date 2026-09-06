@@ -508,6 +508,18 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   ok(m.aria === "false", "U18 — et l'état est annoncé aux lecteurs d'écran (aria-expanded)");
   ok(/^Aide : /.test(m.label), "U18 — le bouton dit CE QU'il explique (« " + m.label + " »)");
 
+  // REFONTE Profil (06/09/2026) — « Ce qui pilote ce plan » range désormais chaque carte dans
+  // un `<details class="zn-pf-fold">` REPLIÉ par défaut (22b) : le premier `.aide-btn` du DOM
+  // vit maintenant DANS l'une de ces cartes, et un Playwright `click()` sur un élément à
+  // hauteur nulle n'aboutit jamais (30 s de « not visible »). Le fold est une propriété
+  // DIFFÉRENTE de celle que ce bloc mesure (le repli de l'AIDE elle-même, `m.replie`) — même
+  // patron que U18b (`carte.open = true`) : on ouvre le fold ANCÊTRE pour rendre le bouton
+  // atteignable, sans toucher à ce qui est asserté.
+  await page.evaluate(() => {
+    const b = document.querySelector(".aide-btn");
+    const fold = b && b.closest("details:not([open])");
+    if (fold) fold.open = true;
+  });
   await page.click(".aide-btn");
   await page.waitForTimeout(250);
   const apres = await page.evaluate(() => {
@@ -858,15 +870,26 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
     // DANS l'élément de titre, et celle de « 🏁 Ta course » cite « ⚙ Références d'entraînement »
     // — une regex libre attrapait donc la carte course comme carte références (nRefs: 2).
     const parTitre = (prefixe) => cards.find((c) => titre(c).trim().startsWith(prefixe));
-    const stravaCard = parTitre("🔗 Strava");
     const refsCard = parTitre("⚙ Références");
     const raceCard = parTitre("🏁 Ta course");
     const cp = document.getElementById("pfCourseProfile");
     const recCard = cards.find((c) => /🏅 Records personnels/.test(titre(c)));
     let recOverflow = false;
     if (recCard) { recCard.open = true; recOverflow = recCard.scrollWidth > recCard.clientWidth + 1; }
+    // REFONTE Profil (06/09/2026) — le Profil s'est réparti en TROIS sous-onglets (22b/14b/14c),
+    // et « Connexions » (Strava, Météo) a rejoint PARAMÈTRES : ce n'est plus une `.load-card`
+    // dans un défilement unique, c'est un `.zn-panel` sous l'intertitre « Connexions », et son
+    // titre a perdu le « 🔗 » (repris par le canevas 14c). La propriété que R24 protégeait —
+    // Strava PROÉMINENT, pas enterré — se lit désormais dans SON écran : Strava est le premier
+    // bloc sous « Connexions », avant Météo. Vérifié rouge en permutant les deux `h +=`
+    // (stravaCardHTML après le bloc Météo).
+    const secs = [...screen.querySelectorAll(".zn-sec span")];
+    const secConnexions = secs.find((s) => /^Connexions$/.test(s.textContent.trim()));
+    const panelConnexions = secConnexions ? secConnexions.closest(".zn-sec").nextElementSibling : null;
+    const stravaPanel = panelConnexions && /Strava/.test(panelConnexions.textContent) ? panelConnexions : null;
+    const meteoPanel = stravaPanel ? stravaPanel.nextElementSibling : null;
     return {
-      stravaAvantRefs: !!(stravaCard && refsCard) && cards.indexOf(stravaCard) < cards.indexOf(refsCard),
+      stravaAvantMeteo: !!(stravaPanel && meteoPanel) && /Météo/.test(meteoPanel.textContent),
       connectUnique: document.querySelectorAll("#pfStravaConnect").length === 1,
       raceCarte: !!raceCard, cpDansRace: !!(cp && cardOf(cp) === raceCard),
       cpHorsRefs: !!(cp && refsCard && cardOf(cp) !== refsCard),
@@ -874,8 +897,8 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
       recOverflow,
     };
   });
-  ok(r24.stravaAvantRefs && r24.connectUnique,
-    "R24.2 — la carte 🔗 Strava vit AVANT les références (premier écran), et le bouton de connexion n'existe qu'une fois");
+  ok(r24.stravaAvantMeteo && r24.connectUnique,
+    "R24.2 — sous « Connexions » (Paramètres), Strava vient AVANT Météo, et le bouton de connexion n'existe qu'une fois");
   ok(r24.raceCarte && r24.cpDansRace && r24.cpHorsRefs && r24.saveRace,
     "R24.3 — « 🏁 Ta course » existe, porte le profil du parcours (sorti des références) et son propre Enregistrer");
   // R24.1 — LE CRITÈRE A BESOIN DE LA MATIÈRE DU SYMPTÔME. Vérifié : sans record dans l'état,
