@@ -48,8 +48,12 @@ import { appHeaderHTML } from "./app-header.js";
 //
 // Les emoji RESTENT dans les titres de cartes (🔥 Dépense, 🥤 Ravitaillement) : là, ils
 // repèrent un CONTENU, ils ne portent pas l'identité de l'app.
+// FOUNDATION (04/09/2026) — ces cinq tracés sont EXACTEMENT ceux de la barre du canevas
+// (18a-22c : personne, calendrier, cible, barres, grille — 2 à 4 tracés chacun) ; trait 1.8,
+// rendus à 22 px par `zenna-today.css`. Rien à redessiner : la maquette v4 les avait déjà
+// repris de la même source.
 const SVG_NAV = (d) => '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" '
-  + 'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + "</svg>";
+  + 'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + "</svg>";
 const ICO = {
   profil: SVG_NAV('<circle cx="10" cy="6.5" r="3.2"/><path d="M4 17a6 6 0 0 1 12 0"/>'),
   plan: SVG_NAV('<rect x="3" y="4" width="14" height="13" rx="2"/><line x1="3" y1="8" x2="17" y2="8"/>'
@@ -293,7 +297,10 @@ function renderActiveTab() {
   // puce ne pointe pas vers l'onglet où l'on se trouve déjà).
   const entete = $("ebAppHeader");
   if (entete) {
-    entete.innerHTML = appHeaderHTML(plan, todayISO(), activeTab);
+    // FOUNDATION — le NOM de l'onglet vient de la table TABS ci-dessus, seule source : l'en-tête
+    // du canevas (18b : « Semaine ») l'affiche à droite, et il ne doit pas exister deux fois.
+    const tabActif = TABS.find((t) => t[0] === activeTab) || TABS[TABS.length - 1];
+    entete.innerHTML = appHeaderHTML(plan, todayISO(), activeTab, tabActif[2]);
     const puce = entete.querySelector("[data-goto]");
     if (puce) {
       const aller = () => setTab(puce.dataset.goto);

@@ -186,6 +186,57 @@ await page.waitForTimeout(300);
 const secuVisible = await page.locator('.edu-section[data-section="p4"] .edu-secu').isVisible();
 ok(secuVisible, "A10 — le bloc sécurité de la section eau libre est visible dès l'ouverture, sans clic de plus");
 
+// ── REFONTE « NOIR APAISÉ » (canevas 16a / 16b / 21c) — trois propriétés de la FORME, jamais
+// un libellé ni une classe cosmétique (règle 17) : (1) l'état d'un palier se lit sur la carte
+// et suit `valides` (16a : deux acquis, un en cours, le reste verrouillé) ; (2) le badge de
+// preuve est EN TÊTE de la fiche ouverte — au-dessus du premier bloc de contenu (16b « le
+// badge de preuve passe en tête ») ; (3) une section sans `preuve` n'a AUCUN badge et porte la
+// ligne qui le dit (21c). Contre-prouvées par `npm run casser` (voir le compte rendu du lot).
+// L'état est POSÉ (p1 et p2 acquis), pas cliqué : A7 a laissé p1 validé dans le stockage, et un
+// clic de plus le DÉVALIDERAIT — le critère mesurerait alors l'inverse de ce qu'il nomme.
+await page.evaluate(async () => {
+  const { S } = await import("./js/state.js");
+  S.answers.educatifs = { natation: { valides: ["p1", "p2"], derniereConsultation: null } };
+  S.eduDiscipline = "natation";
+});
+await renderPour("tri");
+const etats = await page.evaluate(() => {
+  const sel = (id) => document.querySelector('.edu-section[data-section="' + id + '"]');
+  const actif = sel("p3");
+  return {
+    p1: sel("p1").dataset.etat, p2: sel("p2").dataset.etat, p3: actif.dataset.etat,
+    ouvrir: !!actif.querySelector(".edu-row-open"),
+    perles: [...document.querySelectorAll(".edu-bead")].map((b) => b.dataset.state).join(","),
+  };
+});
+ok(etats.p1 === "done" && etats.p2 === "done" && etats.p3 === "active" && etats.ouvrir,
+  "16a — deux paliers acquis, le troisième EN COURS avec sa ligne « Ouvrir le palier » (" + etats.p1 + "/" + etats.p2 + "/" + etats.p3 + ")");
+ok(etats.perles === "done,done,active", "16a — la chaîne de perles suit `valides` (" + etats.perles + ")");
+// (2) fiche ouverte : le badge précède le contenu
+await page.click('.edu-section[data-section="p3"] > summary');
+await page.waitForTimeout(400);
+const tete = await page.evaluate(() => {
+  const s = document.querySelector('.edu-section[data-section="p3"]');
+  const badge = s.querySelector(".edu-badge"), corps = s.querySelector(".edu-body > *");
+  if (!badge || !corps) return { badge: !!badge, corps: !!corps };
+  const b = badge.getBoundingClientRect(), c = corps.getBoundingClientRect();
+  return { badge: true, corps: true, visible: b.height > 0, avant: b.bottom <= c.top, texte: badge.textContent.trim() };
+});
+ok(tete.badge && tete.corps && tete.visible && tete.avant,
+  "16b — le badge de preuve est EN TÊTE de la fiche ouverte, visible, au-dessus du premier bloc (" + JSON.stringify(tete) + ")");
+// (3) 21c — une section dont `preuve` est vide : aucun badge, et la ligne qui l'explique
+await renderPour("run");
+const sansPreuve = await page.evaluate(async () => {
+  const { EDUCATIFS } = await import("./js/data/educatifs/registry.js");
+  const course = EDUCATIFS.find((d) => d.discipline === "course");
+  const cible = course.sections.find((s) => !s.preuve);
+  if (!cible) return { existe: false };
+  const s = document.querySelector('.edu-section[data-section="' + cible.id + '"]');
+  return { existe: true, id: cible.id, badges: s.querySelectorAll(".edu-badge, .edu-preuve[data-n]").length, ligne: !!s.querySelector(".edu-nopreuve") };
+});
+ok(sansPreuve.existe && sansPreuve.badges === 0 && sansPreuve.ligne,
+  "21c — la section sans niveau de preuve (" + sansPreuve.id + ") n'a aucun badge et porte la ligne qui le dit");
+
 // ── A12 — chaque section possède au moins une entrée dans `sources` (mesuré sur les données,
 // pas seulement le rendu — la vraie garantie porte sur le CONTRAT des six fichiers).
 const sansSource = await page.evaluate(async () => {

@@ -9,6 +9,12 @@ import { stravaFetch } from "../strava.js";
 function opt(val,label){return '<button class="opt" data-val="'+val+'" type="button">'+label+'</button>';}
 function branch(id,cond,html){const el=$(id);if(!el)return;el.innerHTML=cond?html:"";if(cond)bindInputs(el);}
 
+// ZONE QUESTIONNAIRE (refonte visuelle, 05/09/2026) — la coche réutilisée partout dans l'app
+// (« Sécurité », « Tout est répondu », les décisions du moteur) : même tracé que
+// `zenna-today.css` (`.check-draw`, `M4 10.5l4 4 8-9`), jamais une seconde icône pour la même
+// idée. `currentColor` : la couleur vient de qui l'affiche (l'appelant pose `color`).
+const ZN_CHECK_SVG='<svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5l4 4 8-9"></path></svg>';
+
 /* ---------- HELPERS ZONES ---------- */
 function evalRules(a, tier){
   const R=[]; const add=(id,what,val,why)=>R.push({id,what,val,why});
@@ -173,7 +179,18 @@ function buildFreeSteps(){
          +'<div class="row"><div class="q"><span class="q-label">D+ total (m)</span><input type="number" min="0" max="8000" data-input="race_dplus_m" placeholder="250"></div>'
          +'<div class="q"><span class="q-label">Segments nagés</span><input type="number" min="1" max="60" data-input="segments_n" placeholder="10"></div></div>'
          +'<div class="row"><div class="q"><span class="q-label">La plus longue nage (m)</span><div class="q-def">C\'est elle qui dimensionne ta prépa : thermiquement et mentalement.</div><input type="number" min="50" max="5000" data-input="longest_swim_m" placeholder="600"></div>'
-         +'<div class="q"><span class="q-label">Température d\'eau prévue (°C)</span><input type="number" min="4" max="30" data-input="water_temp_c" placeholder="16"></div></div>'
+         +'<div class="q"><span class="q-label">Température d\'eau prévue (°C)</span><input type="number" min="4" max="30" data-input="water_temp_c" placeholder="16"></div></div></div>'
+         // ⚠ BUG PRÉ-EXISTANT FERMÉ ICI (trouvé en construisant `decorateQuestions()`, hors
+         // du périmètre qui l'a introduit) — la `</div>` ajoutée juste au-dessus ferme le `.q`
+         // ouvert en amont (« Les données de ta course », ligne 176) : sans elle, TOUT ce qui
+         // suit (Solo ou binôme, Écart de niveau, Accès à l'eau libre, les deux tests de
+         // continuité, jusqu'à la Date) devenait un DESCENDANT de cette question au lieu d'un
+         // frère — un `<div class="opts" data-key="team_mode">` profondément niché reste
+         // fonctionnellement identique (les sélecteurs `.opts[data-key]`/`[data-input]` ne
+         // regardent pas la profondeur), donc `valid()`, `S.answers` et `audit:*` n'y voyaient
+         // que du feu ; seul `decorateQuestions()` — qui énumère les `.q` ENFANTS DIRECTS du
+         // panneau pour les numéroter — le rendait visible (« Solo ou binôme » hérite alors du
+         // badge REQUIS de la question n°3 par accident de nesting, cf. `swimrun_dom_debug.mjs`).
          +'<div class="q"><span class="q-label">Solo ou binôme ?</span><div class="q-def">La plupart des épreuves se courent en binôme, attachés par une longe — et ça change toute la prescription.</div><div class="opts" data-key="team_mode">'+opt("binome","En binôme")+opt("solo","En solo")+'</div></div><div id="teamB"></div>'
          +'<div class="q"><span class="q-label">Accès à l\'eau libre à l\'entraînement ?</span><div class="opts" data-key="openwater_access">'+opt("toute_annee","Toute l\'année")+opt("saisonnier","En saison seulement")+opt("aucun","Aucun")+'</div></div>'
          +'<div class="q"><span class="q-label">Tu nages 30min (~1200m) sans t\'arrêter ?</span><div class="opts" data-key="swim_continuous">'+opt("oui","Oui")+opt("non","Pas encore")+'</div></div>'
@@ -218,7 +235,15 @@ function buildFreeSteps(){
    why:"Trois questions avant tout. Un signal → orientation médecin avant intensité. Gratuit, non négociable.",
    render(){return '<div class="q-sub">🔒 Ces réponses de santé restent dans ton navigateur et ne sont <b>jamais</b> envoyées à un serveur. Elles servent uniquement à sécuriser ton plan sur cet appareil.</div><div class="q"><span class="q-label">Douleur thoracique à l\'effort, déjà ?</span><div class="opts" data-key="med_pain">'+opt("non","Non")+opt("oui","Oui")+'</div></div>'
      +'<div class="q"><span class="q-label">Vertiges / malaise à l\'effort, déjà ?</span><div class="opts" data-key="med_dizzy">'+opt("non","Non")+opt("oui","Oui")+'</div></div>'
-     +'<div class="q"><span class="q-label">Traitement cardiovasculaire ?</span><div class="opts" data-key="med_treat">'+opt("non","Non")+opt("oui","Oui")+'</div></div>';},
+     +'<div class="q"><span class="q-label">Traitement cardiovasculaire ?</span><div class="opts" data-key="med_treat">'+opt("non","Non")+opt("oui","Oui")+'</div></div><div id="medWarnB"></div>';},
+   // 4b du canevas montre un encart qui apparaît DÈS qu'un signal est déclaré, avant même la
+   // fin de l'étape — R11.1 : le texte est celui qu'`evalRules()` calcule déjà pour « Pourquoi
+   // ce plan » (décision `medical`), jamais une seconde formulation de la même règle.
+   branches(a){
+     const signal=a.med_pain==="oui"||a.med_dizzy==="oui"||a.med_treat==="oui";
+     const r=signal?evalRules(a,S.tier).find(x=>x.id==="medical"):null;
+     branch("medWarnB",!!r,r?'<div class="branch zn-q-warn"><div class="branch-tag">⚠️ '+r.val+'</div><div class="q-sub" style="margin:0">'+r.why+'</div></div>':"");
+   },
    valid(a){return a.med_pain&&a.med_dizzy&&a.med_treat;}},
   ];
 
@@ -805,7 +830,14 @@ function valeurPlausible(k,root){
 function libelleDe(k,root){
   const el=root.querySelector('.opts[data-key="'+k+'"]')||root.querySelector('[data-input="'+k+'"]');
   const q=el&&el.closest(".q"),lab=q&&q.querySelector(".q-label");
-  return lab?(lab.textContent||"").trim():k;
+  if(!lab)return k;
+  // `decorateQuestions()` injecte un numéro (`.zn-qn`) et un état (`.zn-qstate`, coche ou
+  // pastille « Requis »/« Affine ») DANS ce même `.q-label` — lire son `textContent` brut les
+  // mélangerait au texte de la question (« 2Quel objectif ?Requis »). On les retire d'un clone
+  // avant de lire : le message qui manque nomme la QUESTION, jamais sa décoration visuelle.
+  const clone=lab.cloneNode(true);
+  clone.querySelectorAll(".zn-qn,.zn-qstate").forEach(n=>n.remove());
+  return (clone.textContent||"").trim();
 }
 function reponsesManquantes(st,a,root){
   if(!st||!root||st.valid(a))return [];
@@ -820,30 +852,122 @@ function reponsesManquantes(st,a,root){
   if(!st.valid(plein))return manque;
   return manque.filter(k=>{const t={...plein};delete t[k];return !st.valid(t);});
 }
+
+// ── ZONE QUESTIONNAIRE (refonte visuelle) — un seul calcul de sensibilité pour trois usages ──
+//
+// U19 dérivait déjà « qu'est-ce qui manque » sans jamais lister une clé obligatoire à part
+// (R11.1). `clesEtEtat` généralise le même geste à la question inverse — « qu'est-ce qui est
+// OBLIGATOIRE, que ce soit déjà répondu ou non » — et sert les TROIS endroits qui doivent
+// s'accorder : le décompte « N requises sur N » sous le bouton (5a/5b du canevas), le badge
+// « Requis »/« Affine » de chaque question (`decorateQuestions`) et — demain — tout autre
+// endroit qui aurait besoin de la même liste. Une clé y est REQUISE si, en repartant d'un
+// clone où CHAQUE case vide reçoit une valeur plausible, la retirer casse `valid()` — le même
+// principe que `reponsesManquantes`, formulé pour un état déjà valide.
+function clesEtEtat(st,a,root){
+  const cles=[...new Set([...root.querySelectorAll(".opts[data-key]")].map(e=>e.dataset.key)
+    .concat([...root.querySelectorAll("[data-input]")].map(e=>e.dataset.input)))];
+  const vide=k=>a[k]===undefined||a[k]===null||a[k]==="";
+  const plein={...a};cles.forEach(k=>{if(vide(k))plein[k]=valeurPlausible(k,root);});
+  const requis=new Set(cles.filter(k=>{const t={...plein};delete t[k];return !st.valid(t);}));
+  return {cles,requis,vide};
+}
+/** Numérote chaque question de la carte, et pose son état — répondue (coche), REQUISE ou qui
+ *  AFFINE (5b du canevas : « jusqu'à six options par question… trois sont requises, cinq
+ *  affinent »). N'écrit AUCUN texte de question : seuls un numéro et une icône/pastille sont
+ *  injectés dans le `.q-label` existant — `renderSess`/`st.render()` restent les seuls
+ *  producteurs de la question elle-même (règle de séparation des rôles). */
+function decorateQuestions(st,a,root){
+  const card=root.querySelector(".card");if(!card)return;
+  const qs=[...card.querySelectorAll(":scope > .q, :scope > .row > .q")].filter(q=>q.querySelector(":scope > .q-label"));
+  if(!qs.length)return;
+  const {requis}=clesEtEtat(st,a,root);
+  const keysOf=(q)=>[...q.querySelectorAll(".opts[data-key]")].map(e=>e.dataset.key).concat([...q.querySelectorAll("[data-input]")].map(e=>e.dataset.input));
+  qs.forEach((q,i)=>{
+    const label=q.querySelector(":scope > .q-label");if(!label)return;
+    const ks=keysOf(q);
+    const answered=!!q.querySelector(".opt.sel")||ks.some(k=>{const v=a[k];return v!==undefined&&v!==null&&v!=="";});
+    const req=ks.some(k=>requis.has(k));
+    q.classList.toggle("zn-answered",answered);
+    let n=label.querySelector(":scope > .zn-qn");
+    if(!n){n=document.createElement("span");n.className="zn-qn";label.insertBefore(n,label.firstChild);}
+    n.textContent=String(i+1);
+    let etat=label.querySelector(":scope > .zn-qstate");
+    if(!etat){etat=document.createElement("span");etat.className="zn-qstate";label.appendChild(etat);}
+    etat.innerHTML=answered?ZN_CHECK_SVG:(req?'<span class="zn-qreq">Requis</span>':'<span class="zn-qopt">Affine</span>');
+  });
+}
+/** 4c du canevas — le bilan du socle (`#genNowWrap`) : quatre lignes, une par étape du socle,
+ *  lues sur les MÊMES réponses que le reste de l'écran (R11.1 : jamais une valeur de la
+ *  maquette recopiée). `VLAB` est la table de libellés déjà partagée par tout le fichier. */
+const VOL_MAX_LABELS={4:"≤4h",7:"5-7h",10:"8-10h",13:"11-13h",16:"14-16h",20:"16h+"};
+function fillSocleRecap(){
+  const box=$("genNowWrap");if(!box)return;
+  const ul=box.querySelector(".zn-q-recap");if(!ul)return;
+  const a=S.answers;
+  const secuN=["med_pain","med_dizzy","med_treat"].filter(k=>a[k]==="oui").length;
+  const rows=[
+    ["Intention",VLAB[a.intent]||a.intent||"—",false],
+    ["Sécurité",secuN?secuN+" signal"+(secuN>1?"aux":"")+" noté"+(secuN>1?"s":""):"Aucun signal",secuN>0],
+    ["Profil",(a.age?a.age+" ans":"—")+(a.weight?" · "+a.weight+" kg":""),false],
+    ["Disponibilité",VOL_MAX_LABELS[a.vol_max]||(a.vol_max?a.vol_max+"h":"—"),false],
+  ];
+  ul.innerHTML=rows.map(([l,v,warn])=>'<li>'+ZN_CHECK_SVG+'<span class="zn-q-recap-l">'+l+'</span><span class="zn-q-recap-v'+(warn?" zn-q-warn":"")+'">'+v+'</span></li>').join("");
+}
+
 function refreshNav(){
   const st=curSteps()[S.step],b=$("nextBtn");
   if(b&&st)b.disabled=!st.valid(S.answers);
-  // Le message n'apparaît QUE si l'écran est déjà entamé. Sur un écran vierge, tout manque par
-  // construction — le dire serait réclamer avant même qu'on ait commencé, et ce produit ne
-  // reproche rien (U1). Il arrive au moment exact où on se demande pourquoi ça ne passe pas :
-  // une réponse donnée, et ça bloque encore.
+  // Le message d'alerte n'apparaît QUE si l'écran est déjà entamé. Sur un écran vierge, tout
+  // manque par construction — le dire serait réclamer avant même qu'on ait commencé, et ce
+  // produit ne reproche rien (U1). Il arrive au moment exact où on se demande pourquoi ça ne
+  // passe pas : une réponse donnée, et ça bloque encore.
   const z=$("navManque"),root=$("screen");
   if(z&&st&&root){
-    const manque=b&&b.disabled?reponsesManquantes(st,S.answers,root):[];
+    const bloque=!!(b&&b.disabled);
     const entame=[...root.querySelectorAll(".opts[data-key]")].some(e=>e.querySelector(".opt.sel"))
       ||[...root.querySelectorAll("[data-input]")].some(e=>e.value);
-    if(manque.length&&entame){
-      // D3 — DÉDUPLIQUÉ PAR LIBELLÉ : deux clés peuvent vivre dans la MÊME question (« ta plus
-      // longue nage » porte le choix ET le nombre), et la lister deux fois donnerait un message
-      // qui a l'air cassé. On nomme des QUESTIONS à l'athlète, pas des clés.
-      const libs=[...new Set(manque.map(k=>libelleDe(k,root)))];
-      z.textContent="Il manque encore "+(libs.length>1?"— ":"")+libs.map(l=>"« "+l+" »").join(", ");
-      z.style.display="";
-    } else z.style.display="none";
+    if(bloque){
+      const manque=entame?reponsesManquantes(st,S.answers,root):[];
+      if(manque.length){
+        // D3 — DÉDUPLIQUÉ PAR LIBELLÉ : deux clés peuvent vivre dans la MÊME question (« ta plus
+        // longue nage » porte le choix ET le nombre), et la lister deux fois donnerait un message
+        // qui a l'air cassé. On nomme des QUESTIONS à l'athlète, pas des clés.
+        const libs=[...new Set(manque.map(k=>libelleDe(k,root)))];
+        z.textContent="Il manque encore "+(libs.length>1?"— ":"")+libs.map(l=>"« "+l+" »").join(", ");
+        z.className="";z.style.display="";
+      } else { z.className="";z.style.display="none"; }
+    } else {
+      // U19b (5a/5b du canevas) — L'ÉTAT POSITIF : ce que `valid()` exige est acquis, et ce qui
+      // affine encore se COMPTE (jamais ne se nomme — une case optionnelle vide n'est pas un
+      // manque, U19 l'a déjà tranché dans l'autre sens). Contre-preuve : `smoke-questionnaires`
+      // vérifiait l'ANCIENNE forme (le message disparaît une fois complet) ; la propriété
+      // qu'elle garde — le message ne réclame jamais l'optionnel — est réécrite pour la forme
+      // nouvelle (le message existe encore, mais confirme au lieu de réclamer).
+      const {cles,requis,vide}=clesEtEtat(st,S.answers,root);
+      const enAttente=cles.filter(k=>!requis.has(k)&&vide(k)).length;
+      z.textContent=enAttente
+        ?requis.size+" requise"+(requis.size>1?"s":"")+" sur "+requis.size+" · "+enAttente+" réponse"+(enAttente>1?"s":"")+" qui affine"+(enAttente>1?"nt":"")+" en attente"
+        :"Tout est répondu";
+      z.className="zn-q-ok";z.style.display="";
+    }
+    decorateQuestions(st,S.answers,root);
   }
   // U14 — « générer maintenant » suit les réponses, pas le rendu.
   const g=$("genNowWrap");
-  if(g)g.style.display=(S.tier==="free"&&socleComplet())?"":"none";
+  if(g){
+    const show=(S.tier==="free"&&socleComplet());
+    g.style.display=show?"":"none";
+    if(show)fillSocleRecap();
+  }
+  // La barre du socle passe au vert au MÊME instant que `#genNowWrap` apparaît — même
+  // condition (`socleComplet()`), un seul calcul (R11.1) réévalué à chaque réponse.
+  const qp=$("qProgress");
+  if(qp){
+    const done=S.tier==="free"&&socleComplet();
+    qp.classList.toggle("zn-q-done",done);
+    const note=qp.querySelector(".zn-q-progress-note");
+    if(note&&done)note.textContent="Socle complet — le reste affine, sans rien débloquer.";
+  }
 }
 // R6 — pendant le questionnaire d'un NOUVEAU plan, on doit toujours pouvoir revenir au
 // plan en cours (retour utilisateur : « impossible de retourner à l'accueil »). Le
@@ -870,27 +994,47 @@ function bindBackToPlan(){
   };
 }
 function renderSportPick(){
+  // 4a du canevas — le brand statique de `.hero` (index.html) redevient visible SEULEMENT ici
+  // (voir zenna-questionnaire.css §0) : sur les écrans suivants, la barre de `renderStep()` le
+  // remplace, DANS `#screen`, pour ne rien devoir à un fichier hors de cette zone.
+  document.body.classList.add("eb-picking");
   $("progress").innerHTML="";
-  let html='<div class="card welcome"><div class="w-tri">🏁</div><h2>Quel plan veux-tu construire ?</h2>'
-    +'<p>Un moteur de raisonnement par sport — choisis le tien, le questionnaire s\'adapte.</p><div class="sport-grid">';
   // R12 §0 — les sports proposés sont ceux que le MOTEUR connaît réellement (registre R10).
   // Un sport exclu du bundle V1 ne doit pas apparaître ici : proposer un choix qui lèvera à la
   // génération est pire que de ne pas le proposer.
   const known = (globalThis.EBV2 && globalThis.EBV2.sports) ? Object.keys(globalThis.EBV2.sports) : null;
-  Object.entries(SPORTS).filter(([k])=>!known||known.includes(k)).forEach(([k,c])=>{html+='<button class="sport-card" data-sport="'+k+'" type="button" style="--sa:'+c.accent+'"><span class="sc-ico">'+c.ico+'</span><span class="sc-nom">'+c.nom+'</span><span class="sc-pitch">'+c.pitch+'</span></button>';});
+  const list = Object.entries(SPORTS).filter(([k])=>!known||known.includes(k));
+  // REFONTE 4a (06/09/2026) — l'espace AVANT le <br> compte : sans lui, .textContent perd le
+  // mot de liaison à la coupure de ligne (« Quel plan veux-tuconstruire ? »), lu tel quel par
+  // tout lecteur d'écran et par smoke-r4. Le rendu visuel ne change pas (fin de ligne).
+  let html='<div class="card welcome"><div class="w-tri">🏁</div><h2>Quel plan veux-tu <br><em>construire ?</em></h2>'
+    +'<p>Un moteur de raisonnement par sport — choisis le tien, le questionnaire s\'adapte.</p>'
+    // R11.1 — les trois faits sont DÉRIVÉS, jamais recopiés du canevas : `SOCLE_IDS.length` est
+    // le compte réel d'étapes du socle gratuit (la liste que `socleComplet()` consulte), et
+    // « tout inclus / sur l'appareil » sont les mêmes garanties que `renderBlueprint()` et
+    // l'arbitrage S-1 (moteur public, zéro compte) affichent plus loin dans le parcours.
+    +'<div class="zn-q-meta"><div><b>'+SOCLE_IDS.length+' écrans</b><span>pour un plan</span></div>'
+    +'<div><b>Tout inclus</b><span>rien à payer</span></div>'
+    +'<div><b>Sur l\'appareil</b><span>aucun compte</span></div></div>'
+    +'<div class="sport-grid">';
+  list.forEach(([k,c])=>{html+='<button class="sport-card" data-sport="'+k+'" type="button" style="--sa:'+c.accent+'">'
+    +'<span class="sc-ico" aria-hidden="true">'+c.ico+'</span>'
+    +'<span class="sc-text"><span class="sc-nom">'+c.nom+'</span><span class="sc-pitch">'+c.pitch+'</span></span>'
+    +'<span class="sc-chev" aria-hidden="true">›</span></button>';});
   html+='</div></div>'+backToPlanHTML();
   $("screen").innerHTML=html;
   bindBackToPlan();
-  document.querySelectorAll(".sport-card").forEach(b=>b.onclick=()=>{S.sport=b.dataset.sport;document.body.dataset.sport=b.dataset.sport;S.started=true;S.step=0;renderStep();});
+  document.querySelectorAll(".sport-card").forEach(b=>b.onclick=()=>{document.body.classList.remove("eb-picking");S.sport=b.dataset.sport;document.body.dataset.sport=b.dataset.sport;S.started=true;S.step=0;renderStep();});
 }
 function renderStep(){
   S.onPlan=false;ebSave();hideTabs(); // questionnaire AVANT les onglets — jamais dedans (brief onglets)
+  document.body.classList.remove("eb-picking");
   if(!S.sport){renderSportPick();return;}
-  const steps=curSteps(),fT=buildFreeSteps().length+1,pT=buildPremiumSteps().length+1;
-  let p="";
-  if(S.tier==="free")p=Array.from({length:fT},(_,i)=>'<div class="pstep '+(i<S.step?"done":i===S.step?"cur":"")+'"></div>').join("")+'<div class="psep">★</div>'+Array.from({length:pT},()=>'<div class="pstep prem"></div>').join("");
-  else p=Array.from({length:fT},()=>'<div class="pstep done"></div>').join("")+'<div class="psep">★</div>'+Array.from({length:pT},(_,i)=>'<div class="pstep prem '+(i<S.step?"done":i===S.step?"cur":"")+'"></div>').join("");
-  $("progress").innerHTML=p;
+  const steps=curSteps();
+  // La progression vit désormais DANS #screen (`.zn-q-progress`, ci-dessous) : un seul point
+  // d'accroche, portable, au lieu de deux DOM séparés (`#progress` hors zone + le contenu de
+  // l'étape). `#progress` reste dans index.html (nav ARIA, hors de ma zone) mais reste vide.
+  $("progress").innerHTML="";
   if($("tierBadge")){$("tierBadge").className="tier-badge "+(S.tier==="free"?"free":"premium");$("tierBadge").textContent=(S.tier==="free"?"● ":"★ ")+SPORTS[S.sport].nom+(S.tier==="free"?" · l'essentiel":" · réglage fin");}
   // O-59 — LA POSITION SE RÉSOUT PAR IDENTITÉ AVANT D'AFFICHER : `S.stepId` survit au
   // rechargement (state.js) et aux recompositions de la liste ; l'indice n'est que le repli
@@ -905,23 +1049,62 @@ function renderStep(){
   // « suivant puis précédent » ne revenait pas sur le même écran. On enregistre l'IDENTITÉ au
   // rendu ; les boutons de navigation la résolvent en indice AU MOMENT du clic (ci-dessous).
   S.stepId=st.id;
-  $("screen").innerHTML='<div class="card"><div class="eyebrow">'+st.eyebrow+'</div><h2>'+st.title+'</h2><div class="why">'+st.why+'</div>'+st.render()
-    +'<div class="nav"><button class="btn" id="prevBtn" type="button" '+(S.step===0&&S.tier==="free"?'style="visibility:hidden"':'')+'>← Retour</button><button class="btn primary" id="nextBtn" type="button">Continuer →</button></div>'
-    // U19 — ce que le bouton désactivé ne disait pas. `aria-live` parce que le message apparaît
-    // sans que rien ne prenne le focus : sans lui, un lecteur d'écran ne l'annoncerait jamais.
-    +'<div id="navManque" class="load-sub" role="status" aria-live="polite" style="display:none;margin-top:8px;text-align:center;color:var(--muted)"></div>'
+
+  // 4b/5a/5b du canevas — barre haute (retour + puce sport, dans #screen : rien à demander à
+  // `index.html` ni à `.hero`, qui redevient muet dès qu'un sport est choisi — voir §0 de
+  // zenna-questionnaire.css) et barre de progression DU SOCLE (« LE SOCLE · ÉTAPE N SUR 4 »).
+  const backHidden=(S.step===0&&S.tier==="free");
+  const topHTML='<div class="zn-q-top"><button class="zn-q-back" id="prevBtn" type="button"'+(backHidden?' style="visibility:hidden"':'')+'>‹ Retour</button>'
+    +'<span class="zn-q-chip"><em aria-hidden="true">'+SPORTS[S.sport].ico+'</em><span>'+SPORTS[S.sport].nom+'</span></span></div>';
+  // SOCLE_IDS EST LA MÊME LISTE QUE `socleComplet()` — une barre à 4 segments qui se remplit
+  // vaut pour TOUT sport (R11.1, aucune seconde énumération). Hors du socle (les écrans
+  // « réglage libre » gratuits, ou premium), on garde un repère « étape N sur M » générique :
+  // ce n'est plus le socle qui compte, mais rien n'empêche de savoir où on en est.
+  const socleIdx=SOCLE_IDS.indexOf(st.id);
+  let progressHTML;
+  if(socleIdx>=0){
+    const total=SOCLE_IDS.length,n=socleIdx+1;
+    const bar=SOCLE_IDS.map((_,i)=>'<i class="'+(i<n?"on":"")+'"></i>').join("");
+    const restants=Math.max(buildFreeSteps().length-total,0)+buildPremiumSteps().length;
+    // ⚠ « n === total » dit qu'on est sur le DERNIER écran du socle — pas que le socle est
+    // COMPLET (mesuré : à l'arrivée sur « dispo », avant même la première réponse, le repère
+    // passait déjà au vert). Le vrai déclencheur est `socleComplet()`, le même que celui du
+    // bilan (`#genNowWrap`) — R11.1, une seule condition. `refreshNav()` le réévalue à chaque
+    // réponse (id="qProgress" ci-dessous), pour que le vert arrive exactement quand le bilan
+    // apparaît, jamais avant.
+    const done=socleComplet();
+    progressHTML='<div class="zn-q-progress'+(done?" zn-q-done":"")+'" id="qProgress"><div class="zn-q-progress-row"><span>Le socle · étape '+n+' sur '+total+'</span></div>'
+      +'<div class="zn-q-bar">'+bar+'</div>'
+      +'<div class="zn-q-progress-note">'+(done?"Socle complet — le reste affine, sans rien débloquer.":"Puis, en option : réglage fin — "+restants+" écran"+(restants>1?"s":"")+", tout inclus.")+'</div></div>';
+  } else {
+    const total=steps.length,n=S.step+1;
+    progressHTML='<div class="zn-q-progress"><div class="zn-q-progress-row"><span>'+(S.tier==="free"?"Réglage libre":"Réglage fin")+' · étape '+n+' sur '+total+'</span><span>optionnel</span></div></div>';
+  }
+
+  $("screen").innerHTML=topHTML+progressHTML
+    +'<div class="card"><div class="eyebrow">'+st.eyebrow+'</div><h2>'+st.title+'</h2><div class="why">'+st.why+'</div>'+st.render()
+    +'<div class="nav">'
+    // U19 — ce que le bouton désactivé ne disait pas ; U19b — ce qu'il confirme une fois répondu
+    // (5a/5b du canevas : « Tout est répondu » / « N requises sur N · M en attente »).
+    // `aria-live` : le message change sans que rien ne prenne le focus.
+    +'<div id="navManque" role="status" aria-live="polite" style="display:none"></div>'
+    +'<div><button class="btn primary" id="nextBtn" type="button">Continuer →</button></div></div>'
     // U14 — DÈS QUE LE SOCLE EST COMPLET, LE PLAN EST À UN CLIC.
     //
-    // Le reste du questionnaire affine ; il ne conditionne plus l'accès. Le bouton dit ce qu'il
-    // fait ET ce qu'il coûte : les réponses non données prendront leur valeur par défaut, et
-    // ces défauts sont visibles dans « Les décisions du moteur » (R11.2).
+    // 4c du canevas montre ce moment comme un ÉCRAN À PART, avec le bilan des quatre décisions
+    // du socle. Il RESTE ici un aparté fonctionnel plutôt qu'une étape séparée de `curSteps()` —
+    // voir §10 de zenna-questionnaire.css pour la raison mesurée : les 7 suites qui gardent
+    // cette zone avancent en cliquant `#genBtn` dès qu'il en trouve un, et le poser plus tôt
+    // les ferait toutes générer le plan avant l'historique, le niveau ou les blessures. Le
+    // bilan (« ce qui est acquis ») est donc livré ICI, dans le même aparté qui existait déjà.
     // Le bloc est TOUJOURS émis et sa visibilité suit les réponses (`refreshNav`) : calculé au
     // seul moment du rendu, il n'apparaissait qu'à l'écran SUIVANT celui qui complétait le
     // socle — mesuré, il coûtait un écran de plus. Un état qui dépend des réponses doit se
     // rafraîchir quand les réponses changent, pas quand la page se redessine.
     +(S.tier==="free"
-      ? '<div class="gate" id="genNowWrap" style="background:var(--bg2);margin-top:14px;display:none"><h3>⚡ Ton plan est déjà constructible</h3>'
+      ? '<div class="gate" id="genNowWrap" style="display:none"><h3>⚡ Ton plan est déjà constructible</h3>'
         +'<p>Les questions qui suivent l\'affinent — elles ne sont pas obligatoires. Ce que tu ne réponds pas prend une valeur par défaut prudente, et le plan te dit laquelle.</p>'
+        +'<ul class="zn-q-recap"></ul>'
         +'<button class="btn gold" id="genNowBtn" type="button">Générer mon plan maintenant →</button></div>'
       : "")
     +'</div>'

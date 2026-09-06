@@ -30,7 +30,9 @@ await page.waitForTimeout(600);
 // prochain changement d'ordre, et c'est ce qui vient d'arriver à cette ligne.
 await page.evaluate(async () => { const { setTab } = await import("./js/ui/tabs.js"); setTab("week"); });
 await page.waitForTimeout(400);
-const carteSemaine = page.locator("#screen .card").filter({ hasText: "Ta semaine" }).first();
+// REFONTE 18b (05/09/2026) — plus de carte « Ta semaine » : la grille est à nu. On la trouve par
+// ce qu'elle est (`.gw-grid`, le seul producteur de cases), pas par un libellé (règle 17).
+const carteSemaine = page.locator("#screen .gw-grid").first();
 ok((await carteSemaine.locator("[data-swap]").count()) === 7, "un bouton ⇄ par jour de la semaine courante");
 const before = await page.evaluate(async () => {
   const { S } = await import("./js/state.js");
@@ -361,6 +363,18 @@ ok(await page.locator("#pfStravaTok").count() === 1, "repli jeton manuel conserv
 // `<relais>/auth` en passant l'origine de l'app comme `return`. C'est ce couple que le worker
 // re-valide contre `APP_ORIGINS` — si l'un des deux est faux, la connexion échoue chez
 // l'utilisateur avec un 403 que personne ne sait interpréter.
+// REFONTE 22b/14b/14c (06/09/2026) — le Profil est en TROIS sous-onglets (MES PLANS · MES DONNÉES ·
+// PARAMÈTRES) ; les trois panneaux sont dans le DOM, les deux inactifs portent `hidden`. Les
+// critères qui CLIQUENT un contrôle du Profil ouvrent d'abord le sous-onglet qui le porte, comme
+// l'athlète, et PUBLIENT lequel — la propriété gardée est « le contrôle existe une fois et est
+// atteignable dans un sous-onglet », plus « il est sur l'écran d'arrivée ». Contre-prouvé : sans
+// la bascule, `page.click` expire (élément non visible).
+const ouvrirSousOngletDe = (id) => page.evaluate((id) => {
+  const b = document.getElementById(id); const sec = b && b.closest("[data-pfpanel]");
+  if (sec) { const t = document.querySelector('[data-pfsub="' + sec.dataset.pfpanel + '"]'); if (t) t.click(); }
+  for (let p = b; p; p = p.parentElement) if (p.tagName === "DETAILS") p.open = true;
+  return sec ? sec.dataset.pfpanel : null;
+}, id);
 const origineApp = new URL(page.url()).origin;
 let cible = "";
 // On SERT une page vide au lieu d'annuler : `route.abort()` laisse l'onglet sur
@@ -369,6 +383,7 @@ await page.route("**/auth?**", (route) => {
   cible = route.request().url();
   route.fulfill({ status: 200, contentType: "text/html", body: "<html><body>relais</body></html>" });
 });
+ok((await ouvrirSousOngletDe("pfStravaConnect")) === "params", "la connexion Strava vit dans PARAMÈTRES › Connexions et s'y atteint");
 await page.click("#pfStravaConnect");
 await page.waitForTimeout(500);
 ok(/\/auth\?return=/.test(cible), "le clic part vers `<relais>/auth` (" + (cible ? "atteint" : "AUCUNE navigation") + ")");
@@ -395,7 +410,7 @@ ok(await page.locator("#pfStravaBtn").count() === 1 && (await page.locator("#pfS
 // handoff : ouvert tant que c'est un CTA, replié quand c'est fait). Les contrôles existent
 // mais ne sont plus visibles tant que le `<details>` est fermé : on l'ouvre, comme le ferait
 // l'utilisateur. L'assertion qui suit est inchangée.
-await page.evaluate(() => { const d = document.getElementById("pfStravaOut"); const det = d && d.closest("details"); if (det) det.open = true; });
+ok((await ouvrirSousOngletDe("pfStravaOut")) === "params", "la déconnexion vit au même endroit que la connexion (PARAMÈTRES)");
 await page.click("#pfStravaOut"); await page.waitForTimeout(300);
 ok(await page.locator("#pfStravaConnect").count() === 1, "déconnexion → retour à l'état non connecté");
 
@@ -421,7 +436,7 @@ ok(meas.arb, "l'arbitrage mesuré vs déclaré est annoncé AVANT d'être appliq
 ok(meas.hasBtn && !meas.applied, "rien n'est appliqué sans le geste de l'athlète (aucun écrasement silencieux)");
 // R24.2 — la carte mesurée vit dans le journal, qui est désormais TOUJOURS replié (le CTA
 // Strava qui le maintenait ouvert est parti en premier écran) : on l'ouvre, comme l'athlète.
-await page.evaluate(() => { const b = document.getElementById("pfMeasApply"); for (let p = b; p; p = p.parentElement) if (p.tagName === "DETAILS") p.open = true; });
+ok((await ouvrirSousOngletDe("pfMeasApply")) === "donnees", "la carte mesurée vit dans MES DONNÉES (journal) et s'y atteint");
 await page.click("#pfMeasApply"); await page.waitForTimeout(500);
 const measApplied = await page.evaluate(async () => {
   const { S } = await import("./js/state.js");

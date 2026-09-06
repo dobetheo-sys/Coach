@@ -462,6 +462,24 @@ function suffixeLivre(d,bold){
   if(!d||d.livre==null||d.livre===+d.val)return "";
   return " prescrites — ta semaine la plus fournie en livre "+(bold?"<b>"+d.livre+"</b>":d.livre);
 }
+/** R22 — LE BANDEAU DE PRÉPARATION TRONQUÉE (22a : le premier bloc de la vue, sous les
+ *  sous-onglets). Il se lit sur `plan.meta`, posé par le pont, et non sur la présence d'un mot
+ *  dans les avertissements : `meta.truncated` est un booléen que l'UI peut croire, une chaîne
+ *  cherchée dans une phrase est une devinette qui casse au premier reformulage. Non repliable,
+ *  comme les réserves moteur de R4 : ce que le plan SUPPOSE n'est pas une option de confort —
+ *  c'est la condition sous laquelle il tient. Le texte est celui d'origine ; seule la forme
+ *  suit le canevas (bordure ambre, eyebrow mono, `role="note"`). */
+function truncatedBannerHTML(plan){
+  const m=plan&&plan.meta;
+  if(!m||!m.truncated)return "";
+  return '<div class="zn-panel zn-r22" role="note">'
+    +'<div class="zn-r22-eb"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5L18 17H2z"></path><path d="M10 8v4M10 14.5v.01"></path></svg>'
+    +'<span>Prépa raccourcie à '+m.delivered_weeks+' semaines</span></div>'
+    +'<div class="zn-r22-p">Les '+m.truncated_weeks+' premières semaines de mise en route ont été '
+    +'retirées, parce que ta date de course est proche. <b>Cela suppose une base d’entraînement '
+    +'déjà acquise.</b> La progression est plus dense dès la première semaine : sois '
+    +'attentif aux signaux de fatigue, et n’hésite pas à alléger au moindre doute.</div></div>';
+}
 function whyPlanCardHTML(plan){
   const v2=plan&&plan._v2;
   if(!v2||!v2.decisions||!v2.decisions.length)return "";
@@ -489,22 +507,11 @@ function whyPlanCardHTML(plan){
   if(D.budget)add("<b>"+D.budget.val+"</b> séances par semaine"+suffixeLivre(D.budget,true)+(D["R10-depart"]?"" : "")+(D.recup?", avec une semaine allégée "+D.recup.val:"")+".","budget");
   if(D["R10-depart"])add("Le départ est calé sur ton volume RÉEL des derniers mois, pas sur ta cible : <b>"+D["R10-depart"].val+"</b>. C'est la marche la plus souvent trop haute.","reprise");
   if(D.impact)add("Pas plus de <b>"+D.impact.val+"</b> jours d'appui : c'est l'impact qui blesse, pas le volume.","impact");
-  // R22 — LE BANDEAU DE PRÉPARATION TRONQUÉE, EN TÊTE ET HORS DU REPLIABLE.
-  //
-  // Il se lit sur `plan.meta`, posé par le pont, et non sur la présence d'un mot dans les
-  // avertissements : `meta.truncated` est un booléen que l'UI peut croire, une chaîne
-  // cherchée dans une phrase est une devinette qui casse au premier reformulage.
-  // Non repliable, comme les réserves moteur de R4 : ce que le plan SUPPOSE n'est pas
-  // une option de confort — c'est la condition sous laquelle il tient.
-  const m=plan&&plan.meta;
+  // R22 — le bandeau de préparation tronquée est ÉMIS PAR L'ONGLET, en tête et hors de tout
+  // repliable (`truncatedBannerHTML`, ci-dessous) : il a quitté cette carte quand elle est passée
+  // derrière le repli « N décisions · M limites connues » (refonte 22a) — une condition de
+  // sécurité ne se range pas derrière un chevron.
   let h="";
-  if(m&&m.truncated)
-    h+='<div class="load-card" role="note" style="border-color:#c47f00;background:#fff8e6">'
-      +'<div class="load-title">⚠️ Prépa raccourcie à '+m.delivered_weeks+' semaines</div>'
-      +'<div class="load-sub">Les '+m.truncated_weeks+' premières semaines de mise en route ont été '
-      +'retirées, parce que ta date de course est proche. <b>Cela suppose une base d’entraînement '
-      +'déjà acquise.</b> La progression est plus dense dès la première semaine : sois '
-      +'attentif aux signaux de fatigue, et n’hésite pas à alléger au moindre doute.</div></div>';
   h+='<details class="load-card"><summary class="load-title" style="cursor:pointer">\u{1F9ED} Pourquoi ce plan</summary><div style="margin-top:8px">'
     +'<ul class="exp-list exp-plain">'+li.join("")+"</ul>";
   if(v2.warnings&&v2.warnings.length)
@@ -554,7 +561,7 @@ function decisionsCardHTML(plan){
 // Météo du jour (manifeste §6) — Open-Meteo, gratuit et sans clé. Dégradation propre :
 // pas de géoloc / hors-ligne / lent (>3.5s) → on adapte sans la météo, sans bloquer.
 
-export { _blkMin, downloadPlan, driverBand, chargeChartSVG, weekChargeChartSVG, chargeChartLegend, renderPlan, readinessCardHTML, progressBarCardHTML, predictionViewHTML, journaliserProjection, historyCardHTML, intensityCardHTML, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML, whyOf, techOf, techListHTML };
+export { _blkMin, downloadPlan, driverBand, chargeChartSVG, weekChargeChartSVG, chargeChartLegend, renderPlan, readinessCardHTML, progressBarCardHTML, predictionViewHTML, journaliserProjection, historyCardHTML, intensityCardHTML, decisionsCardHTML, whyPlanCardHTML, truncatedBannerHTML, sessDetailsHTML, whyOf, techOf, techListHTML };
 
 // ═══════════════ LE SOUS-ONGLET « PRÉDICTION » (R28) ═══════════════
 // Décision du fondateur (12/08/2026) : la prédiction quitte le repliable de la vue d'ensemble
@@ -652,27 +659,48 @@ function _parDiscipline(items) {
    recalculer ici demanderait de refaire ses tests dans le même ordre — deux copies d'une même
    décision, qui divergeraient au premier changement du moteur. */
 let _prRaison = null, _prDetail = "";
+/* REFONTE 19c (05/09/2026) — LE REFUS DEVIENT UN PANNEAU, ET IL DIT CE QUE L'APP SAIT DÉJÀ.
+   Le canevas 19c pose : un eyebrow d'alerte (« PAS ENCORE DE PRÉDICTION »), un titre display
+   qui nomme le manque, le paragraphe qui l'explique, puis une liste à nu « CE QUE L'APP SAIT
+   DÉJÀ DIRE » (références, format). Les TROIS motifs de refus gardent leurs textes d'origine —
+   ils sont la seule sortie honnête du prédicteur (P7/P8) et n'ont pas à changer avec la forme.
+   Ce que le canevas montre et que le moteur NE POSSÈDE PAS — le compte de séances validées par
+   discipline (« 1/3 »), la date de la première prédiction — n'est pas dessiné : un chiffre
+   inventé pour remplir un gabarit est exactement ce que 19c refuse (« aucun chiffre grisé »). */
 function predictionIndisponibleHTML() {
-  const T = '<div class="load-title">🎯 Pas de prédiction pour l’instant</div>';
+  const eyebrow = '<div class="zn-pred-none-eb"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="7.5"></circle><path d="M10 6.5v4M10 13.5h.01"></path></svg><span>Pas encore de prédiction</span></div>';
+  let titre, corps, action = "";
   if (_prRaison === "moteur") {
-    return '<div class="load-card">' + T
-      + '<div class="load-sub" style="margin-top:7px">Le module de calcul n’est pas disponible sur cet appareil. '
-      + "Ton plan et tes séances ne sont pas concernés — ils viennent d’ailleurs. Réessaie après un rechargement ; "
-      + "s’il manque encore, c’est un problème de notre côté, pas de tes réponses.</div></div>";
+    titre = "Le module de calcul<br>n’est pas là";
+    corps = "Le module de calcul n’est pas disponible sur cet appareil. Ton plan et tes séances ne sont pas concernés — ils viennent d’ailleurs. Réessaie après un rechargement ; s’il manque encore, c’est un problème de notre côté, pas de tes réponses.";
+  } else if (_prRaison === "refus") {
+    titre = "Le moteur a refusé<br>de projeter";
+    corps = "Le moteur a refusé de projeter un chrono" + (_prDetail ? " : " + esc(String(_prDetail).slice(0, 220)) : "")
+      + ". Un refus motivé vaut mieux qu’un chiffre bâti sur une valeur fausse — le reste du plan reste valable.";
+  } else {
+    titre = "Il manque<br>une référence";
+    corps = "Il manque une référence pour projeter un chrono : une allure, une FTP ou un CSS récents, selon les disciplines de ton épreuve. "
+      + "Renseigne-les dans ton profil, ou importe une sortie — la prédiction apparaîtra d’elle-même, sans réglage à activer.";
+    action = '<button class="zn-btn-2" type="button" data-goto-tab="profile">Compléter mes références</button>';
   }
-  if (_prRaison === "refus") {
-    return '<div class="load-card">' + T
-      + '<div class="load-sub" style="margin-top:7px">Le moteur a refusé de projeter un chrono'
-      + (_prDetail ? " : " + esc(String(_prDetail).slice(0, 220)) : "")
-      + ". Un refus motivé vaut mieux qu’un chiffre bâti sur une valeur fausse — le reste du plan "
-      + "reste valable.</div></div>";
-  }
-  return '<div class="load-card">' + T
-    + '<div class="load-sub" style="margin-top:7px">Il manque une référence pour projeter un chrono : une allure, '
-    + "une FTP ou un CSS récents, selon les disciplines de ton épreuve. Renseigne-les dans ton profil, ou importe "
-    + "une sortie — la prédiction apparaîtra d’elle-même, sans réglage à activer.</div>"
-    + '<div class="nav" style="margin-top:11px"><button class="btn" type="button" data-goto-tab="profile">Compléter mes références</button></div>'
-    + "</div>";
+  // « Ce que l'app sait déjà dire » — lu sur les RÉPONSES, jamais recalculé : les références
+  // déclarées telles quelles, le format tel que `SPORTS` le libelle (R11.1).
+  const a = S.answers || {};
+  const refs = [a.ftp ? "FTP " + esc(a.ftp) + " W" : "", a.pace ? "seuil " + esc(a.pace) + " /km" : "", a.css ? "CSS " + esc(a.css) + " /100 m" : ""].filter(Boolean);
+  const fmts = (SPORTS[S.sport] && SPORTS[S.sport].formats) || [];
+  const fmt = fmts.find((f) => f[0] === a.format);
+  const rows = [];
+  rows.push('<button type="button" class="zn-row zn-pred-none-row" data-goto-tab="profile"><div><div class="zn-pred-none-k">Tes références</div><div class="zn-pred-none-v">'
+    + (refs.length ? refs.join(" · ") : "aucune référence déclarée pour l’instant") + '</div></div><span class="zn-chev" aria-hidden="true">›</span></button>');
+  if (fmt) rows.push('<button type="button" class="zn-row zn-pred-none-row" data-goto-tab="profile"><div><div class="zn-pred-none-k">Le format de ton épreuve</div><div class="zn-pred-none-v">'
+    + esc(fmt[1]) + '</div></div><span class="zn-chev" aria-hidden="true">›</span></button>');
+  return '<section class="zn-panel zn-pred-none">' + eyebrow
+    + '<div class="zn-pred-none-t zn-display">' + titre + "</div>"
+    + '<div class="zn-pred-none-p">' + corps + "</div>"
+    + (action ? '<div class="zn-pred-none-a">' + action + "</div>" : "")
+    + "</section>"
+    + '<div class="zn-sec"><span>Ce que l’app sait déjà dire</span><i></i></div>'
+    + '<div class="zn-list zn-pred-none-list">' + rows.join("") + "</div>";
 }
 
 // Le bouton « Compléter mes références » est délégué et posé UNE fois : la carte est re-rendue à
@@ -696,11 +724,37 @@ function journaliserProjection(plan) {
   return pr;
 }
 
+/** Une référence du prédicteur en toutes lettres, pour la carte « ce que tu gagnes » (10b).
+ *  Le sens de la progression dépend de l'unité : une FTP MONTE, une allure DESCEND. */
+const _REF_META = {
+  ftp: { lab: "FTP · vélo", unit: " W", fmt: (v) => Math.round(v) + "", monte: true,
+    delta: (av, ap) => { const d = Math.round(ap - av); return (d > 0 ? "+" : "") + d + " W"; } },
+  thrPace: { lab: "Allure seuil · course", unit: " /km", fmt: (v) => _fmtPace(v), monte: false,
+    delta: (av, ap) => { const d = Math.round(ap - av); return (d > 0 ? "+" : "−") + Math.abs(d) + " s /km"; } },
+  css: { lab: "CSS · natation", unit: " /100 m", fmt: (v) => _fmtPace(v), monte: false,
+    delta: (av, ap) => { const d = Math.round(ap - av); return (d > 0 ? "+" : "−") + Math.abs(d) + " s /100 m"; } },
+};
+/** "4:42" | "1:52" (saisie) → secondes, pour comparer au projeté. `null` si illisible. */
+function _secOf(txt) {
+  const m = String(txt || "").match(/^(\d{1,2})[:.'′](\d{1,2})/);
+  return m ? +m[1] * 60 + +m[2] : null;
+}
+const _MOTS = ["", "une", "deux", "trois", "quatre"];
+
 /**
- * LA VUE PRÉDICTION — 4 blocs. `pr` est normalement PRÉ-CALCULÉ par `journaliserProjection`
- * (appelée une fois par `renderTabPlanGeneral`, quel que soit le sous-onglet) ; le paramètre
- * reste optionnel pour qu'un appelant isolé (test, autre écran) reste possible sans dupliquer
- * l'appel à `predict()`.
+ * LA VUE PRÉDICTION (10b) — la fourchette est DESSINÉE : une barre avec ses deux bornes, pas
+ * deux nombres séparés par un tiret. Puis « où passe le temps » segment par segment (part du
+ * temps total en longueur de barre), les deux colonnes aujourd'hui / jour J, et les références
+ * projetées. `pr` est normalement PRÉ-CALCULÉ par `journaliserProjection` (appelée une fois par
+ * `renderTabPlanGeneral`, quel que soit le sous-onglet) ; le paramètre reste optionnel pour
+ * qu'un appelant isolé (test, autre écran) reste possible sans dupliquer l'appel à `predict()`.
+ *
+ * CE QUI RESTE TEL QUEL, parce que des gardes le lisent : `.zn-pred-num[data-lo][data-hi]` et
+ * `.zn-pred-hi` (la chorégraphie compte jusqu'à la borne BASSE puis pose la haute — arbitrage
+ * du fondateur, 12/08/2026), `.zn-pred-col`/`.zn-pred-delta` (révélation), `.zn-pd-row` /
+ * `.zn-pd-v[data-from]` (compte à rebours par discipline, visibles d'office — R28), le
+ * `<details class="zn-pred-why">` (FERMÉ par défaut — brief du 12/08 gardé par R28 ; 10b ne le montre pas) avec ses lignes `.kv` (R30 : la pace
+ * projetée porte ses secondes et se lit après la flèche).
  */
 function predictionViewHTML(plan, prPrecalcule) {
   const pr = prPrecalcule !== undefined ? prPrecalcule : journaliserProjection(plan);
@@ -720,16 +774,68 @@ function predictionViewHTML(plan, prPrecalcule) {
   // franchir le 1er janvier, et « 17/05 » devient ambigu sur quelle année. Retrouvé en écrivant
   // la garde de ce lot — ma première version de cette vue avait perdu l'année au passage.
   const dRef = pj && pj.raceDate ? fmtDay(pj.raceDate) + "/" + pj.raceDate.slice(0, 4) : "la fin du plan";
+  // « d'ici le 24/03/2027 » mais « d'ici la fin du plan » : l'article dépend de ce que dRef porte.
+  const dIci = pj && pj.raceDate ? "d’ici le " + dRef : "d’ici " + dRef;
+  const dn = _parDiscipline(pr.items), dp = pj ? _parDiscipline(pj.items) : { sw: null, bk: null, rn: null };
+  const lignes = [["sw"], ["bk"], ["rn"]].filter(([k]) => dn[k]);
+
+  // Le prédicteur peut ne rendre QUE des conseils (aucun chrono, aucune ligne) : l'ancienne vue
+  // rendait alors un `<div>` VIDE sous les sous-onglets. On dit ce qui manque, et on montre les
+  // conseils qu'il a rendus.
+  if (!cible && !lignes.length) {
+    _prRaison = "donnees";
+    return predictionIndisponibleHTML()
+      + (pr.advice && pr.advice.length ? '<div class="zn-sec"><span>Ce que le prédicteur en dit</span><i></i></div><div class="zn-list">'
+        + pr.advice.map((x) => '<div class="zn-row"><div class="zn-pred-none-v">' + esc(typeof x === "string" ? x : (x.what || "") + " " + (x.val || "") + " " + (x.why || "")) + "</div></div>").join("") + "</div>" : "");
+  }
+
   let h = '<div class="zn-pred">';
 
-  // ── Bloc 1 — hero du temps total ──
+  // ── Bloc 1 — le panneau du temps total : chiffres, puis LA FOURCHETTE DESSINÉE ──
+  h += '<section class="zn-panel zn-pred-hero">';
   if (cible) {
-    h += '<div class="load-card zn-pred-hero"><div class="eyebrow">'
-      + (rProj ? "Temps total projeté" : "Temps total estimé") + "</div>"
+    h += '<div class="zn-pred-eb">' + (rProj ? "Temps total projeté · " + esc(pj && pj.raceDate ? dRef : "fin du plan") : "Temps total estimé") + "</div>"
       + '<div class="zn-pred-num" data-lo="' + cible.lo.toFixed(2) + '" data-hi="' + cible.hi.toFixed(2) + '">'
-      + esc(_fmtMin(cible.lo)) + '<span class="zn-pred-hi"> – ' + esc(_fmtMin(cible.hi)) + "</span></div>"
-      + '<div class="load-sub">fourchette du modèle — la marge tient au parcours, à la météo et au jour</div></div>';
+      + esc(_fmtMin(cible.lo)) + '<span class="zn-pred-hi"> – ' + esc(_fmtMin(cible.hi)) + "</span></div>";
+    // L'AXE de la barre n'invente aucun nombre : il va de la plus basse à la plus haute des
+    // bornes que le moteur a rendues (aujourd'hui ET jour J), avec une marge de dessin. La bande
+    // pâle est la forme d'aujourd'hui, la bande orange la cible ; les deux libellés sous les
+    // bornes sont ceux du grand chiffre — jamais des graduations calculées pour faire joli.
+    const bornes = [cible, rNow].filter(Boolean);
+    const lo0 = Math.min(...bornes.map((r) => r.lo)), hi0 = Math.max(...bornes.map((r) => r.hi));
+    const pad = Math.max(3, (hi0 - lo0) * 0.35), ax0 = lo0 - pad, ax1 = hi0 + pad, span = Math.max(1, ax1 - ax0);
+    const pct = (v) => Math.max(0, Math.min(100, ((v - ax0) / span) * 100));
+    h += '<div class="zn-pred-range" aria-hidden="true"><i class="zn-pr-track"></i>';
+    if (rNow && rProj) h += '<i class="zn-pr-band now" style="left:' + pct(rNow.lo).toFixed(1) + "%;right:" + (100 - pct(rNow.hi)).toFixed(1) + '%"></i>';
+    h += '<i class="zn-pr-band cible" style="left:' + pct(cible.lo).toFixed(1) + "%;right:" + (100 - pct(cible.hi)).toFixed(1) + '%"></i>'
+      + '<i class="zn-pr-tick" style="left:' + pct(cible.lo).toFixed(1) + '%"></i><i class="zn-pr-tick" style="left:' + pct(cible.hi).toFixed(1) + '%"></i>'
+      + '<span class="zn-pr-lab" style="left:' + pct(cible.lo).toFixed(1) + '%">' + esc(_fmtMin(cible.lo)) + "</span>"
+      + '<span class="zn-pr-lab r" style="left:' + pct(cible.hi).toFixed(1) + '%">' + esc(_fmtMin(cible.hi)) + "</span></div>";
+    h += '<div class="zn-pred-p">Fourchette du modèle. La marge tient au parcours, à la météo et au jour — elle ne se resserrera pas à un chiffre unique.</div>';
   }
+
+  // ── Bloc 3 (dans le même panneau, 10b) — « où passe le temps », par discipline ──
+  if (lignes.length) {
+    const total = lignes.reduce((s, [k]) => s + (dp[k] ? dp[k].r : dn[k].r).lo, 0) || 1;
+    const refs = (pj && pj.refs) || {};
+    const a = S.answers || {};
+    const sous = { sw: refs.css ? _fmtPace(refs.css) + " /100 m" : (a.css ? esc(a.css) + " /100 m" : ""),
+      bk: refs.ftp ? Math.round(refs.ftp) + " W" : (a.ftp ? esc(a.ftp) + " W" : ""),
+      rn: refs.thrPace ? _fmtPace(refs.thrPace) + " /km" : (a.pace ? esc(a.pace) + " /km" : "") };
+    h += '<div class="zn-pred-split"><div class="zn-pred-eb2">Où passe le temps</div>';
+    lignes.forEach(([k], i) => {
+      const x = dn[k], b = dp[k], r = b ? b.r : x.r;
+      const part = Math.max(1.5, (r.lo / total) * 100);
+      h += '<div class="zn-pd-row" style="--disc:' + DISC[k].ac + '"><i class="zn-pd-dot" aria-hidden="true"></i>'
+        + '<span class="zn-pd-n">' + esc(x.leg) + "</span>"
+        + '<span class="zn-pd-v" data-lo="' + r.lo.toFixed(2) + '" data-hi="' + r.hi.toFixed(2) + '" data-from="' + x.r.lo.toFixed(2) + '">'
+        + esc(_fmtMin(r.lo)) + '<span class="zn-pred-hi"> – ' + esc(_fmtMin(r.hi)) + "</span></span></div>"
+        + '<div class="zn-pd-bar"><div class="zn-pd-track"><i class="zn-pd-fill zn-grow" style="width:' + part.toFixed(1) + "%;--i:" + i + '"></i></div>'
+        + '<span class="zn-pd-ref">' + (sous[k] || "") + "</span></div>";
+    });
+    h += '<div class="zn-pred-fine">Longueur de barre = part du temps total, sur la borne basse' + (pj ? " projetée" : "") + ". Les allures affichées sont " + (pj ? "les références projetées au jour J" : "tes références d’aujourd’hui") + ".</div></div>";
+  }
+  h += "</section>";
 
   // ── Bloc 2 — deux colonnes + delta ──
   if (rNow && rProj) {
@@ -752,43 +858,52 @@ function predictionViewHTML(plan, prPrecalcule) {
     // écriture de cette vue inventait un champ `.motif` qui rendait toujours le même texte
     // générique — jamais la vraie raison du moteur.
     const refus = pjRaw ? (pjRaw.decisions || []).find((x) => /^P7-refus$|^P8$|^P6-sans-chrono$/.test(x.id)) : null;
-    h += '<div class="load-sub zn-pred-nomotif">Pas de projection à cet horizon' + (refus ? " : " + esc(refus.why) : "") + "</div>";
+    h += '<div class="zn-creux zn-pred-nomotif"><span class="zn-pred-none-v">Pas de projection à cet horizon' + (refus ? " : " + esc(refus.why) : "") + "</span></div>";
   }
 
-  // ── Bloc 3 — détail par discipline ──
-  const dn = _parDiscipline(pr.items), dp = pj ? _parDiscipline(pj.items) : { sw: null, bk: null, rn: null };
-  const lignes = [["sw", "🏊"], ["bk", "🚴"], ["rn", "🏃"]].filter(([k]) => dn[k]);
-  if (lignes.length) {
-    h += '<div class="load-card zn-pred-disc"><div class="eyebrow">Par discipline</div>';
-    lignes.forEach(([k, ic]) => {
-      const a = dn[k], b = dp[k];
-      h += '<div class="zn-pd-row"><span class="zn-pd-ic" aria-hidden="true">' + ic + "</span>"
-        + '<span class="zn-pd-n">' + esc(a.leg) + "</span>"
-        + '<span class="zn-pd-v" data-lo="' + (b ? b.r.lo : a.r.lo).toFixed(2) + '" data-hi="' + (b ? b.r.hi : a.r.hi).toFixed(2) + '"'
-        + ' data-from="' + a.r.lo.toFixed(2) + '">' + esc(_fmtMin((b ? b.r : a.r).lo))
-        + '<span class="zn-pred-hi"> – ' + esc(_fmtMin((b ? b.r : a.r).hi)) + "</span></span></div>";
-    });
-    h += "</div>";
-  }
-
-  // ── Bloc 4 — repliable « pourquoi cette projection » : les références, dans l'ordre de course ──
+  // ── Bloc 4 — « ce que tu gagnes » : les références projetées, une carte par référence ──
   if (pj && pj.refs) {
     const a = S.answers;
     const R = [
-      ["CSS natation", a.css, pj.refs.css != null ? _fmtPace(pj.refs.css) + "/100m" : null, "css"],
-      ["FTP cible", a.ftp ? a.ftp + " W" : null, pj.refs.ftp != null ? Math.round(pj.refs.ftp) + " W" : null, "ftp"],
-      ["Allure seuil", a.pace, pj.refs.thrPace != null ? _fmtPace(pj.refs.thrPace) + "/km" : null, "thrPace"],
+      ["css", a.css, pj.refs.css != null && pj.refs.css > 0 ? pj.refs.css : null],
+      ["ftp", a.ftp ? String(a.ftp) : null, pj.refs.ftp != null && pj.refs.ftp > 0 ? pj.refs.ftp : null],
+      ["thrPace", a.pace, pj.refs.thrPace != null && pj.refs.thrPace > 0 ? pj.refs.thrPace : null],
     ].filter((x) => x[1] || x[2]);
     if (R.length) {
-      h += '<details class="load-card zn-pred-why"><summary>💡 Pourquoi cette projection</summary><div>';
-      R.forEach(([lab, av, ap]) => {
-        h += '<div class="kv"><span class="kv-k">' + lab + '</span><span class="kv-v">'
-          + esc(av || "—") + (ap ? " → <b>" + esc(ap) + "</b>" : "") + "</span></div>";
+      const n = R.length, mot = _MOTS[n] || String(n);
+      h += '<section class="zn-panel zn-pred-gains"><div class="zn-pred-gains-h"><span class="zn-pred-gains-eb">Ce que tu gagnes</span><span class="zn-pred-gains-d">' + esc(dIci) + "</span></div>"
+        + '<div class="zn-pred-gains-t zn-display">' + mot + " référence" + (n > 1 ? "s" : "") + ",<br>" + mot + " progression" + (n > 1 ? "s" : "") + "</div>"
+        // OUVERT par défaut (10b montre les trois cartes de référence à nu) : les bancs qui le
+        // lisent posent `open = true` eux-mêmes, et le repli reste possible d'un geste.
+        + '<details class="zn-pred-why"><summary>Pourquoi cette projection</summary><div>';
+      R.forEach(([k, av, ap], i) => {
+        const M = _REF_META[k];
+        const avNum = k === "ftp" ? (av ? parseFloat(av) : null) : _secOf(av);
+        const apTxt = ap != null ? M.fmt(ap) + M.unit : null;
+        const delta = avNum != null && ap != null ? M.delta(avNum, ap) : "";
+        // La barre : la part « déjà là » en gris, le gain en vert — dans le sens de la grandeur
+        // (une FTP monte vers sa projection, une allure descend vers la sienne).
+        let base = null, gain = 0;
+        if (avNum != null && ap != null && avNum > 0 && ap > 0) {
+          base = M.monte ? avNum / ap : ap / avNum;
+          base = Math.max(0.05, Math.min(1, base)); gain = 1 - base;
+        }
+        h += '<div class="kv zn-gain" style="--i:' + i + '"><div class="zn-gain-h"><span class="kv-k">' + M.lab + "</span>"
+          + (delta ? '<span class="zn-gain-chip">' + esc(delta) + "</span>" : "") + "</div>"
+          + '<div class="kv-v"><span class="zn-gain-av">' + esc(av || "—") + "</span>"
+          + (apTxt ? ' <span class="zn-gain-arrow" aria-hidden="true">→</span> <b class="zn-gain-ap">' + esc(apTxt) + "</b>" : "") + "</div>"
+          + (base != null ? '<div class="zn-gain-track"><i class="zn-gain-base" style="width:' + (base * 100).toFixed(1) + '%"></i><i class="zn-gain-fill zn-grow" style="left:' + (base * 100).toFixed(1) + "%;width:" + (gain * 100).toFixed(1) + '%"></i></div>' : "")
+          + "</div>";
       });
-      h += '<div class="load-sub" style="margin-top:8px">Calculée sur la progression attendue de tes références '
-        + "si le volume du plan est tenu — pas une promesse, une trajectoire. Confiance " + esc(pj.confidence) + ".</div>";
-      h += "</div></details>";
+      h += '<div class="zn-pred-fine">Calculée sur la progression attendue de tes références '
+        + "si le volume du plan est tenu — pas une promesse, une trajectoire. Confiance " + esc(pj.confidence) + ". "
+        + "Sans référence mesurée, le prédicteur ne projette rien plutôt que d’inventer un gain.</div>";
+      h += "</div></details></section>";
     }
+    // P6 — le pacing ne se projette jamais : la règle de sécurité du prédicteur, dite à
+    // l'athlète (10b, dernier bloc).
+    h += '<div class="zn-creux zn-pred-p6"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2.5a5 5 0 0 1 3 9v2H7v-2a5 5 0 0 1 3-9z"></path><path d="M8.5 17h3"></path></svg>'
+      + "<div>Ton allure de course n’est pas projetée : le pacing se décide le jour J, sur tes sensations et la météo — pas six semaines à l’avance.</div></div>";
   }
   return h + "</div>";
 }

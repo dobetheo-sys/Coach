@@ -87,20 +87,36 @@ await ouvrirOnglet("week");
 
 // ─────────── §2 · Fond sombre uniforme ───────────
 {
+  // REFONTE 18b (05/09/2026) — LE CRITÈRE PORTAIT UN COMPTE, PAS SA PROPRIÉTÉ. Il exigeait « un
+  // seul fond sur les sept cartes », ce qui gardait bien « le fond ne suit pas la CHARGE » — mais
+  // rougissait aussi sur l'écran 18b du canevas, où la journée du JOUR est le seul objet en
+  // RELIEF (fond surface, bordure orange) : un axe de POSITION, pas de charge. La propriété se
+  // dit donc sur ce qu'elle garde : à charge différente, même fond — mesuré sur les journées
+  // hors relief, ET la journée en relief ne porte pas une teinte de charge non plus (son fond
+  // est celui d'une surface, quel que soit son rail). Vérifié rouge : `.gd.dur { background:
+  // rouge }` dans la feuille de zone → deux fonds hors relief.
   const m = await page.evaluate(() => {
     const gd = [...document.querySelectorAll("#screen .gd")];
-    const fonds = gd.map((g) => getComputedStyle(g).backgroundColor);
+    const cls = (g) => (g.className.match(/\b(dur|facile|recup|off)\b/) || [])[0] || "—";
+    const nus = gd.filter((g) => !g.classList.contains("today"));
+    const fonds = [...new Set(nus.map((g) => getComputedStyle(g).backgroundColor))];
+    const today = gd.find((g) => g.classList.contains("today"));
+    // Le témoin de la moitié « relief » : la journée du jour, si elle est là, partage son fond
+    // avec ce que le jeton `--zn-surface` rend — jamais avec une teinte de charge.
+    const temoin = document.createElement("i"); temoin.style.background = "var(--zn-surface)"; document.body.appendChild(temoin);
+    const surface = getComputedStyle(temoin).backgroundColor; temoin.remove();
     return {
-      n: gd.length,
-      distincts: [...new Set(fonds)],
-      // les classes de charge sont TOUJOURS posées (elles portent encore la bordure) : c'est
-      // bien le FOND qui doit être uniforme, pas la classe qui doit disparaître.
-      charges: [...new Set(gd.map((g) => (g.className.match(/\b(dur|facile|recup|off)\b/) || [])[0] || "—"))],
+      n: gd.length, distincts: fonds,
+      charges: [...new Set(nus.map(cls))],
+      today: today ? { charge: cls(today), fond: getComputedStyle(today).backgroundColor, surface } : null,
     };
   });
-  ok(m.charges.length >= 3, "la semaine mélange bien plusieurs charges (" + m.charges.join("/") + ")");
+  ok(m.charges.length >= 3, "la semaine mélange bien plusieurs charges hors relief (" + m.charges.join("/") + ")");
   ok(m.distincts.length === 1,
-    "…et toutes les cartes ont le MÊME fond, quelle que soit la charge (" + m.distincts.join(" | ") + ")");
+    "…et le fond ne suit pas la charge : un seul fond sur les journées à nu (" + m.distincts.join(" | ") + ")");
+  ok(!m.today || m.today.fond === m.today.surface,
+    "…et la journée du jour, seule en relief, porte un fond de SURFACE et non de charge ("
+      + (m.today ? m.today.charge + " → " + m.today.fond + (m.today.fond === m.today.surface ? " = --zn-surface" : " ≠ " + m.today.surface) : "pas de journée du jour dans cette semaine") + ")");
 }
 
 // ─────────── §3 · Le badge porte la couleur, et se voit ───────────

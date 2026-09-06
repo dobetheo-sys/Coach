@@ -62,15 +62,17 @@ ok(barre.includes("outils"), "🧰 Outils occupe le cinquième onglet");
 await setTab("week");
 await page.waitForTimeout(500);
 ok(await page.locator("#screen .gd").count() >= 5, "la grille de la semaine est rendue");
-const nav1 = await page.locator("#screen .gw-h b").first().textContent();
+// REFONTE 18b (05/09/2026) — le numéro de semaine vit dans la navigation à nu (`[data-week-title]`,
+// le marqueur que l'onglet pose sur SON titre), plus dans l'en-tête de carte `.gw-h` de Plan.
+const nav1 = await page.locator("#screen [data-week-title]").first().textContent();
 await page.click("#wkNext");
 await page.waitForTimeout(350);
-const nav2 = await page.locator("#screen .gw-h b").first().textContent();
+const nav2 = await page.locator("#screen [data-week-title]").first().textContent();
 ok(nav1 !== nav2, "navigation de semaine en semaine (" + nav1 + " → " + nav2 + ") — c'est ce que ni Plan ni Aujourd’hui ne donnent");
 ok(await page.locator("#wkNow").count() === 1, "hors semaine courante, un retour explicite est proposé");
 await page.click("#wkNow");
 await page.waitForTimeout(350);
-ok((await page.locator("#screen .gw-h b").first().textContent()) === nav1, "le retour ramène bien à la semaine courante");
+ok((await page.locator("#screen [data-week-title]").first().textContent()) === nav1, "le retour ramène bien à la semaine courante");
 
 // Et il ne DUPLIQUE pas le quotidien : celui-ci reste dans 🎯 Aujourd'hui.
 const dansSemaine = await page.evaluate(() => document.getElementById("screen").innerHTML);

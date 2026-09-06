@@ -68,10 +68,20 @@ await page.waitForTimeout(700);
 // Le témoin : on change le token à chaud, la bordure doit suivre. Sans lui, on ne mesurerait que
 // l'égalité de deux déclarations — la grille pourrait peindre n'importe quoi.
 {
+  // REFONTE 18b (05/09/2026) — ON LIT CE QUI EST PEINT (règle 15). La charge d'une journée se
+  // lisait sur sa BORDURE ; l'écran 18b la porte sur un RAIL vertical (le `::before` de `.gd`,
+  // css/zenna-semaine.css) et la bordure a une largeur nulle. `borderTopColor` restait pourtant
+  // calculé depuis le jeton — le critère serait resté vert en lisant une couleur que personne
+  // ne voit. On lit donc le rail, et on garde la bordure en REPLI pour l'onglet Plan, où la
+  // grille porte encore sa bordure de charge. Vérifié rouge : un littéral dans la règle du
+  // rail « dur » de la feuille de zone → la couleur ne suit plus le jeton.
   const m = await page.evaluate(() => {
     const lire = () => ["dur", "facile", "recup"].map((c) => {
       const el = document.querySelector("#screen .gd." + c);
-      return el ? getComputedStyle(el).borderTopColor : null;
+      if (!el) return null;
+      const rail = getComputedStyle(el, "::before");
+      const peint = rail.content !== "none" && rail.width !== "0px" ? rail.backgroundColor : null;
+      return peint || getComputedStyle(el).borderTopColor;
     });
     const avant = lire();
     document.body.style.setProperty("--zn-charge-dur-rgb", "0 255 0");
@@ -82,7 +92,7 @@ await page.waitForTimeout(700);
   });
   ok(m.avant.every(Boolean), "les trois charges sont présentes dans la semaine (" + m.avant.join(" · ") + ")");
   ok(m.apres[0] !== m.avant[0] && /0, 255, 0/.test(m.apres[0]),
-    "…la bordure « dur » SUIT son token (" + m.avant[0] + " → " + m.apres[0] + ")");
+    "…la couleur PEINTE de « dur » (rail 18b) SUIT son token (" + m.avant[0] + " → " + m.apres[0] + ")");
   ok(m.apres[1] === m.avant[1] && m.apres[2] === m.avant[2],
     "…et seule celle-là bouge : les tokens ne sont pas partagés par erreur");
   ok(m.remis[0] === m.avant[0], "…l'état est rendu tel quel après le témoin");
@@ -128,7 +138,7 @@ await page.waitForTimeout(700);
   const RACINE = new URL("../../endurabuild/", import.meta.url).pathname;
   // Fichiers qui PEIGNENT la charge. `icons.js` est la source ; `zenna-today.css` en est le
   // jumeau déclaré, vérifié identique par le §1 — les citer serait se mordre la queue.
-  const CIBLES = ["css/styles.css", "css/zenna-tabs.css", "js/ui/plan-view.js"];
+  const CIBLES = ["css/styles.css", "css/zenna-tabs.css", "css/zenna-semaine.css", "js/ui/plan-view.js"];
   // ON VISE LES SÉLECTEURS DE CHARGE, PAS LES VALEURS. Ma première écriture cherchait les
   // couleurs de la table n'importe où dans ces fichiers : elle a rougi sur `.warn`,
   // `.bp-hero` et `.w-chip`, qui emploient le MÊME pastel pour tout autre chose (un

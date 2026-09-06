@@ -67,3 +67,18 @@ export const GEL_ZENNA = {
 export function saveurGel(nom) {
   return (GEL_ZENNA.saveurs && GEL_ZENNA.saveurs[nom]) || null;
 }
+
+/**
+ * CE QU'IL Y A DANS LE SACHET — les quatre arguments à nu de la maquette (écrans 22c/3a,
+ * refonte visuelle du 04-06/09/2026). Reprise verbatim du canevas : ce sont des propriétés
+ * du produit DESSINÉ (assimilation, tolérance, formulation, provenance), pas un effet promis
+ * à l'athlète — même registre que `ATOUTS_GEL` (sachet.js), qui garde les faits les plus
+ * courts pour le bloc « Bon à savoir » en pied de carte. Un seul endroit (R11.1) : la carte
+ * de vente lit cette table, elle n'écrit jamais ces quatre phrases en dur.
+ */
+export const SACHET_ARGUMENTS = [
+  { mot: "Énergie rapide", phrase: "Assimilation rapide pour soutenir l'effort." },
+  { mot: "Haute tolérance", phrase: "Formule douce pour l'estomac." },
+  { mot: "Sans conservateur", phrase: "Ingrédients sélectionnés avec exigence." },
+  { mot: "Fabriqué en France", phrase: "Développé et conditionné en France." },
+];

@@ -33,6 +33,17 @@
   --fs-hand:18px;  /* Caveat (manuscrit) + grandes valeurs — la cursive a une petite hauteur d'x */
   --fs-xl:22px;    /* titre de section */
   --fs-field:16px; /* saisie sur écran TACTILE — plancher iOS, voir R18.1 en fin de feuille */
+  /* R16.8 (suite, FOUNDATION de la refonte 04/09/2026) — TROIS RÔLES DISPLAY QUE LE CANEVAS
+     POSSÈDE ET QUE L'ÉCHELLE N'AVAIT PAS. Les écrans « Noir apaisé » (18a, 18b, 22a-c, 16a)
+     rendent trois grandeurs d'affiche que les modules écrivaient jusqu'ici en LITTÉRAL
+     (`.zn-hero-title` 30px, `.zn-hero-num` 50px, `.zn-jminus` 52px — donc hors échelle, donc
+     hors garde) : le titre du héros (26-30 px sur le canevas), le chiffre (32-40) et le grand
+     chiffre du héros (48-54). Un palier par rôle, jamais par valeur — même principe que les
+     huit du dessus. Tous au-dessus de `--fs-xl`, dans l'ordre hero < num < big : `smoke-typo`
+     vérifie que chaque palier est DISTINCT et porte son rôle en commentaire. */
+  --fs-hero:28px;  /* display — titre du héros (nom de la séance, titre de relief) */
+  --fs-num:36px;   /* display — chiffre mis en avant (durée totale, J−, volume) */
+  --fs-big:54px;   /* display — le grand chiffre du héros (les minutes du jour) */
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 /* iOS : body seul ne suffit pas — sans ça, un débordement horizontal permet de

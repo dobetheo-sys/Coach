@@ -85,10 +85,19 @@ export function sachetHTML(saveur, detail = "vignette", largeurPx = 26) {
     + '" aria-hidden="true" focusable="false">' + p.join("") + "</svg>";
 }
 
-/** Les arguments produit des maquettes — formulés sur ce qui est VÉRIFIABLE sur le sachet
- *  (une composition, un poids, une origine), jamais sur un effet promis à l'athlète. */
+/**
+ * « BON À SAVOIR » — trois faits COURTS, en pied de carte (écran 22c). Formulés sur ce qui
+ * est VÉRIFIABLE sur le sachet (une composition, un poids), jamais sur un effet promis à
+ * l'athlète. Distinct de `SACHET_ARGUMENTS` (shop-catalog.js) : celui-ci porte les QUATRE
+ * arguments longs du haut de carte (« ce qu'il y a dans le sachet ») ; « Fabriqué en France »
+ * y vit désormais, il n'est donc plus répété ici (R11.1 — une seule affirmation, un seul
+ * endroit qui la porte). « Testée en condition réelle » vient du canevas (04/09/2026) : c'est
+ * un objectif de développement du produit dessiné, au même titre que « sans colorant » l'était
+ * déjà — la carte reste sans ambiguïté sur ce point (`CATALOG` à `null`, mention systématique
+ * « service pas encore actif »).
+ */
 export const ATOUTS_GEL = [
-  { t: "1 sachet", d: GEL_ZENNA.glucidesG + " g de glucides" },
+  { t: "1 sachet", d: "= " + GEL_ZENNA.glucidesG + " g glucides" },
+  { t: "Testée", d: "en condition réelle" },
   { t: "Sans colorant", d: "ni conservateur" },
-  { t: "Fabriqué", d: "en France" },
 ];

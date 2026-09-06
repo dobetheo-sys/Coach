@@ -25,18 +25,32 @@
    ============================================================ */
 
 /* ============================================================
-   R-ZENNA v5 — L'EN-TÊTE PARTAGÉ (#ebAppHeader)
+   L'EN-TÊTE PARTAGÉ (#ebAppHeader) — le chrome commun du canevas (FOUNDATION, 04/09/2026)
    ============================================================
-   Le seul élément structurel commun aux cinq écrans de la maquette qui n'existait nulle part.
+   Le seul élément structurel commun aux cinq écrans (R-ZENNA v5), porté à la forme des
+   écrans 18a / 18b / 22a-c / 16a : à gauche le logo (24 px, `brand.js`) et « ZENNA »
+   (Poppins 800, --fs-lg, interlettrage .14em) ; à droite, DEUX lignes.
+     · Semaine / Plan / Profil / Outils : le NOM de l'onglet (Inter 600, --fs-lg) et dessous
+       une ligne mono en capitales --fs-micro --zn-faint2 « HALF · 70.3 · J−25 ».
+     · Aujourd'hui : la ligne mono « MAR 11 AOÛT · S6 » + « Half · 70.3 », et la puce
+       J−28 / RESTANTS à côté.
+   Le salut (« Salut ☀️ ») quitte l'en-tête : aucun des six écrans du canevas ne le porte,
+   et la fonction `greeting()` reste exportée pour le check-in.
+   La PUCE de course (`.zn-race-chip`) est l'élément que `smoke-zenna` garde : présente sur
+   les cinq onglets quand une date est déclarée, ≥ 44 px (U4), cliquable partout sauf sur
+   Plan. Sur les quatre onglets sans tuile J−, c'est le bloc de droite lui-même qui la porte
+   (modificateur `.zn-race-chip--texte` : deux lignes de texte, pas de fond) — la propriété
+   gardée est le DÉCOMPTE tactile, pas la forme d'une tuile.
    Il vit hors de `#screen`, donc ces règles ne sont PAS scopées sous `#screen`. */
 body.theme-zenna #ebAppHeader {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 10px; padding: 6px 0 14px;
+  gap: 10px; padding: 14px 4px 10px; /* 14 de wrap + 4 = la gouttière de 18 du canevas */
+  min-height: 44px;
 }
 /* R-ZENNA v7 — LA MARQUE EST DESSINÉE PAR `brand.js`, ces règles ne font que l'habiller.
    Elles ne sont PAS scopées à l'en-tête : la même marque sert aussi le titre de l'accueil,
    en grand. Une seule identité, deux tailles. */
-body.theme-zenna .zn-brand { display: flex; align-items: center; gap: 9px; min-width: 0; flex: 0 1 auto; overflow: hidden; }
+body.theme-zenna .zn-brand { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 0 1 auto; overflow: hidden; }
 /* R-ZENNA v9 — PLUS DE TUILE. Le placeholder était une lettre enfermée dans un carré orange ;
    le vrai logo porte déjà sa forme et sa couleur. L'encadrer le contredirait — et une silhouette
    sombre dans un carré plein perdrait justement ce qui la rend lisible : sa découpe. */
@@ -46,7 +60,7 @@ body.theme-zenna .zn-logo-mark {
 }
 body.theme-zenna .zn-logo-mark svg { display: block; }
 body.theme-zenna .zn-brand-word {
-  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-lg); letter-spacing: .06em;
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-lg); letter-spacing: .14em;
   color: var(--zn-text); transform: skewX(var(--zn-skew)); white-space: nowrap;
   overflow: hidden; text-overflow: ellipsis;
 }
@@ -57,30 +71,46 @@ body.theme-zenna .zn-brand-word.grand {
   font-size: clamp(30px, 8vw, 46px); letter-spacing: .04em;
 }
 body.theme-zenna #ebAppHeader .zn-header-right-wrap {
-  display: flex; align-items: center; gap: 9px; flex: 0 0 auto;
+  display: flex; align-items: center; gap: 10px; flex: 0 0 auto; min-width: 0;
 }
 body.theme-zenna #ebAppHeader .zn-header-right { text-align: right; min-width: 0; }
-body.theme-zenna #ebAppHeader .zn-greet { font-size: 12px; font-weight: 600; color: var(--zn-text); white-space: nowrap; }
-body.theme-zenna #ebAppHeader .zn-date-mono {
-  font-family: var(--zn-mono); font-size: 10px; color: var(--zn-muted-2);
-  letter-spacing: .05em; text-transform: uppercase; white-space: nowrap;
+/* Le nom de l'onglet (18b : « Semaine ») — vient de la table TABS de tabs.js, une source. */
+body.theme-zenna #ebAppHeader .zn-tab-name {
+  font-family: var(--zn-body); font-size: var(--fs-lg); font-weight: 600; color: var(--zn-text);
+  line-height: 1.2; white-space: nowrap;
 }
-/* La puce de course. Cliquable, donc 44 px de haut (U4) — la maquette la dessine à 30. */
+body.theme-zenna #ebAppHeader .zn-date-mono {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint2);
+  letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; line-height: 1.4;
+}
+/* Sur Aujourd'hui : la seconde ligne est le FORMAT, en mono clair, sans capitales (18a). */
+body.theme-zenna #ebAppHeader .zn-header-fmt {
+  font-family: var(--zn-mono); font-size: var(--fs-xs); color: var(--zn-text); margin-top: 2px; white-space: nowrap;
+}
+/* La puce de course. Cliquable, donc 44 px de haut (U4) — le canevas la dessine à 46 de large,
+   en TUILE (rayon --r-control, surface + bordure --zn-border-2), J− en Poppins orange et
+   « restants » en mono dessous. */
 body.theme-zenna #ebAppHeader .zn-race-chip {
-  display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 5px 12px;
-  background: var(--zn-surface-2); border: 1px solid var(--zn-border); border-radius: 100px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  min-height: 44px; min-width: 46px; padding: 6px 8px;
+  background: var(--zn-surface); border: 1px solid var(--zn-border-2); border-radius: var(--r-control);
   transition: transform var(--dur-tap) var(--ease-spring), border-color var(--dur-trans) var(--ease);
 }
+/* …et sa forme TEXTE sur les quatre autres onglets : le bloc de droite entier, sans fond. */
+body.theme-zenna #ebAppHeader .zn-race-chip.zn-race-chip--texte {
+  align-items: flex-end; gap: 0; padding: 0; min-width: 0;
+  background: transparent; border: none; border-radius: 0;
+}
 body.theme-zenna #ebAppHeader .zn-race-chip[role="button"] { cursor: pointer; }
-body.theme-zenna #ebAppHeader .zn-race-chip[role="button"]:active { transform: scale(.93); }
+body.theme-zenna #ebAppHeader .zn-race-chip[role="button"]:active { transform: scale(.95); }
 body.theme-zenna #ebAppHeader .zn-race-chip[role="button"]:focus-visible {
   outline: 2px solid var(--zn-orange); outline-offset: 2px;
 }
 body.theme-zenna #ebAppHeader .rc-j {
-  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: 14px; color: var(--zn-orange-tint); line-height: 1;
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-lg); color: var(--zn-orange); line-height: 1;
 }
 body.theme-zenna #ebAppHeader .rc-l {
-  font-family: var(--zn-mono); font-size: 9px; color: var(--zn-muted-2); letter-spacing: .05em;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint2); letter-spacing: .08em;
   text-transform: uppercase; white-space: nowrap;
 }
 /* Sur un écran étroit, la marque cède avant la puce : « J−281 · 70.3 » est l'information,
@@ -88,6 +118,38 @@ body.theme-zenna #ebAppHeader .rc-l {
 @media (max-width: 359px) {
   body.theme-zenna #ebAppHeader .zn-brand-word { display: none; }
 }
+
+/* ============================================================
+   SOUS-ONGLETS SEGMENTÉS — `.zn-seg > .zn-seg-btn` (FOUNDATION, 04/09/2026)
+   ============================================================
+   La primitive commune des sous-onglets du canevas : Outils « NUTRITION / ÉDUCATIFS »
+   (16a, 22c), Semaine « CETTE SEMAINE / BILAN » (18b), Plan « VUE D'ENSEMBLE / PRÉDICTION »
+   (22a), Profil « MES PLANS / MES DONNÉES / PARAMÈTRES » (22b). Pilules --r-pill, 44 px
+   (U4 — le canevas les dessine à 40-42), mono --fs-xs 700 capitales, interlettrage .07em ;
+   active = fond --zn-orange, encre --zn-on-accent ; inactive = --zn-surface, bordure
+   --zn-border-2, texte --zn-text.
+   Balisage : <div class="subtabs zn-seg" role="tablist"><button class="btn subtab
+   zn-seg-btn [active]" …>. Le `.btn` et le `.subtab` restent (smoke-tabs et smoke-posture
+   lisent `data-subtool`) ; `.zn-seg-btn` porte la FORME, `.active` ou `aria-selected`
+   l'état. Les autres onglets adoptent la primitive en phase 2 — rien ici ne les touche.
+   Ces règles portent `#screen .zn-seg > .zn-seg-btn` (0,1,3,1) : elles gagnent sur le
+   `.btn` du socle (0,1,1,1) et sur `.subtab.active` (0,1,2,1) sans `!important`. */
+body.theme-zenna #screen .zn-seg { display: flex; gap: 6px; flex-wrap: nowrap; margin: 0 0 14px; }
+body.theme-zenna #screen .zn-seg > .zn-seg-btn {
+  flex: 1 1 0; min-width: 0; min-height: 44px; padding: 0 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--zn-surface); border: 1px solid var(--zn-border-2); border-radius: var(--r-pill);
+  color: var(--zn-text); box-shadow: none;
+  font-family: var(--zn-mono); font-size: var(--fs-xs); font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: transform var(--dur-tap) var(--ease-spring), background var(--dur-trans) var(--ease), color var(--dur-trans) var(--ease);
+}
+body.theme-zenna #screen .zn-seg > .zn-seg-btn:active { transform: scale(.97); }
+body.theme-zenna #screen .zn-seg > .zn-seg-btn.active,
+body.theme-zenna #screen .zn-seg > .zn-seg-btn[aria-selected="true"] {
+  background: var(--zn-orange); border-color: var(--zn-orange); color: var(--zn-on-accent);
+}
+body.theme-zenna #screen .zn-seg > .zn-seg-btn:focus-visible { outline: 2px solid var(--zn-orange); outline-offset: 2px; }
 
 /* ============================================================
    R-ZENNA v6 — LE QUESTIONNAIRE (décision du fondateur : toute l'app)
@@ -458,11 +520,13 @@ body.theme-zenna .aide-btn.on { background: var(--zn-orange-tint); color: var(--
 /* ============================================================
    🧰 OUTILS — sous-onglets, nutrition, éducatifs
    ============================================================ */
+/* FOUNDATION — les sous-onglets d'Outils portent la primitive `.zn-seg` (voir plus haut) ;
+   ces deux règles restent le REPLI d'un `.subtab` qui n'aurait pas la classe. */
 body.theme-zenna #screen .subtab {
-  background: var(--zn-surface-2); border: 1px solid var(--zn-border); color: var(--zn-muted);
-  border-radius: 13px; box-shadow: none; font-family: var(--zn-mono);
+  background: var(--zn-surface); border: 1px solid var(--zn-border-2); color: var(--zn-text);
+  border-radius: var(--r-pill); box-shadow: none; font-family: var(--zn-mono);
 }
-body.theme-zenna #screen .subtab.active { background: var(--zn-orange-tint); border-color: transparent; color: var(--zn-on-accent); font-weight: 700; }
+body.theme-zenna #screen .subtab.active { background: var(--zn-orange); border-color: var(--zn-orange); color: var(--zn-on-accent); font-weight: 700; }
 
 /* --- Éducatifs. Le module a été écrit pour le thème papier : ses fonds pastel deviennent des
        rectangles quasi blancs, et son texte, qui hérite de `--text` (désormais clair), devient

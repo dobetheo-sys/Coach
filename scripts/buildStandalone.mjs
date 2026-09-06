@@ -50,7 +50,12 @@ function collect(rel) {
 collect("js/app.js");
 
 // ---- 2. CSS + polices en data: (aucune requête réseau, donc offline par construction) ----
-let css = ["css/styles.css", "css/mobile.css", "css/zenna-today.css", "css/zenna-tabs.css"].map(read).join("\n");
+// FOUNDATION (04/09/2026) — la liste suit celle d'`app.js` (socle + posture + les huit zones) :
+// une feuille chargée par l'app et absente d'ici serait la « feuille manquante en silence »
+// que ce script existe pour empêcher.
+let css = ["css/styles.css", "css/mobile.css", "css/zenna-today.css", "css/zenna-tabs.css", "css/zenna-posture.css",
+  "css/zenna-aujourdhui.css", "css/zenna-semaine.css", "css/zenna-plan.css", "css/zenna-profil.css",
+  "css/zenna-boutique.css", "css/zenna-educatifs.css", "css/zenna-matin.css", "css/zenna-questionnaire.css"].map(read).join("\n");
 css = css.replace(/url\("\.\.\/assets\/fonts\/([^"]+)"\)/g,
   (_m, f) => 'url("data:font/woff2;base64,' + b64("assets/fonts/" + f) + '")');
 

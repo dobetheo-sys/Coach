@@ -29,35 +29,47 @@ de l'axe de charge ci-dessous, et c'est le seul motif qui traverse les deux.
 
 ## 1 · Tokens du thème sombre — `endurabuild/css/zenna-today.css`
 
-Tout est déclaré sur `body.theme-zenna` : **72 variables**, en trois familles.
+Tout est déclaré sur `body.theme-zenna` : **88 variables**, en trois familles.
 
-### 1a · Palette Zenna — 45 tokens
+### 1a · Palette Zenna — 57 tokens
 
 | Token | Valeur |
 |---|---|
-| `--zn-bg` | `#000` |
-| `--zn-surface` | `#111318` |
-| `--zn-surface-2` | `#181c22` |
+| `--zn-bg` | `#0b0b0c` |
+| `--zn-surface` | `#131417` |
+| `--zn-surface-2` | `#101215` |
 | `--zn-surface-3` | `#20252c` |
-| `--zn-border` | `#26292f` |
-| `--zn-orange` | `#ff3d00` |
+| `--zn-creux` | `#08090a` |
+| `--zn-border` | `#22262b` |
+| `--zn-border-2` | `#262a30` |
+| `--zn-border-3` | `#2f343b` |
+| `--zn-orange` | `#f2481b` |
+| `--zn-accent` | `var(--zn-orange)` |
 | `--zn-orange-2` | `#ff7a3d` |
 | `--zn-orange-tint` | `#ffb199` |
-| `--zn-orange-glow` | `rgba(255, 61, 0, .4)` |
+| `--zn-orange-glow` | `rgba(242, 72, 27, .4)` |
+| `--zn-shadow-hero` | `0 14px 30px -14px rgba(242, 72, 27, .55)` |
 | `--zn-cyan` | `#00e0c6` |
 | `--zn-gold` | `#ffd23d` |
 | `--zn-gold-dot` | `#ffd23d` |
 | `--zn-violet` | `#9b72ff` |
 | `--zn-text` | `#f5f1ea` |
-| `--zn-muted` | `#b4b9c0` |
+| `--zn-muted` | `#b0b5bc` |
 | `--zn-muted-2` | `#9aa0a8` |
 | `--zn-ink` | `#f5f1ea` |
 | `--zn-ink-2` | `#d7d2c6` |
 | `--zn-good` | `#1fb8a6` |
+| `--zn-easy` | `#00a376` |
+| `--zn-warn` | `#f0b429` |
+| `--zn-hard` | `#e63946` |
 | `--zn-bad` | `#ff7d92` |
 | `--zn-faint` | `#787f86` |
 | `--zn-faint2` | `#8e939a` |
+| `--zn-faint3` | `#4c525a` |
 | `--zn-filet` | `#1a1c20` |
+| `--zn-gutter` | `18px` |
+| `--zn-gutter-card` | `14px` |
+| `--zn-bar-bg` | `rgba(11, 11, 12, .97)` |
 | `--zn-good-dark` | `#0f8f81` |
 | `--zn-track-bg` | `#20252c` |
 | `--zn-sep` | `rgba(255, 255, 255, .18)` |
@@ -69,7 +81,7 @@ Tout est déclaré sur `body.theme-zenna` : **72 variables**, en trois familles.
 | `--zn-charge-dur-papier` | `#ffe3e0` |
 | `--zn-charge-facile-papier` | `#d9f3e1` |
 | `--zn-charge-recup-papier` | `#e9defc` |
-| `--zn-bg-race` | `rgba(255, 61, 0, .14)` |
+| `--zn-bg-race` | `rgba(242, 72, 27, .14)` |
 | `--zn-bg-eve` | `rgba(255, 210, 61, .10)` |
 | `--zn-bg-taper` | `rgba(155, 114, 255, .14)` |
 | `--zn-gold-text` | `#ffd23d` |
@@ -77,8 +89,8 @@ Tout est déclaré sur `body.theme-zenna` : **72 variables**, en trois familles.
 | `--zn-display-weight` | `800` |
 | `--zn-body` | `'Inter', 'Space Grotesk', -apple-system, sans-serif` |
 | `--zn-mono` | `'IBM Plex Mono', ui-monospace, monospace` |
-| `--zn-skew` | `-4deg` |
-| `--zn-on-accent` | `#0a0a0a` |
+| `--zn-skew` | `0deg` |
+| `--zn-on-accent` | `#14140f` |
 | `--zn-travel` | `40px` |
 
 ### 1b · Reliage du thème papier — 10 tokens
@@ -89,16 +101,16 @@ historique : il REDÉFINIT les variables que ce CSS consomme déjà. Une règle 
 
 | Token papier | Valeur en sombre |
 |---|---|
-| `--text` | `#f5f1ea` |
-| `--text2` | `#b4b9c0` |
-| `--muted` | `#9aa0a8` |
-| `--ink` | `#f5f1ea` |
-| `--bg` | `#000` |
-| `--bg2` | `#181c22` |
-| `--bg3` | `#111318` |
-| `--acc` | `#ff3d00` |
-| `--gold` | `#ffd23d` |
-| `--line` | `#26292f` |
+| `--text` | `var(--zn-text)` |
+| `--text2` | `var(--zn-muted)` |
+| `--muted` | `var(--zn-muted-2)` |
+| `--ink` | `var(--zn-ink)` |
+| `--bg` | `var(--zn-bg)` |
+| `--bg2` | `var(--zn-surface-3)` |
+| `--bg3` | `var(--zn-surface)` |
+| `--acc` | `var(--zn-orange)` |
+| `--gold` | `var(--zn-gold)` |
+| `--line` | `var(--zn-border)` |
 
 ### 1c · Mouvement — 9 tokens
 
@@ -114,17 +126,21 @@ historique : il REDÉFINIT les variables que ce CSS consomme déjà. Une règle 
 | `--ease` | `cubic-bezier(.2, 0, 0, 1)` |
 | `--ease-spring` | `cubic-bezier(.34, 1.18, .64, 1)` |
 
-### 1d · Formes et plans — 8 tokens
+### 1d · Formes et plans — 12 tokens
 
 | Token | Valeur |
 |---|---|
+| `--r-card` | `20px` |
+| `--r-surface` | `14px` |
+| `--r-control` | `13px` |
+| `--r-pill` | `100px` |
 | `--z1` | `#3a3f46` |
 | `--z2` | `#1fb8a6` |
 | `--z3` | `#ffb199` |
 | `--z4` | `#ff4b12` |
 | `--z5` | `#ff1f4a` |
 | `--cut-tile` | `polygon(0 0, 100% 0, 100% 78%, 78% 100%, 0 100%)` |
-| `--cut-hero` | `polygon(0 0, 100% 0, 100% 82%, 55% 96%, 0 100%)` |
+| `--cut-hero` | `none` |
 | `--cut-bevel` | `polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%)` |
 
 ---
@@ -188,6 +204,9 @@ en `em` relativement à son porteur (R16.8). Plancher de lisibilité : **9 px**,
 | `--fs-hand` | `18px` | Caveat (manuscrit) + grandes valeurs — la cursive a une petite hauteur d'x |
 | `--fs-xl` | `22px` | titre de section |
 | `--fs-field` | `16px` | saisie sur écran TACTILE — plancher iOS, voir R18.1 en fin de feuille |
+| `--fs-hero` | `28px` | display — titre du héros (nom de la séance, titre de relief) |
+| `--fs-num` | `36px` | display — chiffre mis en avant (durée totale, J−, volume) |
+| `--fs-big` | `54px` | display — le grand chiffre du héros (les minutes du jour) |
 
 ---
 

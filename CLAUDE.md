@@ -612,6 +612,45 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**REFONTE VISUELLE « NOIR APAISÉ » LIVRÉE — les huit zones de la PWA suivent désormais le
+canevas Claude Design « Zenna — tous les écrans », le moteur INTACT** (05-06/09/2026, branche
+`claude/integration-travail-visuel-bjvugr`) : demande du fondateur — le résultat visuel du
+travail de design avec le moteur perfectionné, livré de bout en bout sans étape intermédiaire.
+Fondation posée d'abord (jetons du canevas — fond `#0b0b0c`, orange `--zn-orange`, surfaces
+relief/nu/creux —, chrome commun à cinq onglets, primitives `.zn-sec`/`.zn-relief`/`.zn-panel`/
+`.zn-creux`/`.zn-seg`/`.zn-btn`), puis huit zones portées en parallèle par des agents en
+worktrees isolés, chacune sur son propre fichier de feuille (`zenna-<zone>.css`, 0 littéral
+hex/ms — cliquet `check:tokens`) et ses propres modules : 🎯 Aujourd'hui (18a, héros + détail de
+séance à rail + intendance à nu), 📅 Semaine (18b, journées à nu + volumes par discipline),
+🗓 Plan (22a, saison en relief + phases + courbe de volume + prédiction), 👤 Profil (22b/14b/14c,
+trois sous-onglets Mes Plans/Mes Données/Paramètres), 🧰 Éducatifs (16a/16b/21x, chaîne de
+paliers + fiches), 🧰 Boutique/Nutrition (22c/3a-c/19e, sachet illustré + relevé dérivé du plan),
+Le point du matin (15a-c, diaporama + verdict) et Le questionnaire d'entrée (4a-c/5a-b, socle
+numéroté). **Cinq interruptions par limite de session/crédits pendant le chantier — jamais un
+octet perdu** : chaque zone commite par étape (`WIP …`) et pousse une branche `refonte/<zone>`
+nommée, salvageable indépendamment de l'agent qui l'a écrite ; deux zones (Aujourd'hui, Profil)
+ont ainsi été reprises et closes à la main depuis leur dernier commit WIP.
+**Trois défauts d'intégration trouvés en fusionnant, tous corrigés et contre-prouvés** :
+(1) l'encre du héros d'Aujourd'hui rendait 4,29:1 sur l'orange (sous le seuil AA 4,5) —
+portée à `rgba(20,20,15,.92)` ; (2) deux assertions de `smoke-usage.mjs` cherchaient leur cible
+par un LIBELLÉ devenu faux avec la nouvelle structure (règle 17) — le premier `.aide-btn` du
+Profil vit désormais dans une carte repliée par défaut (22b : on ouvre son `<details>` ancêtre
+avant d'interagir, même patron que U18b) ; « Strava avant les références » ne veut plus rien
+dire une fois Connexions déplacé dans Paramètres — réécrite en « Strava précède Météo sous
+l'intertitre Connexions », contre-prouvée rouge en permutant l'ordre d'émission des deux blocs ;
+(3) le titre du questionnaire (« Quel plan veux-tu *construire ?* ») a perdu son espace de
+liaison à la coupure de ligne introduite pour le rendu en deux lignes du canevas — un `<br>`
+sans espace précédent fait lire `.textContent` (et tout lecteur d'écran) « veux-tuconstruire » ;
+un espace ajouté avant le `<br>`, rendu visuel inchangé. **`src/` byte-identique** (aucune zone
+n'a touché au moteur) : `audit:v1` 459 à 0, la batterie CI des 13 gates du socle
+(`audit:v1/invariants/v6/v7/monotonie/r13/r14/r14.1/r18`, `golden:verify`, `golden:bundle`,
+`check:dates`, `lotPhysio`) au vert, **E2E 26/26 suites**, `sw.js` reconstruit
+(`eb-pwa-063619f52f47`, 79 assets). Écarts assumés et publiés par zone : la segmentation
+MediaPipe du bikefitting reste hors périmètre (O-118, inchangé) ; les packshots de sachet
+restent l'illustration SVG existante plutôt que les photos du canevas (540-572 Ko contre un
+budget de ~150 Ko) ; la carte de bilan de la semaine 22c/9b et la structure de fiche 16b/21x
+suivent le langage de composants du dépôt (rail/creux/panel) plutôt qu'un calque neuf.
+
 **O-119 FERMÉ — C26d appliqué, pas seulement mesuré ; trois correctifs dans `sports/tri/index.ts`
 essayés et retirés avant le bon** (03/09/2026 — voir `BUGS_OUVERTS.md` « O-119 », fonction
 `enforceModShareCap` dans `src/generator/planGenerator.ts`) : `tri/S/ancien/debutant/competition`

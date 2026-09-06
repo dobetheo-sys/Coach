@@ -1,0 +1,427 @@
+/* ============================================================
+   ZENNA — Questionnaire d'entrée (feuille de ZONE, phase 2 de la refonte)
+   ============================================================
+   Cible(s) du canevas « Noir apaisé · le reçu » : 4a, 4b, 4c, 5a, 5b.
+   Modules concernés : steps.js (et styles.css pour l'existant).
+
+   PRÉ-CRÉÉE VIDE par la FOUNDATION (04/09/2026) et déjà ENREGISTRÉE : `app.js` la charge
+   APRÈS `zenna-today.css` / `zenna-tabs.css` / `zenna-posture.css` (donc elle gagne à
+   spécificité égale), `scripts/checkZennaTokens.mjs` la tient à ZÉRO littéral (`hex: 0,
+   durees: 0`), `build:sw` la précache. L'agent de zone n'enregistre rien.
+
+   RÈGLES DE LA ZONE
+     · les jetons viennent du bloc `body.theme-zenna` de `zenna-today.css` (l'autorité) —
+       aucun `--zn-*` redéclaré ici, aucun `#hex`, aucune durée en `ms`/`s` ;
+     · les tailles viennent des paliers `--fs-*` de `styles.css` (dont --fs-hero / --fs-num /
+       --fs-big pour les rôles display) — `smoke-typo` refuse un littéral ;
+     · composer avec les primitives (`.zn-sec`, `.zn-relief`, `.zn-panel`, `.zn-creux`,
+       `.zn-list` / `.zn-row`, `.zn-btn` / `.zn-btn-2`, `.zn-chip`, `.zn-seg`, `.zn-display` /
+       `.zn-mono` / `.zn-body`) plutôt que de les réécrire — le guide d'usage est dans
+       `zenna-today.css`, section « PRIMITIVES DU CANEVAS » ;
+     · préfixer `body.theme-zenna:not(.has-tabs) #screen …` ; ajouter ici plutôt qu'éditer les deux feuilles
+       du socle.
+   ============================================================
+
+   MESURÉ AVANT D'ÉCRIRE (voir before-*.png dans le scratchpad de la zone) : `body.theme-zenna`
+   est posé dès `app.js:26`, AVANT tout plan — le questionnaire hérite donc déjà des jetons
+   sombres via le reliage `--bg3 → --zn-surface`, `--ink → --zn-ink` etc. de `zenna-today.css`
+   (« LES JETONS DU THÈME CLAIR SONT REDÉFINIS ICI »). Ce qui manque à la cible n'est pas la
+   palette (déjà juste) mais : la police manuscrite « papier » sur le sourcil/le « pourquoi »,
+   les rotations/ombres portées façon collage sur les cartes et les options, la hiérarchie
+   (pas de questions NUMÉROTÉES ni d'état par question), l'absence de repère « sport en cours »
+   dans l'écran lui-même, et une carte « socle complet » qui n'existe qu'en aparté (`#genNowWrap`)
+   au lieu d'un point d'étape assumé.
+
+   CE QUI EST ÉCARTÉ, ET POURQUOI : transformer `#genNowWrap` en un ÉCRAN séparé (comme 4c le
+   laisse croire) obligerait à insérer une étape dans `curSteps()` juste après « dispo » — or
+   TOUS les parcours génériques des 7 suites qui gardent cette zone avancent en cliquant
+   `#genBtn` dès qu'il existe (voir smoke-boucle/smoke-improvements/smoke-securite/
+   smoke-questionnaires) : le poser plus tôt les ferait tous générer le plan avant d'avoir
+   répondu à l'historique, au niveau, aux blessures — un test qui « avance encore » mais qui ne
+   couvre plus ce qu'il couvrait. `#genNowWrap`/`#genNowBtn` restent donc exactement où et ce
+   qu'ils sont fonctionnellement (aucun risque de régression cachée sur les 7 suites) ; seule
+   leur PRÉSENTATION change, en carte de bilan riche plutôt qu'en aparté. Documenté aussi dans
+   le compte rendu (`not_done`). */
+
+/* ============================================================
+   0. CHROME LOCAL — le brand statique de `.hero` (index.html) ne sert QUE l'écran de choix du
+      sport (4a) ; sur les écrans suivants, ma propre barre (icône du sport + « Retour ») le
+      remplace, DANS `#screen`, pour ne pas dépendre d'un fichier partagé.
+   ============================================================ */
+body.theme-zenna:not(.has-tabs) .hero { display: none; }
+body.theme-zenna:not(.has-tabs).eb-picking .hero {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 0;
+  padding: var(--zn-gutter-card) var(--zn-gutter-card) 0;
+}
+body.theme-zenna:not(.has-tabs).eb-picking .hero h1 { margin: 0; }
+body.theme-zenna:not(.has-tabs).eb-picking .hero p,
+body.theme-zenna:not(.has-tabs).eb-picking .hero #tierBadge { display: none; }
+/* le `<nav id="progress">` (dots historiques) n'a plus lieu d'être : ma propre barre à 4
+   segments vit DANS `#screen`, pour la même raison (portable, pas de second point d'accroche). */
+body.theme-zenna:not(.has-tabs) #progress { display: none; }
+
+/* ============================================================
+   1. BARRE HAUTE DE L'ÉCRAN — « ‹ Retour » + puce sport/format (4b, 4c, 5a, 5b)
+   ============================================================ */
+body.theme-zenna:not(.has-tabs) #screen .zn-q-top {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 0 0 14px;
+}
+body.theme-zenna:not(.has-tabs) #screen .zn-q-back {
+  background: none; border: none; padding: 0; min-height: 44px;
+  display: inline-flex; align-items: center;
+  color: var(--zn-muted); font-family: var(--zn-mono); font-size: var(--fs-xs); cursor: pointer;
+}
+body.theme-zenna:not(.has-tabs) #screen .zn-q-back[style*="hidden"] { visibility: hidden; }
+body.theme-zenna:not(.has-tabs) #screen .zn-q-chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 5px 11px; background: var(--zn-surface); border: 1px solid var(--zn-border-2);
+  border-radius: var(--r-pill);
+  font-family: var(--zn-mono); font-size: var(--fs-xs); letter-spacing: .06em; color: var(--zn-text);
+  white-space: nowrap;
+}
+body.theme-zenna:not(.has-tabs) #screen .zn-q-chip em { font-style: normal; line-height: 1; }
+
+/* ============================================================
+   2. PROGRESSION — « LE SOCLE · ÉTAPE N SUR 4 » + barre à 4 segments (4b, 4c, 5a)
+   ============================================================ */
+body.theme-zenna:not(.has-tabs) #screen .zn-q-progress { padding: 0 0 18px; }
+body.theme-zenna:not(.has-tabs) #screen .zn-q-progress-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  font-family: var(--zn-mono); font-size: var(--fs-xs); letter-spacing: .1em; text-transform: uppercase;
+}
+body.theme-zenna:not(.has-tabs) #screen .zn-q-progress-row > span:first-child { color: var(--zn-orange); font-weight: 700; }
+body.theme-zenna:not(.has-tabs) #screen .zn-q-progress.zn-q-done .zn-q-progress-row > span:first-child { color: var(--zn-good); }
+body.theme-zenna:not(.has-tabs) #screen .zn-q-progress-row > span:last-child { color: var(--zn-faint2); letter-spacing: 0; text-transform: none; }
+body.theme-zenna:not(.has-tabs) #screen .zn-q-bar { display: flex; gap: 4px; margin-top: 9px; }
+body.theme-zenna:not(.has-tabs) #screen .zn-q-bar i {
+  flex: 1; height: 3px; border-radius: 2px; display: block; background: var(--zn-border-2);
+}
+body.theme-zenna:not(.has-tabs) #screen .zn-q-bar i.on { background: var(--zn-orange); }
+body.theme-zenna:not(.has-tabs) #screen .zn-q-progress.zn-q-done .zn-q-bar i.on { background: var(--zn-good); }
+body.theme-zenna:not(.has-tabs) #screen .zn-q-progress-note {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint); margin-top: 7px;
+}
+
+/* ============================================================
+   3. LE PANNEAU — la carte de question (remplace le collage papier : plus de rotation, plus
+      d'ombre portée, plus de police manuscrite sur le sourcil ni le « pourquoi »)
+   ============================================================ */
+body.theme-zenna:not(.has-tabs) #screen .card {
+  background: var(--zn-surface); border: 1px solid var(--zn-border-2);
+  border-radius: var(--r-card); box-shadow: none; animation: none; transform: none;
+  padding: 17px 16px; margin-bottom: 14px;
+}
+/* le sourcil et le « pourquoi » du papier (Space Grotesk / Caveat, rotations, pastille noire)
+   cèdent la place aux rôles Zenna : mono discret pour le sourcil, corps Inter pour le « pourquoi ». */
+body.theme-zenna:not(.has-tabs) #screen .card .eyebrow {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .11em;
+  background: none; color: var(--zn-faint); transform: none; padding: 0; margin-bottom: 6px;
+}
+body.theme-zenna:not(.has-tabs) #screen .card h2 {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-xl);
+  line-height: 1.08; text-transform: uppercase; color: var(--zn-text); margin: 0;
+}
+body.theme-zenna:not(.has-tabs) #screen .card .why {
+  font-family: var(--zn-body); font-style: normal; font-size: var(--fs-sm); color: var(--zn-muted);
+  line-height: 1.55; border-left: none; padding-left: 0; transform: none; margin: 8px 0 16px;
+}
+/* la note de confidentialité (medical) et l'avertissement mineur (profil) sont les DEUX seuls
+   `.q-sub` posés en ENFANT DIRECT de la carte (avant toute question) — tous les autres vivent
+   DANS une `.q` ou une `.branch` (sous-note d'une question précise) et n'en héritent pas.
+   `:first-of-type` matcherait le premier <div> de la carte tout court (`.eyebrow`) : c'est la
+   CLASSE qui doit filtrer, pas la position — d'où `.card > .q-sub` sans restriction d'ordre. */
+body.theme-zenna:not(.has-tabs) #screen .card > .q-sub {
+  background: var(--zn-creux); border: 1px solid var(--zn-border); border-radius: var(--r-surface);
+  padding: 12px 13px; margin: 0 0 16px; color: var(--zn-muted);
+}
+
+/* ============================================================
+   4. QUESTIONS — numérotées, avec leur état (répondu / requis / affine)
+   ============================================================ */
+body.theme-zenna:not(.has-tabs) #screen .q { margin-bottom: 20px; }
+body.theme-zenna:not(.has-tabs) #screen .q:last-child { margin-bottom: 0; }
+body.theme-zenna:not(.has-tabs) #screen .q-label {
+  font-family: var(--zn-body); font-size: var(--fs-md); font-weight: 600; color: var(--zn-text);
+  margin-bottom: 9px; display: flex; align-items: baseline; gap: 9px;
+}
+/* le numéro + l'état, injectés par `decorateQuestions()` (steps.js) juste avant le libellé —
+   jamais un second texte de question : le numéro identifie, l'icône/la puce disent l'état. */
+body.theme-zenna:not(.has-tabs) #screen .zn-qn {
+  font-family: var(--zn-mono); font-size: var(--fs-xs); font-weight: 700; color: var(--zn-faint2);
+  flex: 0 0 auto;
+}
+body.theme-zenna:not(.has-tabs) #screen .q.zn-answered .zn-qn { color: var(--zn-good); }
+body.theme-zenna:not(.has-tabs) #screen .zn-qstate { margin-left: auto; flex: 0 0 auto; display: inline-flex; align-items: center; }
+body.theme-zenna:not(.has-tabs) #screen .zn-qstate svg { display: block; }
+body.theme-zenna:not(.has-tabs) #screen .zn-qreq,
+body.theme-zenna:not(.has-tabs) #screen .zn-qopt {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .07em; text-transform: uppercase;
+  border-radius: var(--r-pill); padding: 3px 8px;
+}
+body.theme-zenna:not(.has-tabs) #screen .zn-qreq { color: var(--zn-orange); border: 1px solid color-mix(in srgb, var(--zn-orange) 40%, transparent); }
+body.theme-zenna:not(.has-tabs) #screen .zn-qopt { color: var(--zn-faint); border: 1px solid var(--zn-border-2); }
+body.theme-zenna:not(.has-tabs) #screen .q-sub {
+  font-family: var(--zn-body); font-size: var(--fs-xs); color: var(--zn-faint2);
+  margin-top: -4px; margin-bottom: 10px; line-height: 1.5; font-weight: 400;
+}
+/* `.q-def` (l'astuce manuscrite bleue du papier) devient un encart discret, même famille que
+   les `.branch` ci-dessous — un conseil n'est pas une alerte, il garde une teinte neutre. */
+body.theme-zenna:not(.has-tabs) #screen .q-def {
+  font-family: var(--zn-mono); font-style: normal; font-size: var(--fs-micro); line-height: 1.6;
+  color: var(--zn-faint); background: none; border: none; box-shadow: none; transform: none;
+  padding: 0; margin: -2px 0 10px;
+}
+body.theme-zenna:not(.has-tabs) #screen .q-def::before { content: none; }
+
+/* ============================================================
+   5. OPTIONS — pilules-contrôle 44 px, sélection en teinte « bonne réponse »
+   ============================================================ */
+body.theme-zenna:not(.has-tabs) #screen .opts { gap: 8px; }
+body.theme-zenna:not(.has-tabs) #screen .opt {
+  background: var(--zn-surface-2); border: 1px solid var(--zn-border-3); border-radius: var(--r-control);
+  padding: 0 14px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--zn-mono); font-size: var(--fs-sm); font-weight: 600; color: var(--zn-text);
+  box-shadow: none; transform: none; text-align: center;
+  transition: transform var(--dur-tap) var(--ease-spring), border-color var(--dur-trans) var(--ease), background var(--dur-trans) var(--ease);
+}
+/* un groupe pas encore répondu garde ses deux options « prêtes » (bordure de contrôle) ; dès
+   qu'une réponse existe, les options NON choisies s'effacent d'un cran — c'est ce qui fait lire
+   l'état d'un coup d'œil, sans dupliquer l'information dans un texte. */
+body.theme-zenna:not(.has-tabs) #screen .opts:has(.opt.sel) .opt:not(.sel) { border-color: var(--zn-border-2); color: var(--zn-muted); background: var(--zn-surface-2); }
+body.theme-zenna:not(.has-tabs) #screen .opt:hover { transform: none; box-shadow: none; }
+body.theme-zenna:not(.has-tabs) #screen .opt:active { transform: scale(.97); }
+body.theme-zenna:not(.has-tabs) #screen .opt.sel {
+  background: color-mix(in srgb, var(--zn-good) 10%, var(--zn-surface-2));
+  border: 1.5px solid var(--zn-good); color: var(--zn-good); font-weight: 700; transform: none;
+}
+body.theme-zenna:not(.has-tabs) #screen .opt.sel:hover { transform: none; }
+body.theme-zenna:not(.has-tabs) #screen .opt:focus-visible { outline: 2px solid var(--zn-orange); outline-offset: 2px; }
+
+/* ============================================================
+   6. CHAMPS LIBRES — même famille que les options (rangée `.row`, largeur 100 %)
+   ============================================================ */
+body.theme-zenna:not(.has-tabs) #screen input[type=text],
+body.theme-zenna:not(.has-tabs) #screen input[type=number],
+body.theme-zenna:not(.has-tabs) #screen input[type=date] {
+  background: var(--zn-creux); border: 1px solid var(--zn-border-3); border-radius: var(--r-control);
+  color: var(--zn-text); font-family: var(--zn-mono); font-size: var(--fs-field); font-weight: 400;
+  box-shadow: none; min-height: 46px; padding: 0 14px; width: 100%; max-width: 100%;
+}
+body.theme-zenna:not(.has-tabs) #screen input::placeholder { color: var(--zn-faint3); }
+body.theme-zenna:not(.has-tabs) #screen input:focus-visible { outline: 2px solid var(--zn-orange); outline-offset: 1px; }
+body.theme-zenna:not(.has-tabs) #screen .row { gap: 12px; }
+body.theme-zenna:not(.has-tabs) #screen .row > .q { flex: 1; min-width: 0; }
+
+/* ============================================================
+   7. ENCARTS CONDITIONNELS — `.branch` (avertissement, question dérivée) en creux à liseré
+   ============================================================ */
+body.theme-zenna:not(.has-tabs) #screen .branch {
+  background: var(--zn-creux); border: 1px solid var(--zn-border);
+  border-left: 2px solid var(--zn-orange); border-radius: var(--r-surface);
+  padding: 13px 14px; margin-top: 14px; transform: none; box-shadow: none; animation: none;
+}
+body.theme-zenna:not(.has-tabs) #screen .branch .branch-tag {
+  font-family: var(--zn-mono); font-style: normal; font-size: var(--fs-micro); letter-spacing: .07em;
+  text-transform: uppercase; color: var(--zn-orange); font-weight: 700; margin-bottom: 7px;
+}
+/* le rappel « avis médical requis » (dérivé d'`evalRules`, jamais un second texte — voir
+   steps.js) porte le ton d'une information tenue, pas d'un danger : liseré bon (teal). */
+body.theme-zenna:not(.has-tabs) #screen .branch.zn-q-warn { border-left-color: var(--zn-good); }
+body.theme-zenna:not(.has-tabs) #screen .branch.zn-q-warn .branch-tag { color: var(--zn-good); }
+/* le refus « prérequis non atteints » (swimrun, `border-color:#c0392b` en inline) reste rouge :
+   c'est un blocage dur, pas une information — `--zn-bad` est le rouge qui passe l'AA du sombre. */
+body.theme-zenna:not(.has-tabs) #screen .branch[style*="c0392b"] { border-left-color: var(--zn-bad) !important; border-color: var(--zn-border) !important; }
+body.theme-zenna:not(.has-tabs) #screen .branch[style*="c0392b"] .branch-tag { color: var(--zn-bad) !important; }
+
+/* ============================================================
+   8. NAVIGATION BASSE — collée en bas, comme le canevas (18a-22c) : le message d'abord, le
+      bouton ensuite. Reste EN FLUX (pas `position:fixed`) : le questionnaire n'a pas de barre
+      d'onglets sous laquelle se cacher, et un sticky ici recouvrirait le dernier champ sur les
+      petits écrans (mesuré : `.branch` de fin de carte passait sous le bandeau).
+   ============================================================ */
+body.theme-zenna:not(.has-tabs) #screen .nav {
+  gap: 10px; margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--zn-filet);
+}
+/* SEULE la barre qui porte `#navManque` (renderStep) passe en colonne — celle de
+   `renderBlueprint` (deux boutons « Modifier » / « Changer de sport ») garde sa rangée : une
+   règle par FORME, pas une règle qui devine à qui elle s'adresse. */
+body.theme-zenna:not(.has-tabs) #screen .nav:has(#navManque) { flex-direction: column; }
+body.theme-zenna:not(.has-tabs) #screen #navManque {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  font-family: var(--zn-mono); font-size: var(--fs-xs); color: var(--zn-muted);
+  margin: 0 !important; order: -1;
+}
+body.theme-zenna:not(.has-tabs) #screen #navManque::before {
+  content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--zn-orange); flex: 0 0 auto;
+}
+body.theme-zenna:not(.has-tabs) #screen #navManque.zn-q-ok { color: var(--zn-good); }
+body.theme-zenna:not(.has-tabs) #screen #navManque.zn-q-ok::before { background: var(--zn-good); }
+body.theme-zenna:not(.has-tabs) #screen .nav > div { display: flex; gap: 9px; width: 100%; }
+body.theme-zenna:not(.has-tabs) #screen .nav .btn {
+  min-height: 52px; border-radius: var(--r-control); font-family: var(--zn-mono);
+  font-size: var(--fs-sm); font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  box-shadow: none; transform: none;
+}
+body.theme-zenna:not(.has-tabs) #screen .nav .btn:active { transform: scale(.97); }
+body.theme-zenna:not(.has-tabs) #screen .nav .btn.primary {
+  flex: 1; background: var(--zn-orange); border: none; color: var(--zn-on-accent);
+}
+body.theme-zenna:not(.has-tabs) #screen .nav .btn.primary:disabled { opacity: .45; }
+
+/* ============================================================
+   9. LE CHOIX DU SPORT (4a) — une liste, pas une grille : chaque carte en ligne, liseré de
+      discipline en haut, chevron à droite.
+   ============================================================ */
+body.theme-zenna:not(.has-tabs) #screen .card.welcome {
+  text-align: left; padding: 18px 16px 4px; background: none; border: none; box-shadow: none;
+}
+body.theme-zenna:not(.has-tabs) #screen .card.welcome .w-tri { display: none; } /* le 🏁 papier — le canevas n'a pas d'icône ici */
+body.theme-zenna:not(.has-tabs) #screen .card.welcome h2 {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-hero);
+  line-height: 1.08; text-transform: uppercase; color: var(--zn-text); margin: 0;
+}
+body.theme-zenna:not(.has-tabs) #screen .card.welcome h2 em {
+  font-style: normal; color: var(--zn-orange); display: block;
+}
+body.theme-zenna:not(.has-tabs) #screen .card.welcome p {
+  font-family: var(--zn-body); font-size: var(--fs-sm); color: var(--zn-muted); line-height: 1.55;
+  max-width: none; margin: 9px 0 0; font-weight: 400;
+}
+body.theme-zenna:not(.has-tabs) #screen .zn-q-meta {
+  display: flex; gap: 16px; flex-wrap: wrap; margin: 15px 0 0; padding-top: 13px;
+  border-top: 1px solid var(--zn-border);
+}
+body.theme-zenna:not(.has-tabs) #screen .zn-q-meta > div { display: flex; align-items: baseline; gap: 5px; }
+body.theme-zenna:not(.has-tabs) #screen .zn-q-meta b {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .07em; text-transform: uppercase;
+  color: var(--zn-text);
+}
+body.theme-zenna:not(.has-tabs) #screen .zn-q-meta span { font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint2); }
+
+body.theme-zenna:not(.has-tabs) #screen .sport-grid { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+body.theme-zenna:not(.has-tabs) #screen .sport-card {
+  background: var(--zn-surface); border: 1px solid var(--zn-border-2); border-top: 2px solid var(--sa);
+  border-radius: var(--r-surface); padding: 13px 15px; box-shadow: none; transform: none;
+  display: flex; flex-direction: row; align-items: flex-start; gap: 13px; text-align: left;
+  transition: transform var(--dur-tap) var(--ease-spring);
+}
+body.theme-zenna:not(.has-tabs) #screen .sport-card:nth-child(odd),
+body.theme-zenna:not(.has-tabs) #screen .sport-card:nth-child(even) { transform: none; }
+body.theme-zenna:not(.has-tabs) #screen .sport-card:hover { transform: none; box-shadow: none; }
+body.theme-zenna:not(.has-tabs) #screen .sport-card:active { transform: scale(.98); box-shadow: none; }
+body.theme-zenna:not(.has-tabs) #screen .sc-ico { font-size: var(--fs-xl); line-height: 1; flex: 0 0 auto; margin-top: 1px; }
+body.theme-zenna:not(.has-tabs) #screen .sc-text { flex: 1; min-width: 0; }
+body.theme-zenna:not(.has-tabs) #screen .sc-nom {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-md);
+  letter-spacing: .01em; text-transform: uppercase; color: var(--zn-text); display: block;
+}
+body.theme-zenna:not(.has-tabs) #screen .sc-pitch {
+  font-family: var(--zn-body); font-size: var(--fs-xs); color: var(--zn-faint2); font-weight: 400;
+  line-height: 1.4; margin-top: 3px; display: block;
+}
+body.theme-zenna:not(.has-tabs) #screen .sc-chev { color: var(--zn-faint3); font-size: var(--fs-md); flex: 0 0 auto; margin-top: 3px; }
+
+/* ============================================================
+   10. LE SOCLE COMPLET — la carte de bilan (`#genNowWrap`), en aparté fonctionnel (voir la
+       note d'en-tête) mais en relief visuel : recto d'un « point d'étape », pas un aparté.
+   ============================================================ */
+body.theme-zenna:not(.has-tabs) #screen .gate {
+  background: var(--zn-surface); border: 1px solid var(--zn-border); box-shadow: none;
+  border-radius: var(--r-card); padding: 17px 16px; margin-top: 18px; transform: none; text-align: left;
+}
+body.theme-zenna:not(.has-tabs) #screen .gate h3 {
+  font-family: var(--zn-mono); font-size: var(--fs-xs); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--zn-good); margin: 0 0 4px;
+}
+body.theme-zenna:not(.has-tabs) #screen #genNowWrap {
+  border: 1px solid var(--zn-good); background: color-mix(in srgb, var(--zn-good) 6%, var(--zn-surface));
+}
+body.theme-zenna:not(.has-tabs) #screen .gate p { font-family: var(--zn-body); font-size: var(--fs-sm); color: var(--zn-muted); line-height: 1.55; margin: 0 0 12px; }
+body.theme-zenna:not(.has-tabs) #screen .zn-q-recap { list-style: none; margin: 0 0 14px; padding: 0; }
+body.theme-zenna:not(.has-tabs) #screen .zn-q-recap li {
+  display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--zn-filet);
+  font-family: var(--zn-body); font-size: var(--fs-sm); color: var(--zn-text);
+}
+body.theme-zenna:not(.has-tabs) #screen .zn-q-recap li:last-child { border-bottom: none; }
+body.theme-zenna:not(.has-tabs) #screen .zn-q-recap svg { flex: 0 0 auto; color: var(--zn-good); }
+body.theme-zenna:not(.has-tabs) #screen .zn-q-recap .zn-q-recap-l { flex: 1; }
+body.theme-zenna:not(.has-tabs) #screen .zn-q-recap .zn-q-recap-v {
+  font-family: var(--zn-mono); font-size: var(--fs-xs); color: var(--zn-faint2);
+}
+body.theme-zenna:not(.has-tabs) #screen .zn-q-recap .zn-q-recap-v.zn-q-warn { color: var(--zn-warn); }
+body.theme-zenna:not(.has-tabs) #screen .gate .btn.gold {
+  background: var(--zn-orange); color: var(--zn-on-accent); border: none;
+  min-height: 52px; border-radius: var(--r-control); font-family: var(--zn-mono);
+  font-size: var(--fs-sm); font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  box-shadow: none; width: 100%;
+}
+body.theme-zenna:not(.has-tabs) #screen .gate .btn.gold:active { transform: scale(.97); }
+body.theme-zenna:not(.has-tabs) #screen .gate + .gate .btn:not(.gold) {
+  background: none; border: 1px solid var(--zn-border-3); color: var(--zn-muted);
+  min-height: 46px; border-radius: var(--r-control); font-family: var(--zn-mono);
+  font-size: var(--fs-xs); font-weight: 600; width: 100%; box-shadow: none;
+}
+
+/* ============================================================
+   11. L'ÉCRAN DE FIN DU SOCLE GRATUIT (`renderBlueprint`) — même famille visuelle, en léger.
+   ============================================================ */
+body.theme-zenna:not(.has-tabs) #screen .warn {
+  background: color-mix(in srgb, var(--zn-warn) 10%, var(--zn-surface)); border: 1px solid var(--zn-border);
+  border-left: 2px solid var(--zn-warn); border-radius: var(--r-surface); box-shadow: none;
+  color: var(--zn-text); padding: 12px 14px; transform: none;
+}
+
+/* ============================================================
+   12. LE REFUS TYPÉ (partagé, `tabs.js:renderGenerationFailure`) — carte en creux, motif nommé,
+       deux issues. Le HTML reste dans le module partagé (shared_changes) ; ce bloc l'habille.
+   ============================================================
+   ⚠ TROUVÉ EN CAPTURANT CET ÉCRAN — un correctif d'une AUTRE zone (`zenna-tabs.css`,
+   `[style*="color:#c0392b"] { color: #ff9d8d !important }`, posé pour recolorer le
+   `branch-tag` swimrun qui porte VRAIMENT `style="color:#c0392b"`) fait un match de
+   SOUS-CHAÎNE : `style="border-color:#c0392b"` (posé ici, sur la carte de refus)
+   CONTIENT le texte "color:#c0392b" et se fait donc, lui aussi, recolorer — tout le
+   texte de la carte hérite d'un salmon (#ff9d8d) qui n'a rien à voir avec sa bordure.
+   Un bug pré-existant, hors de ma zone (ni le sélecteur ni le HTML ne sont d'ici) ;
+   je ne touche pas `zenna-tabs.css` (fichier partagé, correctif minimal préférable
+   ICI) — `color` est repris explicitement, `!important` pour battre l'`!important`
+   qui cause le problème (ma sélecteur est de toute façon plus spécifique). */
+body.theme-zenna #screen .card[role="alert"] {
+  border: 1px solid var(--zn-border); border-left: 2px solid var(--zn-bad); background: var(--zn-creux);
+  color: var(--zn-text) !important;
+  /* `style="border-color:#c0392b"` (inline, voir tabs.js) bat un `border` externe sur le
+     LONGHAND `border-color` précisément — le shorthand ci-dessus pose la largeur/le style,
+     jamais la couleur des trois autres côtés tant que l'inline n'est pas repris ici aussi. */
+  border-color: var(--zn-border) !important;
+  border-left-color: var(--zn-bad) !important;
+}
+body.theme-zenna #screen .card[role="alert"] h2 { color: var(--zn-text); }
+body.theme-zenna #screen .card[role="alert"] code {
+  font-family: var(--zn-mono); background: var(--zn-surface-2); border-radius: 4px; padding: 1px 5px;
+  color: var(--zn-text);
+}
+body.theme-zenna #screen .card[role="alert"] .nav { flex-direction: row; border-top: none; padding-top: 0; margin-top: 16px; }
+body.theme-zenna #screen .card[role="alert"] .nav > * { flex: 1; }
+body.theme-zenna #screen .card[role="alert"] #ebFixInput {
+  min-height: 52px; border-radius: var(--r-control); background: var(--zn-orange); color: var(--zn-on-accent);
+  border: none; font-family: var(--zn-mono); font-size: var(--fs-sm); font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase; box-shadow: none;
+}
+body.theme-zenna #screen .card[role="alert"] #ebRetryGen {
+  min-height: 52px; border-radius: var(--r-control); background: var(--zn-surface-2); color: var(--zn-text);
+  border: 1px solid var(--zn-border-2); font-family: var(--zn-mono); font-size: var(--fs-sm);
+  font-weight: 600; box-shadow: none;
+}
+
+/* ============================================================
+   13. REDUCED MOTION — les seules animations que ce fichier introduit sont les `transition`
+       de tap (`--dur-tap`), déjà quasi instantanées ; rien ici ne pose d'opacité de départ, donc
+       rien à neutraliser pour que le contenu reste visible (cf. règle de sécurité de repli de
+       `zenna-today.css`). Vérifié : `.opt`/`.gate .btn.gold`/`.zn-q-back` restent visibles et
+       utilisables avec `prefers-reduced-motion: reduce`.
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  body.theme-zenna:not(.has-tabs) #screen .opt,
+  body.theme-zenna:not(.has-tabs) #screen .nav .btn,
+  body.theme-zenna:not(.has-tabs) #screen .sport-card { transition: none; }
+}

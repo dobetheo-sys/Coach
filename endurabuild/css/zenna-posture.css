@@ -16,8 +16,8 @@
       empêcher) et ferait déborder un cliquet déjà à saturation. Seules DEUX couleurs sont
       réellement nouvelles — deux gris de texte plus sourds que `--zn-muted-2` — et elles sont
       déclarées comme jetons dans `zenna-today.css`, pas posées ici en dur.
-      L'accent suit donc `--zn-orange` (#ff3d00), pas le #f2481b de la référence : la V5 a
-      mesuré ses contrastes en tuile pleine, et le produit n'a qu'un orange.
+      L'accent suit donc `--zn-orange` — quelle que soit sa valeur : le produit n'a qu'un
+      orange, et la foundation du 04/09/2026 l'a aligné sur la référence (#f2481b).
 
    2. LES TAILLES SUIVENT L'ÉCHELLE `--fs-*`. La référence pose 168 déclarations en
       demi-pixels (9,5 · 10,5 · 11,5 · 12,5) et 6 à 8 px. R16.8 a précisément retiré cette
@@ -46,12 +46,16 @@ body.theme-zenna #screen .po-hero {
 body.theme-zenna #screen .po-hero-top {
   display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
 }
-/* L'encre sur l'accent est `--zn-on-accent` : la V5 a mesuré que le BLANC ne rend que 3,55:1
-   sur cet orange quand l'encre sombre rend 5,58:1. La référence pose #14140f, à 10 de
-   distance — visuellement le même noir, un littéral de plus. */
+/* L'encre sur l'accent est `--zn-on-accent`, pour TOUT texte posé sur l'orange — y compris les
+   eyebrows et les légendes que la référence atténue par transparence. Mesuré (04/09/2026) : une
+   encre `rgba(10,10,10,.75)` rend 4,25:1 sur l'ancien orange et 4,10:1 sur le nouveau (#f2481b),
+   `.8` rend 4,42 — sous AA sur du 9 px en capitales, et le bilan « hérite des jetons » : le
+   jeton a bougé, l'encre composée a suivi vers le bas sans que rien ne le mesure (smoke-posture
+   §5 lisait le rgba comme un rgb opaque). Le jeton rend 5,03:1 ; la hiérarchie faible/fort se
+   dit par la graisse et l'interlettrage, plus par l'alpha. */
 body.theme-zenna #screen .po-eyebrow {
   font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 700;
-  letter-spacing: .14em; text-transform: uppercase; color: rgba(10, 10, 10, .75);
+  letter-spacing: .14em; text-transform: uppercase; color: var(--zn-on-accent);
 }
 body.theme-zenna #screen .po-eyebrow.faible { font-weight: 400; letter-spacing: .06em; }
 body.theme-zenna #screen .po-hero-titre {
@@ -68,7 +72,7 @@ body.theme-zenna #screen .po-hero-chiffre b {
 }
 body.theme-zenna #screen .po-hero-chiffre span {
   font-family: var(--zn-display); font-weight: var(--zn-display-weight);
-  font-size: 17px; color: rgba(10, 10, 10, .8);
+  font-size: 17px; color: var(--zn-on-accent);
 }
 /* Les segments disent l'avancement SANS répéter le chiffre : trois essais, trois barres. */
 body.theme-zenna #screen .po-seg { display: flex; gap: 5px; margin-top: 12px; }
@@ -79,7 +83,7 @@ body.theme-zenna #screen .po-seg i {
 body.theme-zenna #screen .po-seg i.plein { background: var(--zn-on-accent); }
 body.theme-zenna #screen .po-hero-pied {
   margin-top: 14px; padding-top: 13px; border-top: 1px solid rgba(10, 10, 10, .2);
-  font-size: var(--fs-sm); line-height: 1.5; color: rgba(10, 10, 10, .88);
+  font-size: var(--fs-sm); line-height: 1.5; color: var(--zn-on-accent);
 }
 
 /* ---------- LE CTA ET SA LIGNE D'ÉTAT ----------
@@ -510,11 +514,11 @@ body.theme-zenna #screen .pr-score b {
    comme une note de bas de page — or c'est ce qui borne le chiffre. */
 body.theme-zenna #screen .pr-plage {
   display: block; font-family: var(--zn-mono); font-style: normal; font-size: var(--fs-micro);
-  color: rgba(10, 10, 10, .75); margin-top: 4px;
+  color: var(--zn-on-accent); margin-top: 4px;
 }
 body.theme-zenna #screen .pr-score span {
   display: block; font-family: var(--zn-mono); font-size: var(--fs-micro);
-  letter-spacing: .1em; text-transform: uppercase; color: rgba(10, 10, 10, .7); margin-top: 3px;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--zn-on-accent); margin-top: 3px;
 }
 body.theme-zenna #screen .pr-alt { padding: 14px 0; border-bottom: 1px solid var(--zn-filet); }
 body.theme-zenna #screen .po-liste .pr-alt:last-child { border-bottom: 0; }
