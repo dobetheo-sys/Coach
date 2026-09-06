@@ -101,6 +101,7 @@
     "mesure:circularite": "node scripts/mesureCircularite.mjs",
     "casser": "node scripts/casser.mjs",
     "mesure:epaule": "node scripts/mesureChargeEpaule.mjs",
+    "mesure:backlog-priorites": "node scripts/mesureBacklogPriorites.mjs",
     "batterie": "node scripts/batterie.mjs"
   },
   "devDependencies": {
