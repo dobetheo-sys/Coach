@@ -338,9 +338,11 @@ function shopSubscriptionCardHTML(plan, today) {
     // « Avant / après » (19e) : le panneau ne s'affiche que si une date-limite EXISTE
     // (`dueBy`) — sans elle, dessiner un seuil serait inventer une échéance que le prestataire
     // n'a pas fournie (le contrat de `paymentFailure` la déclare optionnelle).
+    // `fmtDay` rend déjà le format compact « JJ/MM » (state.js) : pas de préfixe de jour à
+    // retirer, contrairement à ce que ma première écriture supposait.
     const avantApres = echec.dueBy ? '<div class="zn-creux bq-pay-panel">'
-      + '<div class="bq-pay-row"><span class="bq-pay-when soon zn-mono">Avant le ' + esc(fmtDay(echec.dueBy).replace(/^\S+\s/, "")) + '</span>'
-      + '<span class="bq-pay-txt">Tu mets le paiement à jour' + (echec.shipmentAt ? ", l’envoi part le " + esc(fmtDay(echec.shipmentAt).replace(/^\S+\s/, "")) + " comme prévu." : ".") + "</span></div>"
+      + '<div class="bq-pay-row"><span class="bq-pay-when soon zn-mono">Avant le ' + esc(fmtDay(echec.dueBy)) + '</span>'
+      + '<span class="bq-pay-txt">Tu mets le paiement à jour' + (echec.shipmentAt ? ", l’envoi part le " + esc(fmtDay(echec.shipmentAt)) + " comme prévu." : ".") + "</span></div>"
       + '<div class="bq-pay-row"><span class="bq-pay-when late zn-mono">Après</span>'
       + '<span class="bq-pay-txt">L’envoi glisse à la période suivante. Tu n’es pas prélevé entre-temps.</span></div>'
       + "</div>" : "";
