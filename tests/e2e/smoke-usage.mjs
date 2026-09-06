@@ -781,7 +781,11 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
     const t = document.querySelector("#screen").textContent || "";
     return { onglets: document.querySelectorAll("#ebTabbar .tabbtn").length,
       boutonNutrition: !!document.querySelector('#ebTabbar .tabbtn[data-tab="nutrition"]'),
-      section: /🥗 Nutrition du jour|Dépense estimée du jour/.test(t), ravito: /Ravitaillement/.test(t),
+      // REFONTE 18a (06/09/2026) — la nutrition vit dans le groupe à nu « L'intendance » (lignes
+      // « Ravitaillement du jour », « Dépense estimée ») ; le critère lisait un LIBELLÉ de carte
+      // (règle 17), il lit la propriété : une ligne de dépense ET, dès qu'une séance existe, une
+      // ligne de ravitaillement. Vérifié rouge en retirant `intendanceHTML` du rendu.
+      section: /Dépense estimée/.test(t), ravito: /Ravitaillement/.test(t),
       seanceAujourdhui: /séance/i.test((document.querySelector("#screen") || {}).textContent || "") };
   });
   const jourAvecSeance = await page.evaluate(async () => {

@@ -49,7 +49,7 @@ body.theme-zenna #screen .zn-today .zn-hero-top { align-items: baseline; flex-wr
 /* L'eyebrow de date : mono, capitales, encre sombre — ce que smoke-dates lit en premier. */
 body.theme-zenna #screen .zn-today .zn-hero .eyebrow {
   font-size: var(--fs-micro); letter-spacing: .14em; text-transform: uppercase;
-  color: rgba(10, 10, 10, .78); font-weight: 700; line-height: 1.3;
+  color: rgba(20, 20, 15, .92); font-weight: 700; line-height: 1.3; /* ≥ 4,5:1 sur --zn-orange (smoke-zenna §4 : .78 rendait 4,29) */
 }
 /* La discipline : un TEXTE à droite de l'eyebrow (« Course · Z2 »), pas une pilule — et
    jamais une tuile (V6, smoke-zenna §1bis). */
@@ -58,7 +58,7 @@ body.theme-zenna #screen .zn-today .zn-disc-chip {
 }
 body.theme-zenna #screen .zn-today .zn-disc-chip span {
   font-size: var(--fs-micro); letter-spacing: .06em; text-transform: uppercase; font-weight: 400;
-  color: rgba(10, 10, 10, .78); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;
+  color: rgba(20, 20, 15, .92); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;
 }
 body.theme-zenna #screen .zn-today .zn-hero-title {
   font-size: var(--fs-hero); line-height: 1.04; letter-spacing: -.01em; margin-top: 12px;
@@ -68,7 +68,7 @@ body.theme-zenna #screen .zn-today .zn-hero-metric { margin-top: 12px; gap: 7px;
 body.theme-zenna #screen .zn-today .zn-hero-num { font-size: var(--fs-big); transform: none; }
 body.theme-zenna #screen .zn-today .zn-hero-unit { font-size: var(--fs-hand); color: rgba(20, 20, 15, .82); }
 body.theme-zenna #screen .zn-today .zn-hero-sub {
-  font-size: var(--fs-xs); color: rgba(20, 20, 15, .84); margin-top: 6px; line-height: 1.5;
+  font-size: var(--fs-xs); color: rgba(20, 20, 15, .92); margin-top: 6px; line-height: 1.5; /* .84 rendait 4,26 (smoke-zenna §4) */
 }
 /* Le verdict du point du matin : une phrase sous un filet, dans l'encre du relief. */
 body.theme-zenna #screen .zn-today .zn-hero-verdict {

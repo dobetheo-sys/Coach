@@ -351,14 +351,16 @@ async function boot(reducedMotion, jour = JOUR_SEANCE, repOver = null, saiOver =
   const { ctx, page, errors } = await boot("no-preference", JOUR_SEANCE,
     { doubles: "oui", sessions_max: "9", vol_max: "13", vol_recent: "10" });
   const lireCarte = () => page.evaluate(() => {
-    const carte = [...document.querySelectorAll("#screen .card")]
-      .find((c) => /détail de la séance/i.test((c.querySelector(".eyebrow") || {}).textContent || ""));
-    if (!carte) return null;
-    // chaque <b> est une séance ; son déroulé est le .gd-det/.gd-steps qui suit dans SON bloc
-    return [...carte.querySelectorAll("b")].map((b) => {
-      const blocSeance = b.parentElement;
-      const det = blocSeance.querySelector(".gd-det, .gd-steps");
-      return { nom: b.textContent.trim(), detail: det ? det.textContent.trim().slice(0, 60) : "" };
+    // REFONTE 18a (06/09/2026) — le détail n'est plus une CARTE à eyebrow : c'est une section à
+    // nu par séance active, marquée `data-seance-detail="<nom>"` (session-life.js), dont le
+    // déroulé est le rail `.zn-rail` (ou, en repli, .gd-det/.gd-steps). Le critère trouvait sa
+    // cible par un libellé (règle 17) ; il la trouve par le marqueur. Vérifié rouge en ne
+    // rendant que `actives[0]` → une seule section.
+    const secs = [...document.querySelectorAll("#screen [data-seance-detail]")];
+    if (!secs.length) return null;
+    return secs.map((sec) => {
+      const det = sec.querySelector(".zn-rail, .zn-rail-row, .gd-det, .gd-steps");
+      return { nom: sec.getAttribute("data-seance-detail").trim(), detail: det ? det.textContent.trim().slice(0, 60) : "" };
     });
   });
   // La date cible se LIT DANS LE PLAN, elle n'est pas devinée : la semaine ancrée est en début
