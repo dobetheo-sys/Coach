@@ -258,7 +258,7 @@ function intendanceHTML(plan, today) {
   const gels = gelsRowHTML(plan, today);
   const dep = depenseRowHTML(day);
   if (!rav && !gels && !dep) return "";
-  return '<div class="zn-sec"><span>L’intendance</span><i></i></div>'
+  return '<div class="zn-sec zn-sec-intendance"><span>L’intendance</span><i></i></div>'
     + '<div class="zn-list zn-intendance"><div id="nutRedu">' + rav + "</div>" + gels + dep + "</div>";
 }
 function bindIntendance() {
@@ -285,7 +285,7 @@ function preparationHTML(plan, today) {
   const pct = _totalS ? Math.round((_doneN / _totalS) * 100) : 0;
   let sem = "";
   try { const pg = globalThis.EBV2.progress(plan, S.answers, today); if (pg && pg.weekNow) sem = "semaine " + pg.weekNow + " / " + pg.totalWeeks; } catch (e) {}
-  let h = '<div class="zn-sec"><span>Ta préparation</span><i></i>' + (sem ? "<span>" + sem + "</span>" : "") + "</div>";
+  let h = '<div class="zn-sec zn-sec-prepa"><span>Ta préparation</span><i></i>' + (sem ? "<span>" + sem + "</span>" : "") + "</div>";
   h += '<div class="zn-creux zn-prepa">';
   h += raceResultCardHTML(plan);
   h += '<div class="zn-prepa-head"><span class="zn-prepa-n">' + _doneN + '</span><span class="zn-prepa-den">/ ' + _totalS + '</span><span class="zn-prepa-lab">séances cochées' + (_totalS ? " · " + pct + " %" : "") + "</span></div>";
@@ -379,14 +379,14 @@ export function renderTabToday(plan) {
   // juste sous la séance du jour. » Sa propre carte (mêmes règles de sécurité qu'avant :
   // jamais sous drapeau douleur, jamais la veille d'une séance de qualité, jamais un jour de
   // repos), plutôt que noyé 1 fois sur 4 dans « contenu du jour » (dailyContentHTML, plus bas).
-  html += microDefiHTML(plan, today);
   html += detail;
+  html += microDefiHTML(plan, today);
   // R6 — le check-in du matin doit rester accessible : celui qui a déjà répondu (ou dont
   // l'état vient d'une ancienne version) peut refaire son point sans attendre demain.
   // R16.9 — LE QUOTIDIEN QUI VIVAIT DANS 📅 SEMAINE atterrit ici, parce que c'est ce qu'il
   // est : la retouche de la forme du jour, le journal des adaptations, la déclaration de
   // maladie n'ont jamais parlé du PLAN — ils parlent de la JOURNÉE. Sous « TON ÉTAT DU JOUR ».
-  html += '<div class="zn-sec"><span>Ton état du jour</span><i></i></div>';
+  html += '<div class="zn-sec zn-sec-etat"><span>Ton état du jour</span><i></i></div>';
   html += '<div class="zn-list zn-etat">';
   html += etatDuJourHTML(plan, today);
   html += '<details class="load-card zn-row-details"><summary class="load-title">\u{1F321} Modifier ma forme du jour<span class="zn-chev" aria-hidden="true">›</span></summary>' + readinessCardHTML({ btnLabel: "Mettre à jour" }) + "</details>";

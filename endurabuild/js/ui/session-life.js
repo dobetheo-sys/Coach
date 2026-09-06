@@ -380,7 +380,7 @@ function railHTML(session, segs) {
     rows = corps.map((t) => '<div class="zn-rail-row libre"><div class="zn-rail-dur"></div><div class="zn-rail-track"><i></i></div>'
       + '<div class="zn-rail-body"><div class="zn-rail-txt">' + t + "</div></div></div>").join("");
   }
-  return '<div class="zn-rail">' + rows + "</div>"
+  return '<div class="zn-deroule">' + rows + "</div>"
     + (notes.length ? '<div class="zn-rail-note">' + notes.join(" · ") + "</div>" : "");
 }
 
