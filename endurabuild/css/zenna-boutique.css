@@ -80,6 +80,10 @@ body.theme-zenna #screen .bq-hero-lead { font-size: var(--fs-sm); line-height: 1
 /* ---- « Ce qu'il y a dans le sachet » / « Bon à savoir » — listes À NU, deux gabarits de
    ligne sur la même primitive `.zn-list`/`.zn-row` (structure de 22c : les arguments quittent
    la carte pour une liste, le relevé devient l'unique objet en relief). */
+/* Un intertitre de section respire (22c pose 22-24 px avant chacun) — sauf en tête de
+   carte, où le héros porte déjà sa propre marge basse. */
+body.theme-zenna #screen .shop-card > .zn-sec { margin-top: 22px; }
+body.theme-zenna #screen .shop-card > .bq-hero + .zn-sec { margin-top: 4px; }
 body.theme-zenna #screen .bq-arg-row { align-items: baseline; gap: 12px; }
 body.theme-zenna #screen .bq-arg-mot {
   flex: 0 0 104px; font-family: var(--zn-mono); font-size: var(--fs-xs); font-weight: 700;
