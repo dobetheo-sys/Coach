@@ -117,7 +117,7 @@ body.theme-zenna #screen .zn-ck-champ-saisie { display: flex; align-items: cente
 body.theme-zenna #screen .zn-ck-champ-saisie input {
   width: 72px; min-height: 44px; margin: 0; padding: 0 10px; text-align: center;
   background: var(--zn-creux); border: 1px solid var(--zn-border-3); border-radius: 11px;
-  font-family: var(--zn-mono); font-size: var(--fs-field); color: var(--zn-text);
+  font-family: var(--zn-mono); font-size: var(--fs-field); font-weight: 400; color: var(--zn-text);
 }
 body.theme-zenna #screen .zn-ck-champ-saisie input::placeholder { color: var(--zn-faint); }
 body.theme-zenna #screen .zn-ck-champ-saisie > span { font-family: var(--zn-mono); font-size: var(--fs-xs); color: var(--zn-faint2); }
@@ -261,7 +261,7 @@ body.theme-zenna #screen .zn-row-details .load-card:has(#rdApply) > div:has(#rdS
 body.theme-zenna #screen .zn-row-details select.opt {
   width: 100%; min-height: 44px; padding: 0 12px; margin: 0;
   background: var(--zn-creux); border: 1px solid var(--zn-border-3); border-radius: var(--r-control);
-  font-family: var(--zn-mono); font-size: var(--fs-md); color: var(--zn-text);
+  font-family: var(--zn-mono); font-size: var(--fs-field); color: var(--zn-text); /* R18.1 : jamais sous 16 px au doigt (smoke-typo) */
 }
 body.theme-zenna #screen .zn-row-details #rdApply {
   width: 100%; min-height: 48px; margin-top: 4px; border-radius: var(--r-control);
