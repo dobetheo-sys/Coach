@@ -188,23 +188,94 @@ function planLabel(p) {
   if (p.sport && SPORTS[p.sport]) return SPORTS[p.sport].ico + " " + SPORTS[p.sport].nom + (p.answers && p.answers.format ? " · " + esc(p.answers.format) : "");
   return "Plan sans sport (questionnaire en cours)";
 }
-function plansSelectorHTML() {
-  let h = '<div class="load-card"><div class="load-title">🗂 Mes plans (' + Math.max(1, S.plans.length) + ")</div>";
+// ── REFONTE 22b (06/09/2026) — LE PLAN ACTIF EN RELIEF, LES PLANS PASSÉS EN LISTE ────────────
+// Le sélecteur de plans (R4-4) devient deux blocs : la carte du plan ACTIF (liseré orange, nom en
+// display, date · J−N · semaine i/N, séances validées, RENOMMER / NOUVEAU PLAN) et « Plans
+// passés » (une ligne par autre plan : nom, date, ce qu'il a laissé). Les GESTES ne bougent pas
+// d'un attribut (`data-plan`, `data-plan-ren`, `data-plan-del`, `#pfNewPlan` — `bindPlansSelector`
+// les lit) : seule la FORME change. Le compte « Mes plans (N) » reste affiché, en libellé droit de
+// l'intertitre des plans passés — c'est le même chiffre que l'ancien titre du sélecteur.
+const MOIS_COURT = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+/** « 8 sept. » — la date courte du canevas (22b), dérivée d'un ISO. */
+function dateCourte(iso) {
+  if (!iso || iso.length < 10) return "";
+  const d = new Date(iso + "T12:00:00");
+  if (isNaN(d.getTime())) return esc(iso);
+  return d.getDate() + " " + MOIS_COURT[d.getMonth()];
+}
+/** Le nom d'un plan en DISPLAY : le libellé donné par l'athlète, sinon le format (« Half · 70.3 »)
+ *  du registre SPORTS — jamais une seconde table de noms (R11.1). Sans emoji : le canevas n'en
+ *  porte aucun dans un titre display. */
+function planNomDisplay(p) {
+  if (p.label) return esc(p.label);
+  const sp = p.sport && SPORTS[p.sport];
+  if (!sp) return "Plan sans sport";
+  const fmts = sp.formats || [];
+  const f = fmts.find((x) => x[0] === (p.answers && p.answers.format));
+  const nomFmt = f ? f[1].split(" (")[0] + (/^\d+(\.\d+)?$/.test(f[0]) ? " · " + f[0] : "") : (p.answers && p.answers.format ? esc(p.answers.format) : "");
+  return esc(sp.nom) + (nomFmt ? " · " + nomFmt : "");
+}
+/** Les séances VALIDÉES d'un plan (repos exclus) — le même compte que `EBV2.progress` (R11.1) :
+ *  on l'appelle plutôt que de recompter. */
+function planAvancement(plan, a, tIso) {
+  try {
+    const pg = globalThis.EBV2.progress(plan, a, tIso);
+    let done = 0, total = 0;
+    for (const w of pg.weekly) { done += w.done; total += w.total; }
+    return { done, total, weekNow: pg.weekNow, totalWeeks: pg.totalWeeks, pct: total ? Math.round((done / total) * 100) : 0 };
+  } catch (e) { return null; }
+}
+function planActifHTML(plan, a, tIso) {
+  const p = S.plans.find((x) => x.id === S.activePlanId) || { id: S.activePlanId, sport: S.sport, answers: a };
+  const av = planAvancement(plan, a, tIso);
+  const end = planEndDate(plan, a);
+  const jours = end ? Math.ceil((new Date(end + "T00:00:00").getTime() - new Date(tIso + "T00:00:00").getTime()) / 864e5) : null;
+  const meta = [];
+  if (end) meta.push(dateCourte(end));
+  if (jours != null) meta.push(jours > 1 ? "J−" + jours : jours === 1 ? "demain" : jours === 0 ? "jour J" : "course passée");
+  if (av) meta.push("semaine " + av.weekNow + " sur " + av.totalWeeks);
+  let h = '<div class="zn-panel zn-pf-actif">'
+    + '<div class="zn-pf-actif-eb"><i></i>Plan actif</div>'
+    + '<div class="zn-display zn-pf-actif-nom">' + planNomDisplay(p) + "</div>"
+    + (meta.length ? '<div class="zn-pf-actif-meta">' + meta.join(" · ") + "</div>" : "");
+  if (av) {
+    h += '<div class="zn-pf-actif-num"><span class="zn-display zn-pf-actif-big">' + av.done + '</span><span class="zn-display zn-pf-actif-den">/ ' + av.total + "</span>"
+      + '<span class="zn-pf-actif-lab">séances validées · ' + av.pct + " %</span></div>"
+      + '<div class="zn-pf-actif-track"><i style="width:' + av.pct + '%"></i></div>';
+  }
+  h += planDeadlineHTML(plan);
+  h += '<div class="zn-pf-actif-btns">'
+    + '<button class="zn-btn-2" type="button" data-plan-ren="' + p.id + '">Renommer</button>'
+    + '<button class="zn-btn-2" type="button" id="pfNewPlan">Nouveau plan</button></div>'
+    + "</div>";
+  return h;
+}
+function plansPassesHTML() {
   const plans = S.plans.length ? S.plans : [];
-  plans.forEach((p) => {
-    const active = p.id === S.activePlanId;
-    h += '<div style="display:flex;align-items:center;gap:8px;margin:6px 0">'
-      + '<button class="btn' + (active ? " primary" : "") + '" data-plan="' + p.id + '" type="button" style="flex:1;text-align:left">' + planLabel(p) + (active ? " ✓" : "") + "</button>"
-      + '<button class="btn" data-plan-ren="' + p.id + '" type="button" title="Renommer" style="padding:6px 10px;min-width:44px">✏️</button>'
-      + (!active && plans.length > 1 ? '<button class="btn" data-plan-del="' + p.id + '" type="button" title="Supprimer" style="padding:6px 10px;min-width:44px">🗑</button>' : "")
-      + "</div>";
+  const autres = plans.filter((p) => p.id !== S.activePlanId);
+  let h = '<div class="zn-sec zn-pf-sec"><span>Plans passés</span><i></i><span>Mes plans (' + Math.max(1, plans.length) + ")</span></div>";
+  if (!autres.length) h += '<div class="zn-pf-hint">Un seul plan pour l’instant.</div>';
+  h += '<div class="zn-list zn-pf-passes">';
+  autres.forEach((p) => {
+    const pa = p.answers || {};
+    const nDone = Object.keys(pa.done || {}).length;
+    const date = pa.race_date || pa.plan_start || "";
+    const stats = [];
+    if (pa.raceResult && pa.raceResult.time) stats.push(['<span class="zn-display">' + esc(pa.raceResult.time) + "</span>", "chrono · réalisé"]);
+    stats.push(['<span class="zn-display">' + nDone + "</span>", "séance" + (nDone > 1 ? "s" : "") + " validée" + (nDone > 1 ? "s" : "")]);
+    if (!p.onPlan) stats.push(['<span class="zn-display">—</span>', "questionnaire en cours"]);
+    h += '<div class="zn-row zn-pf-passe"><div class="zn-pf-passe-b">'
+      + '<div class="zn-pf-passe-head"><span class="zn-display zn-pf-passe-nom">' + planNomDisplay(p) + "</span>"
+      + (date ? '<span class="zn-pf-passe-date">' + dateCourte(date) + "</span>" : "") + "</div>"
+      + '<div class="zn-pf-passe-stats">' + stats.map(([v, l]) => '<div><div class="zn-pf-stat-v">' + v + '</div><div class="zn-pf-stat-l">' + l + "</div></div>").join("") + "</div>"
+      + '<div class="zn-pf-passe-btns">'
+      + '<button class="zn-btn-2" type="button" data-plan="' + p.id + '">' + (p.onPlan ? "Reprendre ce plan" : "Reprendre le questionnaire") + "</button>"
+      + '<button class="zn-btn-2 zn-pf-mini" type="button" data-plan-ren="' + p.id + '" title="Renommer" aria-label="Renommer ce plan">✏️</button>'
+      + (plans.length > 1 ? '<button class="zn-btn-2 zn-pf-mini" type="button" data-plan-del="' + p.id + '" title="Supprimer" aria-label="Supprimer ce plan">🗑</button>' : "")
+      + "</div></div></div>";
   });
-  // AUDIT UX 11/08/2026 — « Nouveau plan » était le contrôle le PLUS VOYANT de l'onglet : or
-  // pleine largeur, juste sous le sélecteur. Sur un écran où l'on vient consulter ses réglages,
-  // l'action visuellement dominante était celle qui fait QUITTER le plan en cours pour un
-  // brouillon. L'or reste pour ce qui est rare et voulu ; ceci devient un bouton secondaire.
-  h += '<div class="nav" style="margin-top:8px"><button class="btn" id="pfNewPlan" type="button">＋ Nouveau plan</button></div>'
-    + '<div class="load-sub" style="margin-top:4px">Chaque plan a son questionnaire, son journal et ses records — passe de l’un à l’autre sans rien perdre.</div></div>';
+  h += "</div>";
+  h += '<div class="zn-pf-hint">Chaque plan garde son questionnaire, son journal et ses records — passe de l’un à l’autre sans rien perdre.</div>';
   return h;
 }
 function bindPlansSelector() {
@@ -343,7 +414,7 @@ function avatarSectionHTML(plan, todayISO) {
 }
 function badgesGalleryHTML(badges) {
   if (!badges.length) return "";
-  const chips = badges.map((b) => '<span title="' + b.why.replace(/"/g, "&quot;") + '" style="border:1.5px solid #16130e;border-radius:14px;padding:3px 10px;font-size:var(--fs-xs);background:#fff">' + b.icon + " " + b.label + "</span>").join(" ");
+  const chips = badges.map((b) => '<span title="' + b.why.replace(/"/g, "&quot;") + '" class="zn-chip">' + b.icon + " " + b.label + "</span>").join(" ");
   return '<div class="load-card"><div class="load-title">🏅 Badges gagnés (' + badges.length + ')</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">' + chips + "</div></div>";
 }
 // R4.8 — efficience : uniquement les progrès à charge égale (imports FIT), jamais le volume.
@@ -373,7 +444,7 @@ function efficiencyHTML() {
   if (!found.length) return "";
   return '<div class="load-card"><div class="load-title">📉 Efficience — les progrès qui comptent</div>'
     + found.map((f) => '<div class="load-sub" style="margin-top:6px">' + f + "</div>").join("")
-    + '<div class="load-sub" style="margin-top:6px;color:#999">Comparé à charge égale uniquement (imports FIT) — jamais de récompense au volume.</div></div>';
+    + '<div class="load-sub" style="margin-top:6px">Comparé à charge égale uniquement (imports FIT) — jamais de récompense au volume.</div></div>';
 }
 // Échéance du plan : date de fin (course ou dernière semaine) + compte à rebours.
 function planDeadlineHTML(plan) {
@@ -403,7 +474,7 @@ function trailProfileHTML(a) {
   const sel = (id, cur, opts) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md);margin-top:6px"><span style="width:150px">' + opts.lab + '</span><select id="' + id + '" style="flex:1;min-width:0">'
     + opts.list.map((o) => '<option value="' + o[0] + '"' + ((cur || "") === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></label>";
   let h = '<div class="load-card"><div class="load-title">⛰ Ta course et ton terrain' + aide('Le D+ compte autant que la distance : il décide de la catégorie d’effort, donc de tout le reste.', { label: 'la course et le terrain' }) + '</div>';
-  if (a.trailMigrated) h += '<div class="load-sub" style="margin-top:6px;color:#a33"><b>À vérifier :</b> ton plan trail a été repris depuis l’ancienne version, où le dénivelé n’était pas demandé. Renseigne la vraie distance et le vrai D+ de ta course : ce sont eux qui décident de la durée de préparation, du volume et du contenu des séances.</div>';
+  if (a.trailMigrated) h += '<div class="load-sub zn-pf-bad" style="margin-top:6px"><b>À vérifier :</b> ton plan trail a été repris depuis l’ancienne version, où le dénivelé n’était pas demandé. Renseigne la vraie distance et le vrai D+ de ta course : ce sont eux qui décident de la durée de préparation, du volume et du contenu des séances.</div>';
   h += row("pfTrailKm", "Distance (km)", a.race_distance_km, "62");
   h += row("pfTrailDplus", "D+ total (m)", a.race_dplus_m, "3200");
   // R12.1 — la montée VÉCUE d'abord : c'est la question à laquelle tout le monde sait répondre.
@@ -466,8 +537,13 @@ function bindTrailProfile() {
 // import. Pas connecté : le CTA à un bouton de R6, enfin visible sans dérouler quoi que ce soit.
 function stravaCardHTML(a) {
   const sAuth = a.stravaAuth;
-  let h = '<div class="load-card"><div class="load-title">🔗 Strava</div>';
-  // ── STRAVA NE RÉPOND PLUS (refonte, chantier 3) ──
+  const connecte = !!(sAuth && sAuth.access_token);
+  // REFONTE 14c (06/09/2026) — la carte devient la LIGNE « Strava » du panneau Connexions
+  // (titre, état en sous-ligne : « ✓ Connecté (Théo) » reste le texte exact), les gestes dessous.
+  let h = '<div class="zn-panel zn-pf-rows zn-pf-strava"><div class="zn-pf-prow"><div class="zn-pf-prow-b"><div class="zn-pf-prow-t">Strava</div>'
+    + '<div class="zn-pf-prow-s' + (connecte ? " ok" : "") + '">' + (connecte ? "✓ Connecté" + (sAuth.athlete && sAuth.athlete.firstname ? " (" + esc(sAuth.athlete.firstname) + ")" : "") + " · lecture seule, tes sorties nourrissent tes références"
+      : "non connecté · tes activités alimenteraient tes références (FTP/allure/CSS)") + "</div></div></div>";
+  // ── STRAVA NE RÉPOND PLUS (refonte, chantier 3 ; forme 19d) ──
   //
   // L'app traite l'échec de CONNEXION (`S._stravaError`) mais pas le silence : un jeton qui a
   // expiré, un relais tombé, une autorisation retirée côté Strava se manifestent tous de la
@@ -478,8 +554,10 @@ function stravaCardHTML(a) {
   // La date de référence n'est PAS une nouvelle donnée : c'est la plus récente entrée de
   // `answers.tests` venue de Strava — le journal que l'import écrit déjà (R24.2). Aucune
   // structure ajoutée, donc rien à migrer et rien à tenir à jour en double (R11.1).
+  // 19d : l'incident se pose en surface ambre, dit depuis quand et ce que ça abîme — il ne
+  // bloque pas l'écran, les deux sorties (réimporter, reconnecter) sont juste dessous.
   let silence = "";
-  if (sAuth && sAuth.access_token) {
+  if (connecte) {
     const dates = (Array.isArray(a.tests) ? a.tests : [])
       .filter((t) => /strava/i.test(String(t && t.source || "")))
       .map((t) => String(t.date || "")).filter(Boolean).sort();
@@ -489,40 +567,38 @@ function stravaCardHTML(a) {
     // En deçà, l'alerte serait fausse une semaine de repos sur deux — et une alerte qui crie
     // pour rien apprend à l'ignorer le jour où elle a raison.
     if (jours >= 10) {
-      silence = '<div class="load-sub" style="margin-top:6px;color:#8a6d00">⚠ <b>Rien n’est arrivé depuis '
-        + jours + ' jours.</b> Dernier import réussi le ' + esc(last) + '. Ta forme du jour continue d’être '
+      silence = '<div class="zn-panel zn-pf-alerte"><div class="zn-pf-alerte-eb">⚠ Strava ne répond plus</div>'
+        + '<div class="zn-pf-alerte-p"><b>Rien n’est arrivé depuis ' + jours + ' jours.</b> Dernier import réussi le ' + esc(last) + '. Ta forme du jour continue d’être '
         + 'calculée, mais sur tes coches ✓ seules — pas sur tes sorties. Relance un import : si le jeton a '
-        + 'expiré, reconnecte-toi ci-dessous.</div>';
+        + 'expiré, reconnecte-toi ci-dessous.</div></div>';
     }
   }
-  if (sAuth && sAuth.access_token) {
+  h += silence;
+  if (connecte) {
     // Retour utilisateur (08/08/2026) : « déconnexion trop grosse, moins essentielle,
-    // l'utilisateur n'a normalement pas besoin de s'en servir ». Le bouton d'IMPORT reste un
-    // `.btn` normal (c'est le geste qu'on répète) ; la déconnexion passe en lien discret.
-    h += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px">'
-      + '<span style="font-size:var(--fs-sm)">✓ Connecté' + (sAuth.athlete && sAuth.athlete.firstname ? " (" + esc(sAuth.athlete.firstname) + ")" : "") + "</span>"
-      + '<button class="btn" id="pfStravaBtn" type="button">Importer mes activités</button></div>'
+    // l'utilisateur n'a normalement pas besoin de s'en servir ». Le bouton d'IMPORT reste le
+    // geste principal (c'est celui qu'on répète) ; la déconnexion passe en lien discret.
+    h += '<div class="zn-pf-strava-btn"><button class="zn-btn" id="pfStravaBtn" type="button">Importer mes activités</button></div>'
       // U4 — même sous-dimensionné visuellement, la zone de TOUCHE reste ≥24×24 (WCAG 2.5.8) :
       // padding vertical généreux malgré le texte réduit, geste rare mais pas piégeux.
-      + '<button type="button" id="pfStravaOut" style="background:none;border:none;padding:10px 2px;margin-top:2px;font-size:var(--fs-xs);color:var(--muted);text-decoration:underline;cursor:pointer">Se déconnecter</button>';
+      + '<button type="button" id="pfStravaOut" class="zn-pf-strava-out">Se déconnecter</button>';
   } else {
     // R6 — UX guidée : UN bouton. L'URL du relais vit en config (déployée pour tous)
     // ou dans les réglages avancés — l'utilisateur normal n'a rien à coller.
-    h += '<div style="margin-top:6px"><button class="btn primary" id="pfStravaConnect" type="button" style="width:100%;font-size:var(--fs-lg);padding:12px 16px">🔗 Se connecter avec Strava</button></div>'
-      + '<div class="load-sub" style="margin-top:4px">Un clic → autorisation sur Strava → retour ici. Lecture seule (jamais d’écriture), tes activités alimentent tes références (FTP/allure/CSS).</div>'
-      + '<details style="margin-top:6px"><summary class="load-sub" style="cursor:pointer">Réglages avancés (relais)</summary>'
-      + '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px">'
-      + '<input type="text" id="pfStravaRelay" placeholder="URL du relais (voir server/README.md)" value="' + esc(a.stravaRelay || "") + '" style="flex:1;min-width:180px"></div>'
-      + '<div class="load-sub" style="margin-top:4px">Le relais garde le secret Strava hors de l’app — déploiement pas-à-pas dans server/README.md.</div></details>';
+    h += '<div class="zn-pf-strava-btn"><button class="zn-btn" id="pfStravaConnect" type="button">🔗 Se connecter avec Strava</button></div>'
+      + '<div class="load-sub">Un clic → autorisation sur Strava → retour ici. Lecture seule (jamais d’écriture), tes activités alimentent tes références (FTP/allure/CSS).</div>'
+      + '<details><summary class="load-sub" style="cursor:pointer">Réglages avancés (relais)</summary>'
+      + '<div class="zn-pf-fields">'
+      + '<input type="text" id="pfStravaRelay" placeholder="URL du relais (voir server/README.md)" value="' + esc(a.stravaRelay || "") + '" aria-label="URL du relais Strava"></div>'
+      + '<div class="load-sub">Le relais garde le secret Strava hors de l’app — déploiement pas-à-pas dans server/README.md.</div></details>';
   }
-  h += silence
-    + (S._stravaError ? '<div class="load-sub" style="margin-top:4px;color:#b3261e">Connexion Strava refusée (' + esc(S._stravaError) + ") — réessaie ou utilise le jeton manuel.</div>" : "")
-    + '<details style="margin-top:6px"><summary class="load-sub" style="cursor:pointer">Repli : jeton manuel (sans serveur)</summary>'
-    + '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px">'
-    + '<input type="text" id="pfStravaTok" placeholder="token d’accès Strava" style="flex:1;min-width:180px">'
-    + (sAuth && sAuth.access_token ? "" : '<button class="btn" id="pfStravaBtnTok" type="button">Importer depuis Strava</button>')
-    + '</div><div class="load-sub" style="margin-top:4px">Réglages Strava → « Mon API », scope <b>activity:read</b> — rien n’est écrit sur Strava.</div></details>'
-    + '<div id="pfStravaMsg" class="load-sub" style="margin-top:4px"></div></div>';
+  h += (S._stravaError ? '<div class="load-sub zn-pf-bad">Connexion Strava refusée (' + esc(S._stravaError) + ") — réessaie ou utilise le jeton manuel.</div>" : "")
+    + '<details><summary class="load-sub" style="cursor:pointer">Repli : jeton manuel (sans serveur)</summary>'
+    + '<div class="zn-pf-fields">'
+    + '<input type="text" id="pfStravaTok" placeholder="token d’accès Strava" aria-label="Jeton d’accès Strava">'
+    + (connecte ? "" : '<button class="zn-btn-2" id="pfStravaBtnTok" type="button">Importer depuis Strava</button>')
+    + '</div><div class="load-sub">Réglages Strava → « Mon API », scope <b>activity:read</b> — rien n’est écrit sur Strava.</div></details>'
+    + '<div id="pfStravaMsg" class="load-sub zn-pf-msg"></div></div>';
   return h;
 }
 
@@ -731,7 +807,7 @@ function measuredCardHTML() {
     + '<div class="load-sub" style="margin-top:4px">Sur tes <b>' + snap.window_days + ' derniers jours</b> : '
     + '<b>' + Math.round(snap.vol_min / 60) + 'h</b> en <b>' + snap.sessions + '</b> séance' + (snap.sessions > 1 ? 's' : '')
     + ' \u2014 soit <b>' + h + 'h/sem</b>'
-    + (snap.confidence === 'partial' ? ' <span style="color:#a33">(fenêtre incomplète : la mesure sous-compte)</span>' : '')
+    + (snap.confidence === 'partial' ? ' <span class="zn-pf-bad">(fenêtre incomplète : la mesure sous-compte)</span>' : '')
     + '.</div>';
   if (arb && arb.why) out += '<div class="load-sub" style="margin-top:6px">' + esc(arb.why) + '</div>';
   else if (arb && arb.source === 'mesure') out += '<div class="load-sub" style="margin-top:6px">Ta déclaration et la mesure disent la même chose : rien à ajuster.</div>';
@@ -742,6 +818,263 @@ function measuredCardHTML() {
     + '</div>';
   if (applied) out += '<div class="load-sub" style="margin-top:6px">Instantané du ' + esc(String(a.measured.updated_at)) + ' \u2014 il se rafraîchit tout seul à ta prochaine semaine de décharge, pas tous les matins.</div>';
   return out + '</div>';
+}
+
+// ── REFONTE 22b · 14b · 14c (06/09/2026) — LE PROFIL EN TROIS SOUS-ONGLETS ──────────────────
+// Le canevas « Noir apaisé » répartit l'onglet en MES PLANS (22b) · MES DONNÉES (14b) ·
+// PARAMÈTRES (14c). Chaque carte existante trouve sa place, AUCUNE ne disparaît (règle du dépôt).
+// Les TROIS panneaux sont rendus dans le DOM (rôle `tabpanel`), les deux inactifs portent
+// `hidden` : les gestionnaires qui lisent un champ par id (`doSave`, `bindPlansSelector`, l'import
+// FIT…) ne savent pas dans quel panneau il vit et n'ont pas à le savoir ; la bascule ne re-rend
+// rien (l'état d'un `<details>` ouvert survit au changement de sous-onglet). Mesuré : les suites
+// lisent `#screen` par `textContent`/`count`, que `hidden` ne change pas ; seuls les CLICS sur un
+// élément d'un panneau inactif ont dû être précédés de la bascule (smoke-r4, smoke-improvements —
+// réécrits sur la propriété « atteignable dans le sous-onglet X »).
+const PF_SUBS = [["plans", "Mes plans"], ["donnees", "Mes données"], ["params", "Paramètres"]];
+function pfSubtabsHTML(active) {
+  return '<div class="subtabs zn-seg" role="tablist" aria-label="Profil">'
+    + PF_SUBS.map(([id, lib]) => '<button type="button" role="tab" class="btn subtab zn-seg-btn' + (id === active ? " active" : "")
+      + '" data-pfsub="' + id + '" aria-selected="' + (id === active) + '" aria-controls="pfPanel-' + id + '">' + lib + "</button>").join("")
+    + "</div>";
+}
+/** Bascule SANS re-rendu : `hidden` sur les panneaux, `.active`/`aria-selected` sur les pilules. */
+function pfShowSub(id) {
+  S._profileSub = id;
+  document.querySelectorAll("#screen [data-pfpanel]").forEach((p) => { p.hidden = p.dataset.pfpanel !== id; });
+  document.querySelectorAll("#screen [data-pfsub]").forEach((b) => {
+    const on = b.dataset.pfsub === id;
+    b.classList.toggle("active", on);
+    b.setAttribute("aria-selected", String(on));
+  });
+}
+function bindProfileSubtabs() {
+  document.querySelectorAll("#screen [data-pfsub]").forEach((b) => { b.onclick = () => pfShowSub(b.dataset.pfsub); });
+}
+
+// Une LIGNE de « Ce qui pilote ce plan » : un `<details>` dont le sommaire est la ligne du canevas
+// (titre, sous-ligne mono, pilule optionnelle, chevron) et dont le corps est la carte EXISTANTE,
+// inchangée — c'est `repliable()` (R16.7) avec un sommaire qui dit ce que la carte contient.
+// `.load-card` reste sur le `<details>` : smoke-improvements compte les blocs repliables ainsi.
+function pfFold(titre, sous, chip, body, ouvert) {
+  return '<details class="load-card zn-pf-fold"' + (ouvert ? " open" : "") + '><summary class="load-title zn-pf-row">'
+    + '<span class="zn-pf-row-b"><span class="zn-pf-row-t">' + titre + "</span>"
+    + (sous ? '<span class="zn-pf-row-s">' + sous + "</span>" : "") + "</span>"
+    + (chip || "") + '<span class="zn-chev" aria-hidden="true">›</span></summary>'
+    + '<div class="zn-pf-fold-b">' + body + "</div></details>";
+}
+// Les sous-lignes sont DÉRIVÉES des réponses (jamais un chiffre du canevas) : elles disent ce que
+// la carte contient sans qu'on l'ouvre. Une référence non déclarée est ESTIMÉE par le moteur —
+// la pilule « N ESTIMÉE » le compte (22b).
+function refsSousLigne(a, sp) {
+  const parts = [], estim = [];
+  if (sp === "bike" || sp === "tri") { if (a.ftp_known === "oui" && a.ftp) parts.push("FTP " + esc(a.ftp) + " W"); else estim.push("FTP"); }
+  if (sp === "run" || sp === "tri" || sp === "trail" || sp === "duathlon" || sp === "swimrun") { if (a.pace_known === "oui" && a.pace) parts.push("seuil " + esc(a.pace)); else estim.push("seuil"); }
+  if (sp === "swim" || sp === "tri" || sp === "swimrun") { if (a.css_known === "oui" && a.css) parts.push("CSS " + esc(a.css)); else estim.push("CSS"); }
+  if (sp === "duathlon") { if (a.ftp_known === "oui" && a.ftp) parts.push("FTP " + esc(a.ftp) + " W"); else estim.push("FTP"); }
+  const chip = estim.length ? '<span class="zn-chip zn-pf-chip-estim" title="' + esc(estim.join(", ")) + ' — estimée par le moteur tant qu’elle n’est pas mesurée">' + estim.length + " estimée" + (estim.length > 1 ? "s" : "") + "</span>" : "";
+  return { sous: parts.join(" · ") || "aucune référence mesurée — le moteur estime", chip };
+}
+function labelOf(k, v) { return (VLAB_Q[k] && VLAB_Q[k][v]) || VLAB[v] || v; }
+function epreuveSousLigne(a, sp) {
+  const E = globalThis.EBV2;
+  const km = (leg) => (E && E.raceDistanceKm ? E.raceDistanceKm(sp, a.format, leg) : null);
+  const kmTxt = (v) => (v == null ? "" : String(Math.round(v * 10) / 10).replace(".", ",") + " km");
+  const parts = [];
+  if (sp === "tri" || sp === "swimrun") { const s = km("swim"); if (s != null) parts.push(kmTxt(s) + (a.leg_swim_env ? " " + esc(labelOf("leg_swim_env", a.leg_swim_env)).toLowerCase() : "")); }
+  if (sp === "tri" || sp === "duathlon") { const b = km("bike"); if (b != null) parts.push(kmTxt(b) + (a.leg_bike_prof ? " " + esc(labelOf("leg_bike_prof", a.leg_bike_prof)).toLowerCase() : "")); }
+  const r = km(sp === "tri" || sp === "duathlon" || sp === "swimrun" ? "run" : undefined);
+  if (r != null) parts.push(kmTxt(r) + (a.leg_run_prof ? " " + esc(labelOf("leg_run_prof", a.leg_run_prof)).toLowerCase() : ""));
+  if (!parts.length) {
+    const fmts = (SPORTS[sp] && SPORTS[sp].formats) || [];
+    const f = fmts.find((x) => x[0] === a.format);
+    if (f) parts.push(esc(f[1]));
+    if (sp === "trail" && a.race_distance_km) parts.push(esc(a.race_distance_km) + " km · " + esc(a.race_dplus_m || "?") + " m D+");
+  }
+  if (a.course_profile) parts.push(esc(labelOf("course_profile", a.course_profile)).toLowerCase());
+  return parts.join(" · ") || "format non renseigné";
+}
+function terrainSousLigne(a) {
+  const parts = [];
+  if (a.terrain) parts.push(esc(labelOf("terrain", a.terrain)).toLowerCase());
+  const course = (d, p, f) => {
+    if (!d) return "";
+    const fmts = (SPORTS[S.sport] && SPORTS[S.sport].formats) || [];
+    const ff = fmts.find((x) => x[0] === f);
+    return (ff ? ff[1].split(" (")[0].toLowerCase() + " " : "course ") + "le " + dateCourte(d) + (p ? ", priorité " + esc(p) : "");
+  };
+  const c1 = course(a.race1_date, a.race1_prio, a.race1_format), c2 = course(a.race2_date, a.race2_prio, a.race2_format);
+  if (c1) parts.push(c1);
+  if (c2) parts.push(c2);
+  if (!c1 && !c2) parts.push("aucune course intermédiaire");
+  return parts.join(" · ");
+}
+function capaciteSousLigne(a) {
+  const parts = [];
+  if (a.sessions_max) parts.push(esc(a.sessions_max) + " séances");
+  if (a.vol_max) parts.push(esc(a.vol_max) + " h de pic");
+  if (a.dispo) parts.push(esc(labelOf("dispo", a.dispo)).toLowerCase());
+  if (a.off_days === "oui" && a.off_which) parts.push("OFF : " + esc(labelOf("off_which", a.off_which)));
+  return parts.join(" · ") || "enveloppe non renseignée";
+}
+
+// Les RÉFÉRENCES du corps (FTP/allure/CSS, poids, taille, structure des 12 mois, poids cible) —
+// les champs que le moteur lit (a.ftp / a.pace / a.css) : mêmes ids, même bouton `pfSave`.
+// L'ENVELOPPE (volume max, volume récent, séances max) part dans la carte « Capacité et
+// disponibilité » (22b) avec son propre bouton (`pfSaveCap`) — `doSave` lit chaque champ par id,
+// où qu'il vive, et le message s'affiche dans la carte d'où le geste est parti (R24.3, une règle).
+function refsCardHTML(a, sp) {
+  const row = (id, lab, val, ph) => '<label class="zn-pf-field"><span>' + lab + '</span><input type="text" id="' + id + '" value="' + esc(val || "") + '" placeholder="' + ph + '"></label>';
+  let ref = '<div class="load-card"><div class="load-title">⚙ Références d’entraînement <span class="zn-chip on zn-pf-chip-pilote">pilote ton plan</span></div><div class="zn-pf-fields">';
+  if (sp === "bike" || sp === "tri") ref += row("pfFtp", "FTP (watts)", a.ftp_known === "oui" ? a.ftp : "", "ex. 220");
+  if (sp === "run" || sp === "tri") ref += row("pfPace", "Allure seuil (min:s /km)", a.pace_known === "oui" ? a.pace : "", "ex. 4:30");
+  if (sp === "swim" || sp === "tri") ref += row("pfCss", "CSS (min:s /100m)", a.css_known === "oui" ? a.css : "", "ex. 1:55");
+  ref += row("pfWeight", "Poids (kg, optionnel)", a.weight, "affine ravito + dépense");
+  // Taille : réintroduite AVEC un effet réel (métabolisme de base Mifflin-St Jeor, carte
+  // « Dépense estimée » de l'onglet Semaine) — règle d'influence des paramètres respectée.
+  ref += row("pfHeight", "Taille (cm, optionnel)", a.height, "affine la dépense de base");
+  // R14.1 §1-c — LA QUESTION QUI REMPLACE L'ANCIENNETÉ dans le calcul de la marge de
+  // progression. Elle est ici (Profil) et pas dans le questionnaire d'entrée, pour ne pas
+  // alourdir le tunnel. Ce qu'elle mesure : le STIMULUS DE LA STRUCTURE. Quelqu'un qui court
+  // depuis quinze ans au feeling a encore devant lui tout ce qu'un plan apporte ; quelqu'un
+  // qui suit un plan depuis trois ans en a déjà consommé la plus grande part.
+  const tsSel = (v, lab) => '<option value="' + v + '"' + ((a.training_structure || "") === v ? " selected" : "") + ">" + lab + "</option>";
+  ref += '<label class="zn-pf-field"><span>Tes 12 derniers mois</span><select id="pfTrainingStructure">'
+    + tsSel("", "Je préfère ne pas dire") + tsSel("feeling", "Au feeling, sans plan")
+    + tsSel("intermittent", "Un plan, par périodes") + tsSel("suivi", "Un plan structuré, suivi") + "</select></label>";
+  ref += '<div class="load-sub zn-pf-sub">Sert à estimer ta marge de progression d’ici la course — pas à juger. Sans réponse, on reste prudent.</div>';
+  // R14.1 §5 — le poids cible n'apparaît QUE si l'athlète a demandé ce levier. Jamais proposé,
+  // jamais suggéré : c'est la frontière du manifeste, et elle ne bouge pas.
+  if (a.weight_lever === "oui") {
+    ref += row("pfWeightTarget", "Poids cible (optionnel)", a.weight_target, "affiche une sensibilité, jamais un objectif");
+    ref += '<div class="load-sub zn-pf-sub">Tu as demandé ce levier. L’app montre ce que la balance changerait sur tes chronos — elle ne propose ni rythme, ni alimentation : ces questions se traitent avec un professionnel de santé.</div>';
+  }
+  ref += '</div><div class="nav zn-pf-nav"><button class="zn-btn" id="pfSave" type="button">Enregistrer → régénérer le plan</button></div>'
+    + '<div id="pfMsg" class="load-sub zn-pf-msg"></div></div>';
+  return ref;
+}
+function capaciteCardHTML(a) {
+  const row = (id, lab, val, ph) => '<label class="zn-pf-field"><span>' + lab + '</span><input type="text" id="' + id + '" value="' + esc(val || "") + '" placeholder="' + ph + '"></label>';
+  let h = '<div class="load-card"><div class="load-title">📅 Capacité et disponibilité</div>';
+  h += summaryRows(a);
+  h += '<div class="zn-pf-fields">' + row("pfVol", "Volume max (h/sem)", a.vol_max, "ex. 8")
+    // R10 — le POINT DE DÉPART : le plan démarre du volume réellement fait ces derniers mois
+    + row("pfVolRecent", "Volume récent (h/sem, 3-6 mois)", a.vol_recent, "ex. 4 — le plan part de là")
+    + row("pfSess", "Séances max /sem", a.sessions_max, "ex. 5") + "</div>";
+  h += '<div class="nav zn-pf-nav"><button class="zn-btn" id="pfSaveCap" type="button">Enregistrer → régénérer le plan</button></div>'
+    + '<div id="pfMsgCap" class="load-sub zn-pf-msg"></div></div>';
+  return h;
+}
+
+// ── 14b — MES DONNÉES : des compteurs VÉRIFIABLES et douze semaines de calendrier ───────────
+// Tout se recompte depuis `answers.done` et les séances du plan (le même journal que la coche ✓,
+// les badges et l'avatar) : rien à croire sur parole. Les distances ne sont pas affichées — le
+// moteur ne connaît que des MINUTES prescrites, et une distance déduite d'une allure de zone serait
+// une estimation présentée comme une mesure (règle 14).
+function compteursHTML(plan, a, tIso) {
+  const done = a.done || {};
+  const par = {};
+  let n = 0, min = 0;
+  for (const w of plan.weeks) for (const d of w.days) d.sessions.forEach((s, si) => {
+    if (s.d === "rs" || !done[w.num + "|" + d.jour + "|" + si]) return;
+    n++; min += s.min || 0;
+    const k = s.d === "br" ? "br" : s.d;
+    if (!par[k]) par[k] = { n: 0, min: 0 };
+    par[k].n++; par[k].min += s.min || 0;
+  });
+  const depuis = a.plan_start || (plan.weeks[0] && plan.weeks[0].days[0] && plan.weeks[0].days[0].date) || "";
+  const jours = depuis ? Math.max(0, Math.round((new Date(tIso + "T00:00:00").getTime() - new Date(depuis + "T00:00:00").getTime()) / 864e5)) : null;
+  const heures = Math.round(min / 60);
+  let h = '<div class="zn-panel zn-pf-compteurs"><div class="zn-pf-panel-head"><span class="zn-eyebrow">' + (depuis ? "Depuis le " + dateCourte(depuis) : "Ce plan") + "</span>"
+    + (jours != null ? '<span class="zn-pf-panel-r">' + jours + " jour" + (jours > 1 ? "s" : "") + "</span>" : "") + "</div>";
+  h += '<div class="zn-pf-big-row"><span class="zn-display zn-pf-big">' + n + '</span><span class="zn-pf-big-lab">séance' + (n > 1 ? "s" : "") + " validée" + (n > 1 ? "s" : "") + "<br>" + heures + " h d’entraînement</span></div>";
+  const ordre = ["sw", "bk", "rn", "br"].filter((k) => par[k]);
+  if (ordre.length) {
+    h += '<div class="zn-list zn-pf-disc-list">' + ordre.map((k) => '<div class="zn-row zn-pf-disc"><i class="zn-disc-sq" style="background:' + DISC[k].ac + '"></i><span class="zn-pf-disc-n">' + DISC[k].label + '</span><span class="zn-display zn-pf-disc-v">' + par[k].n + '</span><span class="zn-pf-disc-h">' + Math.round(par[k].min / 60 * 10) / 10 + " h</span></div>").join("") + "</div>";
+    if (ordre.length > 1) {
+      const moins = ordre.reduce((m, k) => (par[k].n < par[m].n ? k : m), ordre[0]);
+      h += '<div class="zn-pf-note-mono">' + DISC[moins].label + " compte le moins de séances : c’est le seul chiffre nécessaire pour savoir quoi corriger.</div>";
+    }
+  } else h += '<div class="zn-pf-note-mono">Aucune séance validée pour l’instant — la coche ○ de chaque séance alimente ces compteurs.</div>';
+  return h + "</div>";
+}
+/** Douze semaines de calendrier (14b) : une colonne par semaine, une ligne par jour, la couleur
+ *  de la discipline validée ce jour-là (DISC[*].ac — jamais réutilisée hors discipline, Z-11),
+ *  « rien » sinon. Les imports FIT comptent aussi : ils sont des séances faites. */
+function calendrier12HTML(plan, a, tIso) {
+  const done = a.done || {};
+  const parJour = {};
+  for (const w of plan.weeks) for (const d of w.days) d.sessions.forEach((s, si) => {
+    if (s.d === "rs" || !d.date || !done[w.num + "|" + d.jour + "|" + si]) return;
+    if (!parJour[d.date]) parJour[d.date] = s.d;
+  });
+  (Array.isArray(a.fitSessions) ? a.fitSessions : []).forEach((c) => { if (c.date && DISC[c.d] && !parJour[c.date]) parJour[c.date] = c.d; });
+  const today = new Date(tIso + "T12:00:00");
+  const lundi = new Date(today); lundi.setDate(today.getDate() - ((today.getDay() + 6) % 7) - 11 * 7);
+  const cols = [];
+  let n = 0;
+  for (let wk = 0; wk < 12; wk++) {
+    const col = [];
+    for (let j = 0; j < 7; j++) {
+      const d = new Date(lundi); d.setDate(lundi.getDate() + wk * 7 + j);
+      const iso = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+      const k = parJour[iso];
+      if (k) n++;
+      col.push(k ? DISC[k].ac : null);
+    }
+    cols.push(col);
+  }
+  const JL = ["L", "M", "M", "J", "V", "S", "D"];
+  let h = '<div class="zn-creux zn-pf-cal"><div class="zn-pf-panel-head"><span class="zn-eyebrow">12 dernières semaines</span><span class="zn-pf-panel-r">' + n + " séance" + (n > 1 ? "s" : "") + "</span></div>";
+  h += '<div class="zn-pf-cal-grid" role="img" aria-label="Calendrier des douze dernières semaines : ' + n + ' jour' + (n > 1 ? "s" : "") + ' avec une séance validée">';
+  for (let j = 0; j < 7; j++) {
+    h += '<div class="zn-pf-cal-row"><span class="zn-pf-cal-j">' + JL[j] + "</span>"
+      + cols.map((col) => '<i class="zn-pf-cal-c' + (col[j] ? " on" : "") + '"' + (col[j] ? ' style="background:' + col[j] + '"' : "") + "></i>").join("") + "</div>";
+  }
+  h += "</div>";
+  const legs = ["sw", "bk", "rn"].filter((k) => plan.weeks.some((w) => w.days.some((d) => d.sessions.some((s) => s.d === k))));
+  h += '<div class="zn-pf-cal-leg">' + legs.map((k) => '<span><i class="zn-disc-sq" style="background:' + DISC[k].ac + '"></i>' + DISC[k].label + "</span>").join("") + '<span><i class="zn-disc-sq zn-pf-cal-rien"></i>Rien</span></div>';
+  return h + "</div>";
+}
+
+// ── 14c — PARAMÈTRES : ce qui ne touche ni au plan ni aux données ───────────────────────────
+function parametresHTML(a) {
+  const sw = (id, on, lab) => '<label class="zn-pf-switch"><input type="checkbox" id="' + id + '"' + (on ? " checked" : "") + ' aria-label="' + lab + '"><i></i></label>';
+  let h = '<div class="zn-sec zn-pf-sec"><span>Le matin</span><i></i></div><div class="zn-panel zn-pf-rows">';
+  // R23.11 — LE RAPPEL QUOTIDIEN GARDE SA PROPRE LIGNE (il vivait au milieu des références
+  // physiologiques, entre le CSS et le poids cible — ce n'est ni une mesure ni un paramètre de
+  // course, c'est un réglage de l'app). L'heure est le réglage (`answers.notifyTime`, lue par
+  // notifications.js) ; vide = aucun rappel. Enregistrée par `pfSaveParams` → `doSave`.
+  h += '<div class="zn-pf-prow"><div class="zn-pf-prow-b"><div class="zn-pf-prow-t"><span class="zn-pf-ico" aria-hidden="true">🔔</span> Rappel quotidien</div>'
+    + '<div class="zn-pf-prow-s">' + (a.notifyTime ? esc(a.notifyTime).replace(":", " h ") + " · le point du matin" : "aucun rappel · tant que l’app est ouverte ou en arrière-plan") + "</div></div>"
+    + '<input type="time" id="pfNotif" value="' + esc(a.notifyTime || "") + '" aria-label="Heure du rappel quotidien"></div>';
+  // H-1b — la VFC est un CHOIX posé une fois (`hrv_track`, lu par le check-in) : ici on peut le
+  // changer sans refaire le questionnaire. Aucun autre effet : la diapo existe ou n'existe pas.
+  const hrv = a.hrv_track === "oui";
+  h += '<div class="zn-pf-prow"><div class="zn-pf-prow-b"><div class="zn-pf-prow-t">Variabilité cardiaque</div>'
+    + '<div class="zn-pf-prow-s">' + (hrv ? "suivie · demandée chaque matin, comparée à ta base des 7 derniers jours" : "non suivie · on ne te la demande plus") + "</div></div>"
+    + sw("pfHrvTrack", hrv, "Suivre la variabilité cardiaque") + "</div>";
+  h += '<div class="zn-pf-prow"><div class="zn-pf-prow-b"><div class="zn-pf-prow-t">FC au réveil</div>'
+    + '<div class="zn-pf-prow-s">demandée au point du matin, optionnelle · base des 7 derniers matins</div></div></div>';
+  h += '<div class="nav zn-pf-nav zn-pf-nav-rows"><button class="zn-btn-2" id="pfSaveParams" type="button">Enregistrer</button></div><div id="pfMsgParams" class="load-sub zn-pf-msg"></div>';
+  h += "</div>";
+  h += '<div class="zn-sec zn-pf-sec"><span>Connexions</span><i></i></div>';
+  h += stravaCardHTML(a);
+  h += '<div class="zn-panel zn-pf-rows"><div class="zn-pf-prow"><div class="zn-pf-prow-b"><div class="zn-pf-prow-t">Météo</div>'
+    + '<div class="zn-pf-prow-s">position utilisée le matin, jamais stockée · Open-Meteo, sans clé</div></div></div></div>';
+  h += '<div class="zn-sec zn-pf-sec"><span>Les autres notifications</span><i></i></div><div class="zn-panel zn-pf-rows">';
+  h += '<div class="zn-pf-prow"><div class="zn-pf-prow-b"><div class="zn-pf-prow-t">Bilan de la semaine</div><div class="zn-pf-prow-s">le dimanche · part du volume réalisé</div></div></div>';
+  h += '<div class="zn-pf-prow"><div class="zn-pf-prow-b"><div class="zn-pf-prow-t">Reprise en douceur</div><div class="zn-pf-prow-s">après trois séances passées · une seule fois par décrochage</div></div></div>';
+  h += '<div class="zn-pf-note"><span class="zn-pf-note-ico" aria-hidden="true">!</span>Zenna n’a pas de serveur : une notification ne part que si l’application est ouverte à ce moment-là. C’est une limite, elle est dite plutôt que cachée.</div>';
+  h += "</div>";
+  // — Sauvegarde : tout vit dans localStorage — un navigateur nettoyé = tout perdu.
+  // Export/import JSON de l'état COMPLET (tous les plans + état partagé).
+  h += '<div class="zn-sec zn-pf-sec"><span>Tes données</span><i></i></div>'
+    + '<div class="zn-panel zn-pf-donnees"><div class="zn-pf-donnees-eb"><span class="zn-pf-lock" aria-hidden="true">🔒</span>Où vivent ces données</div>'
+    + '<div class="zn-pf-donnees-p">Dans ce navigateur, sur cet appareil. Aucun compte, aucun serveur — y compris tes réponses de santé. Corollaire honnête : si tu vides ton navigateur, tout part. Exporte une sauvegarde de temps en temps, et importe-la sur un nouvel appareil.</div>'
+    + '<div class="zn-pf-donnees-btns"><button class="zn-btn-2" id="pfBackup" type="button">Tout exporter</button>'
+    + '<label class="zn-btn-2" style="cursor:pointer;margin:0">Importer<input type="file" id="pfRestore" accept=".json,application/json" style="display:none"></label></div>'
+    + '<div id="pfBackupMsg" class="load-sub zn-pf-msg"></div></div>';
+  return h;
 }
 
 export function renderTabProfile(plan) {
@@ -757,145 +1090,73 @@ export function renderTabProfile(plan) {
   // Le repli est celui déjà utilisé ailleurs pour un plan sans sport : le questionnaire.
   if (!sp || !SPORTS[sp]) { renderStep(); return; }
   const tIso = todayISO();
-  let html = '<div class="card"><div class="eyebrow">Profil — ' + SPORTS[sp].nom + "</div><h2>Toi, ton niveau, tes réglages</h2>";
-  // R5 — l'identité d'abord : avatar, niveau, XP, teaser du niveau suivant
-  html += avatarSectionHTML(plan, tIso);
-  html += '<div class="why">Modifie une valeur : le plan est régénéré et le changement est consigné dans ton journal d’évolution.</div>';
-  // R24.2 — STRAVA EN PREMIER ÉCRAN (retour fondateur, 06/08 : « onglet de connexion Strava en
-  // fin de page, je le veux dans le premier écran »). Le bloc de connexion vivait replié au
-  // fond du Profil, dans le journal — un CTA qu'on ne voit qu'en cherchant. Il monte ici, en
-  // carte propre ; le journal (en bas) garde l'historique et les imports FIT. Un seul bloc
-  // Strava dans l'onglet : le déplacer, pas le dupliquer (R23.12b — deux chemins vers le même
-  // geste dans deux endroits, c'est ce qu'on vient de retirer).
-  html += stravaCardHTML(a);
-  html += plansSelectorHTML();
-  html += planDeadlineHTML(plan);
-  if (sp === "trail") html += trailProfileHTML(a);
-  // R24.3 — les paramètres de l'épreuve, dans la carte dédiée à la course.
-  // Repliée par défaut (08/08/2026) : le correctif de lisibilité qui donne à chaque select sa
-  // propre ligne (au lieu de tronquer son texte, voir plus haut) a fait passer le Profil d'un
-  // triathlète de 4,0 à 4,1 écrans — le plafond posé par U18b. Même geste que « Références
-  // d'entraînement » juste en dessous : c'est un réglage qu'on pose une fois et qu'on vient
-  // CHERCHER, pas de la prose qu'on lit à chaque ouverture de l'onglet.
-  html += repliable(raceCardHTML(a), false);
-  // Retour utilisateur (08/08/2026) : « déroulable, pareil pour course intermédiaire » — même
-  // geste que « Ta course » juste au-dessus, pour la même raison (un réglage qu'on pose une
-  // fois par course et qu'on vient CHERCHER, pas de la prose permanente). Course 2 garde SON
-  // propre repli interne (elle existe si aucune deuxième course n'est encore déclarée) —
-  // repliable() replie la carte ENTIÈRE par-dessus, les deux se combinent sans conflit.
-  html += repliable(raceInterHTML(a), false);
-  html += summaryRows(a);
+  // REFONTE 22b/14b/14c — trois panneaux, un actif. Le sous-onglet ouvert par défaut est MES
+  // PLANS (le canevas l'affiche en tête) ; l'état ne survit pas à la session (comme `_weekSub`).
+  const sub = PF_SUBS.some(([id]) => id === S._profileSub) ? S._profileSub : "plans";
+  const panel = (id, inner) => '<section class="zn-pf-panel" id="pfPanel-' + id + '" role="tabpanel" data-pfpanel="' + id + '"' + (id === sub ? "" : " hidden") + ">" + inner + "</section>";
+  let html = '<div class="zn-profil">' + pfSubtabsHTML(sub);
 
-  // — Références physiologiques éditables (celles que le moteur lit : a.ftp / a.pace / a.css)
-  //
-  // U18b — LA CARTE EST REPLIÉE, et c'est le geste du lot qui pèse vraiment. Ce n'est pas de la
-  // prose : ce sont 14 à 17 LIGNES DE FORMULAIRE (1 081 px mesurés sur 3 908) ouvertes en
-  // permanence sur un onglet qu'on ouvre pour regarder sa progression, pas pour ressaisir sa
-  // FTP. Des sous-titres n'y auraient rien changé — la règle sortie de la passe RETIRÉE (« le
-  // "?" ne paie que dans un titre ») dit qu'un bouton de plus, posé au milieu d'une carte, coûte
-  // à peu près ce qu'il rend. Ici le titre existe déjà et le repli porte sur le bloc ENTIER :
-  // c'est le mécanisme `repliable` que le Profil applique depuis R5 à tout ce qu'on vient
-  // CHERCHER quand on le veut. Rien n'est retiré ni déplacé, et « Enregistrer → régénérer le
-  // plan » reste DANS la carte, donc à un geste de la modification qu'il valide.
-  let ref = "";
-  // Retour utilisateur (08/08/2026) : cette carte « mérite d'être mise plus en valeur » — c'est
-  // elle qui pilote directement l'intensité de tout le plan (FTP/allure/CSS). U18b l'a repliée
-  // à raison (14-17 lignes de formulaire, 1 081 px) : la distinction se joue donc sur le bandeau
-  // FERMÉ (le titre), pas sur l'espace occupé une fois ouverte.
-  ref += '<div class="load-card"><div class="load-title">⚙ Références d’entraînement <span style="background:var(--acc);color:#fff;font-size:var(--fs-xs);padding:2px 8px;border-radius:9px;font-weight:700;vertical-align:middle">pilote ton plan</span></div><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">';
-  const row = (id, lab, val, ph) => '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md)"><span style="width:150px">' + lab + '</span><input type="text" id="' + id + '" value="' + esc(val || "") + '" placeholder="' + ph + '" style="flex:1;min-width:0"></label>';
-  if (sp === "bike" || sp === "tri") ref += row("pfFtp", "FTP (watts)", a.ftp_known === "oui" ? a.ftp : "", "ex. 220");
-  if (sp === "run" || sp === "tri") ref += row("pfPace", "Allure seuil (min:s /km)", a.pace_known === "oui" ? a.pace : "", "ex. 4:30");
-  if (sp === "swim" || sp === "tri") ref += row("pfCss", "CSS (min:s /100m)", a.css_known === "oui" ? a.css : "", "ex. 1:55");
-  ref += row("pfVol", "Volume max (h/sem)", a.vol_max, "ex. 8");
-  // R10 — le POINT DE DÉPART : le plan démarre du volume réellement fait ces derniers mois
-  ref += row("pfVolRecent", "Volume récent (h/sem, 3-6 mois)", a.vol_recent, "ex. 4 — le plan part de là");
-  ref += row("pfSess", "Séances max /sem", a.sessions_max, "ex. 5");
-  ref += row("pfWeight", "Poids (kg, optionnel)", a.weight, "affine ravito + dépense");
-  // Taille : réintroduite AVEC un effet réel (métabolisme de base Mifflin-St Jeor, carte
-  // « Dépense estimée » de l'onglet Semaine) — règle d'influence des paramètres respectée.
-  ref += row("pfHeight", "Taille (cm, optionnel)", a.height, "affine la dépense de base");
-  // R24.3 — les paramètres DE LA COURSE ne vivent plus ici (retour fondateur, 06/08 :
-  // « séparer les données athlète des paramètres de course »). Le profil du parcours, la
-  // température de l'eau et les profils par discipline sont partis dans la carte « 🏁 Ta
-  // course » (raceCardHTML), rendue à côté de l'échéance et des courses intermédiaires.
-  // Ici ne restent que les références DU CORPS : FTP, allures, volumes, poids, structure.
-  // R14.1 §1-c — LA QUESTION QUI REMPLACE L'ANCIENNETÉ dans le calcul de la marge de
-  // progression. Elle est ici (Profil) et pas dans le questionnaire d'entrée, pour ne pas
-  // alourdir le tunnel. Ce qu'elle mesure : le STIMULUS DE LA STRUCTURE. Quelqu'un qui court
-  // depuis quinze ans au feeling a encore devant lui tout ce qu'un plan apporte ; quelqu'un
-  // qui suit un plan depuis trois ans en a déjà consommé la plus grande part.
-  const tsSel = (v, lab) => '<option value="' + v + '"' + ((a.training_structure || "") === v ? " selected" : "") + ">" + lab + "</option>";
-  ref += '<label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-md)"><span style="width:150px">Tes 12 derniers mois</span><select id="pfTrainingStructure" style="flex:1;min-width:0">'
-    + tsSel("", "Je préfère ne pas dire") + tsSel("feeling", "Au feeling, sans plan")
-    + tsSel("intermittent", "Un plan, par périodes") + tsSel("suivi", "Un plan structuré, suivi") + "</select></label>";
-  ref += '<div class="load-sub" style="margin:2px 0 6px;color:var(--muted)">Sert à estimer ta marge de progression d’ici la course — pas à juger. Sans réponse, on reste prudent.</div>';
-  // R14.1 §5 — le poids cible n'apparaît QUE si l'athlète a demandé ce levier. Jamais proposé,
-  // jamais suggéré : c'est la frontière du manifeste, et elle ne bouge pas.
-  if (a.weight_lever === "oui") {
-    ref += row("pfWeightTarget", "Poids cible (optionnel)", a.weight_target, "affiche une sensibilité, jamais un objectif");
-    ref += '<div class="load-sub" style="margin:2px 0 6px;color:var(--muted)">Tu as demandé ce levier. L’app montre ce que la balance changerait sur tes chronos — elle ne propose ni rythme, ni alimentation : ces questions se traitent avec un professionnel de santé.</div>';
-  }
+  // ── MES PLANS (22b) : le plan actif en relief, « ce qui pilote ce plan » à nu, les plans passés.
+  let plans = planActifHTML(plan, a, tIso);
+  plans += '<div class="zn-sec zn-pf-sec zn-pf-sec-pilote"><span>Ce qui pilote ce plan</span><i></i></div><div class="zn-pf-folds">';
+  const refs = refsSousLigne(a, sp);
+  // — Références physiologiques éditables (celles que le moteur lit : a.ftp / a.pace / a.css).
+  // U18b — la carte est REPLIÉE (14 à 17 lignes de formulaire ouvertes en permanence sur un
+  // onglet qu'on ouvre pour regarder sa progression, pas pour ressaisir sa FTP) ; le sommaire
+  // dit désormais ce qu'elle contient (22b) et compte ce que le moteur ESTIME.
+  plans += pfFold("Références d’entraînement", refs.sous, refs.chip, refsCardHTML(a, sp), false);
+  if (sp === "trail") plans += pfFold("Ta course et ton terrain", epreuveSousLigne(a, sp), "", trailProfileHTML(a), false);
+  // R24.3 — les paramètres de l'épreuve, dans la carte dédiée à la course (repliée, 08/08/2026).
+  plans += pfFold("Ton épreuve", epreuveSousLigne(a, sp), "", raceCardHTML(a), false);
+  // Retour utilisateur (08/08/2026) : « déroulable, pareil pour course intermédiaire ».
+  plans += pfFold("Terrain et courses intermédiaires", terrainSousLigne(a), "", raceInterHTML(a), false);
+  plans += pfFold("Capacité et disponibilité", capaciteSousLigne(a), "", capaciteCardHTML(a), false);
+  plans += "</div>";
+  plans += '<div class="zn-pf-note"><span class="zn-pf-note-ico" aria-hidden="true">↻</span>Modifie une de ces réponses : le plan est régénéré, le changement est consigné dans ton journal d’évolution. Les séances déjà validées ne bougent pas.</div>';
+  plans += plansPassesHTML();
+  html += panel("plans", plans);
 
-  ref += '</div><div class="nav" style="margin-top:10px"><button class="btn primary" id="pfSave" type="button">Enregistrer → régénérer le plan</button></div>'
-    + '<div id="pfMsg" class="load-sub" style="margin-top:6px"></div></div>';
-  html += repliable(ref, false);
-  // R23.11 — LE RAPPEL QUOTIDIEN PREND SA PROPRE CARTE.
-  //
-  // Il vivait au milieu des références physiologiques, entre le CSS et le poids cible — ce n'est
-  // ni une mesure ni un paramètre de course, c'est un réglage de l'app. Et depuis U18b la carte
-  // des références est REPLIÉE : y laisser le rappel l'aurait rendu invisible pour qui ne
-  // l'ouvre pas. Une carte à part, courte, avec son propre bouton d'enregistrement.
-  html += '<div class="load-card"><div class="load-title">🔔 Rappel quotidien</div>'
-    + '<div class="load-sub" style="margin-top:6px">Une notification à l\'heure que tu choisis, tant que l\'app est ouverte ou en arrière-plan. Vide = aucun rappel.</div>'
-    + '<label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:var(--fs-md)"><span style="width:150px">Heure</span>'
-    + '<input type="time" id="pfNotif" value="' + esc(a.notifyTime || "") + '" style="flex:1;min-width:0"></label></div>';
-
+  // ── MES DONNÉES (14b) : compteurs vérifiables, douze semaines, le badge-anneau, records,
+  // badges, efficience, retest, journal.
+  let donnees = compteursHTML(plan, a, tIso) + calendrier12HTML(plan, a, tIso);
+  // R5 — l'identité : le badge-anneau, les jauges par discipline, la série, le partage.
+  donnees += '<div class="zn-sec zn-pf-sec"><span>Régularité</span><i></i></div>' + avatarSectionHTML(plan, tIso);
   // — Records personnels (R4-5, lecture seule) + badges + efficience (R5 : ici, pas
   // dans un onglet à part — le Profil raconte qui tu es et ce que tu as construit)
-  html += repliable(recordsHTML(plan, a), false);
+  donnees += recordsHTML(plan, a);
   let _badges = [];
   if (globalThis.EBV2 && globalThis.EBV2.badges) { try { _badges = globalThis.EBV2.badges(plan, a, tIso); } catch (e) {} }
-  html += repliable(badgesGalleryHTML(_badges), false);
-  html += repliable(efficiencyHTML(), false);
-
+  donnees += repliable(badgesGalleryHTML(_badges), false);
+  donnees += repliable(efficiencyHTML(), false);
   // — Retest « boss fight » (R4.4) : suggestion de date + planification
-  html += retestSuggestionHTML();
-  html += retestPlannerHTML();
-
-  // — Sauvegarde : tout vit dans localStorage — un navigateur nettoyé = tout perdu.
-  // Export/import JSON de l'état COMPLET (tous les plans + état partagé).
-  html += '<details class="load-card"><summary class="load-title" style="cursor:pointer">💾 Sauvegarde</summary>'
-    + '<div class="load-sub" style="margin-top:6px">Tes plans vivent dans ce navigateur uniquement. Exporte une sauvegarde de temps en temps — et importe-la sur un nouvel appareil ou après un nettoyage.</div>'
-    + '<div class="nav" style="margin-top:8px;flex-wrap:wrap;gap:8px"><button class="btn" id="pfBackup" type="button">Exporter ma sauvegarde</button>'
-    + '<label class="btn" style="cursor:pointer;margin:0">Importer une sauvegarde<input type="file" id="pfRestore" accept=".json,application/json" style="display:none"></label></div>'
-    + '<div id="pfBackupMsg" class="load-sub" style="margin-top:6px"></div></details>';
-
+  donnees += '<div class="zn-sec zn-pf-sec"><span>Tests</span><i></i></div>' + retestSuggestionHTML() + retestPlannerHTML();
   // — Journal d'évolution (S.answers.tests, trié du plus récent au plus ancien)
   const tests = Array.isArray(a.tests) ? [...a.tests].sort((x, y) => String(y.date || "").localeCompare(String(x.date || ""))) : [];
-  // R24.2 — le bloc Strava est parti en premier écran (stravaCardHTML) : le journal n'a plus
-  // de CTA à porter, il redevient une archive repliée.
-  html += '<details class="load-card"><summary class="load-title" style="cursor:pointer">📒 Journal d’évolution et imports</summary>';
+  // R24.2 — le bloc Strava vit dans PARAMÈTRES › Connexions : le journal n'a plus de CTA à
+  // porter, il redevient une archive repliée.
+  donnees += '<details class="load-card zn-pf-journal"><summary class="load-title" style="cursor:pointer">📒 Journal d’évolution et imports</summary>';
   if (tests.length) {
     tests.forEach((t) => {
-      html += '<div style="display:flex;gap:8px;margin:5px 0;font-size:var(--fs-sm);align-items:baseline"><span style="width:78px;color:#635b4a">' + esc(t.date || "—") + "</span><span><b>" + journalPrev(t) + journalLabel(t) + "</b>" + (t.source ? ' <span style="color:var(--muted)">(' + esc(t.source) + ")</span>" : "") + "</span></div>";
+      donnees += '<div class="zn-pf-jrow"><span class="zn-pf-jdate">' + esc(t.date || "—") + "</span><span><b>" + journalPrev(t) + journalLabel(t) + "</b>" + (t.source ? ' <span class="zn-pf-jsrc">(' + esc(t.source) + ")</span>" : "") + "</span></div>";
     });
   } else {
-    html += '<div class="load-sub">Encore vide — il se remplira à chaque test (FTP, allure, CSS), import Strava/FIT, ou modification de profil ci-dessus.</div>';
+    donnees += '<div class="load-sub">Encore vide — il se remplira à chaque test (FTP, allure, CSS), import Strava/FIT, ou modification de profil.</div>';
   }
-  html += measuredCardHTML();
+  donnees += measuredCardHTML();
   // Import FIT (roadmap : source « upload fichier », sans compte ni réseau) — le fichier
   // d'activité de n'importe quelle montre nourrit le journal (références) ET la fatigue
   // de l'ajusteur (S.answers.fitSessions, même contrat que les ✓).
   if (globalThis.EBV2 && globalThis.EBV2.importFit) {
-    html += '<div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
-      + '<label class="btn" style="cursor:pointer;margin:0">📂 Importer mes fichiers .FIT <span class="q-sub">(plusieurs à la fois)</span><input type="file" id="pfFit" accept=".fit,.FIT" multiple style="display:none"></label>'
-      + '<span class="load-sub" style="margin:0">export de ta montre — lu ici, jamais envoyé</span></div>'
-      + '<div id="pfFitMsg" class="load-sub" style="margin-top:6px"></div>';
+    donnees += '<div class="zn-pf-fit">'
+      + '<label class="zn-btn-2" style="cursor:pointer;margin:0">📂 Importer mes fichiers .FIT <span class="q-sub">(plusieurs à la fois)</span><input type="file" id="pfFit" accept=".fit,.FIT" multiple style="display:none"></label>'
+      + '<span class="load-sub zn-pf-fit-sub">export de ta montre — lu ici, jamais envoyé</span></div>'
+      + '<div id="pfFitMsg" class="load-sub zn-pf-msg"></div>';
   }
-  // R24.2 — l'import Strava (connexion, jeton, réglages relais) vit désormais dans la carte
-  // « 🔗 Strava » du premier écran (stravaCardHTML). Ici : journal, mesure, FIT.
-  html += "</details>";
+  donnees += "</details>";
+  html += panel("donnees", donnees);
+
+  // ── PARAMÈTRES (14c) : le matin, les connexions, les autres notifications, tes données.
+  html += panel("params", parametresHTML(a));
 
   // R23.10 — LES CONSEILS PERSONNALISÉS SONT PARTIS DANS 🗓 PLAN.
   //
@@ -910,6 +1171,7 @@ export function renderTabProfile(plan) {
   // Les garder ici, c'était deux chemins vers le même geste, dans deux onglets.
   html += "</div>";
   $("screen").innerHTML = html;
+  bindProfileSubtabs();
 
   // Avatar : partage + téléchargement — mêmes options de rendu pour les deux (R11.1), l'accent
   // suit désormais la discipline meneuse plutôt qu'un thème choisi à la main (avatarTriAccent).
@@ -1055,8 +1317,8 @@ export function renderTabProfile(plan) {
     ebSave();
     if (nRef) { invalidatePlan(); renderTabProfile(ensurePlan()); } // référence(s) mise(s) à jour → régénération (une fois)
     msg((nS || nT ? "✓ " + nS + " séance" + (nS > 1 ? "s" : "") + " importée" + (nS > 1 ? "s" : "") + " (nourrit la fatigue de « Forme du jour »)" + (nA ? " · " + nA + " séance" + (nA > 1 ? "s" : "") + " du plan validée" + (nA > 1 ? "s" : "") + " automatiquement ✓" : "") + (nT ? " · " + nT + " référence" + (nT > 1 ? "s" : "") + " ajoutée" + (nT > 1 ? "s" : "") + " au journal" : "") + (nRef ? " · plan régénéré avec la référence la plus récente" : "") + "." : "Aucune donnée exploitable.")
-      + (notes.length ? '<br><span style="color:#8a6d00">⚠ ' + notes.map(esc).join(" ") + "</span>" : "")
-      + (errs.length ? '<br><span style="color:#c0392b">' + errs.join("<br>") + "</span>" : ""));
+      + (notes.length ? '<br><span class="zn-pf-chip-estim">⚠ ' + notes.map(esc).join(" ") + "</span>" : "")
+      + (errs.length ? '<br><span class="zn-pf-bad">' + errs.join("<br>") + "</span>" : ""));
   };
   // — Import Strava : même post-traitement (pont vers les références vivantes) que le
   // token vienne de l'OAuth (relais) ou du champ manuel.
@@ -1073,7 +1335,7 @@ export function renderTabProfile(plan) {
     if (nRef) invalidatePlan(); // référence(s) à jour → régénération (une fois)
     renderTabProfile(ensurePlan());
     const m = $("pfStravaMsg");
-    if (m) m.innerHTML = statusHTML + (nRef ? '<br><span style="color:#00734f">✓ plan régénéré avec la référence la plus récente.</span>' : "");
+    if (m) m.innerHTML = statusHTML + (nRef ? '<br><span class="zn-pf-good">✓ plan régénéré avec la référence la plus récente.</span>' : "");
   };
   const stravaConnBtn = $("pfStravaConnect");
   if (stravaConnBtn) stravaConnBtn.onclick = () => {
@@ -1205,15 +1467,29 @@ export function renderTabProfile(plan) {
       ? " ⚠ Hors bornes physiologiques, donc non enregistré : " + horsBornes.map((t) => LAB_BORNE[t] || t).join(", ") + " — vérifie l'unité et la saisie."
       : "";
     // Le verdict s'écrit dans les DEUX cartes : celle d'où le geste est parti est forcément l'une des deux.
-    const dire = (txt) => { for (const id of ["pfMsg", "pfMsgRace"]) { const m = $(id); if (m) m.textContent = txt; } };
+    // REFONTE 22b/14c — quatre cartes portent un bouton d'enregistrement (références, course,
+    // capacité, paramètres) : celle d'où le geste est parti est forcément l'une d'elles.
+    const MSG_IDS = ["pfMsg", "pfMsgRace", "pfMsgCap", "pfMsgParams"];
+    const dire = (txt) => { for (const id of MSG_IDS) { const m = $(id); if (m) m.textContent = txt; } };
     if (!changed) { dire(horsBornes.length ? "Rien d'enregistré." + refus : "Aucun changement détecté."); return; }
     if (planChanged) invalidatePlan(); // le plan sera régénéré UNE fois, ici — pas au changement d'onglet
     ebSave();
     renderTabProfile(ensurePlan());
     const done = "✓ " + changed + " changement" + (changed > 1 ? "s" : "") + " enregistré" + (changed > 1 ? "s" : "") + (planChanged ? " — plan régénéré, journal mis à jour." : " — journal mis à jour (poids/taille n’affectent que ravitaillement et dépense estimée, pas le plan).") + refus;
-    for (const id of ["pfMsg", "pfMsgRace"]) { const m = $(id); if (m) m.textContent = done; }
+    for (const id of MSG_IDS) { const m = $(id); if (m) m.textContent = done; }
   };
   $("pfSave").onclick = doSave;
   const btnRace = $("pfSaveRace");
   if (btnRace) btnRace.onclick = doSave;
+  // REFONTE 22b/14c — capacité (volume max, volume récent, séances) et paramètres (rappel) ont
+  // leur bouton, et c'est LE MÊME enregistrement : `doSave` lit chaque champ par id (R11.1).
+  const btnCap = $("pfSaveCap");
+  if (btnCap) btnCap.onclick = doSave;
+  const btnParams = $("pfSaveParams");
+  if (btnParams) btnParams.onclick = doSave;
+  // H-1b — le suivi de la VFC se change ici, sans refaire le questionnaire : un réglage pur
+  // (`hrv_track`, lu par le check-in), aucune régénération. Le rendu suit pour que la ligne
+  // dise l'état réel.
+  const hrvSw = $("pfHrvTrack");
+  if (hrvSw) hrvSw.onchange = () => { S.answers.hrv_track = hrvSw.checked ? "oui" : "non"; ebSave(); renderTabProfile(plan); };
 }

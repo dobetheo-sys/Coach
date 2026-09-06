@@ -20,4 +20,277 @@
        `zenna-today.css`, section « PRIMITIVES DU CANEVAS » ;
      · préfixer `body.theme-zenna #screen …` ; ajouter ici plutôt qu'éditer les deux feuilles
        du socle.
+
+   REFONTE 22b / 14b / 14c / 19d (06/09/2026) — CE QUE CETTE FEUILLE DÉCIDE, ET POURQUOI
+     · TROIS SOUS-ONGLETS (`.zn-seg`, chrome commun), trois panneaux `[data-pfpanel]` dont deux
+       portent `hidden` : rien ici ne dépend du sous-onglet actif, chaque bloc s'habille pour
+       lui-même.
+     · LE PLAN ACTIF n'est pas le relief ORANGE des autres onglets : le canevas 22b le dessine
+       en surface sombre à LISERÉ orange (« garde son relief et son liseré ») — `.zn-panel` avec
+       la bordure de l'accent, rayon --r-card, l'ombre du héros en plus léger. Un seul objet en
+       relief par écran : celui-là.
+     · « CE QUI PILOTE CE PLAN » : des `<details>` dont le sommaire EST la ligne du canevas
+       (titre, sous-ligne mono, pilule, chevron) et dont le corps est la carte d'avant, mise à
+       plat (fond et bordure retirés — elle vit DANS la ligne, pas à côté).
+     · LES GOUTTIÈRES : `.wrap` donne 14 px ; ce qui est À NU (intertitres, lignes, notes) prend
+       +4 px pour atteindre les 18 du canevas, les cartes bordées restent à 14.
+     · LE TEXTE « très muet » du canevas (#4c525a = --zn-faint3, 2,5:1) ne porte AUCUN texte ici
+       (chevrons, axes, cellules vides du calendrier : trait ou fond seulement) ; les gris de
+       texte sont --zn-faint (4,54 sur surface) et --zn-faint2. Mesuré par smoke-zenna.
+     · LES COULEURS DU CALENDRIER (14b) sont les accents DISC[*].ac posés EN LIGNE par le module
+       (une couleur de discipline ne se recopie jamais dans une feuille — Z-11, check:disc) ; la
+       feuille ne peint que la cellule VIDE (« rien », --zn-border).
+     · L'ALERTE STRAVA (19d) est une surface à liseré ambre (--zn-warn), eyebrow ambre, jamais un
+       bandeau qui bloque : « l'incident ne bloque pas l'écran ».
    ============================================================ */
+
+body.theme-zenna #screen .zn-profil { padding-bottom: 8px; }
+body.theme-zenna #screen .zn-pf-panel { display: block; }
+body.theme-zenna #screen .zn-pf-panel[hidden] { display: none; }
+body.theme-zenna #screen .zn-pf-sec { padding: 22px 4px 10px; }
+body.theme-zenna #screen .zn-pf-sec-pilote { color: var(--zn-orange); font-weight: 700; padding-top: 24px; }
+body.theme-zenna #screen .zn-pf-eb {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .13em;
+  text-transform: uppercase; color: var(--zn-faint2);
+}
+
+/* ============================================================
+   22b — LE PLAN ACTIF (surface sombre, liseré orange)
+   ============================================================ */
+body.theme-zenna #screen .zn-pf-actif {
+  padding: 18px 20px 20px; margin: 4px 0 0;
+  border-radius: var(--r-card); border-color: var(--zn-orange);
+  box-shadow: var(--zn-shadow-hero);
+}
+body.theme-zenna #screen .zn-pf-actif-eb {
+  display: flex; align-items: center; gap: 9px;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 700; letter-spacing: .13em;
+  text-transform: uppercase; color: var(--zn-orange);
+}
+body.theme-zenna #screen .zn-pf-actif-eb > i { width: 7px; height: 7px; border-radius: 50%; background: var(--zn-orange); display: block; }
+body.theme-zenna #screen .zn-pf-actif-nom { font-size: var(--fs-hero); color: var(--zn-text); margin-top: 11px; line-height: 1.06; }
+body.theme-zenna #screen .zn-pf-actif-meta {
+  margin-top: 8px; font-family: var(--zn-mono); font-size: var(--fs-xs); letter-spacing: .02em;
+  color: var(--zn-faint2); font-variant-numeric: tabular-nums;
+}
+body.theme-zenna #screen .zn-pf-actif-num { display: flex; align-items: baseline; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
+body.theme-zenna #screen .zn-pf-actif-big { font-size: var(--fs-num); line-height: 1; color: var(--zn-text); font-variant-numeric: tabular-nums; }
+body.theme-zenna #screen .zn-pf-actif-den { font-size: var(--fs-xl); color: var(--zn-faint2); font-variant-numeric: tabular-nums; }
+body.theme-zenna #screen .zn-pf-actif-lab { margin-left: 6px; font-family: var(--zn-mono); font-size: var(--fs-xs); color: var(--zn-muted); }
+body.theme-zenna #screen .zn-pf-actif-track { height: 6px; border-radius: 3px; background: var(--zn-filet); overflow: hidden; margin-top: 14px; }
+body.theme-zenna #screen .zn-pf-actif-track > i { display: block; height: 100%; background: var(--zn-orange); border-radius: 3px; transform-origin: left; }
+/* « Plan généré le … · échéance … » (R23.5) : le canevas n'a pas cette ligne, on la garde en
+   mono faible — c'est la seule qui dise QUAND le plan a été construit. */
+body.theme-zenna #screen .zn-pf-actif > .load-sub {
+  margin-top: 12px; font-family: var(--zn-mono); font-size: var(--fs-micro); line-height: 1.6; color: var(--zn-faint);
+}
+body.theme-zenna #screen .zn-pf-actif-btns { display: flex; gap: 10px; margin-top: 18px; }
+body.theme-zenna #screen .zn-pf-actif-btns > .zn-btn-2 { flex: 1 1 0; min-width: 0; font-size: var(--fs-xs); }
+
+/* ============================================================
+   22b — CE QUI PILOTE CE PLAN : une ligne par carte, la carte dans la ligne
+   ============================================================ */
+body.theme-zenna #screen .zn-pf-folds { margin: 0 4px; }
+body.theme-zenna #screen details.zn-pf-fold {
+  background: none; border: none; border-bottom: 1px solid var(--zn-filet); border-radius: 0;
+  padding: 0; margin: 0; box-shadow: none;
+}
+body.theme-zenna #screen details.zn-pf-fold::before { content: none; }
+body.theme-zenna #screen details.zn-pf-fold:last-child { border-bottom: none; }
+body.theme-zenna #screen details.zn-pf-fold > summary.zn-pf-row {
+  display: flex; align-items: center; gap: 12px;
+  min-height: 56px; padding: 17px 0; cursor: pointer; list-style: none;
+  font-family: var(--zn-body); font-size: var(--fs-md); letter-spacing: 0; color: var(--zn-text);
+}
+body.theme-zenna #screen details.zn-pf-fold > summary::-webkit-details-marker { display: none; }
+body.theme-zenna #screen details.zn-pf-fold > summary::after { content: none; }
+body.theme-zenna #screen .zn-pf-row-b { flex: 1; min-width: 0; display: block; }
+body.theme-zenna #screen .zn-pf-row-t { display: block; font-size: var(--fs-lg); font-weight: 500; line-height: 1.25; color: var(--zn-text); }
+body.theme-zenna #screen .zn-pf-row-s {
+  display: block; margin-top: 5px; font-family: var(--zn-mono); font-size: var(--fs-xs); line-height: 1.45;
+  color: var(--zn-faint2); overflow-wrap: anywhere;
+}
+body.theme-zenna #screen .zn-pf-fold .zn-chev { color: var(--zn-faint); font-size: var(--fs-lg); flex: 0 0 auto; transition: transform var(--dur-trans) var(--ease); }
+body.theme-zenna #screen details.zn-pf-fold[open] > summary .zn-chev { transform: rotate(90deg); }
+/* La pilule « N ESTIMÉE » : ambre sur creux, mono capitales (22b). */
+body.theme-zenna #screen .zn-pf-chip-estim {
+  color: var(--zn-warn); border-color: color-mix(in srgb, var(--zn-warn) 45%, transparent);
+  font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+}
+body.theme-zenna #screen .zn-pf-chip-pilote { font-size: var(--fs-micro); letter-spacing: .06em; vertical-align: middle; margin-left: 6px; }
+/* Le corps : la carte d'avant, à plat (elle vit DANS la ligne). */
+body.theme-zenna #screen .zn-pf-fold-b { padding: 0 0 16px; }
+body.theme-zenna #screen .zn-pf-fold-b > .load-card { background: none; border: none; border-radius: 0; padding: 0; margin: 0; box-shadow: none; }
+body.theme-zenna #screen .zn-pf-fold-b > .load-card::before { content: none; }
+body.theme-zenna #screen .zn-pf-fold-b .load-title { font-size: var(--fs-xs); letter-spacing: .1em; text-transform: uppercase; color: var(--zn-faint2); }
+body.theme-zenna #screen .zn-pf-fold-b .kv { padding: 8px 0; }
+body.theme-zenna #screen .zn-pf-fields { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+body.theme-zenna #screen .zn-pf-field { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; font-size: var(--fs-md); }
+body.theme-zenna #screen .zn-pf-field > span { font-family: var(--zn-mono); font-size: var(--fs-xs); letter-spacing: .02em; color: var(--zn-faint2); }
+body.theme-zenna #screen .zn-pf-field > input,
+body.theme-zenna #screen .zn-pf-field > select { width: 100%; min-width: 0; margin: 0; }
+body.theme-zenna #screen .zn-pf-sub { margin: 6px 0 2px; font-family: var(--zn-mono); font-size: var(--fs-micro); line-height: 1.6; color: var(--zn-faint); }
+body.theme-zenna #screen .zn-pf-nav { margin-top: 14px; }
+body.theme-zenna #screen .zn-pf-nav > .zn-btn,
+body.theme-zenna #screen .zn-pf-nav > .zn-btn-2 { font-size: var(--fs-xs); }
+body.theme-zenna #screen .zn-pf-msg { margin-top: 8px; font-size: var(--fs-xs); line-height: 1.5; }
+body.theme-zenna #screen .zn-pf-msg:empty { display: none; }
+/* La note sous les lignes (22b) : une phrase Inter, l'icône en ambre. */
+body.theme-zenna #screen .zn-pf-note {
+  display: flex; align-items: flex-start; gap: 12px; padding: 18px 4px 6px;
+  font-size: var(--fs-sm); line-height: 1.55; color: var(--zn-muted);
+}
+body.theme-zenna #screen .zn-pf-note-ico {
+  flex: 0 0 auto; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--zn-warn);
+  display: inline-flex; align-items: center; justify-content: center; margin-top: 2px;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 700; color: var(--zn-warn); line-height: 1;
+}
+
+/* ============================================================
+   22b — PLANS PASSÉS : une ligne par plan, ce qu'il a laissé
+   ============================================================ */
+body.theme-zenna #screen .zn-pf-passes { margin: 0 4px; }
+body.theme-zenna #screen .zn-pf-passe { display: block; padding: 6px 0 16px; }
+body.theme-zenna #screen .zn-pf-passe-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+body.theme-zenna #screen .zn-pf-passe-nom { font-size: var(--fs-xl); color: var(--zn-muted); min-width: 0; overflow-wrap: anywhere; }
+body.theme-zenna #screen .zn-pf-passe-date { font-family: var(--zn-mono); font-size: var(--fs-xs); color: var(--zn-faint); white-space: nowrap; }
+body.theme-zenna #screen .zn-pf-passe-stats { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 14px; }
+body.theme-zenna #screen .zn-pf-stat-v { font-size: var(--fs-hand); color: var(--zn-text); font-variant-numeric: tabular-nums; }
+body.theme-zenna #screen .zn-pf-stat-v .zn-display { font-size: inherit; text-transform: none; }
+body.theme-zenna #screen .zn-pf-stat-l { margin-top: 3px; font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .08em; text-transform: uppercase; color: var(--zn-faint); }
+body.theme-zenna #screen .zn-pf-passe-btns { display: flex; gap: 8px; margin-top: 14px; }
+body.theme-zenna #screen .zn-pf-passe-btns > .zn-btn-2 { flex: 1 1 0; min-width: 0; font-size: var(--fs-xs); }
+body.theme-zenna #screen .zn-pf-passe-btns > .zn-pf-mini { flex: 0 0 52px; padding: 0; font-size: var(--fs-md); }
+body.theme-zenna #screen .zn-pf-hint { padding: 12px 4px 4px; font-family: var(--zn-mono); font-size: var(--fs-micro); line-height: 1.6; color: var(--zn-faint); }
+
+/* ============================================================
+   14b — MES DONNÉES : compteurs, calendrier, régularité, records, journal
+   ============================================================ */
+body.theme-zenna #screen .zn-pf-compteurs { padding: 18px 20px 20px; margin: 4px 0 12px; border-radius: var(--r-card); }
+body.theme-zenna #screen .zn-pf-panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+body.theme-zenna #screen .zn-pf-panel-head .zn-pf-eb,
+body.theme-zenna #screen .zn-pf-panel-head .zn-eyebrow { font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .13em; text-transform: uppercase; color: var(--zn-faint2); }
+body.theme-zenna #screen .zn-pf-panel-r { font-family: var(--zn-mono); font-size: var(--fs-xs); color: var(--zn-faint2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+body.theme-zenna #screen .zn-pf-big-row { display: flex; align-items: baseline; gap: 16px; margin-top: 14px; }
+body.theme-zenna #screen .zn-pf-big { font-size: var(--fs-big); line-height: .95; color: var(--zn-text); font-variant-numeric: tabular-nums; }
+body.theme-zenna #screen .zn-pf-big-lab { font-family: var(--zn-mono); font-size: var(--fs-sm); line-height: 1.5; color: var(--zn-muted); }
+body.theme-zenna #screen .zn-pf-disc-list { margin-top: 14px; }
+body.theme-zenna #screen .zn-pf-disc { gap: 12px; padding: 15px 0; }
+body.theme-zenna #screen .zn-pf-disc:first-child { border-top: 1px solid var(--zn-filet); }
+body.theme-zenna #screen .zn-disc-sq { width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex: 0 0 auto; }
+body.theme-zenna #screen .zn-pf-disc-n { flex: 1; min-width: 0; font-size: var(--fs-md); color: var(--zn-text); }
+body.theme-zenna #screen .zn-pf-disc-v { font-size: var(--fs-xl); color: var(--zn-text); font-variant-numeric: tabular-nums; }
+body.theme-zenna #screen .zn-pf-disc-h { flex: 0 0 64px; text-align: right; font-family: var(--zn-mono); font-size: var(--fs-xs); color: var(--zn-faint2); font-variant-numeric: tabular-nums; }
+body.theme-zenna #screen .zn-pf-note-mono { margin-top: 14px; font-family: var(--zn-mono); font-size: var(--fs-micro); line-height: 1.65; color: var(--zn-faint); }
+/* Le calendrier des douze semaines, en creux. */
+body.theme-zenna #screen .zn-pf-cal { padding: 16px; margin: 0 0 12px; }
+body.theme-zenna #screen .zn-pf-cal-grid { margin-top: 14px; }
+body.theme-zenna #screen .zn-pf-cal-row { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
+body.theme-zenna #screen .zn-pf-cal-j { flex: 0 0 12px; font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint); text-align: center; }
+body.theme-zenna #screen .zn-pf-cal-c { flex: 1 1 0; min-width: 0; height: 13px; border-radius: 3px; background: var(--zn-border); display: block; }
+body.theme-zenna #screen .zn-pf-cal-leg {
+  display: flex; gap: 14px; flex-wrap: wrap; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--zn-filet);
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .06em; text-transform: uppercase; color: var(--zn-faint2);
+}
+body.theme-zenna #screen .zn-pf-cal-leg > span { display: inline-flex; align-items: center; gap: 6px; }
+body.theme-zenna #screen .zn-pf-cal-rien { background: var(--zn-border); }
+/* La régularité : le badge-anneau et ses jauges gardent leur DOM ; la carte devient un panneau. */
+body.theme-zenna #screen .zn-profil .load-card,
+body.theme-zenna #screen .zn-profil details.load-card:not(.zn-pf-fold) { border-radius: var(--r-surface); margin-bottom: 12px; }
+body.theme-zenna #screen .zn-profil .load-card::before,
+body.theme-zenna #screen .zn-profil details.load-card::before { content: none; }
+body.theme-zenna #screen .zn-profil details.load-card:not(.zn-pf-fold) > summary { padding-top: 12px; padding-bottom: 12px; }
+/* Le journal : dates en mono faible (le `#635b4a` d'avant faisait 3:1 sur le noir). */
+body.theme-zenna #screen .zn-pf-jrow { display: flex; gap: 10px; margin: 6px 0; font-size: var(--fs-sm); align-items: baseline; }
+body.theme-zenna #screen .zn-pf-jdate { flex: 0 0 82px; font-family: var(--zn-mono); font-size: var(--fs-xs); color: var(--zn-faint); font-variant-numeric: tabular-nums; }
+body.theme-zenna #screen .zn-pf-jsrc { color: var(--zn-faint2); }
+body.theme-zenna #screen .zn-pf-fit { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+body.theme-zenna #screen .zn-pf-fit .zn-btn-2 { font-size: var(--fs-xs); }
+body.theme-zenna #screen .zn-pf-fit-sub { margin: 0; font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint); }
+/* Les boutons `.btn` hérités des cartes conservées (mesure, retest, avatar) prennent le gabarit
+   secondaire du canevas, sans qu'on touche à leurs ids. */
+body.theme-zenna #screen .zn-profil .load-card .btn,
+body.theme-zenna #screen .zn-profil details.load-card .btn {
+  background: var(--zn-surface-3); border: 1px solid var(--zn-border-3); color: var(--zn-text);
+  border-radius: var(--r-control); box-shadow: none; font-family: var(--zn-mono); font-size: var(--fs-xs);
+  font-weight: 700; letter-spacing: .07em; text-transform: uppercase; min-height: 44px;
+}
+body.theme-zenna #screen .zn-profil .load-card .btn.primary { background: var(--zn-orange); border-color: var(--zn-orange); color: var(--zn-on-accent); }
+
+/* ============================================================
+   14c — PARAMÈTRES : des lignes dans des panneaux, un interrupteur à droite
+   ============================================================ */
+body.theme-zenna #screen .zn-pf-rows { padding: 2px 16px; margin: 0 0 12px; }
+body.theme-zenna #screen .zn-pf-prow { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 14px 0; border-bottom: 1px solid var(--zn-filet); }
+body.theme-zenna #screen .zn-pf-prow:last-of-type { border-bottom: none; }
+body.theme-zenna #screen .zn-pf-prow-b { flex: 1; min-width: 0; }
+body.theme-zenna #screen .zn-pf-prow-t { font-size: var(--fs-lg); font-weight: 500; color: var(--zn-text); line-height: 1.25; }
+body.theme-zenna #screen .zn-pf-ico { font-size: var(--fs-sm); }
+body.theme-zenna #screen .zn-pf-prow-s { margin-top: 5px; font-family: var(--zn-mono); font-size: var(--fs-xs); line-height: 1.45; color: var(--zn-faint2); }
+body.theme-zenna #screen .zn-pf-prow-s.ok { color: var(--zn-easy); }
+body.theme-zenna #screen .zn-pf-prow > input[type=time] { flex: 0 0 auto; width: auto; min-width: 0; margin: 0; padding: 0 10px; }
+body.theme-zenna #screen .zn-pf-nav-rows { margin: 4px 0 14px; }
+/* L'interrupteur (14c) : 52 × 30, piste bordure-3, bouton clair ; coché = orange. Le `<input>`
+   reste dans le flux au clavier (opacité 0, taille pleine), la piste est purement peinte. */
+body.theme-zenna #screen .zn-pf-switch { position: relative; flex: 0 0 52px; width: 52px; height: 30px; display: block; margin: 0; cursor: pointer; }
+body.theme-zenna #screen .zn-pf-switch > input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+body.theme-zenna #screen .zn-pf-switch > i {
+  position: absolute; inset: 0; border-radius: var(--r-pill); background: var(--zn-border-3);
+  transition: background var(--dur-trans) var(--ease);
+}
+body.theme-zenna #screen .zn-pf-switch > i::after {
+  content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--zn-text); transition: transform var(--dur-trans) var(--ease-spring);
+}
+body.theme-zenna #screen .zn-pf-switch > input:checked + i { background: var(--zn-orange); }
+body.theme-zenna #screen .zn-pf-switch > input:checked + i::after { transform: translateX(22px); }
+body.theme-zenna #screen .zn-pf-switch > input:focus-visible + i { outline: 2px solid var(--zn-orange); outline-offset: 2px; }
+/* Strava (14c / 19d) : la ligne de connexion, puis les gestes ; l'alerte « ne répond plus » est une
+   surface ambre qui dit depuis quand, jamais un bandeau qui bloque. */
+body.theme-zenna #screen .zn-pf-strava { padding: 2px 16px 14px; }
+body.theme-zenna #screen .zn-pf-strava .zn-pf-prow { border-bottom: none; }
+body.theme-zenna #screen .zn-pf-strava-btn { margin-top: 2px; }
+body.theme-zenna #screen .zn-pf-strava .zn-btn { font-size: var(--fs-xs); }
+body.theme-zenna #screen .zn-pf-strava .load-sub { font-family: var(--zn-mono); font-size: var(--fs-micro); line-height: 1.6; color: var(--zn-faint); margin-top: 8px; }
+body.theme-zenna #screen .zn-pf-strava details > summary { font-family: var(--zn-mono); font-size: var(--fs-xs); color: var(--zn-muted); }
+body.theme-zenna #screen .zn-pf-strava input[type=text] { width: 100%; min-width: 0; }
+body.theme-zenna #screen .zn-pf-strava-out {
+  background: none; border: none; padding: 12px 2px; margin-top: 2px; cursor: pointer;
+  font-family: var(--zn-mono); font-size: var(--fs-xs); color: var(--zn-muted); text-decoration: underline;
+}
+body.theme-zenna #screen .zn-pf-alerte {
+  margin: 8px 0 12px; padding: 14px 15px; border-radius: var(--r-surface);
+  border-color: color-mix(in srgb, var(--zn-warn) 45%, transparent);
+}
+body.theme-zenna #screen .zn-pf-alerte-eb {
+  display: flex; align-items: center; gap: 9px;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 700; letter-spacing: .11em;
+  text-transform: uppercase; color: var(--zn-warn);
+}
+body.theme-zenna #screen .zn-pf-alerte-p { margin-top: 9px; font-size: var(--fs-sm); line-height: 1.55; color: var(--zn-muted); }
+body.theme-zenna #screen .zn-pf-alerte-p b { color: var(--zn-text); }
+body.theme-zenna #screen .zn-pf-bad { color: var(--zn-bad); }
+body.theme-zenna #screen .zn-pf-good { color: var(--zn-easy); }
+/* « Où vivent ces données » (14b/14c) : surface à liseré teal, eyebrow teal, deux boutons. */
+body.theme-zenna #screen .zn-pf-donnees {
+  padding: 18px 18px 18px; margin: 0 0 12px; border-radius: var(--r-card);
+  border-color: color-mix(in srgb, var(--zn-good) 40%, transparent);
+}
+body.theme-zenna #screen .zn-pf-donnees-eb {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 700; letter-spacing: .13em;
+  text-transform: uppercase; color: var(--zn-good);
+}
+body.theme-zenna #screen .zn-pf-lock { font-size: var(--fs-sm); }
+body.theme-zenna #screen .zn-pf-donnees-p { margin-top: 10px; font-size: var(--fs-sm); line-height: 1.55; color: var(--zn-muted); }
+body.theme-zenna #screen .zn-pf-donnees-btns { display: flex; gap: 10px; margin-top: 16px; }
+body.theme-zenna #screen .zn-pf-donnees-btns > .zn-btn-2 { flex: 1 1 0; min-width: 0; font-size: var(--fs-xs); }
+
+/* ============================================================
+   REDUCED-MOTION — l'état final, jamais une opacité nulle
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  body.theme-zenna #screen .zn-pf-fold .zn-chev,
+  body.theme-zenna #screen .zn-pf-switch > i,
+  body.theme-zenna #screen .zn-pf-switch > i::after { transition: none; }
+}
