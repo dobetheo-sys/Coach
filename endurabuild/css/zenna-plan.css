@@ -20,4 +20,465 @@
        `zenna-today.css`, section « PRIMITIVES DU CANEVAS » ;
      · préfixer `body.theme-zenna #screen …` ; ajouter ici plutôt qu'éditer les deux feuilles
        du socle.
+
+   REFONTE 22a / 10b / 19c (05/09/2026) — CE QUE CETTE FEUILLE DÉCIDE, ET POURQUOI
+     · LES COULEURS DE PHASE. Le canevas 22a peint dév. en vert (#00a376), spé. en orange
+       (#f2481b), pic en jaune (#ffd23d) et aff. en BLEU (#3b9eff). Ce bleu est `--zn-swim`, la
+       couleur de la NATATION (Z-11 : jamais hors discipline — `check:disc` le compte) ; l'affûtage
+       prend donc `--zn-good` (teal), la teinte « validé / bon » du socle, la plus proche du bleu
+       sans en être une. Le violet est RÉSERVÉ à la récup de la courbe de volume (légende 22a) et
+       ne colore aucune phase. La phase de BASE — que le canevas n'a pas (sa prépa est tronquée,
+       R22) — prend le gris de méta `--zn-faint2` : une mise en route, neutre avant les phases
+       colorées. Les valeurs vivent en `--ph-<id>` ICI et nulle part ailleurs ; les modules posent
+       `--ph: var(--ph-<id>)` en inline et tout ce qui est coloré par la phase (segment de frise,
+       rail, filet sous les barres, jauge) lit `--ph`. Un jeton par phase, quatre lecteurs.
+     · L'ENCRE SUR LES SEGMENTS de la frise est `--zn-on-accent` partout (le canevas pose des
+       noirs à 65-70 % d'alpha) : mesuré, l'encre pleine passe AA sur les cinq fonds de phase
+       (vert 6,4 · orange 5,0 · jaune 10 · teal 7,8 · gris 6,0), un alpha ne le garantit pas.
+     · LE TEXTE « très muet » du canevas (#4c525a = `--zn-faint3`, 2,5:1) ne porte AUCUN texte
+       ici — les axes de la courbe, les chevrons et les bornes de fourchette sont en `--zn-faint`
+       (4,85 sur le fond, 4,58 sur la surface) : règle des primitives, `smoke-zenna` le mesure.
+     · LES GOUTTIÈRES : la page a 18 px (`.wrap`) ; les creux et panneaux du canevas sont à 14 px
+       du bord, donc à −4 px de la gouttière (`--zn-gutter-card` − `--zn-gutter`).
    ============================================================ */
+
+/* ---- les jetons de PHASE (voir l'en-tête) — les seuls `--*` déclarés par cette feuille, et ils
+   ne font que NOMMER des jetons du socle : aucune valeur n'est inventée. ---- */
+body.theme-zenna #screen .zn-plan {
+  --ph-base: var(--zn-faint2);
+  --ph-dev: var(--zn-easy);
+  --ph-spec: var(--zn-orange);
+  --ph-peak: var(--zn-warn);
+  --ph-taper: var(--zn-good);
+  --ph-recup: var(--zn-violet);
+  --zn-plan-bleed: calc(var(--zn-gutter-card) - var(--zn-gutter));
+}
+
+/* ============================================================
+   22a — VUE D'ENSEMBLE
+   ============================================================ */
+/* Le bandeau R22 (prépa raccourcie) : ambre sur surface, non repliable — une condition de
+   sécurité, pas une option de confort. Il remplace le `.load-card[role=note]` crème d'avant. */
+body.theme-zenna #screen .zn-r22 {
+  margin: 0 var(--zn-plan-bleed) 14px; padding: 14px 15px;
+  border-radius: var(--r-surface);
+  border-color: color-mix(in srgb, var(--zn-gold) 34%, transparent);
+}
+body.theme-zenna #screen .zn-r22-eb {
+  display: flex; align-items: center; gap: 9px;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 700;
+  letter-spacing: .11em; text-transform: uppercase; color: var(--zn-gold);
+}
+body.theme-zenna #screen .zn-r22-eb svg { flex: 0 0 auto; }
+body.theme-zenna #screen .zn-r22-p { font-size: var(--fs-xs); line-height: 1.55; color: var(--zn-muted); margin-top: 9px; }
+body.theme-zenna #screen .zn-r22-p b { color: var(--zn-text); }
+
+/* ---- LE PANNEAU « TA SAISON » — le seul bloc en surface bordée de la vue (22a : rayon 20,
+   bordure de contrôle, padding 18/20). Il porte le titre display, la phrase, la frise, puis
+   le décompte et l'avancement (R23.5) et « ce qui pilote ton plan » (R4). ---- */
+body.theme-zenna #screen .zn-saison {
+  margin: 0 var(--zn-plan-bleed) 20px; padding: 18px 20px 20px;
+  border-radius: var(--r-card); border-color: var(--zn-border-3);
+}
+body.theme-zenna #screen .zn-eyebrow {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .13em;
+  text-transform: uppercase; color: var(--zn-faint2);
+}
+body.theme-zenna #screen .zn-saison-titre { font-size: var(--fs-xl); line-height: 1.06; color: var(--zn-text); margin-top: 9px; }
+body.theme-zenna #screen .zn-saison-p { font-size: var(--fs-sm); line-height: 1.55; color: var(--zn-muted); margin-top: 9px; }
+
+/* La frise : un segment par phase, large comme sa durée, PLEIN de la couleur de la phase (le
+   thème d'avant la teintait à 13 % avec une bordure) — 22a. Les libellés longs/abrégés (R16.4)
+   restent, `smoke-typo` vérifie qu'aucun ne déborde ; le compte de semaines (`em`) quitte le
+   segment (il est dans la liste des phases juste dessous, et l'`aria-label` le porte). */
+body.theme-zenna #screen .zn-plan-frise .ph-line { display: flex; gap: 3px; margin: 17px 0 0; flex-wrap: nowrap; }
+body.theme-zenna #screen .zn-plan-frise .ph-seg {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  min-height: 34px; min-width: 48px; padding: 0 4px;
+  background: var(--ph); border: none; border-radius: 2px; box-shadow: none;
+  transform-origin: left;
+}
+body.theme-zenna #screen .zn-plan-frise .ph-seg:first-child { border-radius: 6px 2px 2px 6px; }
+body.theme-zenna #screen .zn-plan-frise .ph-seg:last-child { border-radius: 2px 6px 6px 2px; }
+body.theme-zenna #screen .zn-plan-frise .ph-seg span {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 700;
+  letter-spacing: .05em; text-transform: uppercase; color: var(--zn-on-accent);
+  overflow: visible; text-overflow: clip;
+}
+body.theme-zenna #screen .zn-plan-frise .ph-seg em { display: none; }
+/* La phase courante « respire » (R28, `.striping`) : la hachure du thème d'avant était un orange
+   translucide pensé pour un fond teinté ; sur un segment PLEIN elle devient un voile blanc. */
+body.theme-zenna #screen .zn-plan-frise .ph-seg.striping {
+  background-image: repeating-linear-gradient(-45deg, rgba(255, 255, 255, .14) 0 8px, transparent 8px 16px);
+}
+/* « Tu es ici » : le trait blanc sous le segment courant, à la position de la semaine (22a). */
+body.theme-zenna #screen .zn-ici {
+  position: absolute; bottom: -5px; width: 2px; height: 9px;
+  background: var(--zn-text); border-radius: 1px; transform: translateX(-50%);
+}
+body.theme-zenna #screen .zn-saison-note {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .06em;
+  color: var(--zn-faint); margin-top: 8px; line-height: 1.5;
+}
+/* Le décompte et l'avancement (R23.5), en pied du panneau : le J− garde `.zn-jminus` (son entrée
+   se joue sur l'opacité — jamais sur le texte, voir `znPlanSequence`) à la taille d'un titre de
+   héros, PAS les 52 px du thème d'avant : le canevas met le décompte dans l'en-tête, ici il
+   n'est plus qu'un rappel sous la frise. */
+body.theme-zenna #screen .zn-saison .zn-count-hero { margin: 16px 0 0; padding-top: 14px; border-top: 1px solid var(--zn-filet); }
+body.theme-zenna #screen .zn-saison-av { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+body.theme-zenna #screen .zn-saison .zn-jminus { font-size: var(--fs-hero); color: var(--zn-text); }
+body.theme-zenna #screen .zn-saison .zn-jminus.petit { font-size: var(--fs-xl); }
+body.theme-zenna #screen .zn-saison .zn-jminus-sub { margin-top: 0; font-size: var(--fs-micro); color: var(--zn-faint2); }
+body.theme-zenna #screen .zn-saison .zn-prog-line { margin-top: 10px; font-size: var(--fs-xs); }
+body.theme-zenna #screen .zn-saison .zn-prog-track { height: 6px; background: var(--zn-filet); }
+body.theme-zenna #screen .zn-saison .zn-prog-fill::after { content: none; }
+body.theme-zenna #screen .zn-saison-partage { margin-top: 14px; font-size: var(--fs-xs); }
+/* « Ce qui pilote ton plan » (R4) devient une rangée de pilules à nu dans le panneau — plus une
+   carte dans la carte. La couleur de la puce (`--dc`) reste : elle porte le sens du levier. */
+body.theme-zenna #screen .zn-saison .drv-band {
+  margin: 14px 0 0; padding: 14px 0 0; background: none; border: none; border-radius: 0;
+  border-top: 1px solid var(--zn-filet);
+}
+body.theme-zenna #screen .zn-saison .drv-title {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 400; letter-spacing: .13em;
+  text-transform: uppercase; color: var(--zn-faint2); margin-bottom: 10px;
+}
+body.theme-zenna #screen .zn-saison .drv-wrap { gap: 6px; }
+body.theme-zenna #screen .zn-saison .drv {
+  background: var(--zn-creux); border: 1px solid var(--zn-border-3); border-left: 3px solid var(--dc, var(--zn-orange));
+  border-radius: var(--r-pill); padding: 5px 10px 5px 8px;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 400; letter-spacing: .04em; color: var(--zn-muted);
+}
+
+/* ---- Les intertitres de section : le canevas les espace de 22 px au-dessus. ---- */
+body.theme-zenna #screen .zn-plan .zn-sec { padding-top: 4px; }
+body.theme-zenna #screen .zn-plan .zn-sec-espace { padding-top: 22px; }
+
+/* ---- LES PHASES À NU (22a) : chaque phase reste le `<details class="ph-obj">` de R6 ; le
+   sommaire porte un rail de la couleur de la phase, le nom en display, la durée et l'état,
+   l'intention. Rien n'est en carte : des lignes sur des filets. ---- */
+body.theme-zenna #screen .zn-plan-phases .ph-obj {
+  background: none; border: none; border-bottom: 1px solid var(--zn-filet); border-radius: 0;
+  padding: 0; margin: 0;
+}
+body.theme-zenna #screen .zn-plan-phases .ph-obj:last-of-type { border-bottom: none; }
+body.theme-zenna #screen .zn-plan-phases .ph-obj > summary {
+  display: flex; align-items: flex-start; gap: 11px; padding: 13px 0; min-height: 56px;
+  cursor: pointer; list-style: none;
+}
+body.theme-zenna #screen .zn-plan-phases .ph-obj > summary::-webkit-details-marker { display: none; }
+body.theme-zenna #screen .zn-rail { width: 3px; height: 30px; background: var(--ph, var(--zn-orange)); border-radius: 2px; display: block; flex: 0 0 auto; margin-top: 2px; }
+body.theme-zenna #screen .zn-ph-body { flex: 1; min-width: 0; }
+body.theme-zenna #screen .zn-ph-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+body.theme-zenna #screen .zn-ph-nom {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-md);
+  letter-spacing: -.01em; text-transform: uppercase; color: var(--zn-text);
+}
+/* La phase VALIDÉE recule (nom en muted), la phase EN COURS avance (nom un cran plus grand,
+   état en orange gras) — la hiérarchie du canevas, où seule la phase courante est blanche et
+   plus grande. */
+body.theme-zenna #screen .ph-obj.ok .zn-ph-nom { color: var(--zn-muted); }
+body.theme-zenna #screen .ph-obj.now .zn-ph-nom { font-size: var(--fs-lg); }
+body.theme-zenna #screen .zn-ph-meta { font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint); white-space: nowrap; }
+body.theme-zenna #screen .zn-ph-meta i { font-style: normal; }
+body.theme-zenna #screen .ph-obj.ok .zn-ph-meta { color: var(--zn-easy); }
+body.theme-zenna #screen .ph-obj.now .zn-ph-meta { color: var(--zn-orange); font-weight: 700; }
+body.theme-zenna #screen .zn-ph-goal { font-size: var(--fs-xs); line-height: 1.5; color: var(--zn-faint2); margin-top: 5px; }
+body.theme-zenna #screen .ph-obj.now .zn-ph-goal { color: var(--zn-muted); }
+body.theme-zenna #screen .zn-ph-track { height: 3px; border-radius: 2px; background: var(--zn-filet); overflow: hidden; margin-top: 8px; }
+body.theme-zenna #screen .zn-ph-track i { display: block; height: 100%; background: var(--ph, var(--zn-orange)); }
+body.theme-zenna #screen .zn-ph-valide { font-size: var(--fs-sm); font-weight: 700; color: var(--zn-easy); padding: 0 0 12px 14px; }
+/* Le programme de la phase (construit à l'ouverture, audit UX 11/08) : semaines et jours. */
+body.theme-zenna #screen .ph-obj .ph-prog { padding: 0 0 6px 14px; }
+body.theme-zenna #screen .zn-prog-day { font-size: var(--fs-sm); margin: 3px 0 0 4px; color: var(--zn-muted); line-height: 1.6; }
+body.theme-zenna #screen .zn-prog-day-j { display: inline-block; width: 34px; color: var(--zn-text); }
+body.theme-zenna #screen .zn-prog-day-d { display: inline-block; width: 44px; font-family: var(--zn-mono); font-size: var(--fs-xs); color: var(--zn-faint); }
+body.theme-zenna #screen .zn-plan-hint {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); line-height: 1.6; color: var(--zn-faint);
+  padding: 12px 0 0;
+}
+
+/* ---- CE QUI BORNE TON PLAN — en creux (22a) : un chiffre display à gauche, la phrase du
+   moteur à droite, une ligne par maillon, et la dernière ligne ouvre le détail. ---- */
+body.theme-zenna #screen .zn-bornes { margin: 0 var(--zn-plan-bleed) 14px; padding: 4px 16px; }
+body.theme-zenna #screen .zn-borne { display: flex; align-items: baseline; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--zn-filet); }
+body.theme-zenna #screen .zn-borne-v {
+  flex: 0 0 62px; font-size: var(--fs-lg); color: var(--zn-text); letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums; text-transform: none;
+}
+body.theme-zenna #screen .zn-borne-t { flex: 1; min-width: 0; font-size: var(--fs-xs); line-height: 1.45; color: var(--zn-faint2); }
+body.theme-zenna #screen .zn-borne-t b { color: var(--zn-text); }
+body.theme-zenna #screen .zn-bornes-more > summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  min-height: 44px; padding: 6px 0; cursor: pointer; list-style: none;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .02em; color: var(--zn-muted);
+}
+body.theme-zenna #screen .zn-bornes-more > summary::-webkit-details-marker { display: none; }
+body.theme-zenna #screen .zn-bornes-more > summary .zn-chev { color: var(--zn-faint); font-size: var(--fs-md); transition: transform var(--dur-trans) var(--ease); }
+body.theme-zenna #screen .zn-bornes-more[open] > summary .zn-chev { transform: rotate(180deg); }
+body.theme-zenna #screen .zn-bornes-more-b { padding: 0 0 10px; }
+/* Le détail (« Pourquoi ce plan », « Les décisions du moteur », les conseils) garde ses cartes
+   du socle, un peu plus serrées dans le creux. */
+body.theme-zenna #screen .zn-bornes-more-b .load-card,
+body.theme-zenna #screen .zn-bornes-more-b details.load-card { padding: 12px 14px; margin: 8px 0 0; border-radius: var(--r-surface); }
+body.theme-zenna #screen .zn-bornes-more-b .load-card::before,
+body.theme-zenna #screen .zn-bornes-more-b details.load-card::before { content: none; }
+
+/* La carte du chrono visé (RV) : une surface du socle, dans la gouttière des creux. Le titre
+   passe en display (le `h2` du socle garde sa police de conversation, ici c'est un titre). */
+body.theme-zenna #screen .zn-plan #rvCard { margin: 0 var(--zn-plan-bleed) 14px; padding: 4px 16px 14px; border-radius: var(--r-surface); }
+body.theme-zenna #screen .zn-plan #rvCard > summary { padding: 12px 0; }
+body.theme-zenna #screen .zn-plan #rvCard h2 {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-lg);
+  letter-spacing: -.01em; text-transform: uppercase; margin: 0;
+}
+body.theme-zenna #screen .zn-plan #rvCard .why { margin-bottom: 12px; }
+
+/* ---- LA COURBE DE VOLUME — en creux (22a) : barres par semaine en pourcentage du pic, la
+   semaine courante en orange (halo), le pic en jaune, les récups en violet, le reste dans le
+   gris de bordure ; deux lignes de repère (pic en pointillé jaune, départ en filet) ; le FILET
+   sous les barres reprend les couleurs de la frise ; l'axe des numéros ; la légende. ---- */
+body.theme-zenna #screen .zn-courbe { margin: 0 var(--zn-plan-bleed) 14px; padding: 16px 16px 15px; }
+body.theme-zenna #screen .zn-courbe-plot { position: relative; padding-right: 34px; margin-top: 6px; }
+body.theme-zenna #screen .zn-courbe-ymax {
+  position: absolute; right: 0; top: -6px; font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-warn);
+}
+body.theme-zenna #screen .zn-courbe-lmax {
+  position: absolute; left: 0; right: 34px; top: 0; height: 1px; display: block;
+  background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--zn-warn) 50%, transparent) 0 4px, transparent 4px 9px);
+}
+body.theme-zenna #screen .zn-courbe-zone { position: relative; height: 78px; }
+body.theme-zenna #screen .zn-courbe-lbase { position: absolute; left: 0; right: 0; height: 1px; background: var(--zn-filet); display: block; }
+body.theme-zenna #screen .zn-courbe-ybase {
+  position: absolute; right: -34px; transform: translateY(50%);
+  font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint);
+}
+body.theme-zenna #screen .zn-courbe .vol-bars {
+  display: flex; align-items: flex-end; gap: 4px; height: 78px; margin: 0; padding: 0; border: none;
+  position: relative;
+}
+body.theme-zenna #screen .zn-courbe .vb {
+  flex: 1; min-width: 3px; border: none; border-radius: 3px 3px 0 0;
+  background: var(--zn-border); transform-origin: bottom;
+}
+body.theme-zenna #screen .zn-courbe .vb.recup { background: var(--ph-recup); }
+body.theme-zenna #screen .zn-courbe .vb.pic { background: var(--ph-peak); }
+body.theme-zenna #screen .zn-courbe .vb.now { background: var(--zn-orange); box-shadow: 0 0 14px var(--zn-orange-glow); }
+/* Au-delà de 20 semaines, 4 px de gouttière mangent la moitié des barres : on resserre. */
+body.theme-zenna #screen .zn-courbe.dense .vol-bars,
+body.theme-zenna #screen .zn-courbe.dense .zn-courbe-filet,
+body.theme-zenna #screen .zn-courbe.dense .zn-courbe-axe { gap: 2px; }
+body.theme-zenna #screen .zn-courbe-filet { display: flex; gap: 4px; margin-top: 5px; }
+body.theme-zenna #screen .zn-courbe-filet i { display: block; height: 3px; border-radius: 2px; background: var(--ph, var(--zn-border)); }
+body.theme-zenna #screen .zn-courbe-axe {
+  display: flex; gap: 4px; margin-top: 6px;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .03em; color: var(--zn-faint);
+}
+body.theme-zenna #screen .zn-courbe-axe span { flex: 1; min-width: 0; text-align: center; white-space: nowrap; overflow: visible; }
+body.theme-zenna #screen .zn-courbe-axe .now { color: var(--zn-orange); font-weight: 700; }
+body.theme-zenna #screen .zn-courbe-axe .pic { color: var(--zn-warn); font-weight: 700; }
+body.theme-zenna #screen .zn-courbe-leg {
+  display: flex; gap: 14px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid var(--zn-filet);
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .04em; color: var(--zn-faint2);
+}
+body.theme-zenna #screen .zn-courbe-leg span { display: flex; align-items: center; gap: 6px; }
+body.theme-zenna #screen .zn-courbe-leg i { width: 8px; height: 8px; border-radius: 2px; display: block; background: var(--zn-border); }
+body.theme-zenna #screen .zn-courbe-leg i.now { background: var(--zn-orange); }
+body.theme-zenna #screen .zn-courbe-leg i.pic { background: var(--ph-peak); }
+body.theme-zenna #screen .zn-courbe-leg i.recup { background: var(--ph-recup); }
+body.theme-zenna #screen .zn-courbe-note { font-family: var(--zn-mono); font-size: var(--fs-micro); line-height: 1.6; color: var(--zn-faint); margin-top: 9px; }
+
+/* ---- Les replis à nu (répartition des intensités, réglages avancés) : une ligne de liste qui
+   s'ouvre, jamais une carte. ---- */
+body.theme-zenna #screen .zn-plan-fold { border-bottom: 1px solid var(--zn-filet); }
+body.theme-zenna #screen .zn-plan-fold > summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  min-height: 56px; padding: 14px 0; cursor: pointer; list-style: none;
+  font-size: var(--fs-md); font-weight: 600; color: var(--zn-text);
+}
+body.theme-zenna #screen .zn-plan-fold > summary::-webkit-details-marker { display: none; }
+body.theme-zenna #screen .zn-plan-fold > summary .zn-chev { color: var(--zn-faint); font-size: var(--fs-md); transition: transform var(--dur-trans) var(--ease); }
+body.theme-zenna #screen .zn-plan-fold[open] > summary .zn-chev { transform: rotate(180deg); }
+body.theme-zenna #screen .zn-plan-fold-b { padding: 0 0 14px; }
+body.theme-zenna #screen .zn-plan-fold-b .load-card { background: none; border: none; padding: 0; margin: 0; }
+body.theme-zenna #screen .zn-plan-fold-b .load-card::before { content: none; }
+body.theme-zenna #screen .zn-plan-folds { margin-top: 4px; }
+
+/* ---- SEMAINE EN COURS — une ligne à nu, rail orange, qui ouvre 📅 Semaine (22a). C'est un
+   `<button>` : reset du bouton, gabarit de `.zn-row`. ---- */
+body.theme-zenna #screen button.zn-wk-card {
+  width: 100%; background: none; border: none; text-align: left; cursor: pointer;
+  color: inherit; font: inherit; margin: 0; padding: 13px 0; min-height: 60px; gap: 12px;
+  display: flex; align-items: center; border-radius: 0;
+}
+body.theme-zenna #screen button.zn-wk-card:focus-visible { outline: 2px solid var(--zn-orange); outline-offset: 2px; }
+body.theme-zenna #screen button.zn-wk-card:active { transform: none; }
+body.theme-zenna #screen .zn-wk-card .zn-rail { flex: 0 0 3px; height: 34px; margin-top: 0; background: var(--zn-orange); }
+body.theme-zenna #screen .zn-wk-body { flex: 1; min-width: 0; }
+body.theme-zenna #screen .zn-wk-card .zn-wk-title { font-size: var(--fs-hand); transform: none; }
+body.theme-zenna #screen .zn-wk-card .zn-wk-range { margin-top: 5px; text-transform: none; letter-spacing: .02em; color: var(--zn-faint2); }
+body.theme-zenna #screen .zn-wk-card .zn-chev { font-size: var(--fs-lg); }
+
+/* ---- Les gestes sur le plan : le plan entier à un bouton (U15), les exports, puis les gestes
+   de compte derrière un repli (R23.12b). ---- */
+body.theme-zenna #screen .zn-plan-actions { display: flex; flex-direction: column; gap: 8px; margin: 20px 0 0; }
+body.theme-zenna #screen .zn-plan-actions-2 { display: flex; gap: 8px; flex-wrap: wrap; }
+body.theme-zenna #screen .zn-plan-actions-2 > * { flex: 1 1 40%; }
+body.theme-zenna #screen .zn-plan-actions .zn-btn-2,
+body.theme-zenna #screen .zn-plan-reglages .zn-btn-2 { font-size: var(--fs-xs); text-align: center; }
+body.theme-zenna #screen .zn-plan-fine { font-family: var(--zn-mono); font-size: var(--fs-micro); line-height: 1.6; color: var(--zn-faint); margin: 12px 0 4px; }
+body.theme-zenna #screen .zn-plan-reglages > summary { font-family: var(--zn-mono); font-size: var(--fs-xs); font-weight: 400; color: var(--zn-muted); }
+body.theme-zenna #screen .zn-plan-reglages { border-bottom: none; }
+
+/* La vue complète (« Voir les N semaines ») garde les grilles du socle (`.gw`, Semaine les
+   possède) ; on n'y touche pas. */
+
+/* ============================================================
+   10b — PRÉDICTION
+   ============================================================ */
+body.theme-zenna #screen .zn-pred > * { margin-left: var(--zn-plan-bleed); margin-right: var(--zn-plan-bleed); }
+/* Le panneau du temps total : à gauche (le socle centrait), grand chiffre BLANC, puis la
+   fourchette DESSINÉE — une barre, deux bornes. */
+body.theme-zenna #screen .zn-pred-hero { text-align: left; padding: 17px 16px; margin-bottom: 12px; border-radius: var(--r-card); border-color: var(--zn-border-2); }
+body.theme-zenna #screen .zn-pred-eb,
+body.theme-zenna #screen .zn-pred-eb2 {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .13em;
+  text-transform: uppercase; color: var(--zn-faint2);
+}
+body.theme-zenna #screen .zn-pred-eb2 { letter-spacing: .11em; }
+body.theme-zenna #screen .zn-pred-hero .zn-pred-num { font-size: var(--fs-num); color: var(--zn-text); margin: 11px 0 0; text-align: left; }
+body.theme-zenna #screen .zn-pred-hero .zn-pred-num .zn-pred-hi { font-size: inherit; color: var(--zn-text); }
+body.theme-zenna #screen .zn-pred-range { position: relative; height: 34px; margin-top: 18px; }
+body.theme-zenna #screen .zn-pr-track { position: absolute; left: 0; right: 0; top: 15px; height: 3px; background: var(--zn-border); border-radius: 2px; display: block; }
+body.theme-zenna #screen .zn-pr-band { position: absolute; display: block; border-radius: 6px; transform-origin: left; }
+body.theme-zenna #screen .zn-pr-band.cible { top: 11px; height: 11px; background: linear-gradient(90deg, var(--zn-orange), var(--zn-orange-2)); }
+/* La forme d'aujourd'hui, sous la cible : une bande pâle, plus fine — elle situe le gain. */
+body.theme-zenna #screen .zn-pr-band.now { top: 13px; height: 7px; background: var(--zn-border-3); border-radius: 4px; }
+body.theme-zenna #screen .zn-pr-tick { position: absolute; top: 4px; width: 2px; height: 25px; background: var(--zn-text); border-radius: 1px; display: block; transform: translateX(-50%); }
+/* Les bornes écrites : la basse à gauche de son trait, la haute à droite du sien. */
+body.theme-zenna #screen .zn-pr-lab {
+  position: absolute; top: 4px; transform: translateX(calc(-100% - 7px));
+  font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint); white-space: nowrap;
+}
+body.theme-zenna #screen .zn-pr-lab.r { transform: translateX(7px); }
+body.theme-zenna #screen .zn-pred-p { font-size: var(--fs-xs); line-height: 1.5; color: var(--zn-faint2); margin-top: 10px; }
+
+/* « Où passe le temps » : une ligne par discipline — puce de la discipline (`--disc`, l'accent
+   DISC[*].ac), nom, fourchette ; puis la barre (part du temps total) et la référence. */
+body.theme-zenna #screen .zn-pred-split { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--zn-border); }
+body.theme-zenna #screen .zn-pred-split .zn-pd-row { align-items: baseline; gap: 9px; padding: 12px 0 0; border: none; }
+body.theme-zenna #screen .zn-pd-dot { width: 7px; height: 7px; border-radius: 2px; background: var(--disc, var(--zn-orange)); display: block; flex: 0 0 auto; align-self: center; }
+body.theme-zenna #screen .zn-pred-split .zn-pd-n { font-size: var(--fs-xs); letter-spacing: .03em; color: var(--zn-muted); }
+body.theme-zenna #screen .zn-pred-split .zn-pd-v { font-size: var(--fs-xs); color: var(--zn-text); }
+body.theme-zenna #screen .zn-pred-split .zn-pd-v .zn-pred-hi { font-weight: 700; color: var(--zn-text); }
+body.theme-zenna #screen .zn-pd-bar { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding-bottom: 13px; border-bottom: 1px solid var(--zn-filet); }
+body.theme-zenna #screen .zn-pd-bar:last-of-type { border-bottom: none; padding-bottom: 0; }
+body.theme-zenna #screen .zn-pd-track { flex: 1; height: 7px; border-radius: 4px; background: var(--zn-filet); overflow: hidden; }
+body.theme-zenna #screen .zn-pd-fill { display: block; height: 100%; background: var(--disc, var(--zn-orange)); border-radius: 4px; }
+body.theme-zenna #screen .zn-pd-ref { flex: 0 0 78px; text-align: right; font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint2); white-space: nowrap; }
+body.theme-zenna #screen .zn-pred-split > .zn-pred-fine,
+body.theme-zenna #screen .zn-pred-gains .zn-pred-fine { display: block; font-family: var(--zn-mono); font-size: var(--fs-micro); line-height: 1.6; color: var(--zn-faint); margin-top: 13px; }
+
+/* Les deux colonnes aujourd'hui / jour J : le gain en VERT (`--zn-easy`, 10b) et non plus en
+   cyan — c'est la couleur « validé / bon » du canevas. */
+body.theme-zenna #screen .zn-pred-cols { gap: 8px; margin: 0 var(--zn-plan-bleed) 12px; }
+body.theme-zenna #screen .zn-pred-col { padding: 14px 15px; border-radius: var(--r-surface); }
+body.theme-zenna #screen .zn-pred-col.proj { border-color: color-mix(in srgb, var(--zn-easy) 34%, transparent); background: var(--zn-surface); }
+body.theme-zenna #screen .zn-pc-lab { font-size: var(--fs-micro); letter-spacing: .09em; text-transform: uppercase; color: var(--zn-faint2); line-height: 1.4; }
+body.theme-zenna #screen .zn-pred-col.proj .zn-pc-lab { color: var(--zn-easy); }
+body.theme-zenna #screen .zn-pc-date { font-size: var(--fs-micro); color: var(--zn-faint); margin: 4px 0 8px; }
+body.theme-zenna #screen .zn-pc-t { font-size: var(--fs-hand); color: var(--zn-muted); }
+body.theme-zenna #screen .zn-pred-col.proj .zn-pc-t { color: var(--zn-easy); }
+body.theme-zenna #screen .zn-pred-delta { color: var(--zn-easy); text-align: left; margin: 0 var(--zn-plan-bleed) 12px; }
+body.theme-zenna #screen .zn-pred-nomotif { padding: 13px 15px; font-size: var(--fs-xs); line-height: 1.55; color: var(--zn-muted); margin-bottom: 12px; }
+
+/* « Ce que tu gagnes » : le panneau des références projetées — une carte en creux par
+   référence (nom display, pastille du delta, avant → APRÈS en vert, jauge de progression). */
+body.theme-zenna #screen .zn-pred-gains { padding: 16px; margin-bottom: 12px; border-radius: var(--r-card); border-color: var(--zn-border-2); }
+body.theme-zenna #screen .zn-pred-gains-h { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+body.theme-zenna #screen .zn-pred-gains-eb { font-family: var(--zn-mono); font-size: var(--fs-micro); letter-spacing: .13em; text-transform: uppercase; color: var(--zn-easy); font-weight: 700; }
+body.theme-zenna #screen .zn-pred-gains-d { font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint2); }
+body.theme-zenna #screen .zn-pred-gains-t { font-size: var(--fs-hand); line-height: 1.15; color: var(--zn-text); margin-top: 9px; }
+body.theme-zenna #screen .zn-pred-gains .zn-pred-why { background: none; border: none; padding: 0; margin: 0; }
+body.theme-zenna #screen .zn-pred-gains .zn-pred-why::before { content: none; }
+body.theme-zenna #screen .zn-pred-gains .zn-pred-why > summary {
+  display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: 8px 0 0;
+  cursor: pointer; list-style: none; font-family: var(--zn-mono); font-size: var(--fs-xs); color: var(--zn-muted);
+}
+body.theme-zenna #screen .zn-pred-gains .zn-pred-why > summary::-webkit-details-marker { display: none; }
+body.theme-zenna #screen .zn-pred-gains .zn-pred-why > summary::after { content: "⌄"; color: var(--zn-faint); font-size: var(--fs-md); transition: transform var(--dur-trans) var(--ease); }
+body.theme-zenna #screen .zn-pred-gains .zn-pred-why[open] > summary::after { transform: rotate(180deg); }
+body.theme-zenna #screen .zn-gain {
+  display: block; padding: 14px 15px; margin-top: 8px; border: 1px solid var(--zn-border);
+  border-radius: var(--r-surface); background: var(--zn-creux);
+}
+body.theme-zenna #screen .zn-gain-h { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+body.theme-zenna #screen .zn-gain .kv-k {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-md);
+  letter-spacing: .02em; text-transform: uppercase; color: var(--zn-text); max-width: none;
+}
+body.theme-zenna #screen .zn-gain-chip {
+  font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 700; color: var(--zn-easy);
+  background: color-mix(in srgb, var(--zn-easy) 12%, transparent); border: 1px solid color-mix(in srgb, var(--zn-easy) 34%, transparent);
+  border-radius: var(--r-pill); padding: 3px 8px; white-space: nowrap;
+}
+body.theme-zenna #screen .zn-gain .kv-v { display: flex; align-items: baseline; gap: 9px; margin-top: 10px; text-align: left; font-weight: 400; }
+body.theme-zenna #screen .zn-gain-av { font-family: var(--zn-mono); font-size: var(--fs-sm); color: var(--zn-faint); }
+body.theme-zenna #screen .zn-gain-arrow { color: var(--zn-faint); font-size: var(--fs-sm); }
+body.theme-zenna #screen .zn-gain-ap {
+  font-family: var(--zn-display); font-weight: var(--zn-display-weight); font-size: var(--fs-hero);
+  line-height: 1; color: var(--zn-easy); font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 22px color-mix(in srgb, var(--zn-easy) 45%, transparent);
+}
+body.theme-zenna #screen .zn-gain-track { position: relative; height: 5px; border-radius: 3px; background: var(--zn-filet); margin-top: 11px; overflow: hidden; }
+body.theme-zenna #screen .zn-gain-base { position: absolute; left: 0; top: 0; bottom: 0; background: var(--zn-border-3); display: block; }
+body.theme-zenna #screen .zn-gain-fill { position: absolute; top: 0; bottom: 0; background: var(--zn-easy); display: block; transform-origin: left; }
+/* P6 — le pacing ne se projette jamais : la règle, dite à l'athlète, en creux. */
+body.theme-zenna #screen .zn-pred-p6 { display: flex; gap: 10px; padding: 13px 15px; margin-bottom: 12px; font-size: var(--fs-xs); line-height: 1.55; color: var(--zn-muted); }
+body.theme-zenna #screen .zn-pred-p6 svg { flex: 0 0 auto; margin-top: 1px; color: var(--zn-warn); }
+
+/* ============================================================
+   19c — PRÉDICTION IMPOSSIBLE
+   ============================================================ */
+body.theme-zenna #screen .zn-pred-none { padding: 18px 20px 20px; margin: 0 var(--zn-plan-bleed) 18px; border-radius: var(--r-card); border-color: var(--zn-border-3); }
+body.theme-zenna #screen .zn-pred-none-eb {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--zn-mono); font-size: var(--fs-micro); font-weight: 700; letter-spacing: .13em;
+  text-transform: uppercase; color: var(--zn-warn);
+}
+body.theme-zenna #screen .zn-pred-none-eb svg { flex: 0 0 auto; }
+body.theme-zenna #screen .zn-pred-none-t { font-size: var(--fs-xl); line-height: 1.1; color: var(--zn-text); margin-top: 13px; }
+body.theme-zenna #screen .zn-pred-none-p { font-size: var(--fs-sm); line-height: 1.55; color: var(--zn-muted); margin-top: 12px; }
+body.theme-zenna #screen .zn-pred-none-a { margin-top: 16px; }
+body.theme-zenna #screen button.zn-pred-none-row {
+  width: 100%; background: none; border: none; border-bottom: 1px solid var(--zn-filet); text-align: left;
+  cursor: pointer; color: inherit; font: inherit; margin: 0; padding: 13px 0; border-radius: 0;
+  display: flex; align-items: center; gap: 12px; min-height: 56px;
+}
+body.theme-zenna #screen button.zn-pred-none-row:last-child { border-bottom: none; }
+body.theme-zenna #screen button.zn-pred-none-row:focus-visible { outline: 2px solid var(--zn-orange); outline-offset: 2px; }
+body.theme-zenna #screen button.zn-pred-none-row > div { flex: 1; min-width: 0; }
+body.theme-zenna #screen .zn-pred-none-k { font-size: var(--fs-md); font-weight: 600; color: var(--zn-text); }
+body.theme-zenna #screen .zn-pred-none-v { font-family: var(--zn-mono); font-size: var(--fs-micro); color: var(--zn-faint2); margin-top: 4px; line-height: 1.5; }
+body.theme-zenna #screen .zn-pred-none-row .zn-chev { font-size: var(--fs-lg); }
+
+/* ============================================================
+   MOUVEMENT — au tempo `--beat` du socle
+   ============================================================
+   Les barres de la courbe (22a) MONTENT (scaleY, échelonnées), les barres de la prédiction (10b)
+   GRANDISSENT depuis la gauche (scaleX). Jamais sur l'opacité d'un TEXTE : `smoke-zenna` refuse
+   tout contenu resté invisible, et `smoke-feasibility` compare des empreintes de texte. */
+@keyframes zn-plan-gy { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes zn-plan-gx { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+body.theme-zenna #screen .zn-courbe .vb { animation: zn-plan-gy calc(var(--beat) * 3) var(--ease-enter) both; animation-delay: calc(var(--beat) * 0.25 * var(--i, 0)); }
+body.theme-zenna #screen .zn-grow { animation: zn-plan-gx calc(var(--beat) * 4) var(--ease-enter) both; animation-delay: calc(var(--beat) * (1 + var(--i, 0))); }
+body.theme-zenna #screen .zn-pr-band { animation: zn-plan-gx calc(var(--beat) * 4) var(--ease-enter) both; animation-delay: var(--beat); }
+@media (prefers-reduced-motion: reduce) {
+  body.theme-zenna #screen .zn-courbe .vb,
+  body.theme-zenna #screen .zn-grow,
+  body.theme-zenna #screen .zn-pr-band { animation: none; transform: none; }
+  body.theme-zenna #screen .zn-bornes-more > summary .zn-chev,
+  body.theme-zenna #screen .zn-plan-fold > summary .zn-chev,
+  body.theme-zenna #screen .zn-pred-gains .zn-pred-why > summary::after { transition: none; }
+}
