@@ -133,6 +133,12 @@ body.theme-zenna #screen .bq-releve-range { font-family: var(--zn-mono); font-si
 body.theme-zenna #screen .period-line {
   display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 10px 0;
   border-bottom: 1px dashed var(--zn-border-2);
+  /* `zenna-tabs.css` pose sur ce même sélecteur `opacity:0` + `animation: zn-rise … forwards` —
+     une entrée en cascade qui ne coupe rien sous `prefers-reduced-motion` (aucune règle ne la
+     cible par NOM). `forwards` finit toujours à opacité 1 (rien ne reste invisible), mais le
+     mouvement, lui, jouerait quand même : plus simple et plus sûr de le neutraliser ici, une
+     bonne fois, pour un relevé qui n'a pas besoin de cette flourish (22c le montre statique). */
+  opacity: 1; transform: none; animation: none;
 }
 body.theme-zenna #screen .period-line .pl-n { font-size: var(--fs-xs); font-weight: 600; color: var(--zn-text); }
 body.theme-zenna #screen .period-line .pl-n .bq-count { font-family: var(--zn-mono); font-weight: 400; color: var(--zn-faint2); font-size: var(--fs-micro); margin-left: 3px; }
@@ -189,9 +195,15 @@ body.theme-zenna #screen .bq-block-head + .choice-lab { margin-top: 0; }
 /* La rangée des goûts : les VRAIS sachets, en carte verticale (3b) — on choisit un produit
    qu'on voit, pas une pastille. Cible 44 px conservée (U4). */
 body.theme-zenna #screen .choice-row { display: flex; gap: 7px; flex-wrap: wrap; }
-body.theme-zenna #screen .choice-row.avec-sachet { gap: 7px; flex-wrap: nowrap; }
+/* Les QUATRE sachets réels visent une largeur PARTAGÉE fixe (23 % — quatre par ligne pile),
+   jamais `flex:1` : le cinquième choix du groupe (« peu d'importance », un texte SANS sachet,
+   `choixHTML` ne lui donne pas la classe `a-sachet`) partage la même ligne flexible et
+   `flex:1` sur un lot hétérogène de formes distribuait la largeur au prorata du CONTENU —
+   mesuré, la pilule texte s'étirait et chevauchait la rangée de sachets. Elle glisse
+   proprement à la ligne suivante. */
+body.theme-zenna #screen .choice-row.avec-sachet { gap: 7px; flex-wrap: wrap; }
 body.theme-zenna #screen .choice.a-sachet {
-  flex: 1; min-width: 0; flex-direction: column; align-items: center; gap: 6px;
+  flex: 0 0 calc(23% - 6px); min-width: 0; flex-direction: column; align-items: center; gap: 6px;
   padding: 10px 6px 10px; border-radius: var(--r-surface); min-height: 44px;
   background: var(--zn-surface); border: 1.5px solid var(--zn-border-2);
 }
