@@ -218,7 +218,19 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
   await page.evaluate(() => { const b = [...document.querySelectorAll("#ebTabbar .tabbtn")].find((x) => /Plan/.test(x.innerText)); if (b) b.click(); });
   await page.waitForTimeout(900);
   ok(!(await page.evaluate(() => /score d’audit|score d'audit/i.test(document.body.innerText || ""))), "U3 — le score d'audit n'est pas montré à l'athlète");
-  ok(await page.evaluate(() => /décisions du moteur \(\d+\)/.test(document.body.innerText || "")), "U3 — les décisions du moteur restent affichées");
+  // REFONTE 22a (06/09/2026) — le compte des décisions vit dans le creux « Ce qui borne ton
+  // plan » (« N décisions · M limites connues », dépliable), et le détail « Les décisions du
+  // moteur (N) » derrière lui. Le critère lisait un LIBELLÉ ; il lit la PROPRIÉTÉ (règle 17) :
+  // un compte non nul est affiché, et le détail #motorDecisions existe avec autant d'entrées.
+  const dec = await page.evaluate(() => {
+    const t = document.body.innerText || "";
+    const m = t.match(/(\d+) décisions?\b/);
+    const det = document.querySelector("#motorDecisions");
+    // Le détail liste une entrée par décision, plus « Limites connues » et « Réparations »
+    // quand elles existent : on ne compte que les entrées qui portent une décision (.exp-val).
+    return { n: m ? +m[1] : 0, items: det ? det.querySelectorAll("li .exp-val").length : -1 };
+  });
+  ok(dec.n > 0 && dec.items === dec.n, "U3 — les décisions du moteur restent affichées (" + dec.n + " annoncées, " + dec.items + " listées)");
 
   await page.evaluate(() => { const b = [...document.querySelectorAll("#ebTabbar .tabbtn")].find((x) => /Semaine/.test(x.innerText)); if (b) b.click(); });
   await page.waitForTimeout(900);

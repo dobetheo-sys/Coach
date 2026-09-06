@@ -753,7 +753,7 @@ const _MOTS = ["", "une", "deux", "trois", "quatre"];
  * `.zn-pred-hi` (la chorégraphie compte jusqu'à la borne BASSE puis pose la haute — arbitrage
  * du fondateur, 12/08/2026), `.zn-pred-col`/`.zn-pred-delta` (révélation), `.zn-pd-row` /
  * `.zn-pd-v[data-from]` (compte à rebours par discipline, visibles d'office — R28), le
- * `<details class="zn-pred-why">` (OUVERT par défaut depuis 10b) avec ses lignes `.kv` (R30 : la pace
+ * `<details class="zn-pred-why">` (FERMÉ par défaut — brief du 12/08 gardé par R28 ; 10b ne le montre pas) avec ses lignes `.kv` (R30 : la pace
  * projetée porte ses secondes et se lit après la flèche).
  */
 function predictionViewHTML(plan, prPrecalcule) {
@@ -875,7 +875,7 @@ function predictionViewHTML(plan, prPrecalcule) {
         + '<div class="zn-pred-gains-t zn-display">' + mot + " référence" + (n > 1 ? "s" : "") + ",<br>" + mot + " progression" + (n > 1 ? "s" : "") + "</div>"
         // OUVERT par défaut (10b montre les trois cartes de référence à nu) : les bancs qui le
         // lisent posent `open = true` eux-mêmes, et le repli reste possible d'un geste.
-        + '<details class="zn-pred-why" open><summary>Pourquoi cette projection</summary><div>';
+        + '<details class="zn-pred-why"><summary>Pourquoi cette projection</summary><div>';
       R.forEach(([k, av, ap], i) => {
         const M = _REF_META[k];
         const avNum = k === "ftp" ? (av ? parseFloat(av) : null) : _secOf(av);
