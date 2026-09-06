@@ -216,6 +216,11 @@ body.theme-zenna #screen .choice.a-sachet.sel { background: color-mix(in srgb, v
 body.theme-zenna #screen .choice.a-sachet.sel .zn-sachet { filter: drop-shadow(0 3px 10px rgba(242, 72, 27, .35)); }
 body.theme-zenna #screen .choice.a-sachet span { font-size: var(--fs-micro); text-align: center; line-height: 1.25; }
 body.theme-zenna #screen .choice.a-sachet.sel span { color: var(--zn-orange); font-weight: 700; }
+body.theme-zenna #screen .bq-flavor-caption {
+  margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--zn-filet);
+  font-size: var(--fs-sm); line-height: 1.5; color: var(--zn-muted);
+}
+body.theme-zenna #screen .bq-flavor-caption b { color: var(--zn-text); }
 
 /* Format : un choix, pas un produit à voir — la pilule reste la bonne forme. */
 body.theme-zenna #screen .choice {

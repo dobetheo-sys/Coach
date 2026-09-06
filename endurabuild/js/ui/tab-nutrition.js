@@ -12,7 +12,7 @@ import {
 } from "../shop-order.js";
 import { planEndDate } from "./session-life.js";
 import { sachetHTML, ATOUTS_GEL } from "./sachet.js";
-import { GEL_ZENNA, SACHET_ARGUMENTS } from "../shop-catalog.js";
+import { GEL_ZENNA, SACHET_ARGUMENTS, saveurGel } from "../shop-catalog.js";
 // R6 — le journal alimentaire (Open Food Facts + CSV) est RETIRÉ sur décision
 // utilisateur : trop de saisie pour trop peu de valeur ; l'onglet reste
 // estimations + ravitaillement. (Les données foodLog éventuelles restent
@@ -283,6 +283,20 @@ let shopConfirmCancel = false; // bandeau « Résilier à l’échéance ? » �
 // et un bouton la rouvre (consulter reste gratuit).
 let shopExpanded = false;
 
+/**
+ * LA LÉGENDE DE SAVEUR (3b) — la maquette porte, sous la rangée de sachets, un paragraphe de
+ * quatre phrases par goût (« Citron — goût naturel et léger… »). Ce texte n'existe nulle part
+ * dans le moteur : l'écrire pour les quatre saveurs serait fabriquer du contenu que
+ * `GEL_ZENNA` ne porte pas, exactement ce que ce dépôt interdit (jamais un chiffre — ou ici
+ * une phrase — de la maquette recopié en dur sans source). Ce qui EXISTE déjà et est
+ * VÉRIFIABLE, c'est l'arôme (`s.arome`, « Arôme naturel » / « Sans arôme ») : la légende s'y
+ * limite. « peu d'importance » n'a pas de sachet et n'a donc pas de légende non plus.
+ */
+function flavorCaptionHTML(flavor) {
+  const s = saveurGel(flavor);
+  if (!s) return "";
+  return '<div class="bq-flavor-caption"><b>' + esc(s.libelle) + "</b> — " + esc(s.arome) + "</div>";
+}
 /** Un groupe de choix mutuellement exclusifs — libellé RELIÉ au groupe, sélection ANNONCÉE. */
 function choixHTML(libelle, attr, options, choisi, vignette) {
   const id = "choix-" + attr;
@@ -506,6 +520,7 @@ function shopSubscriptionCardHTML(plan, today) {
     // groupe parle.
     + '<span class="choice-lab" style="margin:0">Saveur</span><span class="bq-block-hint zn-mono">4 au lancement</span></div>'
     + choixHTML("Goût préféré", "flavor", FLAVOR_OPTIONS, flavorSel, (f) => sachetHTML(f, "vignette", 52))
+    + flavorCaptionHTML(flavorSel)
     + "</div>";
   const blocFormat = '<div class="bq-block">'
     + '<div class="bq-block-head"><span class="bq-block-num zn-mono">3</span><span class="choice-lab" style="margin:0">Format et départ</span></div>'
