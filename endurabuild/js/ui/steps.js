@@ -1004,7 +1004,10 @@ function renderSportPick(){
   // génération est pire que de ne pas le proposer.
   const known = (globalThis.EBV2 && globalThis.EBV2.sports) ? Object.keys(globalThis.EBV2.sports) : null;
   const list = Object.entries(SPORTS).filter(([k])=>!known||known.includes(k));
-  let html='<div class="card welcome"><div class="w-tri">🏁</div><h2>Quel plan veux-tu<br><em>construire ?</em></h2>'
+  // REFONTE 4a (06/09/2026) — l'espace AVANT le <br> compte : sans lui, .textContent perd le
+  // mot de liaison à la coupure de ligne (« Quel plan veux-tuconstruire ? »), lu tel quel par
+  // tout lecteur d'écran et par smoke-r4. Le rendu visuel ne change pas (fin de ligne).
+  let html='<div class="card welcome"><div class="w-tri">🏁</div><h2>Quel plan veux-tu <br><em>construire ?</em></h2>'
     +'<p>Un moteur de raisonnement par sport — choisis le tien, le questionnaire s\'adapte.</p>'
     // R11.1 — les trois faits sont DÉRIVÉS, jamais recopiés du canevas : `SOCLE_IDS.length` est
     // le compte réel d'étapes du socle gratuit (la liste que `socleComplet()` consulte), et
