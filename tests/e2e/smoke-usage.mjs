@@ -668,6 +668,22 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
     ok(!st.err && st.centre[3] > 200 && st.centre[0] > 180 && st.centre[1] > 170,
       "R24.4 — la plaque claire porte l'avatar (centre " + (st.centre || []).join(",") + ") : lisible sur photo sombre");
   }
+
+  // Chantier partage, étape A (07/09/2026) — « Partager mon avancement » (image du plan) suit
+  // désormais le MÊME mécanisme que les 6 visuels ci-dessus (partage natif, repli
+  // téléchargement) au lieu de télécharger systématiquement. Même patron de vérification que
+  // smoke-r4.mjs pour #ebShareStory : en headless, `navigator.share` n'existe pas, donc le clic
+  // doit retomber sur un VRAI événement de téléchargement — la preuve que ce bouton est
+  // maintenant câblé sur le chemin de partage, et pas resté sur son ancien téléchargement direct.
+  await page.click('#ebTabbar .tabbtn[data-tab="general"]').catch(() => {});
+  await page.waitForTimeout(600);
+  const dlPlan = page.waitForEvent("download", { timeout: 8000 }).catch(() => null);
+  await page.click("#expPng");
+  const downloadPlan = await dlPlan;
+  ok(downloadPlan !== null, "Étape A — « Partager mon avancement » retombe sur un téléchargement réel (headless, navigator.share absent)");
+  if (downloadPlan) ok(/enduraBuild-.*\.png$/.test(downloadPlan.suggestedFilename()),
+    "Étape A — fichier PNG produit, même nom qu'avant (" + downloadPlan.suggestedFilename() + ")");
+
   await ctx.close();
 }
 

@@ -20,7 +20,7 @@ import { SPORTS } from "../config.js";
 import { $, S, ebSave, esc, fmtDay, todayISO } from "../state.js";
 import { curSteps, renderStep, reset, evalRules, rulesGrouped} from "./steps.js";
 import { driverBand, downloadPlan, decisionsCardHTML, whyPlanCardHTML, sessDetailsHTML, predictionViewHTML, journaliserProjection, intensityCardHTML, truncatedBannerHTML } from "./plan-view.js";
-import { exportICS, exportJSON, exportPNG } from "../export.js";
+import { exportICS, exportJSON, sharePlanImage } from "../export.js";
 
 // REFONTE 22a (05/09/2026) — LES BRIQUES DE LA VUE D'ENSEMBLE.
 //
@@ -679,7 +679,10 @@ export function renderTabPlanGeneral(plan) {
   $("prn").onclick = () => downloadPlan();
   $("expIcs").onclick = () => exportICS();
   $("expJson").onclick = () => exportJSON();
-  $("expPng").onclick = () => exportPNG();
+  // Chantier partage, étape A (07/09/2026) — même mécanisme que les 6 autres visuels du
+  // produit : partage natif si le navigateur le permet, repli téléchargement sinon
+  // (`sharePlanImage`, `export.js`). Avant cette étape, ce bouton téléchargeait directement.
+  $("expPng").onclick = () => sharePlanImage();
   $("restartBtn").onclick = () => reset();
   document.querySelectorAll("#screen [data-swap]").forEach((b) => {
     b.onclick = (e) => {

@@ -96,6 +96,11 @@ async function _ebFontsPretes(ms=1500){
   try{await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,ms))]);}catch(e){}
 }
 
+// Chantier partage, étape A (07/09/2026) — l'image du plan garde son PROPRE format (1080×1350,
+// bilan de saison : frise, courbe de volume, prédiction, avancement) : elle n'entre pas dans
+// IMG_FORMATS ci-dessous, qui ne nomme que les deux formats réutilisables par un visuel de
+// séance/avatar (story/carré). Forcer ce contenu-là dans un des deux serait un CHANGEMENT de
+// visuel, que cette étape s'interdit explicitement.
 async function exportPNG(){try{
   await _ebFontsPretes();
   const a=S.answers,plan=buildPlan(a),v2=plan._v2||{};
@@ -127,7 +132,12 @@ async function exportPNG(){try{
     y+=40;x.fillStyle="rgba(255,255,255,.35)";x.fillRect(60,y,W-120,26);x.fillStyle="#00c98d";x.fillRect(60,y,(W-120)*pg.pctLoad/100,26);
   }catch(e){}}
   _ebTxt(x,"Généré par Zenna — plan raisonné, chaque décision justifiée",60,H-60,{size:26,color:"rgba(255,255,255,.85)"});
-  c.toBlob(b=>{const u=URL.createObjectURL(b);const l=document.createElement("a");l.href=u;l.download="enduraBuild-"+(S.sport||"plan")+".png";document.body.appendChild(l);l.click();setTimeout(()=>{document.body.removeChild(l);URL.revokeObjectURL(u);},200);},"image/png");
+  // Chantier partage, étape A — ne dessine et n'encode plus le PNG QUE : la diffusion (partage
+  // natif ou repli téléchargement) est désormais le rôle de `sharePlanImage`/`shareOrDownloadPNG`
+  // ci-dessous, le même point unique que les 6 autres visuels du produit (R11.1). Avant cette
+  // étape, cette fonction téléchargeait elle-même le PNG sans jamais proposer le partage natif —
+  // seul bouton "Partager…" du produit à ne pas partager.
+  return new Promise(res=>c.toBlob(res,"image/png"));
 }catch(e){console.warn("exportPNG",e);}}
 
 // ===== R4-3 : image STORY 1080×1920 (9:16) post-séance + partage natif =====
@@ -136,6 +146,11 @@ async function exportPNG(){try{
 // (feuille de partage de l'OS → Story), avec repli téléchargement (Safari desktop…).
 // Pas de tracé GPS : l'import FIT actuel ne lit que le résumé de séance (pas les records
 // GPS point à point) — on ne promet pas de carte qu'on n'a pas.
+// Chantier partage, étape B (07/09/2026) — les deux formats réutilisables du produit, nommés
+// UNE fois. `storyBlob` les consommait déjà en dur (W=1080, H=sq?1080:1920) : aucune valeur ne
+// change ici, seule la SOURCE devient partagée — un futur visuel (étape 3 du chantier) lit
+// IMG_FORMATS au lieu de retyper les dimensions.
+const IMG_FORMATS={story:{W:1080,H:1920},square:{W:1080,H:1080}};
 async function storyBlob(o,format){
   // R24.4 (retour fondateur, 06/08 soir : « toujours pas de fond transparent type png pour le
   // partage ? ») — la demande de R23.4 est ÉTENDUE à l'image post-séance : même contrat que la
@@ -148,7 +163,7 @@ async function storyBlob(o,format){
   // o : {sessionName, detail, sport, streak, badge:{icon,label}|null, avatarSVG, accent}
   // format (R6 — plusieurs types de partage) : "story" 1080×1920 (défaut) | "square" 1080×1080
   const sq=format==="square";
-  const W=1080,H=sq?1080:1920,c=document.createElement("canvas");c.width=W;c.height=H;
+  const {W,H}=IMG_FORMATS[sq?"square":"story"],c=document.createElement("canvas");c.width=W;c.height=H;
   const x=c.getContext("2d");
   const acc=o.accent||"#ff7a1a";
   // FOND TRANSPARENT : aucun fillRect plein cadre. Les deux barres d'accent restent (saturées,
@@ -187,21 +202,42 @@ async function storyBlob(o,format){
   _ebTxt(x,"plan raisonné · chaque décision justifiée",70,H-(sq?34:40),{size:sq?24:30,color:"rgba(255,255,255,.85)",max:W-140});
   return new Promise(res=>c.toBlob(res,"image/png"));
 }
-/** Partage natif (feuille OS → Story Instagram/etc.) ; repli : téléchargement du PNG.
- *  format : "story" (9:16, défaut) | "square" (1:1 — posts/groupes). */
-async function shareStory(o,format){
-  const blob=await storyBlob(o,format);
+// Chantier partage, étape A/B (07/09/2026) — LE POINT UNIQUE DE DIFFUSION D'UNE IMAGE (R11.1).
+//
+// Extrait de `shareStory` (qui le faisait déjà, correctement) pour que `sharePlanImage`
+// (image du plan, ci-dessous) n'en écrive pas une SECONDE copie — c'était le seul écart entre
+// les 6 visuels déjà partageables et le 7e (l'image du plan, qui ne téléchargeait qu'elle-même,
+// sans jamais tenter le partage natif). Comportement inchangé pour les 6 : même ordre d'essais
+// (partage natif si le navigateur sait partager des FICHIERS, sinon téléchargement), même
+// tolérance à une annulation de la feuille de partage (`AbortError` n'est pas un échec).
+async function shareOrDownloadPNG(blob,fname,shareTitle){
   if(!blob)return false;
-  const fname=format==="square"?"zenna-carte.png":"zenna-seance.png";
   const file=new File([blob],fname,{type:"image/png"});
   if(navigator.canShare&&navigator.canShare({files:[file]})&&navigator.share){
-    try{await navigator.share({files:[file],title:"Séance faite — Zenna"});return true;}
+    try{await navigator.share({files:[file],title:shareTitle});return true;}
     catch(e){if(e&&e.name==="AbortError")return true;/* l'utilisateur a annulé : pas un échec */}
   }
   const u=URL.createObjectURL(blob);const l=document.createElement("a");
   l.href=u;l.download=fname;document.body.appendChild(l);l.click();
   setTimeout(()=>{document.body.removeChild(l);URL.revokeObjectURL(u);},200);
   return true;
+}
+/** Partage natif (feuille OS → Story Instagram/etc.) ; repli : téléchargement du PNG.
+ *  format : "story" (9:16, défaut) | "square" (1:1 — posts/groupes). */
+async function shareStory(o,format){
+  const blob=await storyBlob(o,format);
+  const fname=format==="square"?"zenna-carte.png":"zenna-seance.png";
+  return shareOrDownloadPNG(blob,fname,"Séance faite — Zenna");
+}
+/** Chantier partage, étape A — image du plan (« Ta saison ») : même mécanisme de diffusion que
+ *  les 6 autres visuels, via `shareOrDownloadPNG`. Nom de fichier INCHANGÉ (celui que
+ *  `exportPNG` téléchargeait déjà) pour ne rien changer de ce que l'athlète voit une fois le
+ *  fichier récupéré. */
+async function sharePlanImage(){
+  try{
+    const blob=await exportPNG();
+    return shareOrDownloadPNG(blob,"enduraBuild-"+(S.sport||"plan")+".png","Mon plan — Zenna");
+  }catch(e){console.warn("sharePlanImage",e);return false;}
 }
 /** R6 — partage TEXTE (WhatsApp/SMS/…) : résumé de séance en clair, feuille de partage
  *  native, repli presse-papiers (puis rien si même le presse-papiers est refusé). */
@@ -220,4 +256,4 @@ async function shareText(o){
   catch(e){return null;}
 }
 
-export { _dl, exportICS, exportJSON, exportPNG, planToJSON, shareStory, shareText, storyBlob };
+export { _dl, exportICS, exportJSON, exportPNG, planToJSON, sharePlanImage, shareStory, shareText, storyBlob };
