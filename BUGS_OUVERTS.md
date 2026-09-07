@@ -12520,9 +12520,82 @@ Vérifié : `check:app`/`check:sw` synchronisés, `audit:v1` 459 à 0, batterie 
 scénarios verts, E2E `smoke-tabs`/`smoke-boucle`/`smoke-checkin`/`smoke-usage`/`smoke-r4`/
 `smoke-questionnaires` verts (aucune régression).
 
-**Vague 2 (conditionnée à la vague 1, non livrée)** : persistance + rejeu
-(`S.answers.r21Recalcs`, `applyR21Recalcs()` dans `ensurePlan()` ET `adjustTodayV2` — les deux
-points identifiés en Q1), câblage du gestionnaire d'import FIT, notification, suite E2E dédiée.
+**Vague 2 LIVRÉE le 07/09/2026** (décision `syntheses/945002a7-decisionvague2.md` : « la vague 1
+vérifiée sans régression capitalise mieux sur le contexte frais que d'attendre » — persistance +
+rejeu, câblage FIT, notification, suite E2E dédiée) :
+
+1. **La recette, pas le résultat gelé** (`R21RecalcRecipe`, `src/coach/proactiveCoach.ts`) :
+   `{session_id, facteur, raison, date}` — le chiffrage (§Q2) avait tranché pour la recette
+   plutôt qu'un état figé, précisément pour rester correcte si une référence de l'athlète change
+   entre deux régénérations. `RecalcLogEntry` gagne le champ `facteur` (jusque-là absent, seul
+   `reason` en texte libre était journalisé — il fallait le NOMBRE pour rejouer).
+2. **`applyR21Recalcs(plan, reasoned, recalcs)`** (`proactiveCoach.ts`) rejoue chaque recette
+   avec la MÊME fonction qui l'a produite (`reduceDay`, R11.1) — jamais une seconde définition de
+   « réduire ». Appelée aux DEUX points identifiés par le chiffrage : `ensurePlan()`
+   (`tabs.js`, via `EBV2.applyR21Recalcs`, robustesse try/catch comme `ensureReasoned`) et
+   `adjustTodayV2` (`bridge.ts`) — les deux régénèrent leur propre plan et perdraient sinon la
+   réduction au rendu suivant.
+3. **`coachOnIngestV2` persiste et propage** : rejoue D'ABORD les recalculs déjà décidés
+   (`recalcsExistants`) avant de détecter une NOUVELLE déviation — sans ça, la détection
+   partirait d'un plan à taille pleine et recalculerait contre une cible que l'athlète ne voit
+   déjà plus. Rend `r21Recalcs` (existants + nouveaux) : c'est L'APPELANT (l'UI) qui persiste,
+   le pont ne fait qu'une proposition (doc déjà en tête de la fonction).
+4. **Le câblage FIT réel** (`tab-profile.js`, `fitInput.onchange`) : chaque fichier importé
+   alimente désormais `ingestedBatch` (forme `IngestedSession`, dérivée de `FitSession` — même
+   champs que `CompletedSession["d"]`, aucune seconde conversion) ; après la mise à jour des
+   références (`syncRefsFromTests`), `EBV2.coachOnIngest` est appelé, son `r21Recalcs` écrit dans
+   `answers.r21Recalcs` SEULEMENT si `coach.log.length` (une entrée réellement ajoutée), et le
+   plan régénéré (`invalidatePlan(); renderTabProfile(ensurePlan())`) une seule fois qu'il y ait
+   une nouvelle référence OU un nouveau recalcul.
+5. **La notification** : `coach.notification.lines` (format 2 lignes déjà garanti par
+   `assertDeuxLignes`) s'affiche dans le message d'import (`#pfFitMsg`, préfixe 🧭).
+
+**Deux défauts trouvés en câblant, aucun des deux anticipé par le chiffrage.**
+
+**(a) `syncRefsFromTests` était RÉFÉRENCÉE SANS ÊTRE IMPORTÉE dans `tab-profile.js`** —
+`export { syncRefsFromTests } from "../state.js";` est un RE-EXPORT (pour que `retest.js`
+l'importe depuis cette adresse) et NE crée AUCUNE liaison locale en ES modules (vérifié :
+`export {x} from "y"; console.log(x)` lève `ReferenceError` dans n'importe quel module Node) —
+son propre commentaire dit « ré-exportée ici », pas « importée ». Les DEUX appels internes
+(`fitInput.onchange` et `runStravaImport`) référençaient donc un nom qui n'existait dans AUCUNE
+portée locale. **Conséquence réelle sur `main`, avant toute ligne de la Vague 2** : tout import
+FIT faisait planter le gestionnaire en plein milieu (`ReferenceError` non rattrapée, promesse
+rejetée) — APRÈS le remplissage de `S.answers.fitSessions`/`fitRich` mais AVANT `ebSave()` et
+avant le moindre message : l'import semblait avoir échoué en silence, sans persister quoi que ce
+soit, sur la fonctionnalité que R4/R4.8 documentent comme livrée depuis longtemps. Jamais détecté
+parce qu'aucune suite E2E existante ne pilote réellement `#pfFit` de bout en bout (les suites qui
+touchent l'import FIT — `smoke-improvements.mjs` — écrivent directement dans
+`S.answers.fitSessions`, contournant le gestionnaire). Corrigé par UN mot : `syncRefsFromTests`
+ajouté à l'import nommé existant de `../state.js` (la ligne de re-export reste, pour `retest.js`).
+**(b) Faute d'unité (règle 14) sur un troisième objet — deux PLANS pour un même jour.**
+`coachOnIngestV2` décidait (détection + `recalculerFenetre`) sur le plan BRUT de `generatePlan`,
+comme `adjustTodayV2` et `getReasonedForCoach` (Vague 1) — mais `applyR21Recalcs` REJOUE ensuite
+sur le plan AUDITÉ/RÉPARÉ (`S.currentPlan`, celui de `generateAudited`/`buildPlan()`), et les deux
+peuvent porter des STEPS différents pour la même séance (le repair loop les retouche). Le même
+facteur (0,85) appliqué à deux bases structurellement différentes ne donne pas le même résultat
+absolu. Corrigé par `buildAuditedPlanForCoach()` (`bridge.ts`) : reproduit EXACTEMENT le
+prétraitement de `buildPlanV2` (validation + troncature R22 + `generateAudited` + application de
+la troncature) — `coachOnIngestV2` décide désormais sur le MÊME plan que celui affiché, jamais un
+cousin brut. `reasoned` reste tiré du brut (`getReasonedForCoach`, inchangé — il ne varie pas
+pendant le repair loop, `repairLoop.ts:319`, seul le PLAN devait suivre la règle).
+
+**Suite E2E dédiée** : `tests/e2e/smoke-r21-persistance.mjs` (**28ᵉ suite**, ajoutée à
+`run-all.mjs`). Seul `EBV2.importFit` (le parseur binaire bas niveau) est mocké — le reste
+(lecture par `<input>`, `EBV2.coachOnIngest`, persistance, message, re-rendu) est le code RÉEL.
+Rien n'est hardcodé sur le contenu du plan : la suite découvre à l'exécution un jour PASSÉ portant
+une séance de course (pour fabriquer un écart d'allure à 10 m/s, garanti au-dessus de la borne
+haute de N'IMPORTE QUELLE zone d'un profil déclaré à 4'30/km) et compare chaque jour touché à son
+propre AVANT. 16 critères : la notification s'affiche, la recette (pas un état figé) est
+persistée, chaque jour touché est dans le futur (jamais le passé), chaque jour a RÉELLEMENT moins
+de minutes qu'avant, la réduction est visible sur 📅 Semaine (durée affichée = valeur réduite),
+survit à un RECHARGEMENT complet (plan entièrement régénéré depuis `localStorage`, recalculs
+rejoués à l'identique), et se voit sur 🎯 Aujourd'hui une fois le calendrier avancé jusqu'au jour
+touché. Vérifiée verte après les deux correctifs ci-dessus (rouge sur chacun avant correction).
+
+Vérifié : `check:app`/`check:sw` synchronisés, `audit:v1` 459 à 0, batterie 13/13, `demo:proactif`
+39 verts (inchangé — `facteur` est un champ additionnel, aucun site existant n'en dépendait),
+`demo:readiness` tous scénarios verts, suite `smoke-r21-persistance` 16/16, `test:e2e` complet
+sans régression.
 
 ## Décision #1 (backlog conseiller externe) · Rappel de retest — FERMÉ le 06/09/2026
 

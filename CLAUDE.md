@@ -612,6 +612,35 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**Chantier R21 (coach proactif), option A — Vague 2 LIVRÉE : R21 est enfin câblé pour de vrai,
+et deux défauts non anticipés trouvés en le câblant** (07/09/2026, décision
+`syntheses/945002a7-decisionvague2.md`, voir `BUGS_OUVERTS.md` « R21 ») : persistance
+(`R21RecalcRecipe {session_id, facteur, raison, date}`, la RECETTE plutôt qu'un état figé —
+§Q2 du chiffrage), `applyR21Recalcs()` (`proactiveCoach.ts`, rejoue via `reduceDay`, R11.1) aux
+deux points identifiés (`ensurePlan()`/`tabs.js` et `adjustTodayV2`/`bridge.ts`), et
+`coachOnIngestV2` qui rejoue D'ABORD les recalculs existants avant de détecter une nouvelle
+déviation. Le gestionnaire d'import FIT (`tab-profile.js`) appelle désormais réellement
+`EBV2.coachOnIngest`, persiste son `r21Recalcs`, affiche sa notification (préfixe 🧭).
+**Deux défauts trouvés en câblant, aucun anticipé par le chiffrage** : (a) `syncRefsFromTests`
+était RÉFÉRENCÉE sans être IMPORTÉE dans `tab-profile.js` (seul un `export {x} from "y"` —
+un re-export, qui ne crée AUCUNE liaison locale en ES modules — l'y liait) : tout import FIT
+plantait en silence (`ReferenceError` non rattrapée, après le remplissage de
+`fitSessions`/`fitRich` mais AVANT `ebSave()` et tout message), sur `main`, indépendamment de
+cette vague — aucune suite E2E existante ne pilotait `#pfFit` de bout en bout pour le voir.
+Corrigé par un mot (import nommé ajouté). (b) Faute d'unité (règle 14) sur un troisième objet :
+`coachOnIngestV2` décidait sur le plan BRUT de `generatePlan` (comme `adjustTodayV2`) mais
+`applyR21Recalcs` rejoue sur le plan AUDITÉ (`S.currentPlan`) — les deux peuvent porter des
+STEPS différents pour la même séance (le repair loop les retouche), donc le même facteur
+appliqué aux deux bases ne donne pas le même résultat. `buildAuditedPlanForCoach()` (`bridge.ts`)
+reproduit EXACTEMENT le prétraitement de `buildPlanV2` : `coachOnIngestV2` décide désormais sur
+le plan RÉELLEMENT affiché. **Suite E2E dédiée** : `smoke-r21-persistance.mjs` (28ᵉ suite) —
+seul `EBV2.importFit` est mocké, le reste est le code réel ; rien de hardcodé sur le contenu du
+plan (le jour et la séance candidats sont découverts à l'exécution). 16 critères : notification
+affichée, recette persistée (pas un état figé), jamais le passé touché, réduction RÉELLE
+mesurée, visible sur 📅 Semaine, survit à un RECHARGEMENT complet, visible sur 🎯 Aujourd'hui.
+Batterie 13/13, `audit:v1` 459 à 0, `demo:proactif` 39 verts (inchangé), `demo:readiness` tous
+scénarios verts, `test:e2e` complet sans régression.
+
 **Chantier R21 (coach proactif), option A lancée — Vague 1 LIVRÉE** (06/09/2026, chiffrage
 `syntheses/55-chiffrage-option-a-r21.md`, décision d'arbitrage externe séquencée en 2 vagues —
 voir `BUGS_OUVERTS.md` « R21 ») : deux étapes indépendantes, faible risque. **(1)** Cache

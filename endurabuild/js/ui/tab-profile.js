@@ -5,7 +5,7 @@
 // Toute donnée utilisateur réaffichée passe par esc() avant innerHTML (anti-XSS).
 import { SPORTS, VLAB, VLAB_Q } from "../config.js";
 import { previewMeasured, measuredHours, refreshMeasured, clearMeasured } from "../measured.js";
-import { $, S, ebActivate, ebNewPlanEntry, ebSave, esc, todayISO } from "../state.js";
+import { $, S, ebActivate, ebNewPlanEntry, ebSave, esc, todayISO, syncRefsFromTests } from "../state.js";
 import { curSteps, renderStep, reset, ebParseT, stravaImport } from "./steps.js";
 import { renderPlan } from "./plan-view.js";
 import { retestPlannerHTML, bindRetestPlanner } from "./retest.js";
@@ -1279,6 +1279,12 @@ export function renderTabProfile(plan) {
     const files = [...(fitInput.files || [])];
     if (!files.length) return;
     let nT = 0, nS = 0; const errs = [], notes = [];
+    // Vague 2 (chantier R21, 06/09/2026) — les séances du batch, dans la forme commune
+    // `IngestedSession` (voir `src/coach/deviationDetector.ts`) : c'est ce que le coach
+    // proactif compare au plan, tous formats de fichiers/provenances confondus. `FitSession`
+    // porte déjà exactement ces champs (même `sport`/`d` que `CompletedSession`) — pas de
+    // second parseur, une conversion de forme.
+    const ingestedBatch = [];
     if (!Array.isArray(S.answers.tests)) S.answers.tests = [];
     if (!Array.isArray(S.answers.fitSessions)) S.answers.fitSessions = [];
     if (!Array.isArray(S.answers.fitRich)) S.answers.fitRich = [];
@@ -1299,6 +1305,10 @@ export function renderTabProfile(plan) {
           if (!s.date || s.avgHr == null) return;
           if (!S.answers.fitRich.some((x) => x.date === s.date && x.sport === s.sport && x.minutes === s.minutes))
             S.answers.fitRich.push({ date: s.date, sport: s.sport, minutes: s.minutes, avgHr: s.avgHr, avgSpeedMs: s.avgSpeedMs ?? null, avgPowerW: s.avgPowerW ?? null });
+        });
+        (imp.sessions || []).forEach((s) => {
+          if (!s.date || !s.sport) return;
+          ingestedBatch.push({ date: s.date, d: s.sport, minutes: s.minutes, distanceM: s.distanceM, avgSpeedMs: s.avgSpeedMs, avgPowerW: s.avgPowerW, normPowerW: s.normPowerW, source: "fit" });
         });
         notes.push(...imp.notes);
       } catch (e) { errs.push(esc(f.name) + " : " + esc(e && e.message || "illisible")); }
@@ -1322,11 +1332,28 @@ export function renderTabProfile(plan) {
       }
     }
     const nRef = syncRefsFromTests(); // pousse le test le plus récent vers a.ftp/pace/css — sinon le moteur ne le voit jamais
+    // Vague 2 (chantier R21, 06/09/2026 — voir BUGS_OUVERTS.md « R21 »,
+    // syntheses/55-chiffrage-option-a-r21.md) : chaque import FIT est une INGESTION au sens du
+    // coach proactif — il détecte une déviation (allure/puissance, séance manquée, charge
+    // 7 jours) et, si besoin, allège les 14 prochains jours (jamais une hausse — R21 §2, « on ne
+    // rattrape jamais le volume manqué »). `EBV2.coachOnIngest` ne persiste RIEN lui-même
+    // (c'est une PROPOSITION, voir son commentaire dans `bridge.ts`) : c'est ICI, l'appelant,
+    // qu'on écrit `answers.r21Recalcs` — le prochain `ensurePlan()` les rejoue
+    // (`rejouerR21Recalcs`, `tabs.js`).
+    let r21Msg = "", r21Changed = false;
+    if (ingestedBatch.length && globalThis.EBV2 && globalThis.EBV2.coachOnIngest) {
+      try {
+        const coach = globalThis.EBV2.coachOnIngest(S.sport, S.answers, ingestedBatch, todayISO());
+        if (coach.log && coach.log.length) { S.answers.r21Recalcs = coach.r21Recalcs; r21Changed = true; }
+        if (coach.notification) r21Msg = '<br><span class="zn-pf-chip-estim">🧭 ' + coach.notification.lines.map(esc).join(" ") + "</span>";
+      } catch (e) { console.warn("Coach proactif (R21) indisponible :", e); }
+    }
     ebSave();
-    if (nRef) { invalidatePlan(); renderTabProfile(ensurePlan()); } // référence(s) mise(s) à jour → régénération (une fois)
+    if (nRef || r21Changed) { invalidatePlan(); renderTabProfile(ensurePlan()); } // référence(s) mise(s) à jour et/ou recalcul R21 → régénération (une fois)
     msg((nS || nT ? "✓ " + nS + " séance" + (nS > 1 ? "s" : "") + " importée" + (nS > 1 ? "s" : "") + " (nourrit la fatigue de « Forme du jour »)" + (nA ? " · " + nA + " séance" + (nA > 1 ? "s" : "") + " du plan validée" + (nA > 1 ? "s" : "") + " automatiquement ✓" : "") + (nT ? " · " + nT + " référence" + (nT > 1 ? "s" : "") + " ajoutée" + (nT > 1 ? "s" : "") + " au journal" : "") + (nRef ? " · plan régénéré avec la référence la plus récente" : "") + "." : "Aucune donnée exploitable.")
       + (notes.length ? '<br><span class="zn-pf-chip-estim">⚠ ' + notes.map(esc).join(" ") + "</span>" : "")
-      + (errs.length ? '<br><span class="zn-pf-bad">' + errs.join("<br>") + "</span>" : ""));
+      + (errs.length ? '<br><span class="zn-pf-bad">' + errs.join("<br>") + "</span>" : "")
+      + r21Msg);
   };
   // — Import Strava : même post-traitement (pont vers les références vivantes) que le
   // token vienne de l'OAuth (relais) ou du champ manuel.

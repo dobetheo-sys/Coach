@@ -119,6 +119,7 @@ export function ensurePlan() {
     if (refreshMeasured(S.currentPlan)) S.currentPlan = buildPlan(S.answers);
     applyDaySwaps(S.currentPlan); // déplacements de séances persistants (voir plus bas)
     ensureReasoned();
+    rejouerR21Recalcs();
   }
   return S.currentPlan;
 }
@@ -139,6 +140,24 @@ function ensureReasoned() {
   } catch (e) {
     console.warn("S.currentReasoned indisponible :", e);
     S.currentReasoned = null;
+  }
+}
+
+// Vague 2 (chantier R21, 06/09/2026 — voir BUGS_OUVERTS.md « R21 »,
+// syntheses/55-chiffrage-option-a-r21.md) : rejoue les recalculs déjà décidés
+// (`answers.r21Recalcs`, écrits par `EBV2.coachOnIngest` à chaque import FIT — `tab-profile.js`)
+// sur le plan qui vient d'être régénéré. Sans ce rejeu, une réduction déclenchée par une
+// ingestion précédente serait invisible dès la prochaine ouverture de l'app : `ensurePlan()`
+// produit un `S.currentPlan` NEUF, et la mutation de `recalculerFenetre()` (côté moteur) ne
+// survit pas d'un appel à l'autre. Même robustesse qu'`ensureReasoned` : un échec ici ne doit
+// jamais empêcher le plan lui-même de s'afficher.
+function rejouerR21Recalcs() {
+  if (!S.currentReasoned || !Array.isArray(S.answers.r21Recalcs) || !S.answers.r21Recalcs.length) return;
+  try {
+    if (globalThis.EBV2 && globalThis.EBV2.applyR21Recalcs)
+      globalThis.EBV2.applyR21Recalcs(S.currentPlan, S.currentReasoned, S.answers.r21Recalcs);
+  } catch (e) {
+    console.warn("Rejeu des recalculs R21 impossible :", e);
   }
 }
 

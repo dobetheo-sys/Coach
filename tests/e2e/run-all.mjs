@@ -38,7 +38,11 @@ const SUITES = ["smoke-checkin.mjs", "smoke-r4.mjs", "smoke-retention.mjs", "smo
   "smoke-posture.mjs",
   // R-ZENNA — le reskin animé de 🎯 Aujourd'hui : le mouvement porte l'opacité, donc son
   // absence VIDE l'onglet sans qu'aucune assertion de contenu ne s'en aperçoive.
-  "smoke-zenna.mjs"];
+  "smoke-zenna.mjs",
+  // R21 Vague 2 — le CÂBLAGE du coach proactif : import FIT réel → notification → persistance
+  // (`answers.r21Recalcs`) → rejeu sur un plan régénéré → visible sur Semaine ET Aujourd'hui →
+  // survit à un rechargement complet. `demo:proactif` couvre déjà le moteur seul.
+  "smoke-r21-persistance.mjs"];
 let failed = 0;
 for (const s of SUITES) {
   console.log("\n━━━ " + s + " ━━━");

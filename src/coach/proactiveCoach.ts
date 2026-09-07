@@ -82,6 +82,10 @@ const F_MANQUE = 0.90;
 export interface RecalcLogEntry {
   date: string;
   session_id: string;
+  /** Le facteur RÉELLEMENT appliqué — nécessaire pour REJOUER ce recalcul (voir `applyR21Recalcs`
+   *  et `R21RecalcRecipe`, Vague 2 du chantier) sur un plan régénéré, sans le redéduire de la
+   *  raison en texte libre. */
+  facteur: number;
   before: { name: string; minutes: number };
   after: { name: string; minutes: number };
   reason: string;
@@ -165,12 +169,57 @@ export function recalculerFenetre(
     log.push({
       date: day.date!,
       session_id: week.num + "|" + day.jour + "|" + idx,
+      facteur,
       before: { name: avantNom, minutes: Math.round(avantMin) },
       after: { name: day.sessions.map((s) => s.name).join(" + "), minutes: Math.round(apresMin) },
       reason: raison,
     });
   }
   return log;
+}
+
+/**
+ * Vague 2 (chantier R21, 06/09/2026 — voir `BUGS_OUVERTS.md` « R21 »,
+ * `syntheses/55-chiffrage-option-a-r21.md` §Q2) : la forme PERSISTABLE d'un recalcul déjà décidé.
+ * C'est la RECETTE (de quoi rejouer `reduceDay`), jamais le résultat gelé (avant/après en
+ * minutes) — un état figé périmerait dès qu'une référence de l'athlète change entre deux
+ * régénérations, quand la recette, elle, reste correcte parce qu'elle traverse `reduceDay` avec
+ * les `refs` du moment.
+ */
+export interface R21RecalcRecipe {
+  session_id: string;
+  facteur: number;
+  raison: string;
+  date: string;
+}
+
+/**
+ * Vague 2 (chantier R21, 06/09/2026) — REJOUE une liste de recalculs déjà DÉCIDÉS sur un plan
+ * fraîchement régénéré.
+ *
+ * `generatePlan` produit un objet plan NEUF à chaque appel : sans rejeu, toute réduction
+ * déclenchée par une ingestion précédente serait invisible dès la régénération suivante — la
+ * mutation de `recalculerFenetre` ne survit que le temps d'un appel, exactement le trou que la
+ * Vague 1 (cache `reasoned`) a préparé et que cette fonction ferme. On NE RE-DÉCIDE PAS (on ne
+ * relance ni `detectDeviations` ni `recalculerFenetre` sur l'historique) : on répète l'ACTION déjà
+ * journalisée, avec la MÊME fonction qui l'a produite (`reduceDay`, R11.1) — jamais une seconde
+ * définition de « réduire ».
+ *
+ * `session_id` porte `weekNum|jour|idx` (voir `recalculerFenetre` ci-dessus) : seuls les deux
+ * premiers segments servent à retrouver le jour — `jour` identifie déjà la case de façon unique
+ * dans une semaine, `idx` n'est qu'un repère positionnel hérité du format d'écriture (à ne pas
+ * confondre avec `sessionKey` de `deviationDetector.ts`, qui adresse une SÉANCE, pas un JOUR).
+ */
+export function applyR21Recalcs(plan: V1Plan, reasoned: ReasonedPlan, recalcs: R21RecalcRecipe[]): void {
+  const refs: Refs = { ...reasoned.baseRefs };
+  for (const r of recalcs) {
+    const [wn, jour] = r.session_id.split("|");
+    const w = plan.weeks.find((x) => String(x.num) === wn);
+    if (!w) continue;
+    const day = w.days.find((d) => d.jour === jour);
+    if (!day) continue;
+    reduceDay(day, r.facteur, refs, reasoned.hz, reasoned.baseRefs);
+  }
 }
 
 export interface IngestInput {

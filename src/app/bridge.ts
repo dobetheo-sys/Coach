@@ -25,7 +25,7 @@ import {
 import { bikeTimeEstimate, assumedSetup, RELIEF_PROFILE } from "../engine/cyclingSpeed.ts";
 import { DUA_RUN1, DUA_BIKE, DUA_RUN2, DUA_BIKE_POWER, DUA_BIKE_PREFATIGUE, DUA_TRANSITION } from "../sports/duathlon/tables.ts";
 import { adherenceWindow, taperIsConform, margeOf } from "../engine/projection.ts";
-import { onSessionIngested } from "../coach/proactiveCoach.ts";
+import { onSessionIngested, applyR21Recalcs, type R21RecalcRecipe } from "../coach/proactiveCoach.ts";
 import { InAppSink } from "../coach/notificationSink.ts";
 import type { IngestedSession } from "../coach/deviationDetector.ts";
 import { parseActivityText } from "../readiness/gpxTcxParser.ts";
@@ -224,6 +224,31 @@ export function getReasonedForCoach(sport: string, answers: AppAnswers) {
   return generatePlan(toProfile(sport, (troncature ? troncature.answers : vr.answers) as unknown as AppAnswers)).reasoned;
 }
 
+/**
+ * Vague 2 (chantier R21, 06/09/2026) — le plan AUDITÉ/RÉPARÉ, structurellement IDENTIQUE à
+ * celui que `buildPlanV2` produit pour `S.currentPlan` (même validation, même troncature R22).
+ *
+ * Mesuré en câblant le rejeu (`applyR21Recalcs`) : le plan BRUT de `generatePlan` et le plan
+ * AUDITÉ de `generateAudited` peuvent porter des STEPS différents pour la MÊME séance — la
+ * boucle de réparation les retouche. `coachOnIngestV2` décide une réduction sur un plan puis
+ * `applyR21Recalcs` la REJOUE (`reduceDay`) sur `S.currentPlan` (toujours l'audité, côté PWA) :
+ * décider sur le brut et rejouer sur l'audité applique le MÊME facteur à une base DIFFÉRENTE.
+ * Sur un cas mesuré, la notification annonçait « 40 → 35 min » (calculé sur le brut) pendant
+ * que le plan réellement affiché tombait à 25 min — faute d'unité (règle 14) sur un troisième
+ * objet : deux PLANS pour un même jour. `coachOnIngestV2` doit donc décider ET réduire sur
+ * CE plan-ci, pas sur celui de `generatePlan` — exactement l'inverse de `getReasonedForCoach`
+ * ci-dessus, dont l'économie (éviter l'audit) ne vaut QUE pour `reasoned`, jamais pour le plan.
+ */
+function buildAuditedPlanForCoach(sport: string, answers: AppAnswers): V1Plan {
+  const vr = validateAnswers(sport, answers as Record<string, unknown>, localTodayISO());
+  const troncature = prepareTroncature(sport, vr.answers as unknown as AppAnswers);
+  const finalAnswers = (troncature ? troncature.answers : vr.answers) as unknown as AppAnswers;
+  const res = generateAudited(toProfile(sport, finalAnswers));
+  const plan = res.plan as V1Plan;
+  if (troncature) applyTroncature(plan, troncature.plan, res);
+  return plan;
+}
+
 export interface TodayAdjustment {
   adjustment: DayAdjustment;
   sessions: { name: string; det: string; d: string; steps?: V1Step[] }[];
@@ -262,6 +287,10 @@ export function adjustTodayV2(sport: string, answers: AppAnswers, snapshot: Read
   if (unknown.length) console.warn("Photo du matin : clé(s) non reconnue(s) et donc IGNORÉE(S) — " + unknown.join(", "));
   const { plan, reasoned } = generatePlan(toProfile(sport, answers));
   applyDaySwapsToPlan(plan, answers);
+  // Vague 2 (chantier R21, 06/09/2026) — rejoue les recalculs déjà décidés (voir
+  // `applyR21Recalcs`) : sans ce rejeu, une réduction déclenchée par une ingestion précédente
+  // serait invisible ici, puisque `generatePlan` vient de produire un plan à taille PLEINE.
+  applyR21Recalcs(plan, reasoned, ((answers.r21Recalcs as R21RecalcRecipe[] | undefined) || []));
   // R4.5/R4.7 — le drapeau douleur et le RPE de la dernière séance validée entrent
   // AUTOMATIQUEMENT dans la photo du jour (aucun appelant ne peut les oublier) :
   // douleur active → rouge forcé ; RPE ≥8 hier → signal de fatigue annoncé.
@@ -1187,11 +1216,22 @@ declare const globalThis: { EBV2?: unknown } & Record<string, unknown>;
  * produit opaque que ce dépôt refuse d'être.
  */
 function coachOnIngestV2(sport: string, answers: AppAnswers, ingested: IngestedSession[], today: string) {
-  const { plan, reasoned } = generatePlan(toProfile(sport, answers));
+  // Vague 2 (chantier R21, 06/09/2026) — voir `buildAuditedPlanForCoach` : le plan sur lequel on
+  // détecte ET réduit doit être celui que `S.currentPlan` affiche réellement, pas le brut de
+  // `generatePlan` — sans quoi le facteur décidé ici et rejoué par `applyR21Recalcs` s'applique
+  // à une base différente de celle vue par l'athlète.
+  const reasoned = getReasonedForCoach(sport, answers);
+  const plan = buildAuditedPlanForCoach(sport, answers);
   // Vague 1, étape 2 (chantier R21, 06/09/2026) — voir `applyDaySwapsToPlan` : sans elle, le
   // `session_id` (`weekNum|jour|index`) calculé par `detectDeviations()`/`recalculerFenetre()`
   // désignerait un créneau dont le contenu réel a changé de place après un échange de jours ⇄.
   applyDaySwapsToPlan(plan, answers);
+  // Vague 2 (chantier R21, 06/09/2026) — rejoue D'ABORD ce qui a déjà été décidé lors d'une
+  // ingestion précédente : sans ça, cette détection partirait d'un plan à taille PLEINE
+  // (`generatePlan` ne connaît aucune réduction passée), et une nouvelle déviation se
+  // calculerait contre une cible que l'athlète ne voit déjà plus depuis le dernier import.
+  const recalcsExistants = (answers.r21Recalcs as R21RecalcRecipe[] | undefined) || [];
+  applyR21Recalcs(plan, reasoned, recalcsExistants);
   const completed = (answers.completed as CompletedSession[] | undefined)
     || completedFromDone(plan, answers, today);
   const sink = new InAppSink();
@@ -1200,7 +1240,15 @@ function coachOnIngestV2(sport: string, answers: AppAnswers, ingested: IngestedS
     done: (answers.done || {}) as Record<string, boolean>,
     completed, today, sink,
   });
-  return { ...res, inbox: sink.inbox, plan };
+  // La PROPOSITION complète pour l'appelant (l'UI, qui seule persiste — voir le commentaire de
+  // tête) : les recalculs déjà en vigueur + ceux que cette ingestion vient d'ajouter. C'est CE
+  // tableau qu'il faut écrire dans `answers.r21Recalcs` pour qu'un futur `applyR21Recalcs`
+  // (prochaine régénération, n'importe où) les rejoue tous.
+  const r21Recalcs: R21RecalcRecipe[] = [
+    ...recalcsExistants,
+    ...res.log.map((e) => ({ session_id: e.session_id, facteur: e.facteur, raison: e.reason, date: e.date })),
+  ];
+  return { ...res, inbox: sink.inbox, plan, r21Recalcs };
 }
 
 (globalThis as Record<string, unknown>).EBV2 = {
@@ -1212,6 +1260,10 @@ function coachOnIngestV2(sport: string, answers: AppAnswers, ingested: IngestedS
   adjustToday: adjustTodayV2,
   coachOnIngest: coachOnIngestV2,
   getReasonedForCoach,
+  // Vague 2 (chantier R21, 06/09/2026) — exposée pour que `tabs.js`/`ensurePlan()` puisse
+  // rejouer les recalculs persistés sur un plan qu'elle vient de (re)générer, exactement comme
+  // `applyDaySwaps` côté PWA rejoue les échanges de jours. Mute `plan` en place.
+  applyR21Recalcs,
   // S-8 — l'UI contrôle la taille AVANT de lire le fichier : la borne est celle du moteur,
   // pas une seconde valeur écrite dans l'interface.
   maxImportBytes: MAX_IMPORT_BYTES,
