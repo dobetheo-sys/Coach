@@ -11,6 +11,7 @@ import { S, ebSave, esc, todayISO } from "../state.js";
 import { shareStatCard } from "../export.js";
 import { SPORTS } from "../config.js";
 import { trapModal } from "./modal.js";
+import { raceCountdown } from "./app-header.js";
 
 function cumulPlan(plan, answers) {
   const totals = { sw: 0, bk: 0, rn: 0 };
@@ -167,12 +168,12 @@ function momentBOverlayHTML(wk, resume) {
  *  l'instant (`dejaMontreA`) : la semaine 1 démarre parfois un lundi, le seul jour où les deux
  *  déclencheurs peuvent coïncider — deux overlays à la suite serait exactement la surcharge
  *  que la légèreté du format B cherche à éviter. */
-export function maybeShowMomentB(plan, dejaMontreA) {
-  if (dejaMontreA) return;
+export function maybeShowMomentB(plan, dejaMontre) {
+  if (dejaMontre) return false;
   const wk = weekStartingToday(plan, todayISO());
-  if (!wk) return;
+  if (!wk) return false;
   const key = "sem-" + wk.num;
-  if (S.answers.momentB_semaine === key) return;
+  if (S.answers.momentB_semaine === key) return false;
   S.answers.momentB_semaine = key;
   ebSave();
   const resume = weekSummary(wk, S.answers);
@@ -199,4 +200,111 @@ export function maybeShowMomentB(plan, dejaMontreA) {
     } catch (e) { console.warn(e); }
     b.disabled = false; b.textContent = "📸 Partager";
   };
+  return true;
+}
+
+// ── Format D — bilan de fin de prépa ─────────────────────────────────────────────────────
+//
+// Déclenché à J-1 (réutilise `raceCountdown`, R23.5 — même mécanisme que le bandeau « Veille
+// de course » de session-life.js, pas un second décompte). Boucle avec le Format A : compare
+// les cumuls RÉELS (séances marquées faites, `answers.done`) aux cumuls PRÉVUS gelés dans
+// `answers.planBaseline` au Jour 1.
+
+/** Les cumuls réels par discipline, restreints aux séances marquées faites — même mécanisme
+ *  que `cumulPlan` (EBV2.weekDistances), sur un conteneur synthétique ne portant QUE les
+ *  séances de `answers.done` (le format attendu par `weekDistances` est `{days:[{sessions}]}`,
+ *  peu importe qu'elles viennent de plusieurs semaines). Même clé que la coche ✓
+ *  (`session-life.js` : `weekNum|jour|indexDeSéance`, tab-plan-general.js). */
+function cumulReel(plan, answers) {
+  const doneSessions = [];
+  for (const wk of plan.weeks || []) {
+    for (const day of wk.days || []) {
+      (day.sessions || []).forEach((s, si) => {
+        if (answers.done && answers.done[wk.num + "|" + day.jour + "|" + si]) doneSessions.push(s);
+      });
+    }
+  }
+  const wd = globalThis.EBV2 && globalThis.EBV2.weekDistances;
+  const totals = { sw: 0, bk: 0, rn: 0 };
+  if (wd) {
+    let dists;
+    try { dists = wd({ days: [{ sessions: doneSessions }] }, answers); } catch (e) { dists = []; }
+    for (const d of dists || []) if (d.km != null && totals[d.d] !== undefined) totals[d.d] += d.km;
+  }
+  return {
+    swim: Math.round(totals.sw * 10) / 10,
+    bike: Math.round(totals.bk * 10) / 10,
+    run: Math.round(totals.rn * 10) / 10,
+  };
+}
+
+/** Nombre de retests mesurés PENDANT cette préparation (pas toute la carrière de l'athlète) —
+ *  bornés à la fenêtre ouverte par `planBaseline.generatedAt`. */
+function retestsPendantPrepa(answers, base) {
+  if (!Array.isArray(answers.tests) || !base.generatedAt) return 0;
+  return answers.tests.filter((t) => t.date && t.date >= base.generatedAt).length;
+}
+
+function momentDOverlayHTML(plan, base, reel, nRetests) {
+  const prevu = base.raceCumKm || {};
+  const ligne = (icone, lab, r, p) => '<div style="display:flex;justify-content:space-between;gap:14px;padding:6px 0;border-bottom:1px solid var(--zn-border,rgba(255,255,255,.12))">'
+    + "<span>" + icone + " " + lab + "</span><span><b>" + r + "</b> km <span class=\"load-sub\">/ " + p + " prévus</span></span></div>";
+  return '<div class="eb-modal" role="dialog" aria-label="Bilan de fin de préparation">'
+    + '<h2 style="text-align:center;margin:4px 0 2px">🏁 Bilan de ta préparation</h2>'
+    + '<div class="load-sub" style="text-align:center">' + plan.weeks.length + " semaines réalisées"
+    + (base.weeks && base.weeks !== plan.weeks.length ? " (" + base.weeks + " prévues au départ)" : "") + "</div>"
+    + '<div style="margin-top:14px">'
+    + ligne("🏊", "Nage", reel.swim, prevu.swim ?? 0)
+    + ligne("🚴", "Vélo", reel.bike, prevu.bike ?? 0)
+    + ligne("🏃", "Course", reel.run, prevu.run ?? 0)
+    + "</div>"
+    + (nRetests > 0 ? '<div class="load-sub" style="text-align:center;margin-top:10px">' + nRetests + " test" + (nRetests > 1 ? "s" : "") + " de référence pendant la préparation.</div>" : "")
+    + '<div class="load-sub" style="text-align:center;margin-top:10px">Demain, c\'est le jour J. Le travail est fait.</div>'
+    + '<div class="nav" style="justify-content:center;margin-top:14px;gap:10px;flex-wrap:wrap">'
+    + '<button class="btn gold" id="momentDShare" type="button">📸 Partager mon bilan</button>'
+    + '<button class="btn" id="momentDClose" type="button">Fermer</button></div></div>';
+}
+
+/** Affiche l'overlay une fois, à J-1 (`answers.momentD_montre`). Sans `planBaseline` (plan créé
+ *  avant ce chantier, ou baseline indisponible), on n'a rien à comparer — on ne montre rien
+ *  plutôt que d'inventer un « prévu ». */
+export function maybeShowMomentD(plan, dejaMontre) {
+  if (dejaMontre) return false;
+  if (!S.answers.planBaseline || S.answers.momentD_montre) return false;
+  const cd = raceCountdown(S.answers, todayISO());
+  if (!cd || cd.jours !== 1) return false;
+  S.answers.momentD_montre = true;
+  ebSave();
+  const base = S.answers.planBaseline;
+  const reel = cumulReel(plan, S.answers);
+  const nRetests = retestsPendantPrepa(S.answers, base);
+  const ov = document.createElement("div");
+  ov.className = "eb-overlay";
+  ov.innerHTML = momentDOverlayHTML(plan, base, reel, nRetests);
+  document.body.appendChild(ov);
+  const untrap = trapModal(ov, () => ov.remove());
+  const close = () => { untrap(); ov.remove(); };
+  ov.querySelector("#momentDClose").onclick = close;
+  ov.onclick = (e) => { if (e.target === ov) close(); };
+  ov.querySelector("#momentDShare").onclick = async () => {
+    const b = ov.querySelector("#momentDShare");
+    b.disabled = true; b.textContent = "Génération…";
+    try {
+      const prevu = base.raceCumKm || {};
+      await shareStatCard({
+        eyebrow: "BILAN DE PRÉPARATION",
+        title: plan.weeks.length + " semaines",
+        subtitle: nRetests > 0 ? nRetests + " test" + (nRetests > 1 ? "s" : "") + " de référence" : undefined,
+        rows: [
+          { label: "🏊 Nage", value: reel.swim + " / " + (prevu.swim ?? 0) + " km" },
+          { label: "🚴 Vélo", value: reel.bike + " / " + (prevu.bike ?? 0) + " km" },
+          { label: "🏃 Course", value: reel.run + " / " + (prevu.run ?? 0) + " km" },
+        ],
+        footer: "Le travail est fait. Rendez-vous demain.",
+        accent: (SPORTS[S.sport] && SPORTS[S.sport].accent) || "#ff7a1a",
+      }, "story", "zenna-bilan.png", "Mon bilan de préparation — Zenna");
+    } catch (e) { console.warn(e); }
+    b.disabled = false; b.textContent = "📸 Partager mon bilan";
+  };
+  return true;
 }
