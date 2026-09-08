@@ -80,7 +80,7 @@ function momentAOverlayHTML(base, sport, format) {
  *  notifications.js). Appelé depuis `renderTabPlanGeneral()`, atteint le jour de création parce
  *  que `jourDeCreation()` y redirige déjà l'atterrissage (tabs.js). */
 export function maybeShowMomentA(plan) {
-  if (!S.answers.planBaseline || S.answers.momentA_montre) return;
+  if (!S.answers.planBaseline || S.answers.momentA_montre) return false;
   S.answers.momentA_montre = true;
   ebSave();
   const base = S.answers.planBaseline;
@@ -111,5 +111,92 @@ export function maybeShowMomentA(plan) {
       }, "story", "zenna-saison.png", "Ma saison — Zenna");
     } catch (e) { console.warn(e); }
     b.disabled = false; b.textContent = "📸 Partager ma saison";
+  };
+  return true;
+}
+
+// ── Format B — carte hebdo légère ────────────────────────────────────────────────────────
+//
+// Contenu volontairement minimal (décision de conception, le document laisse le détail
+// ouvert) : un seul chiffre — le total km de la semaine, tous disciplines confondues, ou les
+// heures si aucune référence ne permet de convertir en km. ~38 déclenchements possibles sur
+// un plan complet contre 4-5 pour les autres moments (contrainte explicite du document) :
+// pas de détail par discipline ici, ce serait répliquer le niveau du Format A.
+
+function weekSummary(week, answers) {
+  const wd = globalThis.EBV2 && globalThis.EBV2.weekDistances;
+  let totalKm = 0, anyKm = false, totalMin = 0;
+  if (wd) {
+    let dists;
+    try { dists = wd(week, answers); } catch (e) { dists = []; }
+    for (const d of dists || []) {
+      totalMin += d.min || 0;
+      if (d.km != null) { totalKm += d.km; anyKm = true; }
+    }
+  }
+  return {
+    totalKm: Math.round(totalKm * 10) / 10,
+    anyKm,
+    totalH: Math.round((totalMin / 60) * 10) / 10,
+  };
+}
+
+/** La semaine dont AUJOURD'HUI est le premier jour — pas nécessairement la semaine 1 (elle a
+ *  presque toujours déjà commencé quand le plan est créé, R8/R9 : « le plan démarre au lundi
+ *  de la semaine en cours »). `null` la plupart des jours — c'est voulu, un jour sur sept. */
+function weekStartingToday(plan, todayIso) {
+  for (const wk of plan.weeks || []) {
+    if (wk.days && wk.days[0] && wk.days[0].date === todayIso) return wk;
+  }
+  return null;
+}
+
+function momentBOverlayHTML(wk, resume) {
+  const chiffre = resume.anyKm ? resume.totalKm + " km" : resume.totalH + " h";
+  return '<div class="eb-modal" role="dialog" aria-label="Résumé de la semaine">'
+    + '<h2 style="text-align:center;margin:4px 0 2px">📅 Semaine ' + wk.num + "</h2>"
+    + '<div style="text-align:center;margin-top:10px;font-size:1.7em;font-weight:800">' + chiffre + "</div>"
+    + '<div class="load-sub" style="text-align:center;margin-top:4px">prévus cette semaine</div>'
+    + '<div class="nav" style="justify-content:center;margin-top:14px;gap:10px;flex-wrap:wrap">'
+    + '<button class="btn gold" id="momentBShare" type="button">📸 Partager</button>'
+    + '<button class="btn" id="momentBCloseBtn" type="button">Fermer</button></div></div>';
+}
+
+/** Affiche l'overlay au premier jour de chaque semaine (`answers.momentB_semaine`, une clé par
+ *  semaine — jamais la même semaine deux fois). N'agit pas si Format A vient de s'afficher à
+ *  l'instant (`dejaMontreA`) : la semaine 1 démarre parfois un lundi, le seul jour où les deux
+ *  déclencheurs peuvent coïncider — deux overlays à la suite serait exactement la surcharge
+ *  que la légèreté du format B cherche à éviter. */
+export function maybeShowMomentB(plan, dejaMontreA) {
+  if (dejaMontreA) return;
+  const wk = weekStartingToday(plan, todayISO());
+  if (!wk) return;
+  const key = "sem-" + wk.num;
+  if (S.answers.momentB_semaine === key) return;
+  S.answers.momentB_semaine = key;
+  ebSave();
+  const resume = weekSummary(wk, S.answers);
+  const ov = document.createElement("div");
+  ov.className = "eb-overlay";
+  ov.innerHTML = momentBOverlayHTML(wk, resume);
+  document.body.appendChild(ov);
+  const untrap = trapModal(ov, () => ov.remove());
+  const close = () => { untrap(); ov.remove(); };
+  ov.querySelector("#momentBCloseBtn").onclick = close;
+  ov.onclick = (e) => { if (e.target === ov) close(); };
+  ov.querySelector("#momentBShare").onclick = async () => {
+    const b = ov.querySelector("#momentBShare");
+    b.disabled = true; b.textContent = "Génération…";
+    try {
+      const chiffre = resume.anyKm ? resume.totalKm + " km" : resume.totalH + " h";
+      await shareStatCard({
+        eyebrow: "CETTE SEMAINE",
+        title: "Semaine " + wk.num,
+        rows: [{ label: "Prévu", value: chiffre }],
+        footer: "Zenna — plan raisonné, chaque décision justifiée.",
+        accent: (SPORTS[S.sport] && SPORTS[S.sport].accent) || "#ff7a1a",
+      }, "story", "zenna-semaine.png", "Ma semaine — Zenna");
+    } catch (e) { console.warn(e); }
+    b.disabled = false; b.textContent = "📸 Partager";
   };
 }
