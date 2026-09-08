@@ -117,6 +117,23 @@ function s3ContratMin(plan: V1Plan): string[] {
 }
 
 /**
+ * S8 (chantier partage étape 3) — `distanceM`, quand il existe, est un nombre fini ≥ 0.
+ *
+ * Contrairement à S3 (`min`, TOUJOURS un nombre), `distanceM` a une absence LÉGITIME (vélo sans
+ * FTP ou poids connus — « pas de référence, pas de kilomètres ») : l'invariant ne porte donc
+ * que sur la forme quand le champ est PRÉSENT, jamais sur sa présence elle-même. Jamais NaN,
+ * jamais un total fabriqué à 0 là où une distance manque (ce serait le fail-open que S7 garde
+ * déjà, sur un troisième objet).
+ */
+function s8DistanceMCoherente(plan: V1Plan): string[] {
+  const bad: string[] = [];
+  for (const { w, s } of sessions(plan))
+    if (s.distanceM !== undefined && (typeof s.distanceM !== "number" || !isFinite(s.distanceM) || s.distanceM < 0))
+      bad.push("S" + w.num + " « " + s.name + " » : distanceM = " + JSON.stringify(s.distanceM));
+  return bad;
+}
+
+/**
  * S4 (I14) — LA SORTIE LONGUE EST LA PLUS LONGUE SÉANCE DE SA DISCIPLINE, DANS SA SEMAINE.
  *
  * `enforceLabelVsDose` la tient, deux fois, et pourtant B-02 vient de la rouvrir depuis une
@@ -241,6 +258,7 @@ export function sealPlan(plan: V1Plan, opts?: { format?: string; strict?: boolea
     { id: "S5", quoi: "min(plafonds) du record R20.2 vaut le pic livré (T-25)", rang: "declare", ticket: "O-35 / O-36", violations: s5IdentiteR202(plan) },
     { id: "S6", quoi: "toute semaine de pic a une semaine de charge devant elle (condition du clamp C22, T-29)", rang: "dur", violations: s6PicPrecedeDeCharge(plan) },
     { id: "S7", quoi: "une nage qui déclare des mètres en déclare plus de zéro (fail-open C24/C24b, T-29)", rang: "dur", violations: s7NageMetresCoherents(plan) },
+    { id: "S8", quoi: "`distanceM`, quand il existe, est un nombre fini ≥ 0 (chantier partage étape 3)", rang: "declare", ticket: "chantier partage étape 3", violations: s8DistanceMCoherente(plan) },
   ];
   const report: SealReport = {
     verdicts,

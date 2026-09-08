@@ -541,6 +541,12 @@ export class TrainingReasoningEngine {
     const ftp = boundedOrZero("ftp", ftpRaw);
     if (ftpRaw > 0 && ftp === 0) warnings.push("FTP saisie (" + ftpRaw + "W) hors bornes plausibles [60–600W] : elle est ignorée — les séances s'affichent en zones cardio. Corrige-la au Profil.");
     const hz = hrZones(a.age, a.hr_max, a.hr_rest);
+    // Chantier partage étape 3 (préalable `distanceM`) — SEUL champ de `baseRefs` sans repli
+    // estimé (contrairement à ftp/thrPace/css) : sans poids déclaré, `weightKg` reste absent et
+    // `stepMeters` renonce à la distance vélo plutôt que d'inventer une masse. Même parseur que
+    // `weekDistances.ts`/`bridge.ts` (`parseFloat(a.weight)`, > 0).
+    const weightKgRaw = parseFloat(String(a.weight ?? ""));
+    const weightKg = isFinite(weightKgRaw) && weightKgRaw > 0 ? weightKgRaw : undefined;
 
     // R12.4b — LA SOURCE DE CHAQUE RÉFÉRENCE EST DITE, TOUJOURS.
     //
@@ -668,7 +674,7 @@ export class TrainingReasoningEngine {
       trail: tObj,
       trailVert: tVert,
       trailLongCapMin,
-      baseRefs: { ftp, thrPace, css },
+      baseRefs: { ftp, thrPace, css, weightKg },
       hz,
       // R20.2 — les maillons sont transmis, pas seulement leur produit : c'est ce qui permet
       // au générateur de nommer celui qui a le plus retiré au lieu d'annoncer un pic sans

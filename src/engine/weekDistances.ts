@@ -19,17 +19,13 @@
 //    ou sans FTP, pas de km vélo — le temps reste affiché. `BIKE_POWER_RATIO` reste ici : c'est
 //    un rapport de PUISSANCE, pas de vitesse — il entre DANS le modèle au lieu de s'y substituer.
 import { solveSpeedMs, BIKE_SETUP } from "./cyclingSpeed.ts";
-import { zoneSpeedRatio } from "../generator/renderer.ts";
+import { zoneSpeedRatio, BIKE_POWER_RATIO, stepDiscipline } from "../generator/renderer.ts";
 import type { V1Week } from "../harness/v1Harness.ts";
 
 /** O-42 — le ratio de la zone, dérivé de `ZDEF`. Une zone inconnue retombe sur l'endurance :
  *  c'est la zone la plus fréquente, et l'erreur est alors dans le sens qui SOUS-compte les km. */
 const ratioZone = (zone: string | undefined, ref: "css" | "thrPace"): number =>
   zoneSpeedRatio(zone, undefined, ref) ?? zoneSpeedRatio(ref === "css" ? "sw.easy" : "rn.easy", undefined, ref)!;
-// Puissance de zone vélo = fraction de FTP (centre des bandes du moteur — mêmes valeurs que
-// la table d'intensité du monolithe, où elles sont un IF de PUISSANCE, ce qui est correct ici).
-const BIKE_POWER_RATIO: Record<string, number> = { "bk.z2": 0.65, "bk.ss": 0.90, "bk.vo2": 1.12, "bk.frc": 0.82, "bk.rp": 0.84, "bk.thr": 1.0 };
-
 export interface DisciplineDistance { d: string; min: number; km: number | null; approx: boolean }
 
 interface StepLike { d?: string; zone?: string; role?: string; reps?: number; durationMin?: number; distanceM?: number; recoveryMin?: number }
@@ -41,12 +37,10 @@ function paceSec(v: unknown): number | null {
   return m ? +m[1] * 60 + +m[2] : null;
 }
 
-/** Discipline d'un step : son `d` s'il le porte, sinon le préfixe de sa zone, sinon celle de la séance. */
-function discOf(st: StepLike, sessionD: string): string {
-  if (st.d) return st.d;
-  if (st.zone) { const p = String(st.zone).split(".")[0]; if (p === "rn" || p === "bk" || p === "sw") return p; }
-  return sessionD;
-}
+/** Discipline d'un step : son `d` s'il le porte, sinon le préfixe de sa zone, sinon celle de la
+ *  séance — chantier partage étape 3, déplacée dans `renderer.ts` sous `stepDiscipline` (le
+ *  générateur en a maintenant besoin aussi, pour les legs de brick) ; réutilisée ici à l'identique. */
+const discOf = stepDiscipline;
 
 /** Les distances d'UNE semaine, par discipline (rn/bk/sw), temps toujours, km si les
  *  références le permettent. Le jour J (course, `min: 0`) et le repos ne comptent pas. */

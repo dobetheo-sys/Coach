@@ -71,6 +71,11 @@ export interface V1Session {
   det: string;
   steps?: V1Step[];
   min?: number; // estimation du générateur (renderSess) — à recouper, pas à croire
+  /** Chantier partage étape 3 — même statut que `min` : estimation du générateur, calculée une
+   *  fois par `renderSess` via `stepMeters` (`ftp`/`css`/`thrPace` mesurés ou estimés, jamais
+   *  fabriqués). Absent quand une distance vélo n'a pas pu se dériver (FTP ou poids inconnus) —
+   *  jamais un total partiel silencieux. */
+  distanceM?: number;
   long?: boolean;
   brick?: boolean;
   /** R10 — course intermédiaire (B ou C) placée à sa vraie date. Une course a LIEU : aucune

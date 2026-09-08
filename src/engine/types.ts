@@ -55,6 +55,7 @@ export interface AthleteProfile {
   poles?: string; // oui | non | a_decider
   treadmill?: string; // tapis inclinable disponible
   age?: string;
+  weight?: string; // kg — chantier partage étape 3 : seule source déclarée de `baseRefs.weightKg`
   hr_max?: string;
   hr_rest?: string;
   ftp_known?: string;
@@ -201,7 +202,7 @@ export interface ReasonedPlan {
   trailVert?: { dplusPeak: number; dmoinsPeak: number; capped: boolean; accessCap: number };
   /** T4 — plafond de la sortie longue, en % du temps de course estimé (0 hors trail). */
   trailLongCapMin?: number;
-  baseRefs: { ftp: number; thrPace: number; css: number };
+  baseRefs: { ftp: number; thrPace: number; css: number; weightKg?: number };
   hz: Record<string, string> & { fcMax?: number };
   /**
    * R20.2 — LA CHAÎNE DE RÉDUCTION DU VOLUME, MAILLON PAR MAILLON.

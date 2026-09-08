@@ -1882,7 +1882,11 @@ export function reconcileDeclaredVolume(
         // dérivation vit dans `stepMeters` — la fonction de vérité, inverse exacte de celle qui
         // donne la durée —, jamais ici : une garde qui convertit pour son propre compte est une
         // dérivation de plus à côté de celles qui existent (famille `_IFZ`).
-        const metersOf = () => sx.steps!.reduce((t, st) => t + stepMeters(st, sx.d, refsC24), 0);
+        // Chantier partage étape 3 — `stepMeters` rend `number | null` depuis l'ajout de sa
+        // branche vélo (null = FTP/poids absents). Sans objet ICI (`sx.d === "sw"` garanti par
+        // le filtre au-dessus, jamais de bloc vélo) : le repli `?? 0` ne change rien au
+        // comportement, il satisfait seulement le type élargi pour un cas qui n'arrive pas là.
+        const metersOf = () => sx.steps!.reduce((t, st) => t + (stepMeters(st, sx.d, refsC24) ?? 0), 0);
         const tot = metersOf();
         // T-29 (sémantique) — « ZÉRO MÈTRE » RECOUVRAIT DEUX ÉTATS TRÈS DIFFÉRENTS SOUS UN SEUL
         // `continue` SILENCIEUX, ET C'EST UN FAIL-OPEN SUR UNE PASSE DE SÉCURITÉ.

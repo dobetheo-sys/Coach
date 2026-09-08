@@ -5,6 +5,7 @@
  */
 import type { V1Session, V1Step } from "../engine/types.ts";
 import { C13_WARMUP_MAX_MIN, C13c_WARMUP_MIN_MIN } from "../engine/constraintMatrix.ts";
+import { solveSpeedMs, BIKE_SETUP } from "../engine/cyclingSpeed.ts";
 
 export interface Refs {
   ftp: number;
@@ -25,6 +26,14 @@ export interface Refs {
   bikeRp?: { lo: number; hi: number };
   /** B-22 — bande d'allure marathon dérivée du prédicteur (jamais une seconde table). */
   runMara?: { lo: number; hi: number };
+  /**
+   * Chantier partage étape 3 (préalable `distanceM`) — le SEUL champ de `Refs` qui n'a AUCUN
+   * repli estimé, contrairement à `ftp`/`thrPace`/`css` (toujours un nombre réel, mesuré ou
+   * estimé par le moteur). Le poids n'a pas d'équivalent physiologique estimable ici : sans
+   * lui, `stepMeters` rend `null` pour un bloc vélo plutôt que d'inventer une masse — même
+   * règle d'honnêteté que `weekDistances.ts` (« pas de référence, pas de kilomètres »).
+   */
+  weightKg?: number;
 }
 export type HrZones = Record<string, string> & { fcMax?: number };
 
@@ -70,6 +79,16 @@ export const ZDEF: Record<string, ZoneDef> = {
   "tr.flat": { ref: "thrPace", lo: 1.16, hi: 1.26, hr: "z2", fb: "allure conversation" },
   "tr.flatthr": { ref: "thrPace", lo: 1.0, hi: 1.05, hr: "seuil", fb: "allure seuil ~1h, sur plat roulant" },
 };
+
+/**
+ * Chantier partage étape 3 (préalable `distanceM`) — DÉPLACÉE depuis `weekDistances.ts`, qui
+ * l'a écrite en premier (R24.8) pour son propre recalcul d'affichage. `stepMeters` en a
+ * maintenant besoin pour sa branche vélo (générateur) ; `weekDistances.ts` l'importe désormais
+ * d'ici plutôt que d'en garder une seconde copie (R11.1) — valeurs INCHANGÉES, vérifié par
+ * import, pas par recopie. Puissance de zone vélo = fraction de FTP (centre des bandes du
+ * moteur, un IF de PUISSANCE — correct ici, contrairement à une comparaison d'ALLURE, règle 14).
+ */
+export const BIKE_POWER_RATIO: Record<string, number> = { "bk.z2": 0.65, "bk.ss": 0.90, "bk.vo2": 1.12, "bk.frc": 0.82, "bk.rp": 0.84, "bk.thr": 1.0 };
 
 /** R7 TRAIL §7 — DESCENTE : jamais de cible chiffrée. Une consigne d'intensité en descente
  *  est activement nuisible — elle pousse à courir vite là où la casse musculaire et le
@@ -207,6 +226,32 @@ export const intOf = (key: string | null, refs?: Refs): { ref: string; lo: numbe
  */
 export type PaceRefs = Pick<Refs, "css" | "thrPace">;
 
+/**
+ * Chantier partage étape 3 — `stepMeters` seule, parmi les trois fonctions de vérité, a besoin
+ * du vélo : elle DEMANDE donc ce que les deux autres ne lisent pas (`ftp`, `weightKg`), sans
+ * élargir `PaceRefs` pour `stepWorkMin`/`stepMin` qui n'en ont pas l'usage (même principe que
+ * le commentaire ci-dessus, appliqué à un troisième objet).
+ */
+export type DistanceRefs = PaceRefs & { ftp?: number; weightKg?: number };
+
+/**
+ * Chantier partage étape 3 — LA DISCIPLINE D'UN STEP, PAS SEULEMENT CELLE DE LA SÉANCE.
+ *
+ * `stepMeters`/`stepWorkMin` lisaient `st.d || disc` : correct pour une séance mono-discipline,
+ * FAUX pour un brick — les legs vélo d'un brick (`sports/tri/index.ts`, `role:"body",
+ * leg:"bike", zone:"bk.z2"`, jamais de `st.d`) portent la séance sous `d:"br"`, qui n'est ni
+ * "sw" ni "bk" : sans ce repli, un leg vélo tomberait dans la branche COURSE par défaut — la
+ * même faute que `weekDistances.ts` a déjà nommée et corrigée pour l'affichage (`discOf`,
+ * R24.8) mais qui restait vivante ici, dormante tant que `stepMeters` n'était appelé que sur de
+ * la nage pure. Reprend exactement le même repli (zone → préfixe), point unique pour les deux
+ * fichiers (`weekDistances.ts` l'importe d'ici plutôt que d'en garder une copie, R11.1).
+ */
+export function stepDiscipline(st: { d?: string; zone?: string | null }, sessionD: string): string {
+  if (st.d) return st.d;
+  if (st.zone) { const p = String(st.zone).split(".")[0]; if (p === "rn" || p === "bk" || p === "sw") return p; }
+  return sessionD;
+}
+
 export function stepWorkMin(st: V1Step, disc: string, baseRefs: PaceRefs): number {
   const reps = st.reps || 1;
   if (st.durationMin) return reps * st.durationMin;
@@ -229,14 +274,32 @@ export function stepWorkMin(st: V1Step, disc: string, baseRefs: PaceRefs): numbe
  * (`if (tot <= 0) continue`). Une garde ne convertit pas — elle DEMANDE, et la réponse vient
  * d'ici. Rendre `0` reste possible pour un bloc sans durée ni distance (un step de mobilité) :
  * c'est alors une absence RÉELLE, pas une unité non lue.
+ *
+ * Chantier partage étape 3 (préalable `distanceM`) — BRANCHE VÉLO AJOUTÉE, mesurée avant
+ * d'écrire (`npm run` ad hoc sur les 275 combinaisons course/nage de `ZDEF` : 0 divergence
+ * avec la formule que `weekDistances.ts` utilisait en parallèle depuis R24.8 — les deux
+ * s'accordaient déjà pour course/nage, seul le vélo manquait). Le modèle est celui de
+ * `cyclingSpeed.ts` (Martin et al. 1998, déjà utilisé par la prédiction PW/R20.5), résolu à la
+ * puissance de zone (`BIKE_POWER_RATIO` × FTP) — **jamais** un `0` fabriqué : sans FTP connue
+ * (`refs.ftp` peut légitimement valoir 0, cf. R14.1/E3) ou sans poids déclaré (`weightKg`,
+ * seul champ de `Refs` sans repli estimé), la fonction rend `null` — « pas de référence, pas de
+ * kilomètres », la même règle d'honnêteté que `weekDistances.ts:93`. Le rayon de ce changement
+ * est nul pour l'appelant existant (`planGenerator.ts`, nage seule, jamais vélo).
  */
-export function stepMeters(st: V1Step, disc: string, baseRefs: PaceRefs): number {
+export function stepMeters(st: V1Step, disc: string, baseRefs: DistanceRefs): number | null {
   const reps = st.reps || 1;
   if (st.distanceM) return reps * st.distanceM;
   if (st.durationMin) {
-    const d = st.d || disc;
+    const d = stepDiscipline(st, disc);
     const min = reps * st.durationMin;
     if (d === "sw") return (min * 60 / (baseRefs.css || 130)) * 100 * (zoneSpeedRatio(st.zone, undefined, "css") ?? 1);
+    if (d === "bk") {
+      if (!baseRefs.ftp || !baseRefs.weightKg) return null;
+      const watts = baseRefs.ftp * (BIKE_POWER_RATIO[st.zone || ""] ?? BIKE_POWER_RATIO["bk.z2"]);
+      const setup = BIKE_SETUP.route; // même hypothèse déclarée que weekDistances.ts et la prédiction (PW)
+      const cda = (setup.cdaLo + setup.cdaHi) / 2;
+      return solveSpeedMs(watts, baseRefs.weightKg + setup.bikeKg, cda, setup.crr, 0) * min * 60;
+    }
     return (min * 60 / (baseRefs.thrPace || 330)) * 1000 * (zoneSpeedRatio(st.zone, undefined, "thrPace") ?? 1);
   }
   return 0;
@@ -423,6 +486,19 @@ export function renderSess(s: RenderableSession, refs: Refs, hz: HrZones, baseRe
   // propageaient dans les totaux hebdo, le cap vol_max (422 vs 420 observé) et les
   // vérifications de progression. L'arrondi appartient au calcul, pas à l'affichage.
   s.min = Math.round(steps.reduce((t, x) => t + (x._min || 0), 0));
+  // Chantier partage étape 3 (préalable `distanceM`) — LA DISTANCE DE LA SÉANCE, CALCULÉE ICI,
+  // UNE FOIS, COMME `s.min` DEUX LIGNES PLUS HAUT. Un futur consommateur (carte de partage,
+  // export) lit ce champ au lieu de reconvertir — même principe que `s.min`/`s.det` : ce
+  // rendu est le SEUL producteur (R11.1). Propagation stricte : si un step ne se dérive pas
+  // (vélo sans FTP/poids connus), la séance entière n'affiche PAS de distance plutôt que d'en
+  // fabriquer une partielle — un total tronqué se lirait comme un total complet.
+  let distTotal = 0, distUnknown = false;
+  for (const x of steps) {
+    const m = stepMeters(x, s.d, baseRefs); // reps déjà comptés par stepMeters
+    if (m == null) { distUnknown = true; break; }
+    distTotal += m;
+  }
+  s.distanceM = distUnknown ? undefined : Math.round(distTotal);
   // O-111 — LE `det` D'UNE SÉANCE `race` EST UN TEXTE D'AUTEUR, JAMAIS UN RENDU.
   //
   // Une course intermédiaire porte sa consigne écrite à la main (« Départ contrôlé, première
