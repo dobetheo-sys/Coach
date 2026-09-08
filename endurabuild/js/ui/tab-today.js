@@ -25,6 +25,7 @@ import { retestBannerHTML, bindRetestBanner } from "./retest.js";
 import { ensurePlan, setTab } from "./tabs.js";
 import { VERDICT_ICON } from "./icons.js";
 import { noteRaceResult } from "../projection-log.js"; // A-5
+import { showMomentE } from "./moments.js"; // chantier partage étape 3, Format E
 import { estimatePeriodDetail, subscriptionView, CADENCES } from "../shop-order.js";
 import { sachetHTML } from "./sachet.js";
 import {
@@ -469,6 +470,10 @@ export function renderTabToday(plan) {
     noteRaceResult(t);
     ebSave();
     renderTabToday(plan);
+    // Format E — la révélation lit ce que `noteRaceResult` vient de refermer dans le journal
+    // (la prédiction ANNONCÉE À L'ÉPOQUE, pas `predicted` ci-dessus qui vient d'être recalculé
+    // à l'instant), donc APRÈS l'avoir appelé.
+    showMomentE(t);
   };
 
   // ============================================================

@@ -228,6 +228,10 @@ await page.waitForTimeout(300);
 ok(await page.locator("#pgRaceTime").count() === 1, "course passée → carte de saisie du chrono sur Aujourd'hui");
 await page.fill("#pgRaceTime", "44:30");
 await page.click("#pgRaceSave"); await page.waitForTimeout(300);
+// Chantier partage étape 3, Format E — la saisie du chrono réel déclenche désormais la
+// révélation « prédit vs réel » (overlay plein écran, moments.js) ; cette suite ne teste pas
+// ce moment-là, elle continue vers d'autres écrans juste après. Retrait générique.
+await page.evaluate(() => document.querySelectorAll(".eb-overlay").forEach((el) => el.remove()));
 ok(/Réalisé : 44:30/.test(await page.locator("#screen").textContent()), "chrono réel enregistré et affiché");
 const rr = await page.evaluate(async () => { const { S } = await import("./js/state.js"); return S.answers.raceResult; });
 ok(rr && rr.time === "44:30" && rr.date === today, "raceResult persisté avec la date de course");

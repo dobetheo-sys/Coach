@@ -308,3 +308,72 @@ export function maybeShowMomentD(plan, dejaMontre) {
   };
   return true;
 }
+
+// ── Format E — prédiction vs réel, au jour de course ─────────────────────────────────────
+//
+// Déclenché par l'ACTION (la saisie du chrono réel dans tab-today.js), pas par un rendu —
+// il n'y a qu'une seule saisie possible (`raceResultCardHTML` devient lecture seule une fois
+// `answers.raceResult` posé), donc pas de flag de dédoublonnage à tenir : l'appelant ne peut
+// déclencher ceci qu'une fois.
+//
+// LE POINT VÉRIFIÉ AVANT D'ÉCRIRE (le document le demandait) : `raceResult.predicted` est
+// RECALCULÉ au moment de la saisie — une prédiction refaite le jour même, pas celle que
+// l'app avait annoncée des mois plus tôt (le commentaire de tab-today.js le dit lui-même,
+// A-5). La vraie valeur vit dans `answers.projLog`, et `noteRaceResult()` (déjà appelée par
+// l'appelant AVANT ce module) attache déjà le temps réel à TOUTES les entrées depuis la plus
+// récente jusqu'à la première dont l'horizon atteint 4 semaines — donc à la PREMIÈRE entrée
+// du tableau qui porte `.reel`, celle du plus loin en amont, celle qu'une calibration
+// voudrait lire (commentaire de `noteRaceResult`). C'est elle qu'on affiche, jamais
+// `raceResult.predicted`.
+
+function premiereEntreeAvecReel(answers) {
+  const log = Array.isArray(answers.projLog) ? answers.projLog : [];
+  return log.find((e) => e.reel) || null;
+}
+
+function momentEOverlayHTML(entry, tempsReel) {
+  const legs = (entry.actuel || []).map((x) =>
+    '<div style="display:flex;justify-content:space-between;gap:14px;padding:5px 0"><span class="load-sub">' + esc(x.leg) + "</span><span>" + esc(x.valeur) + "</span></div>").join("");
+  return '<div class="eb-modal" role="dialog" aria-label="Prédiction contre réel">'
+    + '<h2 style="text-align:center;margin:4px 0 2px">🏁 Prédit vs réel</h2>'
+    + '<div class="load-sub" style="text-align:center">annoncé le ' + esc(entry.date || "") + "</div>"
+    + '<div style="margin-top:12px">' + legs + "</div>"
+    + '<div style="text-align:center;margin-top:14px;padding-top:10px;border-top:1px solid var(--zn-border,rgba(255,255,255,.12))">'
+    + '<div class="load-sub">Réalisé</div><b style="font-size:1.5em">' + esc(tempsReel) + "</b></div>"
+    + '<div class="nav" style="justify-content:center;margin-top:14px;gap:10px;flex-wrap:wrap">'
+    + '<button class="btn gold" id="momentEShare" type="button">📸 Partager</button>'
+    + '<button class="btn" id="momentEClose" type="button">Fermer</button></div></div>';
+}
+
+/** À appeler juste après `noteRaceResult(t)` (tab-today.js). Silencieux si aucune projection
+ *  n'a jamais été journalisée (plan trop court, ou onglet Prédiction jamais visité) — on ne
+ *  fabrique pas une prédiction qui n'a jamais existé. */
+export function showMomentE(tempsReel) {
+  const entry = premiereEntreeAvecReel(S.answers);
+  if (!entry || !entry.actuel || !entry.actuel.length) return;
+  const ov = document.createElement("div");
+  ov.className = "eb-overlay";
+  ov.innerHTML = momentEOverlayHTML(entry, tempsReel);
+  document.body.appendChild(ov);
+  const untrap = trapModal(ov, () => ov.remove());
+  const close = () => { untrap(); ov.remove(); };
+  ov.querySelector("#momentEClose").onclick = close;
+  ov.onclick = (e) => { if (e.target === ov) close(); };
+  ov.querySelector("#momentEShare").onclick = async () => {
+    const b = ov.querySelector("#momentEShare");
+    b.disabled = true; b.textContent = "Génération…";
+    try {
+      const rows = (entry.actuel || []).map((x) => ({ label: x.leg, value: x.valeur }));
+      rows.push({ label: "🏁 Réalisé", value: tempsReel });
+      await shareStatCard({
+        eyebrow: "PRÉDIT VS RÉEL",
+        title: "L'appli avait prédit ça",
+        subtitle: "annoncé le " + entry.date,
+        rows,
+        footer: "Zenna — plan raisonné, chaque décision justifiée.",
+        accent: (SPORTS[S.sport] && SPORTS[S.sport].accent) || "#ff7a1a",
+      }, "story", "zenna-predit-reel.png", "Prédit vs réel — Zenna");
+    } catch (e) { console.warn(e); }
+    b.disabled = false; b.textContent = "📸 Partager";
+  };
+}
