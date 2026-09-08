@@ -229,6 +229,43 @@ async function shareStory(o,format){
   const fname=format==="square"?"zenna-carte.png":"zenna-seance.png";
   return shareOrDownloadPNG(blob,fname,"Séance faite — Zenna");
 }
+
+/**
+ * Chantier partage étape 3 — UN SECOND COMPOSITEUR DE CONTENU, à côté de `storyBlob` (carte de
+ * séance/avatar/retest). Les nouveaux moments (déclaration Jour 1, carte hebdo, bilan de fin de
+ * prépa) partagent un besoin DIFFÉRENT : un titre, un sous-titre, une LISTE de lignes chiffrées
+ * — `storyBlob` est taillé pour une séance + un avatar et n'a pas de place pour plusieurs
+ * statistiques. Réutilise EXACTEMENT les mêmes primitives que le socle de l'étape B (`_ebTxt`,
+ * `_ebFontsPretes`, `IMG_FORMATS`, `shareOrDownloadPNG`) : elles restent le point unique de
+ * rendu texte / format / diffusion, seule la MISE EN PAGE diffère — c'est précisément ce que ce
+ * socle devait permettre à un futur visuel, sans construire un troisième mécanisme de partage.
+ */
+async function statCardBlob(o,format){
+  await _ebFontsPretes();
+  const sq=format==="square";
+  const {W,H}=IMG_FORMATS[sq?"square":"story"],c=document.createElement("canvas");c.width=W;c.height=H;
+  const x=c.getContext("2d");
+  const acc=o.accent||"#ff7a1a";
+  x.fillStyle=acc;x.fillRect(0,0,W,18);x.fillRect(0,H-18,W,18);
+  if(o.eyebrow)_ebTxt(x,o.eyebrow,0,sq?130:170,{size:sq?28:34,weight:700,color:acc,max:W-140,center:W});
+  _ebTxt(x,o.title||"",0,sq?230:300,{size:sq?54:70,weight:900,family:"Archivo Black",max:W-100,center:W});
+  if(o.subtitle)_ebTxt(x,o.subtitle,0,sq?300:390,{size:sq?28:36,color:"rgba(255,255,255,.85)",max:W-100,center:W});
+  let y=sq?460:600;
+  const rowH=sq?100:132;
+  for(const row of (o.rows||[])){
+    _ebTxt(x,row.label,0,y,{size:sq?30:38,weight:700,color:"rgba(255,255,255,.85)",max:W-180,center:W});
+    _ebTxt(x,row.value,0,y+(sq?48:56),{size:sq?46:60,weight:900,max:W-180,center:W});
+    y+=rowH;
+  }
+  if(o.footer)_ebTxt(x,o.footer,0,H-(sq?150:190),{size:sq?24:30,color:"rgba(255,255,255,.85)",max:W-100,center:W});
+  _ebTxt(x,"ZENNA",70,H-(sq?66:80),{size:sq?32:40,weight:700,max:W-140});
+  _ebTxt(x,"plan raisonné · chaque décision justifiée",70,H-(sq?34:40),{size:sq?24:30,color:"rgba(255,255,255,.85)",max:W-140});
+  return new Promise(res=>c.toBlob(res,"image/png"));
+}
+async function shareStatCard(o,format,fname,shareTitle){
+  const blob=await statCardBlob(o,format);
+  return shareOrDownloadPNG(blob,fname,shareTitle);
+}
 /** Chantier partage, étape A — image du plan (« Ta saison ») : même mécanisme de diffusion que
  *  les 6 autres visuels, via `shareOrDownloadPNG`. Nom de fichier INCHANGÉ (celui que
  *  `exportPNG` téléchargeait déjà) pour ne rien changer de ce que l'athlète voit une fois le
@@ -256,4 +293,4 @@ async function shareText(o){
   catch(e){return null;}
 }
 
-export { _dl, exportICS, exportJSON, exportPNG, planToJSON, sharePlanImage, shareStory, shareText, storyBlob };
+export { _dl, exportICS, exportJSON, exportPNG, planToJSON, sharePlanImage, shareStatCard, shareStory, shareText, statCardBlob, storyBlob };

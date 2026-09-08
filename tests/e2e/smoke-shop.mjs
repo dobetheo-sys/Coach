@@ -39,6 +39,10 @@ async function ouvrirNutrition(state, jour) {
   await page.evaluate((s) => { localStorage.clear(); localStorage.setItem("eb_state_v1", JSON.stringify(s)); }, state);
   await page.reload({ waitUntil: "networkidle" });
   await page.waitForTimeout(600);
+  // Chantier partage étape 3, Format A — la déclaration de saison s'affiche automatiquement à la
+  // création du plan (jourDeCreation(), tabs.js) et bloquerait le clic d'onglet qui suit.
+  const closeMomentA = page.locator("#momentAClose");
+  if (await closeMomentA.count()) { await closeMomentA.click().catch(() => {}); await page.waitForTimeout(150); }
   await page.click('[data-tab="outils"]');
   await page.waitForTimeout(400);
 }

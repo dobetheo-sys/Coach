@@ -80,6 +80,10 @@ await traverserQuestionnaire(page, {
     ok(/onglet 📋 Profil/.test(proto), "protocole pointe vers l'onglet Profil pour remplir plus tard");
   },
 });
+// Chantier partage étape 3, Format A — la déclaration de saison s'affiche automatiquement à la
+// création du plan (jourDeCreation(), tabs.js) et bloquerait les clics d'onglets qui suivent.
+const closeMomentA = page.locator("#momentAClose");
+if (await closeMomentA.count()) { await closeMomentA.click().catch(() => {}); await page.waitForTimeout(150); }
 ok(vuProtocole, "l'écran du protocole d'allure a bien été traversé");
 // H-1b — LE CAS « PAS DE RÉPONSE », qui est le vrai défaut du produit : la question est
 // optionnelle (`valid(){return true}`), donc on peut la dépasser sans rien dire. Le harnais,
@@ -310,6 +314,11 @@ if (consoleErrs.length) info("erreurs: " + consoleErrs.slice(0, 5).join(" | "));
     sessions_max: "5", vol_max: "6", vol_recent: "4", dispo: "quotidienne", hrv_track: "non", pace_known: "oui" },
     saisies: { age: "38", pace: "4:30", weight: "70" } });
   await p0.waitForTimeout(1200);
+  // Format A — fermer la déclaration de saison ici : `etat` (storageState) capturé plus bas
+  // hériterait sinon d'un `momentA_montre` jamais posé, et chaque contexte rejoué depuis `etat`
+  // recevrait l'overlay à son tour.
+  const closeMomentA0 = p0.locator("#momentAClose");
+  if (await closeMomentA0.count()) { await closeMomentA0.click().catch(() => {}); await p0.waitForTimeout(150); }
   // le check-in est répondu le MARDI SOIR, horodaté par le repère de l'app elle-même
   const stamp = await p0.evaluate(async () => {
     const { S, ebSave, jourEntrainementISO } = await import("./js/state.js");

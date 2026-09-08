@@ -68,6 +68,11 @@ async function session() {
     await page.waitForTimeout(140);
   }
   await page.waitForTimeout(1400);
+  // Chantier partage étape 3, Format A — la déclaration de saison s'affiche automatiquement à la
+  // création du plan (jourDeCreation(), tabs.js) et bloquerait les clics d'onglets qui suivent.
+  // Fermer ici, au point UNIQUE où `session()` fabrique un plan, évite de le refaire partout.
+  const closeMomentA = page.locator("#momentAClose");
+  if (await closeMomentA.count()) { await closeMomentA.click().catch(() => {}); await page.waitForTimeout(150); }
   return { ctx, page };
 }
 

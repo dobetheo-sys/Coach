@@ -13,6 +13,7 @@ import { renderTabWeek, resetWeekView } from "./tab-week.js";
 import { brancherAide } from "./help.js";
 import { znApplyNavDot, znClearStickyCta, znClearParallax, znPlayOnce } from "./zenna-motion.js"; // R-ZENNA
 import { appHeaderHTML } from "./app-header.js";
+import { computePlanBaseline } from "./moments.js";
 
 // Refonte R5 (retour utilisateur) : l'onglet CENTRAL 🎯 Aujourd'hui est l'écran du
 // quotidien (check-in diaporama → séance du jour → prédiction → charge → avancement),
@@ -113,6 +114,15 @@ export function ensurePlan() {
     // re-glisserait au lundi courant à chaque ouverture et le plan n'avancerait jamais.
     if (!S.answers.plan_start) { S.answers.plan_start = todayISO(); ebSave(); }
     S.currentPlan = buildPlan(S.answers);
+    // Chantier partage étape 3, Format A — l'instantané du Jour 1 (nom/date de course, durée de
+    // prépa, cumuls km par discipline sur le plan ENTIER) est gelé ICI, la première fois que le
+    // plan existe — jamais recalculé ensuite (même patron que `projLog`, R11.1 : une PROMESSE ne
+    // se met pas à jour quand le plan change en cours de route, sinon Format D n'aurait plus rien
+    // à comparer). Un échec ne doit jamais empêcher le plan de s'afficher.
+    if (!S.answers.planBaseline) {
+      try { S.answers.planBaseline = computePlanBaseline(S.currentPlan, S.answers); ebSave(); }
+      catch (e) { console.warn("planBaseline indisponible :", e); }
+    }
     // R6 §3.3 — cadence de recalibration : l'instantané des données réalisées ne se rafraîchit
     // qu'en semaine de décharge (ou à la toute première fois). S'il a bougé, on régénère UNE
     // fois — jamais en boucle, le plan reste une fonction pure de ses entrées.

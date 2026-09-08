@@ -640,6 +640,10 @@ function raceCardHTML(a) {
     + '<div class="load-sub" id="' + hintId + '" style="margin-top:2px">' + esc(dplusHintFor(leg, val ? parseFloat(val) : null)) + "</div>";
   let h = '<div class="load-card"><div class="load-title">🏁 Ta course' + aide('Ces réglages décrivent l’ÉPREUVE (relief, eau, milieu) — ils affinent la prédiction et le pacing du jour J. Tes références physiologiques, elles, vivent dans « ⚙ Références d’entraînement ».', { label: 'les paramètres de la course' }) + '</div>'
     + '<div style="display:flex;flex-direction:column;gap:4px;margin-top:8px">';
+  // Chantier partage étape 3, Format A — le nom de la course, purement cosmétique (aucun
+  // champ de ce genre n'existait dans le schéma). Optionnel : sans lui, la carte de
+  // déclaration se rabat sur le sport + le format (moments.js, `titreCourse`).
+  h += row("pfRaceName", "Nom de ta course (optionnel)", a.race_name, "ex. Ironman de Nice");
   // R6 — profil du parcours visé : affine la PRÉDICTION (temps course à pied) sans toucher au plan.
   const cpSel = (v, lab) => '<option value="' + v + '"' + ((a.course_profile || "") === v ? " selected" : "") + ">" + lab + "</option>";
   h += '<label style="display:block;font-size:var(--fs-md)"><span>Profil du parcours</span>'
@@ -1468,6 +1472,10 @@ export function renderTabProfile(plan) {
     if (cp !== undefined && cp !== String(a.course_profile || "")) {
       S.answers.course_profile = cp; changed++; // n'affecte que la prédiction, pas le plan
     }
+    // Chantier partage étape 3 — purement cosmétique (carte de déclaration Jour 1), aucune
+    // régénération : comme `course_profile`, ne touche jamais le plan.
+    const rn = g("pfRaceName");
+    if (rn !== null && rn !== String(a.race_name || "")) { S.answers.race_name = rn; changed++; }
     // D+ (retour utilisateur, 08/08/2026) — hors ANSWER_SCHEMA (calculatrice, voir sa
     // définition) : mémorisé pour ne pas le resaisir, sans jamais toucher le plan.
     for (const [id, cle] of [["pfCourseDplus", "road_dplus_m"], ["pfLegBikeDplus", "leg_bike_dplus_m"], ["pfLegRunDplus", "leg_run_dplus_m"]]) {

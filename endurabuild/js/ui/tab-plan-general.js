@@ -89,6 +89,7 @@ function avancementHTML(plan, today) {
 }
 import { momentHTML, painBannerHTML, bindPainBanner, toggleDone } from "./session-life.js";
 import { retestBannerHTML, bindRetestBanner } from "./retest.js";
+import { maybeShowMomentA } from "./moments.js";
 import { ensurePlan, invalidatePlan, setTab } from "./tabs.js";
 import { feasibilityCardHTML, bindFeasibility } from "./feasibility.js";
 import { DISC } from "./icons.js";
@@ -556,6 +557,10 @@ function bindPlanSubtabs(plan) {
 export function renderTabPlanGeneral(plan) {
   const a = S.answers;
   const today = todayISO();
+  // Chantier partage étape 3, Format A — la déclaration de saison, une fois, le jour où le plan
+  // est créé (jourDeCreation() y redirige déjà l'atterrissage — tabs.js). Effet de bord DOM
+  // pur (un overlay), sans rapport avec `html` : peut se poser avant tout calcul de rendu.
+  maybeShowMomentA(plan);
   let html = momentHTML(plan, today) + painBannerHTML() + retestBannerHTML(today);
   // R28 — PLAN GAGNE DEUX SOUS-ONGLETS (décision du fondateur, 12/08/2026). Le composant est
   // repris À L'IDENTIQUE de celui d'Outils — depuis la FOUNDATION (04/09/2026) c'est la
