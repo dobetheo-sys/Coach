@@ -76,13 +76,12 @@ async function session(fauxMs) {
     await page.waitForTimeout(140);
   }
   await page.waitForTimeout(1400);
-  // Chantier partage étape 3, Format A — la déclaration de saison s'affiche automatiquement à la
-  // création du plan (voulu : jourDeCreation(), tabs.js). Cette suite teste des dizaines de
-  // comportements SANS RAPPORT sur un plan tout juste créé ; fermer l'overlay ici, au point
-  // UNIQUE où `session()` fabrique un plan, évite de le refaire à chaque test — Format A est
-  // gardé pour lui-même dans son propre bloc, plus bas, sur sa propre session.
-  const closeMomentA = page.locator("#momentAClose");
-  if (await closeMomentA.count()) { await closeMomentA.click().catch(() => {}); await page.waitForTimeout(150); }
+  // Chantier partage étape 3 — les « moments clés » (moments.js) s'affichent automatiquement à
+  // des jalons du plan (voulu : jourDeCreation(), tabs.js). Cette suite teste des dizaines de
+  // comportements SANS RAPPORT sur un plan tout juste créé ; retirer tout overlay ici, au point
+  // UNIQUE où `session()` fabrique un plan, évite de le refaire à chaque test — générique
+  // (Format A/B/D/E) plutôt qu'un id par moment à maintenir ici.
+  await page.evaluate(() => document.querySelectorAll(".eb-overlay").forEach((el) => el.remove()));
   return { ctx, page };
 }
 

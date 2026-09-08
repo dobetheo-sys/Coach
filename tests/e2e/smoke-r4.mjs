@@ -22,12 +22,9 @@ const st = runnerStateV1({ tests: [{ type: "thrPace", value: 270, date: "2026-07
 await page.evaluate((s) => { localStorage.clear(); localStorage.setItem("eb_state_v1", JSON.stringify(s)); }, st);
 await page.reload({ waitUntil: "networkidle" });
 await page.waitForTimeout(600);
-// Chantier partage étape 3, Format A — la déclaration de saison s'affiche automatiquement à la
-// création du plan (jourDeCreation(), tabs.js) et bloquerait les clics d'onglets qui suivent.
-{
-  const closeMomentA = page.locator("#momentAClose");
-  if (await closeMomentA.count()) { await closeMomentA.click().catch(() => {}); await page.waitForTimeout(150); }
-}
+// Chantier partage étape 3 — retirer tout overlay de « moment clé » avant de continuer
+// (générique : Format A/B/D/E).
+await page.evaluate(() => document.querySelectorAll(".eb-overlay").forEach((el) => el.remove()));
 const v2state = await page.evaluate(() => JSON.parse(localStorage.getItem("eb_state_v2") || "null"));
 ok(!!(v2state && Array.isArray(v2state.plans) && v2state.plans.length === 1 && v2state.plans[0].sport === "run"), "migration v1→v2 : plan repris sans perte (plans=" + (v2state ? v2state.plans.length : "null") + ")");
 ok(await page.locator("#ebTabbar .tabbtn").count() === 5, "l'app restaure directement la vue plan (5 onglets)");
@@ -295,11 +292,8 @@ ok(await page.locator(".eb-overlay").count() === 0, "la modal se ferme");
   await page.evaluate((s) => { localStorage.clear(); localStorage.setItem("eb_state_v2", JSON.stringify(s)); }, st2);
   await page.reload({ waitUntil: "networkidle" });
   await page.waitForTimeout(600);
-  // Format A — plan B fraîchement seedé, jamais montré : fermer avant toute autre suite.
-  {
-    const closeMomentA = page.locator("#momentAClose");
-    if (await closeMomentA.count()) { await closeMomentA.click().catch(() => {}); await page.waitForTimeout(150); }
-  }
+  // Chantier partage étape 3 — retirer tout overlay de « moment clé » (générique A/B/D/E).
+  await page.evaluate(() => document.querySelectorAll(".eb-overlay").forEach((el) => el.remove()));
   const xp = await page.evaluate(async () => {
     const { S } = await import("./js/state.js");
     const { ensurePlan } = await import("./js/ui/tabs.js");
@@ -323,12 +317,8 @@ ok(await page.locator(".eb-overlay").count() === 0, "la modal se ferme");
   await page.evaluate((s) => { localStorage.clear(); localStorage.setItem("eb_state_v1", JSON.stringify(s)); }, st10);
   await page.reload({ waitUntil: "networkidle" });
   await page.waitForTimeout(700);
-  // Format A — la déclaration de saison s'affiche automatiquement à la création du plan
-  // (jourDeCreation(), tabs.js) et bloquerait le clic d'onglet qui suit.
-  {
-    const closeMomentA = page.locator("#momentAClose");
-    if (await closeMomentA.count()) { await closeMomentA.click().catch(() => {}); await page.waitForTimeout(150); }
-  }
+  // Chantier partage étape 3 — retirer tout overlay de « moment clé » (générique A/B/D/E).
+  await page.evaluate(() => document.querySelectorAll(".eb-overlay").forEach((el) => el.remove()));
   await page.click('#ebTabbar .tabbtn[data-tab="profile"]');
   await page.waitForTimeout(400);
   const raceDetails = page.locator("details:has-text('Ta course')").first();

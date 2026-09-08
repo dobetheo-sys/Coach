@@ -209,12 +209,10 @@ async function boot(reducedMotion, jour = JOUR_SEANCE, repOver = null, saiOver =
     await n.click(); await page.waitForTimeout(120);
   }
   await page.waitForTimeout(1400);
-  // Chantier partage étape 3, Format A — la déclaration de saison s'affiche automatiquement à la
-  // création du plan (jourDeCreation(), tabs.js) et bloquerait le clic d'onglet qui suit.
-  {
-    const closeMomentA = page.locator("#momentAClose");
-    if (await closeMomentA.count()) { await closeMomentA.click().catch(() => {}); await page.waitForTimeout(150); }
-  }
+  // Chantier partage étape 3 — les « moments clés » (moments.js) s'affichent automatiquement à
+  // des jalons du plan et bloqueraient (overlay plein écran) le clic d'onglet qui suit.
+  // Générique (Format A/B/D/E).
+  await page.evaluate(() => document.querySelectorAll(".eb-overlay").forEach((el) => el.remove()));
   await page.click('#ebTabbar .tabbtn[data-tab="today"]');
   await page.waitForTimeout(500);
   for (let i = 0; i < 6; i++) {
