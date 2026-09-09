@@ -907,6 +907,60 @@ export const C29D_DECHARGE_DECLENCHEUR = rule("C29d", "en dessous du quart des v
 export const C29D_DECHARGE_CIBLE = rule("C29d", "la décharge par le contenu vise la moitié des voisines, 100 % facile (résolution du débat fiche 41 §2.3)", 0.5);
 
 /**
+ * FV1 — Force vélo en spec/peak : DOSE D'ENTRETIEN, jamais une suppression totale (feu vert
+ * du fondateur, `feuvert2et3.md`, 09/09/2026). Mesuré avant d'écrire (règle 7) :
+ * `bk.frc` est à 0,0 % EXACT en spec/peak/taper, sur tous les sports à jambe vélo (tri, bike,
+ * duathlon) — structurel, pas un artefact de corpus : chaque module de sport route le
+ * créneau vélo de qualité ailleurs (allure course, seuil/race-pace, VO2max) dès que la phase
+ * quitte base/dev (R13.4 a explicitement exclu l'affûtage ; spec/peak l'ont perdue en même
+ * temps, par le même `else` attrape-tout).
+ *
+ * Cible en priorité les profils à dénivelé significatif au programme de course
+ * (`a.terrain` montagne/vallonné — même convention que `climb` dans `sports/bike/index.ts`).
+ * Cadence : une occurrence toutes les `FV1_INTERVAL_SEMAINES` semaines de charge spec/peak
+ * (« 1 séance toutes les 3-4 semaines » de la recommandation).
+ *
+ * Appliquée en SUBSTITUTION post-construction (`planGenerator.ts`, après
+ * `reconcileDeclaredVolume`), jamais dans la branche de construction du sport : la leçon
+ * d'O-119 (même terrain, `sports/tri/index.ts`) est que ce créneau alimente la sonde de
+ * capacité (V2.1/structBrut) qui recalibre toute la courbe — un changement à la CONSTRUCTION
+ * a un rayon plus large que le créneau qu'il touche. Une substitution après convergence ne
+ * peut pas perturber une courbe déjà figée.
+ */
+export const FV1_INTERVAL_SEMAINES = rule("FV1", "une dose d'entretien toutes les 3-4 semaines de spec/peak, jamais chaque semaine (pas un retour à la fréquence base/dev)", 4);
+/** Répétitions de la dose d'entretien — moitié du bas de la fourchette base/dev (PT(4,6)) :
+ *  assez pour rester une séance de force reconnaissable, nettement plus légère qu'un bloc complet. */
+export const FV1_ENTRETIEN_REPS = rule("FV1", "dose d'entretien : moitié des répétitions du bloc base/dev, jamais sa suppression", 3);
+/** Durée par répétition, en minutes — légèrement sous le bas de la fourchette base/dev (5-7 min
+ *  selon le format) : le nombre de répétitions porte l'essentiel de la réduction (I14 : la durée
+ *  d'une répétition est le stimulus, on ne la rabote pas en premier), la durée cède un peu ensuite. */
+export const FV1_ENTRETIEN_DUR_MIN = rule("FV1", "durée par répétition de la dose d'entretien, réduite après les répétitions", 4);
+
+/**
+ * RC1 — Repos complet garanti en multisport (feu vert du fondateur, `feuvert2et3.md`,
+ * 09/09/2026). Mesuré avant d'écrire (règle 7) : sur le golden, `tri` et `duathlon` livrent
+ * un vrai jour OFF sur seulement 9,7 % / 10,2 % des semaines de charge (le reste porte
+ * exclusivement de la « récup active », `run` et `trail` sont déjà à 100 %/77,7 % grâce à
+ * `applyRunImpactCap`, `swimrun` est déjà à 100 % via son schéma dédié).
+ *
+ * ⚠ PRÉMISSE PARTIELLEMENT RÉFUTÉE, PUBLIÉE (pas absorbée en silence) : la recommandation
+ * cite « run/bike/trail déjà corrects » — `bike` (pur) mesure en réalité 12,1 %, quasiment le
+ * même défaut que tri/duathlon. Il n'entre PAS dans le domaine de ce correctif : la
+ * recommandation scope explicitement « en multisport » (disciplines.length > 1), `bike` est
+ * mono-discipline. Publié comme trouvaille distincte, pas corrigé ici, faute d'autorisation
+ * sur ce sport précis.
+ *
+ * MESURE CLÉ QUI REND LE CORRECTIF QUASI GRATUIT : un jour de « récup active » (`d:"rs"`,
+ * `steps:[]`) est DÉJÀ vide de tout contenu prescrit — comparé sur 3 906 semaines de charge
+ * multisport, 0 occurrence d'un jour de récup portant un `step` réel. La bascule
+ * « récup active » → « OFF » ne retire donc AUCUN volume, AUCUNE fréquence : c'est un
+ * changement de CADRAGE (l'athlète lit qu'il ne doit RIEN faire, au lieu d'un « mobilité »
+ * qui laisse deviner), jamais un changement de plan.
+ */
+export const RC1_LABEL_RECUP = /récup|mobilit|gainage|étirement/i;
+export const RC1_LABEL_OFF = /^off\b|repos total/i;
+
+/**
  * C13e — L'ÉCHAUFFEMENT N'EST JAMAIS PLUS LONG QUE LE CORPS DE SÉANCE. Invariant DUR, sur les
  * six sports et dans les deux unités (minutes en course/vélo/trail, mètres en bassin). Une
  * séance dont l'échauffement pèse plus que le travail n'est pas une séance : c'est un footing

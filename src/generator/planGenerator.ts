@@ -18,9 +18,11 @@ import {
   C13d_QUALITY_MIN_BODY_MIN, C25_RECOVERY_SESSION_CAP_MIN, RACE_EVE_CAP_MIN,
   hardTimeCapMin, weightedHardMin, C26c_HARD_TIME_TOLERANCE, C26d_MOD_SHARE_MAX, C26D_MOD_SHARE_MAX_PAR_DISCIPLINE, MIN_WEEKS, ALLOC_CIBLE, ALLOC_CIBLE_PALIERS, allocCibleDe, capScaleAtWeek,
   C29D_DECHARGE_DECLENCHEUR, C29D_DECHARGE_CIBLE,
+  FV1_INTERVAL_SEMAINES, FV1_ENTRETIEN_REPS, FV1_ENTRETIEN_DUR_MIN,
+  RC1_LABEL_RECUP, RC1_LABEL_OFF,
 } from "../engine/constraintMatrix.ts";
 import { TrainingReasoningEngine } from "../engine/reasoningEngine.ts";
-import { renderSess, stepMeters, stepWorkMin, zoneSpeedRatio, type PaceRefs, type Refs } from "./renderer.ts";
+import { renderSess, stepMeters, stepWorkMin, zoneSpeedRatio, intOf, BIKE_POWER_RATIO, type PaceRefs, type Refs } from "./renderer.ts";
 import { sessionLoad, intensitySplit, zoneClass, type AthleteRefs } from "../engine/loadModel.ts";
 import { T2_DPLUS_GROWTH, T2_DMOINS_GROWTH, T3_ECCENTRIC_RECOVERY, TRAIL_ACCESS, syncReturnRecovery } from "../engine/trailModel.ts";
 import { PLANCHER_FREQ, PLANCHER_BUDGET_MIN, plancherFrequenceSemaine, seancesDiscipline } from "../engine/plancherFrequence.ts";
@@ -31,7 +33,7 @@ import { swimrunObjective } from "../sports/swimrun/objective.ts";
 import { guard, sportModule } from "../sports/registry.ts";
 import { arbitrateVolRecent } from "../engine/measured.ts";
 import { record as traceRecord, traceEnabled } from "../engine/trace.ts";
-import { enforceMedicalHold } from "../engine/medicalHold.ts";
+import { enforceMedicalHold, medicalZone } from "../engine/medicalHold.ts";
 import { estCreneauProtege, estIntouchable, jourIntouchable, rangCession } from "../engine/prioriteFinancement.ts";
 import { longRunSpecificityFloor, C31_MIN_JOUR2_MIN, C30_PART_SEMAINE_PIC } from "../engine/longRunSpecificity.ts";
 import { swimSessionCapAtWeek, swimWeeklyLoadCapM, type ContinuityGate } from "../engine/swimContinuity.ts";
@@ -4977,6 +4979,96 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       r.decisions = r.decisions.filter((dc) => !(dc.id === "C31" && dc.what.includes("(sem. " + wk.num + ")")));
     }
   }
+
+  // FV1 — FORCE VÉLO EN SPEC/PEAK, DOSE D'ENTRETIEN (feu vert du fondateur, 09/09/2026,
+  // `feuvert2et3.md`). Substitution post-construction, jamais dans la branche de construction
+  // du sport — voir la justification complète sur `FV1_INTERVAL_SEMAINES`
+  // (`constraintMatrix.ts`) : ce créneau alimente la sonde de capacité, un changement à la
+  // construction a un rayon plus large que le créneau qu'il touche (leçon d'O-119, même terrain).
+  //
+  // Domaine DÉRIVÉ (règle O-85) : tout sport dont le registre déclare une jambe vélo, jamais
+  // une liste ["tri","bike","duathlon"] à tenir à jour. Ciblage : profils à dénivelé
+  // significatif au programme de course (même convention que `climb` dans
+  // `sports/bike/index.ts`) — la recommandation le nomme en priorité, elle n'exclut pas les
+  // autres, mais aucune mesure n'existe encore pour les profils plats : on ne l'étend pas sans
+  // elle (règle 7).
+  if (sportModule(a.sport as string).disciplines.includes("bk") && (a.terrain === "montagne" || a.terrain === "vallonne")) {
+    const eligibles = plan.weeks.filter((wk) => !wk.isRecup && (wk.phase.id === "spec" || wk.phase.id === "peak"));
+    eligibles.forEach((wk, idx) => {
+      if (idx % FV1_INTERVAL_SEMAINES !== 0) return;
+      const wd = wk.days as GenDay[];
+      // La séance vélo de qualité la plus intense de la semaine (jamais la longue ni le brick,
+      // jamais une course, jamais déjà une force basse cadence — idempotence si cette passe
+      // devait un jour être rejouée). L'intensité se lit sur `BIKE_POWER_RATIO`, la même échelle
+      // que `stepMeters`/`weekDistances` (R11.1, une seule source pour comparer deux zones).
+      let cible: V1Session | null = null, corpsCible: V1Step | null = null, intensiteMax = -1;
+      for (const d of wd) {
+        for (const sx of d.sessions) {
+          if (sx.d !== "bk" || sx.long || sx.brick || sx.race) continue;
+          const corps = (sx.steps || []).find((st) => st.role === "body");
+          if (!corps || corps.zone === "bk.frc" || !IS_QUALITY_ZONE(String(corps.zone || ""))) continue;
+          const ratio = BIKE_POWER_RATIO[String(corps.zone)] ?? 0;
+          if (ratio > intensiteMax) { cible = sx; corpsCible = corps; intensiteMax = ratio; }
+        }
+      }
+      if (!cible || !corpsCible) return;
+      const zone = medicalZone("bk.frc", r.medHold) as string | null;
+      cible.name = "Force en côte (entretien)";
+      cible.note = "Dose d'entretien : le geste de force basse cadence ne disparaît pas en spécifique/pic, il se fait plus rare. Gros braquet, cadence basse, sans forcer sur les genoux — juste assez pour garder le stimulus musculaire jusqu'au jour J.";
+      cible.steps = [
+        { role: "warmup", durationMin: 15, text: "+ montée en intensité" },
+        { role: "body", reps: FV1_ENTRETIEN_REPS, durationMin: FV1_ENTRETIEN_DUR_MIN, zone, intensity: intOf(zone) as unknown as string, recoveryText: "3min souple", recoveryMin: 3, suffix: " à 50-60 rpm en côte", prefix: "" } as V1Step,
+        { role: "cooldown", durationMin: 10, text: "moulinage léger" },
+      ];
+      renderSess(cible, refs, r.hz, r.baseRefs);
+      r.decisions.push({
+        id: "FV1", what: "Force vélo : dose d'entretien en spécifique/pic (semaine " + wk.num + ")",
+        val: FV1_ENTRETIEN_REPS + " × " + FV1_ENTRETIEN_DUR_MIN + " min à 50-60 rpm, toutes les " + FV1_INTERVAL_SEMAINES + " semaines",
+        why: "Ton programme de course porte du dénivelé : le geste musculaire du gros braquet se perd s'il disparaît complètement pendant la phase la plus spécifique. Une dose réduite l'entretient sans reprendre la fatigue résiduelle d'un bloc complet.",
+      });
+    });
+  }
+
+  // RC1 — REPOS COMPLET GARANTI EN MULTISPORT (feu vert du fondateur, 09/09/2026,
+  // `feuvert2et3.md`). Domaine dérivé (règle O-85) : `disciplines.length > 1`, jamais une
+  // liste ["tri","duathlon"] — `swimrun` y entre aussi mais n'a rien à convertir (son propre
+  // schéma livre déjà un vrai OFF sur 100 % des semaines mesurées, voir `RC1_LABEL_RECUP`).
+  // Post-construction (même emplacement que FV1, mêmes raisons) : la couverture des
+  // disciplines et le plancher de fréquence tournent déjà sur ce jour au moment de sa
+  // construction, une conversion en amont serait rouverte par eux.
+  //
+  // ⚠ `bike` (pur) N'ENTRE PAS ICI bien que mesuré à 12,1 % de vrai OFF — quasiment le même
+  // défaut que tri/duathlon (9,7-10,2 %) — parce que la recommandation scope explicitement
+  // « en multisport » et que `bike` est mono-discipline. Trouvaille publiée, non traitée sans
+  // autorisation sur ce sport précis (voir `constraintMatrix.ts`, commentaire RC1).
+  if (sportModule(a.sport as string).disciplines.length > 1) {
+    for (const wk of plan.weeks) {
+      if (wk.isRecup) continue;
+      const wd = wk.days as GenDay[];
+      let dejaOff = false, candidat: { s: V1Session } | null = null;
+      for (const d of wd) {
+        for (const s of d.sessions) {
+          if (s.d !== "rs") continue;
+          const texte = s.name + " " + (s.det || "");
+          if (RC1_LABEL_OFF.test(texte)) { dejaOff = true; break; }
+          if (!candidat && RC1_LABEL_RECUP.test(texte)) candidat = { s };
+        }
+        if (dejaOff) break;
+      }
+      if (dejaOff || !candidat) continue;
+      // Mesuré (constraintMatrix.ts, RC1) : un jour de récup active n'a JAMAIS de step réel
+      // sur les 3 906 semaines de charge multisport du golden — la bascule ne retire donc
+      // aucun volume, aucune fréquence. Un changement de CADRAGE, pas de plan.
+      candidat.s.name = "OFF";
+      candidat.s.det = "repos total";
+      r.decisions.push({
+        id: "RC1", what: "Repos complet garanti (semaine " + wk.num + ")",
+        val: "1 jour de repos total par semaine de charge, pas seulement de la récup active",
+        why: "En multisport, chaque jour de la semaine porte une discipline — le seul jour qui restait pour souffler était étiqueté « récupération », ce qui laisse deviner qu'il faut encore faire quelque chose. Il ne prescrivait déjà rien : le nom dit maintenant ce qu'il est.",
+      });
+    }
+  }
+
   // C3 REJOUÉ AU POINT FIXE — treizième paiement de la même leçon, sur l'ENVELOPPE DÉCLARÉE.
   //
   // C3 (plafond dur de semaine, vol_max × facteur blessure/âge) tournait dans la boucle de

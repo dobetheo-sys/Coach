@@ -12727,3 +12727,58 @@ attendu: /"debordeSessionName":1[0-9][0-9]/ (mesure ~181px tant que non corrigé
   matche plus SANS que la composition ait été retravaillée, vérifier que la mesure n'a pas cassé)
 cmd: node scripts/verifyO122.mjs 2>&1 | head -1
 ```
+
+## FV1 · Force vélo en spec/peak : dose d'entretien · ✅ **LIVRÉ 09/09/2026**
+
+Feu vert du fondateur (`feuvert2et3.md`) sur une recommandation d'un précédent conseil externe :
+`bk.frc` (force basse cadence) mesurait **0,0 % exact** en spec/peak/taper sur tous les sports à
+jambe vélo (tri, bike, duathlon) — structurel, chaque module route le créneau vélo de qualité
+ailleurs (allure course, seuil/race-pace, VO2max) dès que la phase quitte base/dev.
+
+**Livré** : substitution post-construction (`planGenerator.ts`, après `reconcileDeclaredVolume`
+— jamais dans la branche de construction du sport, leçon d'O-119 sur le même terrain), une dose
+réduite (3 × 4 min à 50-60 rpm, contre 4-6 × 5-7 min en base/dev) toutes les 4 semaines de
+spec/peak, ciblant les profils à dénivelé significatif (`terrain` montagne/vallonné). Détail
+complet et provenance des constantes dans `constraintMatrix.ts` (`FV1_*`).
+
+Vérifié : `audit:v1` 459/459, `audit:invariants` 22/22, `audit:monotonie` 42 verts · 0
+régression, `audit:v6` 75 verts · 0 régression, golden recapturé (23 profils — tous les
+sous-corpus PW à dénivelé + la fixture REEL), E2E 27/27, 0 violation dure sur 5 profils
+montagne dédiés (tri/bike/duathlon).
+
+```verify
+id: FV1
+quoi: la dose d'entretien apparaît sur un profil à dénivelé, jamais sur un profil plat
+attendu: FV1 VERT
+cmd: node scripts/verifyFV1.mjs 2>&1 | tail -1
+```
+
+## RC1 · Repos complet garanti en multisport · ✅ **LIVRÉ 09/09/2026**
+
+Feu vert du fondateur (`feuvert2et3.md`). Mesuré avant d'écrire (règle 7) : `tri` et `duathlon`
+livraient un vrai jour OFF sur seulement 9,7 % / 10,2 % des semaines de charge (le reste
+exclusivement de la « récup active ») — `run` et `trail` sont déjà à 100 % / 77,7 % (mécanisme
+`applyRunImpactCap`), `swimrun` déjà à 100 % (son schéma dédié).
+
+**⚠ Prémisse partiellement réfutée, publiée plutôt qu'absorbée en silence** : la recommandation
+citait « run/bike/trail déjà corrects » — `bike` (pur) mesure en réalité **12,1 %**, quasiment
+le même défaut que tri/duathlon. `bike` est mono-discipline (`disciplines.length === 1`), hors
+du domaine « en multisport » que la recommandation scope explicitement : **non traité ici**,
+faute d'autorisation sur ce sport précis. Détail complet dans `constraintMatrix.ts` (`RC1_*`).
+
+**Ce qui rend le correctif quasi gratuit, mesuré** : un jour de « récup active » (`d:"rs"`,
+`steps:[]`) est déjà vide de tout contenu prescrit — 0 occurrence d'un jour de récup portant un
+step réel sur 3 906 semaines de charge multisport. La bascule vers « OFF » est un changement de
+CADRAGE (l'athlète lit qu'il ne doit rien faire), jamais de plan : aucun volume, aucune
+fréquence ne bouge.
+
+Vérifié : mêmes gates que FV1 (batterie identique, même commit), golden recapturé (343 profils,
+tri + duathlon uniquement — aucun `bike`/`run`/`swim`/`trail`/`swimrun`, exactement le domaine
+attendu).
+
+```verify
+id: RC1
+quoi: chaque semaine de charge d'un plan tri porte un vrai OFF ; bike (hors domaine) reste inchangé
+attendu: RC1 VERT
+cmd: node scripts/verifyRC1.mjs 2>&1 | tail -1
+```
