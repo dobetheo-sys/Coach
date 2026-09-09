@@ -12686,13 +12686,9 @@ d'un blanc qui n'est réservé que pour du contenu qui ne vient pas.
 quatre cas, date recentrée seulement quand streak/badge sont absents, comportement INCHANGÉ
 quand ils sont présents (hors scope de (b) par construction).
 
-**Trouvaille au passage, publiée et NON corrigée (hors scope)** : en format `square` avec
-`avatarAspect: 1,78` (le combo réellement utilisé par le bouton « 🖼 Carte » de
-`session-life.js`), la plaque de l'avatar (haute de 605px sur un canvas de 1080px) déborde sur
-le nom de séance / détail / streak / badge dessinés en dessous — ces éléments restent lisibles
-(ils sont peints après, comme avant ce correctif) mais la composition visuelle est chargée.
-Préexistant à ce correctif (l'ordre `sessionName → detail → streak → badge` après l'avatar
-n'a pas changé), pas dans le périmètre de la clarification qui a motivé O-121.
+**Trouvaille au passage, publiée séparément en O-122** (ci-dessous) : le format `square` avec
+`avatarAspect: 1,78` a sa propre composition trop chargée — pas dans le périmètre de la
+clarification qui a motivé O-121, donc pas corrigée ici.
 
 ```verify
 id: O-121
@@ -12700,4 +12696,34 @@ quoi: le sous-titre de discipline reste peint au-dessus de la plaque de l'avatar
   détectée dans la zone de recouvrement), et la date se recentre quand streak/badge sont absents
 attendu: O-121 VERT
 cmd: node scripts/verifyO121.mjs 2>&1 | tail -1
+```
+
+## O-122 · Format `square` + avatar triptyque : la plaque déborde sur le texte dessous · 🟡 **OUVERT**
+
+**Trouvé en vérifiant les appelants d'O-121** (ci-dessus), publié séparément parce que c'est un
+défaut DISTINCT, non corrigé, et qu'il n'a pas sa place dans une entrée fermée. Sur le bouton
+« 🖼 Carte » de `session-life.js` (`shareStory(shareOpts, "square")`, `avatarAspect: 1,78` —
+c'est la SEULE valeur utilisée par les trois appelants de `storyBlob()`), la plaque claire de
+l'avatar est dimensionnée pour un canvas STORY (1080×1920) et reste à la même hauteur relative
+en CARRÉ (1080×1080) : elle va de `y=224` à `y=881` sur un canvas de 1080px de haut, et déborde
+sur les trois textes dessinés juste en dessous — **181 px** sur le nom de séance (`y=700`),
+**126 px** sur le détail (`y=755`), **41 px** sur la première ligne streak/badge (`y=840`).
+
+**Pas un défaut de lisibilité** (règle 15 nuancée) : ces trois textes sont peints APRÈS
+l'avatar (inchangé par O-121, qui n'a touché que le titre et le sous-titre), donc ils restent
+visibles sur la plaque claire — mesuré au rendu (`verif-session-square.png`, chantier partage
+étape 3). C'est un défaut de COMPOSITION : la plaque occupe plus des trois quarts d'un canvas
+carré, poussant nom/détail/streak/badge à s'empiler dessus au lieu d'être clairement séparés.
+
+**Non corrigé, délibérément, hors scope de la clarification qui l'a trouvé.** Piste pour une
+correction future (non arbitrée) : dimensionner la plaque en fonction du FORMAT (`sq`) et pas
+seulement de l'aspect de l'avatar — aujourd'hui `dims` ne varie qu'avec `avatarAspect`, jamais
+avec `sq`, alors que les deux canvas n'ont pas le même budget vertical disponible.
+
+```verify
+id: O-122
+quoi: ampleur du débordement de la plaque avatar (carré, avatarAspect 1,78) sur le texte dessous
+attendu: /"debordeSessionName":1[0-9][0-9]/ (mesure ~181px tant que non corrigé — si ce motif ne
+  matche plus SANS que la composition ait été retravaillée, vérifier que la mesure n'a pas cassé)
+cmd: node scripts/verifyO122.mjs 2>&1 | head -1
 ```
