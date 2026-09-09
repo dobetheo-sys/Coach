@@ -111,7 +111,14 @@ async function ouvrirNutrition(state, jour) {
   st.sport = "tri";
   st.answers.weight = "72";
   st.answers.plan_start = "2026-08-10"; // plan tout neuf : l'ancre des 28 jours n'est pas échue
-  await ouvrirNutrition(st);
+  // Famille R20.7, occurrence distincte d'O-48 (BUGS_OUVERTS.md) : ce bloc compare `plan_start`
+  // à AUJOURD'HUI pour vérifier que la fenêtre de 28 jours n'est pas encore échue — sans ancrage,
+  // « aujourd'hui » est la vraie date système et le bloc casse dès que 28 jours réels séparent
+  // l'exécution de la suite de cette date écrite en dur (mesuré rouge le 2026-09-09, 30 jours
+  // après le 10/08). `JOUR` fixe une distance courte et stable (5 jours) à `plan_start`.
+  const JOUR = "2026-08-15";
+  st.answers.readiness.date = JOUR; // sinon le portillon du check-in relit la vraie date du jour
+  await ouvrirNutrition(st, JOUR);
   const card = page.locator("#shopCard");
   ok((await card.getAttribute("class") || "").includes("shop-card-min"),
     "plan récent, proposition pas encore due : la carte est REPLIÉE (pas de rappel permanent)");

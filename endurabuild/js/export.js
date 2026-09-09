@@ -169,8 +169,6 @@ async function storyBlob(o,format){
   // FOND TRANSPARENT : aucun fillRect plein cadre. Les deux barres d'accent restent (saturées,
   // lisibles sur clair comme sur sombre) — ce sont elles qui « tiennent » la composition.
   x.fillStyle=acc;x.fillRect(0,0,W,18);x.fillRect(0,H-18,W,18);
-  _ebTxt(x,o.title||"SÉANCE FAITE ✔",70,sq?140:190,{size:sq?66:88,weight:900,family:"Archivo Black",max:W-140});
-  _ebTxt(x,(SPORTS[o.sport]?SPORTS[o.sport].ico+" "+SPORTS[o.sport].nom:o.sport||""),70,sq?210:290,{size:sq?42:52,weight:700,color:acc,max:W-140});
   // avatar au centre (SVG → Image via blob URL, même origine), sur sa plaque claire
   if(o.avatarSVG){
     await new Promise(res=>{
@@ -191,9 +189,23 @@ async function storyBlob(o,format){
       im.onerror=()=>{URL.revokeObjectURL(u);res();};im.src=u;
     });
   }
+  // Titre + sous-titre de discipline DESSINÉS APRÈS la plaque de l'avatar (clarification chantier
+  // partage étape 3, O-121) : au format triptyque (avatarAspect > 1,4, ex. RETEST/avatar seul en
+  // story), la plaque commence assez haut pour chevaucher le sous-titre posé à sa position
+  // d'origine — peints en dernier, titre et sous-titre restent TOUJOURS lisibles, quel que soit
+  // le format ou l'aspect de l'avatar, sans recalculer une position par branche.
+  _ebTxt(x,o.title||"SÉANCE FAITE ✔",70,sq?140:190,{size:sq?66:88,weight:900,family:"Archivo Black",max:W-140});
+  _ebTxt(x,(SPORTS[o.sport]?SPORTS[o.sport].ico+" "+SPORTS[o.sport].nom:o.sport||""),70,sq?210:290,{size:sq?42:52,weight:700,color:acc,max:W-140});
   _ebTxt(x,(o.sessionName||"").slice(0,28),0,sq?700:1080,{size:sq?52:64,weight:800,max:W-80,center:W});
   if(o.detail)_ebTxt(x,String(o.detail).split("—")[0].slice(0,44),0,sq?755:1150,{size:sq?32:40,color:"rgba(255,255,255,.92)",max:W-80,center:W});
-  let y=sq?840:1280;
+  // Le bloc streak/badge/date est ancré haut (sq?840:1280) pour laisser de la place à DEUX
+  // lignes optionnelles au-dessus de la date — mais quand aucune des deux n'est dessinée (streak
+  // ≤ 1 ET aucun badge, ex. RETEST : streak:0, badge:null), la date se retrouve seule, collée en
+  // haut d'un vide de ~540 px avant le pied de page (mesuré, clarification étape 3, O-121). Sans
+  // contenu à empiler au-dessus, on recentre la date dans l'espace qui reste plutôt que de la
+  // laisser flotter en haut d'un blanc qui n'est un « réservé » que pour du contenu absent.
+  const soloDate=!(o.streak>1)&&!o.badge;
+  let y=sq?(soloDate?900:840):(soloDate?1550:1280);
   if(o.streak>1){_ebTxt(x,"🔥 "+o.streak+" jours d'affilée",0,y,{size:sq?44:54,weight:700,max:W-80,center:W});y+=sq?66:90;}
   if(o.badge){_ebTxt(x,(o.badge.icon+" Badge débloqué : "+o.badge.label).slice(0,40),0,y,{size:sq?40:50,weight:700,color:"#ffd76a",max:W-80,center:W});y+=sq?66:90;}
   const d=new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"});

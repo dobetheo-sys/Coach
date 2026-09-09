@@ -12621,3 +12621,83 @@ Vérifié : `check:sw` reconstruit (`eb-pwa-7655c8c84d8d`, 79 assets, même comp
 E2E `smoke-tabs`/`smoke-checkin`/`smoke-r4`/`smoke-questionnaires`/`smoke-boucle`/`smoke-usage`/
 `smoke-zenna` verts (aucune régression — la plupart des fixtures n'ont pas de `S.answers.tests`
 déclaré, donc le badge/rappel restent silencieux par défaut, comme voulu).
+
+## O-120 · `smoke-shop.mjs` bloc 4 dépendait du JOUR D'EXÉCUTION, occurrence distincte d'O-48 · ✅ **FERMÉ 09/09/2026**
+
+**Neuvième occurrence de la famille R20.7**, trouvée en vérifiant le Format C du chantier
+« partage étape 3 » (elle n'a rien à voir avec ce chantier — reproduite à l'identique contre
+`8e56ee3`, avant ET après). Le bloc 4 (« R-ZENNA : la composition de la maquette n'a PAS emporté
+la restriction ») fixe `plan_start = "2026-08-10"` en commentant « l'ancre des 28 jours n'est pas
+échue » — mais compare cette date à AUJOURD'HUI sans jamais l'ancrer via
+`page.clock.setFixedTime`, contrairement au bloc 10 de la même suite (`JOUR = "2026-08-19"`,
+`ouvrirNutrition(st, JOUR)`). La suite tournait donc sur la vraie date système : le 08 et le
+16/08/2026 (< 28 jours après le 10/08) la carte était bien REPLIÉE et les 3 assertions du bloc
+passaient ; le 09/09/2026 (30 jours après) la fenêtre de `shopPromptDue` était dépassée, la carte
+s'affichait DÉPLIÉE, et les 3 assertions dépendantes échouaient — à code produit strictement
+identique.
+
+**Ce n'est PAS O-48** (ci-dessus, fermée) : O-48 touchait le devis mensuel du bloc 10 (« le devis
+a des lignes à nommer (0) »), déjà ancré depuis sa fermeture et vert aujourd'hui. Les deux
+partagent la cause générique (un test compare une date écrite en dur à `Date.now()` sans figer ce
+dernier) mais sont deux blocs, deux dates, deux symptômes — d'où une entrée séparée plutôt qu'une
+réouverture d'O-48.
+
+**Correctif** : ancrage explicite du bloc 4 sur le même patron que le bloc 10 —
+`JOUR = "2026-08-15"` (5 jours après `plan_start`, confortablement sous le seuil de 28 jours),
+`st.answers.readiness.date = JOUR` (sinon le portillon du check-in relit la vraie date du jour et
+bloque l'onglet), `ouvrirNutrition(st, JOUR)`. Correctif de test pur, aucun fichier de `src/` ni
+`endurabuild/js/` hors `tests/e2e/` touché.
+
+```verify
+id: O-120
+quoi: smoke-shop.mjs passe intégralement, indépendamment du jour d'exécution
+attendu: TOUT PASSE — 42 assertions
+cmd: node tests/e2e/smoke-shop.mjs 2>&1 | tail -1
+```
+
+## O-121 · `storyBlob()` masquait le sous-titre de discipline et laissait un vide de ~540 px sans streak/badge · ✅ **FERMÉ 09/09/2026**
+
+**Trouvé en vérifiant le Format C** (retest, chantier « partage étape 3 ») — le composeur partagé
+`storyBlob()` (`endurabuild/js/export.js`), utilisé par **trois appelants** (`retest.js`,
+`session-life.js`, `tab-profile.js`), portait deux défauts d'agencement indépendants du contenu :
+
+**a) Le sous-titre de discipline disparaissait sous la plaque de l'avatar.** Le sous-titre
+(« 🏃 Course à pied », `(70,290)`, 52px gras) est peint AVANT le bloc avatar ; sur le format
+triptyque (`avatarAspect > 1,4` — le SEUL format utilisé par les trois appelants), la plaque
+claire de l'avatar est dessinée ENSUITE avec un coin haut-gauche à `(304,274)`, qui tombe en
+plein dans la boîte verticale du sous-titre (`y ∈ [251,303]`) — la fin du texte se retrouvait
+peinte, puis immédiatement recouverte. **Systémique, pas un accident de la capture retest** :
+les trois appelants partagent ce chemin de code.
+
+**b) Sans streak (`≤ 1`) ni badge, la date restait seule en haut d'un vide d'environ 540 px**
+(28 % de la hauteur d'une story) avant le pied de page — les deux lignes optionnelles
+(streak/badge) réservent un espace qui reste vide par construction quand elles ne se déclenchent
+pas, et la date ne bouge pas pour combler ce vide.
+
+**Correctifs, tous les deux dans `storyBlob()`, aucun fichier de `src/` touché** :
+(a) titre et sous-titre sont désormais peints **APRÈS** le bloc avatar (ordre de dessin, pas de
+recalcul de position par branche/format — reste correct quel que soit l'aspect de l'avatar) ;
+(b) quand `streak <= 1` et `badge` absent (« soloDate »), la date est recentrée dans l'espace
+disponible (`y: 1550` en story / `900` en carré, contre `1280`/`840`) plutôt que collée en haut
+d'un blanc qui n'est réservé que pour du contenu qui ne vient pas.
+
+**Vérifié sur les trois appelants** (captures manuelles, `retest.js` + `session-life.js` streak
+12/badge présent + `tab-profile.js` avatar seul streak 5) : sous-titre toujours lisible dans les
+quatre cas, date recentrée seulement quand streak/badge sont absents, comportement INCHANGÉ
+quand ils sont présents (hors scope de (b) par construction).
+
+**Trouvaille au passage, publiée et NON corrigée (hors scope)** : en format `square` avec
+`avatarAspect: 1,78` (le combo réellement utilisé par le bouton « 🖼 Carte » de
+`session-life.js`), la plaque de l'avatar (haute de 605px sur un canvas de 1080px) déborde sur
+le nom de séance / détail / streak / badge dessinés en dessous — ces éléments restent lisibles
+(ils sont peints après, comme avant ce correctif) mais la composition visuelle est chargée.
+Préexistant à ce correctif (l'ordre `sessionName → detail → streak → badge` après l'avatar
+n'a pas changé), pas dans le périmètre de la clarification qui a motivé O-121.
+
+```verify
+id: O-121
+quoi: le sous-titre de discipline reste peint au-dessus de la plaque de l'avatar (couleur accent
+  détectée dans la zone de recouvrement), et la date se recentre quand streak/badge sont absents
+attendu: O-121 VERT
+cmd: node scripts/verifyO121.mjs 2>&1 | tail -1
+```
