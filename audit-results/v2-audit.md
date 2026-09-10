@@ -18,7 +18,7 @@ aucune ne se cite seule comme un effet.
 | run | 108 | 0.98 | 0.94–1.00 | 0 | 0 | 0 | 0.46 | 0 | 85% | 0 | 100 |
 | bike | 135 | 0.99 | 0.91–1.00 | 0 | 0 | 0 | 0.43 | 0 | 91% | 0 | 99 |
 | swim | 108 | 0.97 | 0.91–0.99 | 0 | 0 | 0 | 0.48 | 1 | 66% | 3 | 93 |
-| tri | 108 | 0.98 | 0.92–1.00 | 0 | 0 | 0 | 0.47 | 6 | 71% | 2 | 90 |
+| tri | 108 | 0.98 | 0.92–1.00 | 0 | 0 | 0 | 0.47 | 6 | 71% | 2 | 89 |
 | trail | 27 | 0.96 | 0.94–0.99 | 0 | 0 | 0 | 0.28 | 0 | 96% | 0 | 97 |
 | duathlon | 108 | 0.97 | 0.93–0.99 | 0 | 0 | 0 | 0.38 | 0 | 87% | 0 | 99 |
 
@@ -29,7 +29,7 @@ aucune ne se cite seule comme un effet.
 | run | 0.98 → 0.98 | 0.88 → 0.88 | 100 → 100 |
 | bike | 0.99 → 0.99 | 0.90 → 0.90 | 99 → 99 |
 | swim | 0.97 → 0.97 | 0.88 → 0.88 | 93 → 93 |
-| tri | 0.98 → 0.98 | 0.89 → 0.90 | 92 → 90 |
+| tri | 0.98 → 0.98 | 0.89 → 0.90 | 91 → 89 |
 | trail | NaN → 0.96 | 1.00 → 0.91 | NaN → 97 |
 | duathlon | NaN → 0.97 | 1.00 → 0.90 | NaN → 99 |
 
@@ -43,6 +43,8 @@ aucune ne se cite seule comme un effet.
 - **B17-paliers** · Nages continues prescrites : `1 palier(s) en phase spécifique` — La continuité se construit par une MONTÉE, jamais par un test unique à la fin : découvrir la distance trois semaines avant l'épreuve laisse le temps de s'inquiéter, pas celui de s'adapter — et le nombre est borné par la place réellement disponible
 - **courbe** · Courbe de charge : `base 0.5→peak 1.0→affûtage 0.3` — Bandes normalisées × pic, récup ×0.62, lissage C22 ≤+10%/sem
 - **R12-ref** · Tes références d'intensité : `CSS · FTP · allure seuil (déclarées)` — Toutes tes références sont déclarées : les séances portent des cibles chiffrées et le volume promis est calé sur ta vraie vitesse.
+- **RN1** · Seuil course : dose d'entretien en spécifique/pic (semaine 12) : `3 × 6 min au seuil, toutes les 4 semaines` — Ton profil accepte des marges resserrées : ce plan introduit une dose de seuil course à basse fréquence, absente par défaut. Surveille ta forme du jour — cette séance est réduite ou remplacée comme n'importe quelle autre si le readiness n'est pas vert.
+- **RN1** · Seuil course : dose d'entretien en spécifique/pic (semaine 17) : `3 × 6 min au seuil, toutes les 4 semaines` — Ton profil accepte des marges resserrées : ce plan introduit une dose de seuil course à basse fréquence, absente par défaut. Surveille ta forme du jour — cette séance est réduite ou remplacée comme n'importe quelle autre si le readiness n'est pas vert.
 - **RC1** · Repos complet garanti (semaine 1) : `1 jour de repos total par semaine de charge, pas seulement de la récup active` — En multisport, chaque jour de la semaine porte une discipline — le seul jour qui restait pour souffler était étiqueté « récupération », ce qui laisse deviner qu'il faut encore faire quelque chose. Il ne prescrivait déjà rien : le nom dit maintenant ce qu'il est.
 - **RC1** · Repos complet garanti (semaine 2) : `1 jour de repos total par semaine de charge, pas seulement de la récup active` — En multisport, chaque jour de la semaine porte une discipline — le seul jour qui restait pour souffler était étiqueté « récupération », ce qui laisse deviner qu'il faut encore faire quelque chose. Il ne prescrivait déjà rien : le nom dit maintenant ce qu'il est.
 - **RC1** · Repos complet garanti (semaine 3) : `1 jour de repos total par semaine de charge, pas seulement de la récup active` — En multisport, chaque jour de la semaine porte une discipline — le seul jour qui restait pour souffler était étiqueté « récupération », ce qui laisse deviner qu'il faut encore faire quelque chose. Il ne prescrivait déjà rien : le nom dit maintenant ce qu'il est.
@@ -59,5 +61,5 @@ aucune ne se cite seule comme un effet.
 - **RC1** · Repos complet garanti (semaine 18) : `1 jour de repos total par semaine de charge, pas seulement de la récup active` — En multisport, chaque jour de la semaine porte une discipline — le seul jour qui restait pour souffler était étiqueté « récupération », ce qui laisse deviner qu'il faut encore faire quelque chose. Il ne prescrivait déjà rien : le nom dit maintenant ce qu'il est.
 - **RC1** · Repos complet garanti (semaine 19) : `1 jour de repos total par semaine de charge, pas seulement de la récup active` — En multisport, chaque jour de la semaine porte une discipline — le seul jour qui restait pour souffler était étiqueté « récupération », ce qui laisse deviner qu'il faut encore faire quelque chose. Il ne prescrivait déjà rien : le nom dit maintenant ce qu'il est.
 - **RC1** · Repos complet garanti (semaine 20) : `1 jour de repos total par semaine de charge, pas seulement de la récup active` — En multisport, chaque jour de la semaine porte une discipline — le seul jour qui restait pour souffler était étiqueté « récupération », ce qui laisse deviner qu'il faut encore faire quelque chose. Il ne prescrivait déjà rien : le nom dit maintenant ce qu'il est.
-- **allocation** · Répartition entre les trois disciplines : `vélo 43 % (visé 45) · course 39 % (visé 32) · natation 19 % (visé 23)` — La cible correspond à ton enveloppe déclarée (9 à 13 h/sem) : elle vient du partage du temps de ta COURSE, corrigé pour la natation — la technique se perd par la fréquence, pas par le volume, donc on nage plus que sa part de chrono. Ce que tu lis est ce que ton plan livre : l'écart vient de la structure de ta semaine (combien de créneaux portent quelle discipline), pas d'un réglage — le forcer reviendrait à prendre des minutes sous des planchers de séance qui existent pour te protéger.
+- **allocation** · Répartition entre les trois disciplines : `vélo 43 % (visé 45) · course 38 % (visé 32) · natation 19 % (visé 23)` — La cible correspond à ton enveloppe déclarée (9 à 13 h/sem) : elle vient du partage du temps de ta COURSE, corrigé pour la natation — la technique se perd par la fréquence, pas par le volume, donc on nage plus que sa part de chrono. Ce que tu lis est ce que ton plan livre : l'écart vient de la structure de ta semaine (combien de créneaux portent quelle discipline), pas d'un réglage — le forcer reviendrait à prendre des minutes sous des planchers de séance qui existent pour te protéger.
 - **frequence** · Fréquence par discipline : `30 semaine-discipline(s) sous la cible de 3 séances — au plus bas, natation à 1 séance` — La technique se maintient par la FRÉQUENCE, pas par le volume : c'est pour ça que tu nages plus que ta part de chrono. Ce plan ne force rien — avec 8 séances par semaine, deux séances par discipline deviennent tenables ; en dessous, donner deux créneaux à une discipline qui pèse un huitième de ta course reviendrait à les prendre à celles qui en pèsent sept. Le levier est le nombre de créneaux, donc le doublage, pas un réglage de répartition.
