@@ -12789,7 +12789,7 @@ attendu: RC1 VERT
 cmd: node scripts/verifyRC1.mjs 2>&1 | tail -1
 ```
 
-## BQ1 · Budget qualitatif tri · 🟡 **RETIRÉ SANS LIVRAISON, 10/09/2026**
+## BQ1 · Budget qualitatif tri · ⚫ **CLÔTURÉ SANS CORRECTIF, 10/09/2026**
 
 Décision du fondateur (`decisionrc1bikeetscope4.md`) : plafonner à « 4-5, débloqué à 6 » les
 créneaux qualitatifs par semaine de charge en `tri` seul, ciblés sur le mécanisme identifié dans
@@ -12824,11 +12824,28 @@ cible à `facile2` et abîmer un mécanisme extensivement protégé ailleurs dan
 `BQ1_CAP_TRI` retirée de `constraintMatrix.ts`. **`src/` revient à l'état RC1+FV1 sur l'axe tri** :
 aucun plan tri ne change par rapport au commit qui précède cette tentative.
 
-**En attente d'une nouvelle décision du fondateur** avant toute poursuite de #4 : soit accepter
-que le mécanisme réel à cibler est `facile2` et arbitrer explicitement le compromis avec R13.3/C3
-(par exemple un plafond qui ne mord que sur les semaines DOUBLÉES, où une deuxième nage qualité
-existe déjà en plus de `facile2`), soit clore #4 sans correctif en s'appuyant sur C26c/C26d
-(déjà cités dans la décision comme couvrant la préoccupation de charge cumulée par un autre axe).
+**Suite mesurée avant nouvelle décision (règle 7), et c'est elle qui a tranché.** Les deux issues
+laissées ouvertes ci-dessus ont été départagées par une mesure de la population `bkbksw` (533 des
+1 567 semaines à ≥3 créneaux, 34 %) : `dur1` et `dur2` livrent tous deux une séance de qualité
+VÉLO en base/dev, par construction délibérée (`sports/tri/index.ts`, commentaire C2/B-10) —
+c'est le SEUL empilement réel dans le compte de créneaux (2 033 semaines sur 2 036 à ≥2 créneaux
+qualité d'une même discipline sont du vélo ; 0 en nage, 3 en course). Le reste du chiffre « 37,2 %
+de semaines ≥3 créneaux » (1 031 des 1 567, 66 %) n'est pas un empilement mais UNE séance de
+qualité par discipline — la structure normale d'une semaine de tri qui travaille ses trois
+disciplines, qu'aucun plafond ne doit toucher.
+
+Sur les 2 033 semaines à double créneau vélo, la part modérée réelle du vélo est mesurée à
+**15,9 % en moyenne, 41,2 % au maximum, et 1 semaine sur 2 033 (0,0 %) dépasse le plafond de 40 %**
+que `C26D_MOD_SHARE_MAX_PAR_DISCIPLINE` (O-119, `enforceModShareCap`) s'est déjà donné. La
+préoccupation de charge cumulée qui motivait #4 est donc **mesurée couverte**, pas seulement
+supposée — exactement la clause de sortie que la décision d'origine réservait. Un plafond de
+CRÉNEAUX (plutôt que de minutes) serait soit inerte sur cette population (déjà sous son seuil à
+99,95 %), soit dommageable s'il visait un seuil plus strict qu'une charge mesurée à 15,9 %.
+
+**Décision du fondateur, 10/09/2026 : #4 clôturé sans correctif.** Rien n'est écrit dans `src/` —
+la charge cumulée reste bornée par C26c/C26d, la structure « une séance de qualité par
+discipline » reste intacte. Rapport complet : `RAPPORT-BQ2-mesure-avant-code.md` (mesure de
+composition + confirmation C26d).
 
 ```verify
 id: BQ1
