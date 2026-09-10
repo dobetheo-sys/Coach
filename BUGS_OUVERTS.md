@@ -12853,3 +12853,56 @@ quoi: aucune constante BQ1 exportée ; le créneau de nage doublé du matin rest
 attendu: BQ1 RETRAIT CONFIRMÉ
 cmd: node scripts/verifyBQ1Retrait.mjs 2>&1 | tail -1
 ```
+
+## RN1 · Dose d'entretien seuil course, tri, « marges resserrées » · ✅ **LIVRÉ 10/09/2026**
+
+Décision du fondateur (`spectrirndoseentretien.md`), suite de `MESURE-calibration-volume-dur-long.md`
+qui a trouvé `tri/rn` à 0,0 % de dur (seuil/VO2max) sur les cinq phases — aucune zone dédiée
+n'existe dans le module tri, toute l'intensité course y passe par `rn.mara` (allure spécifique).
+
+**Vérifié avant d'écrire (règle 7), pas assumé** : « mode compétition »/« marges resserrées »
+N'EST PAS un concept à créer — `endurabuild/js/ui/steps.js:24,29` décrit déjà
+`a.intent === "competition"` par ce vocabulaire exact à l'athlète (« Marges resserrées —
+assumées »), le même flag que celui cité dans `decisionrc1bikeetscope4.md` pour #4/BQ1. Aucun
+second champ de profil de risque n'existe dans `ANSWER_SCHEMA`.
+
+**Mécanique, même patron que FV1** : substitution post-construction (jamais dans
+`sports/tri/index.ts` — leçon O-119/FV1 identique, ce créneau alimente la sonde de capacité),
+cible = la séance `rn.mara` (« Allure course (tri) ») déjà posée par `dur2`/`facileR`, convertie en
+dose de seuil (`rn.thr`, 3×6 min) toutes les 4 semaines. **Domaine réduit à spec+peak, jamais dev**,
+publié plutôt que décidé en silence : 0 semaine de dev sur 351 mesurées (golden) ne porte de
+candidat `rn.mara` à substituer — suivre le patron FV1 à la lettre (substituer une qualité déjà
+là, jamais convertir un footing facile en séance dure) exclut dev par construction.
+
+**Couplage readiness : aucun bypass codé, et c'est le point.** `sessionIntensity()`
+(`readiness/dailyAdjuster.ts`) classe tout step `.thr`/`.vo2` en « difficile » via `HARD_ZONES` —
+la dose introduite tombe donc automatiquement sous le même traitement que n'importe quelle autre
+séance dure (réduite ×0,7 en orange, remplacée en rouge) sans qu'aucune ligne n'ait à le
+demander. Vérifié directement : `adjustDay` sur un jour readiness « orange » réduit la séance de
+45 à 30 min, comme pour toute autre séance dure.
+
+**Régression trouvée et corrigée avant livraison** : la première écriture retirait purement les
+minutes de la séance substituée (dose plus petite que la séance remplacée, par design — l'esprit
+« entretien » de FV1), et `audit:monotonie` a rougi sur `MONO-tri-history` (2 inversions,
+S14/S15). Cause isolée par expérience à facteur unique (RN1 neutralisé → vert) : deux plans de
+longueur différente (reprise vs confirme n'ont pas le même nombre de semaines) placent la
+substitution — au même index dans leur propre liste spec+peak — sur des semaines calendaires
+DÉSALIGNÉES entre eux ; une réduction de volume qui atterrit du mauvais côté de cette
+désynchronisation suffit à inverser une comparaison positionnelle. Corrigé par le patron déjà
+établi dans ce dépôt pour exactement ce cas (C30b/R4.1) : la substitution est neutre en volume,
+les minutes retirées sont rendues au « Footing facile » de la même semaine — jamais ajoutées ni
+retirées ailleurs. `audit:monotonie` revient à 0 régression (42 verts, mêmes 9 dettes
+préexistantes) après correctif ; contre-preuve faite dans les deux sens (RN1 neutralisé → vert
+avant même le correctif de redistribution, confirmant que RN1 est bien la cause ; redistribution
+retirée → régression revient).
+
+Vérifié : `audit:v1` 459/459, `audit:invariants` 22/22, `audit:monotonie` 0 régression,
+`audit:v6`/`v7`/`r13`/`r14`/`r14.1`/`r18` verts, golden recapturé (120 profils, tous tri), E2E
+27/27, `check:app`/`check:sw` synchronisés.
+
+```verify
+id: RN1
+quoi: la dose n'existe qu'en intent=competition, jamais en dev/taper ; réduite par adjustDay comme toute autre séance dure
+attendu: RN1 DOMAINE VERT / RN1 COUPLAGE READINESS VERT
+cmd: node scripts/verifyRN1.mjs 2>&1 | tail -2
+```

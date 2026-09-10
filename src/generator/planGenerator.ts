@@ -19,6 +19,7 @@ import {
   hardTimeCapMin, weightedHardMin, C26c_HARD_TIME_TOLERANCE, C26d_MOD_SHARE_MAX, C26D_MOD_SHARE_MAX_PAR_DISCIPLINE, MIN_WEEKS, ALLOC_CIBLE, ALLOC_CIBLE_PALIERS, allocCibleDe, capScaleAtWeek,
   C29D_DECHARGE_DECLENCHEUR, C29D_DECHARGE_CIBLE,
   FV1_INTERVAL_SEMAINES, FV1_ENTRETIEN_REPS, FV1_ENTRETIEN_DUR_MIN,
+  RN1_INTERVAL_SEMAINES, RN1_ENTRETIEN_REPS, RN1_ENTRETIEN_DUR_MIN,
   RC1_LABEL_RECUP, RC1_LABEL_OFF,
 } from "../engine/constraintMatrix.ts";
 import { TrainingReasoningEngine } from "../engine/reasoningEngine.ts";
@@ -5025,6 +5026,71 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         id: "FV1", what: "Force vélo : dose d'entretien en spécifique/pic (semaine " + wk.num + ")",
         val: FV1_ENTRETIEN_REPS + " × " + FV1_ENTRETIEN_DUR_MIN + " min à 50-60 rpm, toutes les " + FV1_INTERVAL_SEMAINES + " semaines",
         why: "Ton programme de course porte du dénivelé : le geste musculaire du gros braquet se perd s'il disparaît complètement pendant la phase la plus spécifique. Une dose réduite l'entretient sans reprendre la fatigue résiduelle d'un bloc complet.",
+      });
+    });
+  }
+
+  // RN1 — DOSE D'ENTRETIEN SEUIL COURSE, TRI, PROFILS « MARGES RESSERRÉES » (décision du
+  // fondateur, `spectrirndoseentretien.md`, 10/09/2026, suite de la mesure qui a trouvé `tri/rn`
+  // à 0,0 % de dur sur toutes les phases). Domaine vérifié avant d'écrire (voir
+  // `RN1_INTERVAL_SEMAINES`, constraintMatrix.ts) : `a.intent === "competition"` EST le concept
+  // « marges resserrées » déjà utilisé pour #4/BQ1, pas un nouveau champ. Même patron que FV1:
+  // substitution post-construction d'une séance de qualité course DÉJÀ posée par le module
+  // (jamais une addition), jamais dans `sports/tri/index.ts` (leçon O-119/FV1). Domaine réduit à
+  // spec+peak (pas dev) : aucune semaine de dev ne porte de candidat `rn.mara` à substituer.
+  //
+  // Couplage readiness : AUCUNE exemption codée ici, à dessein — `sessionIntensity()`
+  // (`readiness/dailyAdjuster.ts`) classe tout step `.thr`/`.vo2` en « difficile » via
+  // `HARD_ZONES`, donc cette dose est automatiquement réduite/remplacée par `adjustDay` comme
+  // n'importe quelle autre séance dure du plan, sans bypass.
+  if (a.sport === "tri" && a.intent === "competition") {
+    const eligiblesRn = plan.weeks.filter((wk) => !wk.isRecup && (wk.phase.id === "spec" || wk.phase.id === "peak"));
+    eligiblesRn.forEach((wk, idx) => {
+      if (idx % RN1_INTERVAL_SEMAINES !== 0) return;
+      const wd = wk.days as GenDay[];
+      let cible: V1Session | null = null;
+      for (const d of wd) {
+        for (const sx of d.sessions) {
+          if (sx.d !== "rn" || sx.long || sx.brick || sx.race) continue;
+          const corps = (sx.steps || []).find((st) => st.role === "body");
+          if (corps && corps.zone === "rn.mara") { cible = sx; break; }
+        }
+        if (cible) break;
+      }
+      if (!cible) return;
+      const tailleAvant = cible.min || 0;
+      const zone = medicalZone("rn.thr", r.medHold) as string | null;
+      cible.name = "Seuil course (entretien)";
+      cible.note = "Dose d'entretien : le stimulus seuil ne disparaît pas complètement, il se fait plus rare. Deux à trois blocs contrôlés, sans forcer — juste assez pour garder l'adaptation jusqu'au jour J.";
+      cible.steps = [
+        { role: "warmup", durationMin: 15, text: "footing progressif + gammes" },
+        { role: "body", reps: RN1_ENTRETIEN_REPS, durationMin: RN1_ENTRETIEN_DUR_MIN, zone, intensity: intOf(zone) as unknown as string, recoveryText: "2min trot", recoveryMin: 2, suffix: "", prefix: "" } as V1Step,
+        { role: "cooldown", durationMin: 10, text: "footing très facile" },
+      ];
+      renderSess(cible, refs, r.hz, r.baseRefs);
+      // Neutralité en VOLUME (patron C30b/R4.1) — la dose est plus PETITE que la séance qu'elle
+      // remplace (délibéré, § "entretien" plutôt que développement), mais une semaine ne doit
+      // jamais rétrécir de ce fait : mesuré (règle 7), une substitution qui retire des minutes
+      // sans les rendre a cassé `MONO-tri-history` (deux plans de longueur différente, la
+      // substitution tombait sur des semaines DÉSALIGNÉES entre eux). Les minutes libérées sont
+      // rendues au footing de la même semaine, jamais ajoutées ni retirées ailleurs.
+      const delta = tailleAvant - (cible.min || 0);
+      if (delta > 0.5) {
+        for (const d of wd) {
+          const footing = d.sessions.find((sx) => sx.d === "rn" && sx.name === "Footing facile");
+          if (!footing) continue;
+          const corps = (footing.steps || []).find((st) => st.role === "body");
+          if (corps && corps.durationMin != null) {
+            corps.durationMin += delta;
+            renderSess(footing, refs, r.hz, r.baseRefs);
+          }
+          break;
+        }
+      }
+      r.decisions.push({
+        id: "RN1", what: "Seuil course : dose d'entretien en spécifique/pic (semaine " + wk.num + ")",
+        val: RN1_ENTRETIEN_REPS + " × " + RN1_ENTRETIEN_DUR_MIN + " min au seuil, toutes les " + RN1_INTERVAL_SEMAINES + " semaines",
+        why: "Ton profil accepte des marges resserrées : ce plan introduit une dose de seuil course à basse fréquence, absente par défaut. Surveille ta forme du jour — cette séance est réduite ou remplacée comme n'importe quelle autre si le readiness n'est pas vert.",
       });
     });
   }

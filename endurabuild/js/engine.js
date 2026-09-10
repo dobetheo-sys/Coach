@@ -3999,6 +3999,45 @@ const RC1_LABEL_OFF = /^off\b|repos total/i;
  */
 
 /**
+ * RN1 — Dose d'entretien seuil course, tri, réservée aux profils « marges resserrées »
+ * (`spectrirndoseentretien.md`, 10/09/2026, suite de `MESURE-calibration-volume-dur-long.md`
+ * qui a trouvé `tri/rn` à 0,0 % de dur sur les cinq phases — aucune séance seuil/VO2max course
+ * n'existe nulle part dans le module tri). Même patron que FV1 : substitution post-construction
+ * (jamais dans `sports/tri/index.ts` — la leçon O-119/FV1 vaut ici à l'identique, ce créneau
+ * alimente aussi la sonde de capacité), même mécanique médicale (`medicalZone`).
+ *
+ * Domaine vérifié AVANT d'écrire (règle 7), pas assumé : « mode compétition »/« marges
+ * resserrées » n'est PAS un concept distinct à créer — `endurabuild/js/ui/steps.js:24,29` décrit
+ * déjà `a.intent === "competition"` par ce vocabulaire exact à l'athlète (« Marges resserrées —
+ * assumées »), et c'est le SEUL endroit d'`ANSWER_SCHEMA` qui porte une notion de profil de
+ * risque — le même flag que celui déjà cité dans `decisionrc1bikeetscope4.md` pour #4/BQ1.
+ *
+ * Cadence : `RN1_INTERVAL_SEMAINES` (« 1 séance toutes les 3-4 semaines »), même valeur que FV1
+ * par construction INDÉPENDANTE (constante à soi : les deux mécanismes suivent la même
+ * recommandation, mais rien ne les lie l'un à l'autre si l'un devait changer seul).
+ *
+ * ⚠ Domaine réduit par la mesure à spec+peak, jamais dev — la demande citait
+ * « développement/spécifique/peak », mais 0 semaine de dev sur 351 mesurées (golden) ne porte de
+ * séance de qualité course (`rn.mara`) à substituer : `dur2` et `facileR` ne poussent leur
+ * `rn.mara` qu'en spec/peak (`sports/tri/index.ts:281,487`). Suivre le patron FV1 à la lettre —
+ * SUBSTITUER une séance de qualité déjà là, jamais convertir un footing facile en séance dure —
+ * exclut donc dev par construction, pas par oubli : publié pour arbitrage, pas décidé en silence.
+ *
+ * Couplage readiness : AUCUN code de bypass n'est ajouté, et c'est délibéré. `sessionIntensity()`
+ * (`src/readiness/dailyAdjuster.ts`) classe déjà tout step body en zone `.thr`/`.vo2` comme
+ * « difficile » (`HARD_ZONES`) — la dose introduite ici (`rn.thr`) tombe donc automatiquement
+ * sous le même traitement que n'importe quelle autre séance dure du plan (réduite ×0,7 en
+ * orange, remplacée par de l'endurance ou du repos en rouge) sans qu'aucune ligne n'ait à le
+ * demander. Ajouter une exemption serait le bypass que la demande interdit explicitement.
+ */
+const RN1_INTERVAL_SEMAINES = rule("RN1", "une dose d'entretien toutes les 3-4 semaines de spec/peak, même cadence que FV1 par construction indépendante", 4);
+/** Répétitions de la dose — gabarit de RAPPEL (proche du « Rappel allure course CAP » de
+ *  l'affûtage, 2×8 min), un cran au-dessus car hors affûtage : la fatigue résiduelle est acceptable. */
+const RN1_ENTRETIEN_REPS = rule("RN1", "dose d'entretien seuil : 3 répétitions, gabarit de rappel plutôt que de développement", 3);
+/** Durée par répétition, en minutes. */
+const RN1_ENTRETIEN_DUR_MIN = rule("RN1", "durée par répétition de la dose d'entretien seuil course", 6);
+
+/**
  * C13e — L'ÉCHAUFFEMENT N'EST JAMAIS PLUS LONG QUE LE CORPS DE SÉANCE. Invariant DUR, sur les
  * six sports et dans les deux unités (minutes en course/vélo/trail, mètres en bassin). Une
  * séance dont l'échauffement pèse plus que le travail n'est pas une séance : c'est un footing
@@ -16501,6 +16540,71 @@ function generatePlan(profile                , opts                             
         id: "FV1", what: "Force vélo : dose d'entretien en spécifique/pic (semaine " + wk.num + ")",
         val: FV1_ENTRETIEN_REPS + " × " + FV1_ENTRETIEN_DUR_MIN + " min à 50-60 rpm, toutes les " + FV1_INTERVAL_SEMAINES + " semaines",
         why: "Ton programme de course porte du dénivelé : le geste musculaire du gros braquet se perd s'il disparaît complètement pendant la phase la plus spécifique. Une dose réduite l'entretient sans reprendre la fatigue résiduelle d'un bloc complet.",
+      });
+    });
+  }
+
+  // RN1 — DOSE D'ENTRETIEN SEUIL COURSE, TRI, PROFILS « MARGES RESSERRÉES » (décision du
+  // fondateur, `spectrirndoseentretien.md`, 10/09/2026, suite de la mesure qui a trouvé `tri/rn`
+  // à 0,0 % de dur sur toutes les phases). Domaine vérifié avant d'écrire (voir
+  // `RN1_INTERVAL_SEMAINES`, constraintMatrix.ts) : `a.intent === "competition"` EST le concept
+  // « marges resserrées » déjà utilisé pour #4/BQ1, pas un nouveau champ. Même patron que FV1:
+  // substitution post-construction d'une séance de qualité course DÉJÀ posée par le module
+  // (jamais une addition), jamais dans `sports/tri/index.ts` (leçon O-119/FV1). Domaine réduit à
+  // spec+peak (pas dev) : aucune semaine de dev ne porte de candidat `rn.mara` à substituer.
+  //
+  // Couplage readiness : AUCUNE exemption codée ici, à dessein — `sessionIntensity()`
+  // (`readiness/dailyAdjuster.ts`) classe tout step `.thr`/`.vo2` en « difficile » via
+  // `HARD_ZONES`, donc cette dose est automatiquement réduite/remplacée par `adjustDay` comme
+  // n'importe quelle autre séance dure du plan, sans bypass.
+  if (a.sport === "tri" && a.intent === "competition") {
+    const eligiblesRn = plan.weeks.filter((wk) => !wk.isRecup && (wk.phase.id === "spec" || wk.phase.id === "peak"));
+    eligiblesRn.forEach((wk, idx) => {
+      if (idx % RN1_INTERVAL_SEMAINES !== 0) return;
+      const wd = wk.days            ;
+      let cible                   = null;
+      for (const d of wd) {
+        for (const sx of d.sessions) {
+          if (sx.d !== "rn" || sx.long || sx.brick || sx.race) continue;
+          const corps = (sx.steps || []).find((st) => st.role === "body");
+          if (corps && corps.zone === "rn.mara") { cible = sx; break; }
+        }
+        if (cible) break;
+      }
+      if (!cible) return;
+      const tailleAvant = cible.min || 0;
+      const zone = medicalZone("rn.thr", r.medHold)                 ;
+      cible.name = "Seuil course (entretien)";
+      cible.note = "Dose d'entretien : le stimulus seuil ne disparaît pas complètement, il se fait plus rare. Deux à trois blocs contrôlés, sans forcer — juste assez pour garder l'adaptation jusqu'au jour J.";
+      cible.steps = [
+        { role: "warmup", durationMin: 15, text: "footing progressif + gammes" },
+        { role: "body", reps: RN1_ENTRETIEN_REPS, durationMin: RN1_ENTRETIEN_DUR_MIN, zone, intensity: intOf(zone)                     , recoveryText: "2min trot", recoveryMin: 2, suffix: "", prefix: "" }          ,
+        { role: "cooldown", durationMin: 10, text: "footing très facile" },
+      ];
+      renderSess(cible, refs, r.hz, r.baseRefs);
+      // Neutralité en VOLUME (patron C30b/R4.1) — la dose est plus PETITE que la séance qu'elle
+      // remplace (délibéré, § "entretien" plutôt que développement), mais une semaine ne doit
+      // jamais rétrécir de ce fait : mesuré (règle 7), une substitution qui retire des minutes
+      // sans les rendre a cassé `MONO-tri-history` (deux plans de longueur différente, la
+      // substitution tombait sur des semaines DÉSALIGNÉES entre eux). Les minutes libérées sont
+      // rendues au footing de la même semaine, jamais ajoutées ni retirées ailleurs.
+      const delta = tailleAvant - (cible.min || 0);
+      if (delta > 0.5) {
+        for (const d of wd) {
+          const footing = d.sessions.find((sx) => sx.d === "rn" && sx.name === "Footing facile");
+          if (!footing) continue;
+          const corps = (footing.steps || []).find((st) => st.role === "body");
+          if (corps && corps.durationMin != null) {
+            corps.durationMin += delta;
+            renderSess(footing, refs, r.hz, r.baseRefs);
+          }
+          break;
+        }
+      }
+      r.decisions.push({
+        id: "RN1", what: "Seuil course : dose d'entretien en spécifique/pic (semaine " + wk.num + ")",
+        val: RN1_ENTRETIEN_REPS + " × " + RN1_ENTRETIEN_DUR_MIN + " min au seuil, toutes les " + RN1_INTERVAL_SEMAINES + " semaines",
+        why: "Ton profil accepte des marges resserrées : ce plan introduit une dose de seuil course à basse fréquence, absente par défaut. Surveille ta forme du jour — cette séance est réduite ou remplacée comme n'importe quelle autre si le readiness n'est pas vert.",
       });
     });
   }

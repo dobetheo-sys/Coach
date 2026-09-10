@@ -973,6 +973,45 @@ export const RC1_LABEL_OFF = /^off\b|repos total/i;
  */
 
 /**
+ * RN1 — Dose d'entretien seuil course, tri, réservée aux profils « marges resserrées »
+ * (`spectrirndoseentretien.md`, 10/09/2026, suite de `MESURE-calibration-volume-dur-long.md`
+ * qui a trouvé `tri/rn` à 0,0 % de dur sur les cinq phases — aucune séance seuil/VO2max course
+ * n'existe nulle part dans le module tri). Même patron que FV1 : substitution post-construction
+ * (jamais dans `sports/tri/index.ts` — la leçon O-119/FV1 vaut ici à l'identique, ce créneau
+ * alimente aussi la sonde de capacité), même mécanique médicale (`medicalZone`).
+ *
+ * Domaine vérifié AVANT d'écrire (règle 7), pas assumé : « mode compétition »/« marges
+ * resserrées » n'est PAS un concept distinct à créer — `endurabuild/js/ui/steps.js:24,29` décrit
+ * déjà `a.intent === "competition"` par ce vocabulaire exact à l'athlète (« Marges resserrées —
+ * assumées »), et c'est le SEUL endroit d'`ANSWER_SCHEMA` qui porte une notion de profil de
+ * risque — le même flag que celui déjà cité dans `decisionrc1bikeetscope4.md` pour #4/BQ1.
+ *
+ * Cadence : `RN1_INTERVAL_SEMAINES` (« 1 séance toutes les 3-4 semaines »), même valeur que FV1
+ * par construction INDÉPENDANTE (constante à soi : les deux mécanismes suivent la même
+ * recommandation, mais rien ne les lie l'un à l'autre si l'un devait changer seul).
+ *
+ * ⚠ Domaine réduit par la mesure à spec+peak, jamais dev — la demande citait
+ * « développement/spécifique/peak », mais 0 semaine de dev sur 351 mesurées (golden) ne porte de
+ * séance de qualité course (`rn.mara`) à substituer : `dur2` et `facileR` ne poussent leur
+ * `rn.mara` qu'en spec/peak (`sports/tri/index.ts:281,487`). Suivre le patron FV1 à la lettre —
+ * SUBSTITUER une séance de qualité déjà là, jamais convertir un footing facile en séance dure —
+ * exclut donc dev par construction, pas par oubli : publié pour arbitrage, pas décidé en silence.
+ *
+ * Couplage readiness : AUCUN code de bypass n'est ajouté, et c'est délibéré. `sessionIntensity()`
+ * (`src/readiness/dailyAdjuster.ts`) classe déjà tout step body en zone `.thr`/`.vo2` comme
+ * « difficile » (`HARD_ZONES`) — la dose introduite ici (`rn.thr`) tombe donc automatiquement
+ * sous le même traitement que n'importe quelle autre séance dure du plan (réduite ×0,7 en
+ * orange, remplacée par de l'endurance ou du repos en rouge) sans qu'aucune ligne n'ait à le
+ * demander. Ajouter une exemption serait le bypass que la demande interdit explicitement.
+ */
+export const RN1_INTERVAL_SEMAINES = rule("RN1", "une dose d'entretien toutes les 3-4 semaines de spec/peak, même cadence que FV1 par construction indépendante", 4);
+/** Répétitions de la dose — gabarit de RAPPEL (proche du « Rappel allure course CAP » de
+ *  l'affûtage, 2×8 min), un cran au-dessus car hors affûtage : la fatigue résiduelle est acceptable. */
+export const RN1_ENTRETIEN_REPS = rule("RN1", "dose d'entretien seuil : 3 répétitions, gabarit de rappel plutôt que de développement", 3);
+/** Durée par répétition, en minutes. */
+export const RN1_ENTRETIEN_DUR_MIN = rule("RN1", "durée par répétition de la dose d'entretien seuil course", 6);
+
+/**
  * C13e — L'ÉCHAUFFEMENT N'EST JAMAIS PLUS LONG QUE LE CORPS DE SÉANCE. Invariant DUR, sur les
  * six sports et dans les deux unités (minutes en course/vélo/trail, mètres en bassin). Une
  * séance dont l'échauffement pèse plus que le travail n'est pas une séance : c'est un footing
