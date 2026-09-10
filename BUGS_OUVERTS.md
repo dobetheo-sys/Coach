@@ -12753,32 +12753,86 @@ attendu: FV1 VERT
 cmd: node scripts/verifyFV1.mjs 2>&1 | tail -1
 ```
 
-## RC1 · Repos complet garanti en multisport · ✅ **LIVRÉ 09/09/2026**
+## RC1 · Repos complet garanti en multisport + bike · ✅ **LIVRÉ 09/09/2026, étendu 10/09/2026**
 
 Feu vert du fondateur (`feuvert2et3.md`). Mesuré avant d'écrire (règle 7) : `tri` et `duathlon`
 livraient un vrai jour OFF sur seulement 9,7 % / 10,2 % des semaines de charge (le reste
 exclusivement de la « récup active ») — `run` et `trail` sont déjà à 100 % / 77,7 % (mécanisme
 `applyRunImpactCap`), `swimrun` déjà à 100 % (son schéma dédié).
 
-**⚠ Prémisse partiellement réfutée, publiée plutôt qu'absorbée en silence** : la recommandation
-citait « run/bike/trail déjà corrects » — `bike` (pur) mesure en réalité **12,1 %**, quasiment
-le même défaut que tri/duathlon. `bike` est mono-discipline (`disciplines.length === 1`), hors
-du domaine « en multisport » que la recommandation scope explicitement : **non traité ici**,
-faute d'autorisation sur ce sport précis. Détail complet dans `constraintMatrix.ts` (`RC1_*`).
+**⚠ Prémisse partiellement réfutée le 09/09, corrigée le 10/09 plutôt qu'absorbée en silence** :
+la recommandation citait « run/bike/trail déjà corrects » — `bike` (pur) mesurait en réalité
+**12,1 %**, quasiment le même défaut que tri/duathlon avant correctif. Livré une première fois
+scopé au seul domaine dérivé `disciplines.length > 1` (donc `bike`, mono-discipline, en restait
+hors — faute d'autorisation sur ce sport précis à ce moment-là). **Décision du fondateur du
+10/09/2026** (`decisionrc1bikeetscope4.md`) : la prémisse « bike déjà correct » étant réfutée,
+étendre le même mécanisme à `bike` — même bascule récup→OFF, aucun nouveau design. Le domaine
+passe donc à `disciplines.length > 1 || sport === "bike"` : une **disjonction explicite**, pas un
+domaine dérivé plus large (`disciplines.length >= 1` aurait aussi inclus `run`/`swim`/`trail`,
+mesurés corrects et jamais autorisés — règle 7).
 
 **Ce qui rend le correctif quasi gratuit, mesuré** : un jour de « récup active » (`d:"rs"`,
 `steps:[]`) est déjà vide de tout contenu prescrit — 0 occurrence d'un jour de récup portant un
 step réel sur 3 906 semaines de charge multisport. La bascule vers « OFF » est un changement de
 CADRAGE (l'athlète lit qu'il ne doit rien faire), jamais de plan : aucun volume, aucune
-fréquence ne bouge.
+fréquence ne bouge. Vérifié après extension : `bike/route` et `bike/gravel` passent à 100 % de
+vrai OFF (10/10 semaines de charge sur le profil de test), `run/marathon` et `swim/demifond`
+restent inchangés (contre-preuve de portée).
 
-Vérifié : mêmes gates que FV1 (batterie identique, même commit), golden recapturé (343 profils,
-tri + duathlon uniquement — aucun `bike`/`run`/`swim`/`trail`/`swimrun`, exactement le domaine
-attendu).
+Vérifié : `audit:v1` 459/459, `audit:invariants` 22/22, `audit:monotonie` 42 verts · 0
+régression, `audit:v6` 75 verts · 0 régression, golden recapturé, E2E 27/27.
 
 ```verify
 id: RC1
-quoi: chaque semaine de charge d'un plan tri porte un vrai OFF ; bike (hors domaine) reste inchangé
+quoi: chaque semaine de charge d'un plan tri ET bike porte un vrai OFF
 attendu: RC1 VERT
 cmd: node scripts/verifyRC1.mjs 2>&1 | tail -1
+```
+
+## BQ1 · Budget qualitatif tri · 🟡 **RETIRÉ SANS LIVRAISON, 10/09/2026**
+
+Décision du fondateur (`decisionrc1bikeetscope4.md`) : plafonner à « 4-5, débloqué à 6 » les
+créneaux qualitatifs par semaine de charge en `tri` seul, ciblés sur le mécanisme identifié dans
+la décision — « le doublage de nage en `sw.css`, lot B2, alternance côté nage ». Duathlon/swim/
+swimrun explicitement hors scope (mesurés inertes sur la définition validée en amont : niveau
+séance, exclut long/brick/race/recovery, zone qualité sur un step `body` — 0,0 % une fois B-17/
+brick exclus).
+
+**Implémenté d'abord fidèlement à la décision, puis retiré après mesure (règle 7 sur mon propre
+correctif) : le mécanisme autorisé n'est pas le mécanisme réel.** Le correctif écrit ciblait
+précisément le créneau doublé du matin (`d==="sw"` nommé `… (matin)`, rétrogradé `sw.css` →
+`sw.aero`). Mesuré sur le golden recapturé : **32 semaines converties sur 1 535 mesurées à ≥3
+créneaux qualitatifs** — le taux tri ≥3 semaines passait de 37,2 % à 36,4 %, très loin de la
+cible « ramené sous le plafond » que la décision se fixait elle-même comme critère de
+vérification.
+
+**Cause racine, trouvée en lisant `sports/tri/index.ts` (lignes 565-618, slot `facile2`,
+R13.3/C3)** : la source réelle et très majoritaire des semaines à ≥3 créneaux n'est pas le
+doublage — c'est `facile2` lui-même, le slot de nage-qualité STANDARD (`swMain`, « Nage seuil
+(+dist) », `sw.css`) que ce même module documente verbatim comme « la SEULE nage de la semaine »
+pour un athlète qui ne double pas. Un plafond qui atteindrait réellement la cible mesurée devrait
+rétrograder CE créneau sur la majorité des semaines de dev/spec/peak d'un triathlète non doublé —
+exactement le dommage que R13.3/C3 existent pour empêcher (le module dit lui-même : y toucher
+« retirerait au triathlète sa seule séance de nage construite »).
+
+**Décision prise sans redemander l'arbitrage sur la prémisse** (déjà tranchée le 10/09) mais en
+refusant les deux issues disponibles sans nouvelle décision : livrer un plafond mesuré quasi
+inerte (règle 19 — le correctif le moins coûteux qui ferait passer le critère de vérification ne
+le fait pas passer, donc le test/la cible est sous-spécifié·e), ou étendre silencieusement la
+cible à `facile2` et abîmer un mécanisme extensivement protégé ailleurs dans ce dépôt. Le bloc a
+été retiré de `planGenerator.ts` (remplacé par une note pointant ici), la constante
+`BQ1_CAP_TRI` retirée de `constraintMatrix.ts`. **`src/` revient à l'état RC1+FV1 sur l'axe tri** :
+aucun plan tri ne change par rapport au commit qui précède cette tentative.
+
+**En attente d'une nouvelle décision du fondateur** avant toute poursuite de #4 : soit accepter
+que le mécanisme réel à cibler est `facile2` et arbitrer explicitement le compromis avec R13.3/C3
+(par exemple un plafond qui ne mord que sur les semaines DOUBLÉES, où une deuxième nage qualité
+existe déjà en plus de `facile2`), soit clore #4 sans correctif en s'appuyant sur C26c/C26d
+(déjà cités dans la décision comme couvrant la préoccupation de charge cumulée par un autre axe).
+
+```verify
+id: BQ1
+quoi: aucune constante BQ1 exportée ; le créneau de nage doublé du matin reste en sw.css
+attendu: BQ1 RETRAIT CONFIRMÉ
+cmd: node scripts/verifyBQ1Retrait.mjs 2>&1 | tail -1
 ```

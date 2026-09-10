@@ -5755,6 +5755,18 @@ const RC1_LABEL_RECUP = /récup|mobilit|gainage|étirement/i;
 const RC1_LABEL_OFF = /^off\b|repos total/i;
 
 /**
+ * BQ1 — Budget qualitatif tri : RETIRÉ, NON LIVRÉ (voir `BUGS_OUVERTS.md`, entrée « BQ1 »,
+ * et `planGenerator.ts` où le point d'insertion porte la même note). Le mécanisme autorisé par
+ * la décision (« doublage de nage en `sw.css` ») ne représentait que 32 des 1 535 semaines de
+ * charge tri mesurées à ≥3 créneaux qualitatifs — la source réelle et très majoritaire est
+ * `facile2` (`sports/tri/index.ts`, R13.3/C3), la nage QUALITÉ que le code nomme lui-même
+ * « la SEULE nage de la semaine » pour un athlète qui ne double pas. Un plafond qui l'atteindrait
+ * retirerait au triathlète sa séance de nage construite sur la majorité des semaines de
+ * dev/spec/peak — l'exact dommage que R13.3 existe pour empêcher. Aucune constante n'est
+ * exportée ici tant qu'une nouvelle décision ne redéfinit pas la cible.
+ */
+
+/**
  * C13e — L'ÉCHAUFFEMENT N'EST JAMAIS PLUS LONG QUE LE CORPS DE SÉANCE. Invariant DUR, sur les
  * six sports et dans les deux unités (minutes en course/vélo/trail, mètres en bassin). Une
  * séance dont l'échauffement pèse plus que le travail n'est pas une séance : c'est un footing
@@ -18261,19 +18273,23 @@ function generatePlan(profile                , opts                             
     });
   }
 
-  // RC1 — REPOS COMPLET GARANTI EN MULTISPORT (feu vert du fondateur, 09/09/2026,
-  // `feuvert2et3.md`). Domaine dérivé (règle O-85) : `disciplines.length > 1`, jamais une
-  // liste ["tri","duathlon"] — `swimrun` y entre aussi mais n'a rien à convertir (son propre
-  // schéma livre déjà un vrai OFF sur 100 % des semaines mesurées, voir `RC1_LABEL_RECUP`).
-  // Post-construction (même emplacement que FV1, mêmes raisons) : la couverture des
-  // disciplines et le plancher de fréquence tournent déjà sur ce jour au moment de sa
-  // construction, une conversion en amont serait rouverte par eux.
+  // RC1 — REPOS COMPLET GARANTI EN MULTISPORT + BIKE (feu vert du fondateur, 09-10/09/2026,
+  // `feuvert2et3.md` puis `decisionrc1bikeetscope4.md`). Domaine dérivé (règle O-85) pour la
+  // partie multisport : `disciplines.length > 1`, jamais une liste ["tri","duathlon"] —
+  // `swimrun` y entre aussi mais n'a rien à convertir (son propre schéma livre déjà un vrai
+  // OFF sur 100 % des semaines mesurées, voir `RC1_LABEL_RECUP`). Post-construction (même
+  // emplacement que FV1, mêmes raisons) : la couverture des disciplines et le plancher de
+  // fréquence tournent déjà sur ce jour au moment de sa construction, une conversion en amont
+  // serait rouverte par eux.
   //
-  // ⚠ `bike` (pur) N'ENTRE PAS ICI bien que mesuré à 12,1 % de vrai OFF — quasiment le même
-  // défaut que tri/duathlon (9,7-10,2 %) — parce que la recommandation scope explicitement
-  // « en multisport » et que `bike` est mono-discipline. Trouvaille publiée, non traitée sans
-  // autorisation sur ce sport précis (voir `constraintMatrix.ts`, commentaire RC1).
-  if (sportModule(a.sport          ).disciplines.length > 1) {
+  // `bike` (pur) EST TRAITÉ ICI DEPUIS LE 10/09/2026 : mesuré à 12,1 % de vrai OFF, quasiment
+  // le même défaut que tri/duathlon (9,7-10,2 % avant correctif) — la prémisse « bike déjà
+  // correct » était fausse (trouvaille publiée le 09/09, confirmée et actée par le fondateur
+  // le lendemain). Ajouté par disjonction explicite plutôt que par un domaine dérivé plus
+  // large (`disciplines.length >= 1`) : `run`/`swim`/`trail` restent MESURÉS corrects
+  // (77,7 % / 31,7 % / 100 %) et n'ont reçu aucune autorisation — un domaine dérivé les
+  // aurait inclus sans mesure ni décision, target exactement ce que règle 7 interdit.
+  if (sportModule(a.sport          ).disciplines.length > 1 || a.sport === "bike") {
     for (const wk of plan.weeks) {
       if (wk.isRecup) continue;
       const wd = wk.days            ;
@@ -18300,6 +18316,15 @@ function generatePlan(profile                , opts                             
       });
     }
   }
+
+  // BQ1 — RETIRÉ, NON LIVRÉ (voir `BUGS_OUVERTS.md`, entrée « BQ1 » et le rapport envoyé au
+  // fondateur, 10/09/2026) : le mécanisme identifié dans la décision (« doublage de nage »)
+  // ne représentait que 32 des 1535 semaines à ≥3 créneaux mesurées — la source RÉELLE et
+  // très majoritaire est `facile2` (`sports/tri/index.ts`, R13.3/C3), la nage QUALITÉ que le
+  // code nomme lui-même « la SEULE nage de la semaine » pour un athlète qui ne double pas.
+  // Un plafond à 2 qui l'atteindrait retirerait au triathlète sa seule séance de nage
+  // construite sur la majorité des semaines de dev/spec/peak — l'exact dommage que R13.3
+  // existe pour empêcher. Non implémenté sans nouvelle décision.
 
   // C3 REJOUÉ AU POINT FIXE — treizième paiement de la même leçon, sur l'ENVELOPPE DÉCLARÉE.
   //

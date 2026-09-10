@@ -961,6 +961,18 @@ export const RC1_LABEL_RECUP = /récup|mobilit|gainage|étirement/i;
 export const RC1_LABEL_OFF = /^off\b|repos total/i;
 
 /**
+ * BQ1 — Budget qualitatif tri : RETIRÉ, NON LIVRÉ (voir `BUGS_OUVERTS.md`, entrée « BQ1 »,
+ * et `planGenerator.ts` où le point d'insertion porte la même note). Le mécanisme autorisé par
+ * la décision (« doublage de nage en `sw.css` ») ne représentait que 32 des 1 535 semaines de
+ * charge tri mesurées à ≥3 créneaux qualitatifs — la source réelle et très majoritaire est
+ * `facile2` (`sports/tri/index.ts`, R13.3/C3), la nage QUALITÉ que le code nomme lui-même
+ * « la SEULE nage de la semaine » pour un athlète qui ne double pas. Un plafond qui l'atteindrait
+ * retirerait au triathlète sa séance de nage construite sur la majorité des semaines de
+ * dev/spec/peak — l'exact dommage que R13.3 existe pour empêcher. Aucune constante n'est
+ * exportée ici tant qu'une nouvelle décision ne redéfinit pas la cible.
+ */
+
+/**
  * C13e — L'ÉCHAUFFEMENT N'EST JAMAIS PLUS LONG QUE LE CORPS DE SÉANCE. Invariant DUR, sur les
  * six sports et dans les deux unités (minutes en course/vélo/trail, mètres en bassin). Une
  * séance dont l'échauffement pèse plus que le travail n'est pas une séance : c'est un footing

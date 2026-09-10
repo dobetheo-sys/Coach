@@ -1,6 +1,8 @@
 // Bloc `verify` de RC1 (BUGS_OUVERTS.md) — chaque semaine de charge d'un plan multisport
-// (tri/duathlon) garantit désormais au moins un jour de repos total, jamais seulement de la
-// récup active ; un sport mono-discipline (bike) n'est PAS touché (hors scope, voir constraintMatrix.ts).
+// (tri/duathlon) OU bike garantit désormais au moins un jour de repos total, jamais seulement
+// de la récup active. bike (12,1 % de vrai OFF mesuré, prémisse « déjà correct » réfutée le
+// 09/09/2026) est étendu par disjonction explicite le 10/09/2026, voir constraintMatrix.ts.
+// run/swim/trail restent hors scope (mesurés corrects) et ne sont pas couverts par ce bloc.
 import { generatePlan } from "../src/generator/planGenerator.ts";
 
 const base = { history: "confirme", level: "inter", intent: "competition", vol_max: "10", vol_recent: "6",
@@ -21,7 +23,7 @@ function tauxOff(profile) {
 
 const tri = tauxOff({ ...base, sport: "tri", format: "70.3" });
 const bike = tauxOff({ ...base, sport: "bike", format: "route", sessions_max: "6" });
-const ok = tri.off === tri.charge && bike.off < bike.charge;
+const ok = tri.off === tri.charge && bike.off === bike.charge;
 console.log(JSON.stringify({ tri, bike }));
 console.log(ok ? "RC1 VERT" : "RC1 ROUGE");
 process.exit(ok ? 0 : 1);
