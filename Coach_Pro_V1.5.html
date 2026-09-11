@@ -11729,10 +11729,18 @@ function buildSwimrunSessions(kit            )              {
     } else if (beginner) {
       S2.push({ d: "sw", name: "Technique + aisance en tenue", note: "En swimrun on nage en chaussures et en combinaison : la position change, les jambes portent moins. Habitue-toi au matériel AVANT de chercher la vitesse — c'est le choc n°1 des débutants.", det: "",
         steps: [Wm(200, "souple"), Object.assign(Bd(P(6, 10), 50, "sw.easy", [0.33, "repos libre (~20s)"], " en tenue partielle, un point technique à la fois", false, "sw"), { repCap: 10 }), Cm(100, "relâché")] });
-    } else if ((phase === "spec" || phase === "peak") && (kit.weekNum % 2 === 0 || kit.r.weeks <= 14)) {
+    } else if ((phase === "spec" || phase === "peak") && kit.weekNum % 2 === 0) {
       // La PLUS LONGUE NAGE est la contrainte dimensionnante d'une prépa swimrun (thermique et
       // mentale) : elle se répète en continu, pas en séries. Une semaine sur deux en phase
       // spécifique, pour ne pas sacrifier le travail de seuil.
+      //
+      // Correctif (10/09/2026, `feuvertswimruncss.md`) — cette condition portait AUSSI
+      // `|| kit.r.weeks <= 14`, qui forçait cette branche INCONDITIONNELLEMENT (donc éliminait
+      // le seuil css) sur tout plan de 14 semaines ou moins — la quasi-totalité des plans
+      // swimrun réels (experience/sprint/series tiennent tous sous ce seuil par construction).
+      // Mesuré (règle 15) : au-dessus de 14 semaines l'alternance fonctionnait déjà comme
+      // annoncée ci-dessus (≈50/50) ; le membre `weeks <= 14` n'a jamais fait partie de
+      // l'alternance qu'il prétendait servir — retiré, `BUGS_OUVERTS.md` entrée « S15-css ».
       S2.push({ d: "sw", name: "Nage continue longue (répétition de la plus longue nage)",
         note: "La plus longue nage de ta course fait " + obj.longestSwimM + " m : c'est elle qui décide si tu passes ou si tu sors de l'eau vidé. On la répète EN CONTINU, sans toucher le bord — le mental compte autant que le physique ici." + (owForLongSwim ? " En eau libre, avec quelqu'un à vue." : " En bassin : ne t'arrête pas aux murs, demi-tour et tu repars. Ton accès aux plans d'eau est réservé au swimrun spécifique."),
         det: "",

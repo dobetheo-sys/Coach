@@ -12906,3 +12906,79 @@ quoi: la dose n'existe qu'en intent=competition, jamais en dev/taper ; réduite 
 attendu: RN1 DOMAINE VERT / RN1 COUPLAGE READINESS VERT
 cmd: node scripts/verifyRN1.mjs 2>&1 | tail -2
 ```
+
+## S15-css · swimrun : le seuil de nage disparaissait en spec/peak sur tout plan ≤ 14 semaines · ✅ **CORRIGÉ 11/09/2026**
+
+Feu vert du fondateur (`feuvertswimruncss.md`, ticket 1), suite au diagnostic demandé dans le
+master des chantiers restants. Deux mesures antérieures (fréquence des zones, puis volume réel
+de dur — `MESURE-repartition-seances-longues-dures.md`, `MESURE-calibration-volume-dur-long.md`)
+avaient trouvé le `css` de `swimrun/sw` à ~77 % des semaines de base et 3-13 % en spec/peak,
+1-4 % du volume nage en dur contre 20-35 % visés.
+
+**Cause, isolée et confirmée deux fois (règle 15)** — `src/sports/swimrun/index.ts:209`, créneau
+`dur1` (« Qualité NAGE ») :
+`else if ((phase === "spec" || phase === "peak") && (kit.weekNum % 2 === 0 || kit.r.weeks <= 14))`.
+Le commentaire de la branche annonce une alternance « une semaine sur deux » entre la nage
+continue longue (`sw.aero`) et le seuil (`sw.css`). Le membre `|| kit.r.weeks <= 14` n'a jamais
+fait partie de cette alternance : il forçait la branche « nage longue » INCONDITIONNELLEMENT sur
+tout plan de 14 semaines ou moins — et experience (10), sprint (12), series (20 mais rabattu à 12
+sans continuité déclarée) y tombent tous par construction. Sur le golden : `dur1` en spec/peak
+rendait **0 % de css, 66,7 % de nage longue**, sur 100 % du corpus swimrun. En trace directe :
+13 semaines → 0 css / 4 longues ; 25 semaines → 5 / 3 ; 33 semaines → 5 / 5 (l'alternance
+fonctionnait déjà, comme annoncée, dès que le plan dépassait 14 semaines).
+
+**Ce n'était PAS l'équivalent swimrun du `dur2` de tri** (bascule délibérée vélo→course par
+phase, sourcée) : la substitution restait entièrement DANS la nage (`sw.css` → `sw.aero`), aucune
+minute ne partait vers la course, la branche ne lit jamais `obj.swimTimeShare`, et le `dur2`
+course du même fichier ne bascule pas par phase (`rn.thr`/`rn.vo2` à 97-100 % dès la base). Le
+vrai mécanisme de réallocation démontré dans ce fichier vit ailleurs (S13/R16.10, `facile2`) avec
+son ID et sa constante sourcée — cette branche-ci n'avait ni l'un ni l'autre. Bug, pas conception.
+
+**Correctif** : la clause `|| kit.r.weeks <= 14` est retirée, l'alternance `weekNum % 2 === 0`
+seule reste — conforme au commentaire et au comportement déjà propre au-dessus de 14 semaines.
+
+**Rayon mesuré AVANT de le garder** (précaution explicite du feu vert : `dur1` vit dans la branche
+de construction du sport, l'emplacement qu'O-119 a trouvé coûteux) : `audit:v1` 459/459,
+`audit:invariants` 22/22, `audit:monotonie` 0 régression, `audit:v6` 75 verts · 0 régression,
+`audit:v7` swimrun **88 % — inchangé** (500/569, aucun budget dépassé), trail/duathlon inchangés.
+Le rayon est celui du créneau touché, pas plus. Sprint (12 sem.) : 4 semaines spec/peak passent de
+**0 css / 4 longues à 2 / 2** ; championship (30 sem.) : 5 / 4, inchangé.
+
+```verify
+id: S15-css
+quoi: en spec/peak, dur1 alterne css / nage longue ≈ 50/50, y compris sur un plan ≤ 14 semaines
+attendu: S15-CSS VERT
+cmd: node scripts/verifySwimrunCss.mjs 2>&1 | tail -1
+```
+
+## S2_MIN_WEEKS · « jamais consultée » — ticket 2 du feu vert swimrun · ⚫ **PRÉMISSE RÉFUTÉE, NON CÂBLÉ, 11/09/2026**
+
+Le diagnostic swimrun signalait `S2_MIN_WEEKS` (`src/sports/swimrun/tables.ts:40-44`,
+`{experience:10, sprint:12, series:20, championship:30}`) comme code mort jamais importé, et en
+déduisait qu'« un plan championship sans date de course retombe à 12 semaines comme un sprint ».
+Le feu vert demandait de la câbler là où la durée de préparation est déterminée. **Mesuré avant
+d'écrire (règle 7) : la moitié « code mort » est vraie, la moitié « minimum non appliqué » est
+fausse.**
+
+- `MIN_WEEKS.swimrun` (`src/engine/constraintMatrix.ts:32`) porte **exactement les mêmes
+  valeurs**, et c'est elle que `reasoningEngine.ts:89-93` (`minWeeksDe`/`semainesDe`) consulte
+  déjà : sans `race_date`, la durée du plan EST ce minimum. Testé : championship sans date, avec
+  `swim_continuous`/`run_continuous` déclarés → **30 semaines**, aucune décision de rabattement.
+- Les 12 semaines observées sur le golden viennent d'un AUTRE mécanisme, voulu et documenté : la
+  porte R4.5 (`swimrunPrereqBlock`, `sports/swimrun/index.ts:385-396`, appliquée
+  `reasoningEngine.ts:109-120`) rabat series/championship au format sprint quand la continuité
+  nage/course n'est pas déclarée — et `base()` du golden ne la déclare pas. Le profil golden
+  exact reproduit **12** ; le même profil + les deux clés de continuité rend **30**.
+
+Câbler `S2_MIN_WEEKS` ajouterait une SECONDE source de vérité (R11.1) pour une règle déjà
+appliquée. Rien n'est écrit dans `src/` pour ce ticket. Ce qui reste à trancher est un nettoyage,
+pas un câblage : retirer le doublon `S2_MIN_WEEKS` de `tables.ts` (ou le faire pointer vers
+`MIN_WEEKS.swimrun`), et éventuellement donner au golden un sous-corpus swimrun long-format
+« prérequis satisfaits », sans quoi la branche 30 semaines reste hors photo (famille A-2).
+
+```verify
+id: S2_MIN_WEEKS
+quoi: sans race_date et prérequis satisfaits, un championship reçoit son minimum de 30 semaines via MIN_WEEKS.swimrun (déjà câblé)
+attendu: 30
+cmd: node --input-type=module -e "const {generatePlan}=await import('./src/generator/planGenerator.ts');const {plan}=generatePlan({sport:'swimrun',format:'championship',history:'confirme',level:'inter',intent:'competition',vol_max:'10',sessions_max:'6',dispo:'semaine',age:'35',sex:'H',weight:'75',css_known:'oui',css:'1:55',pace_known:'oui',pace:'4:30',off_days:'non',swim_total_m:'7850',run_total_km:'33',race_dplus_m:'900',segments_n:'20',longest_swim_m:'1400',water_temp_c:'16',team_mode:'binome',openwater_access:'saisonnier',swim_continuous:'oui',run_continuous:'oui'});console.log(plan.weeks.length)"
+```
