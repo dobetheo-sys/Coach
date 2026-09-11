@@ -5791,6 +5791,12 @@ const RC1_LABEL_OFF = /^off\b|repos total/i;
  * SUBSTITUER une séance de qualité déjà là, jamais convertir un footing facile en séance dure —
  * exclut donc dev par construction, pas par oubli : publié pour arbitrage, pas décidé en silence.
  *
+ * ⚠ Domaine resserré le 11/09/2026 (voir `BUGS_OUVERTS.md` « RN1 », correctif) : le DÉBUTANT et
+ * toute blessure d'APPUI sont exclus. Mesuré : sous un plafond de temps dur de 25 min (C26c), la
+ * dose ne s'ajoute pas — elle fait tomber le VO2 vélo de 6×4 à 3×4 au pic ; et sur une blessure
+ * de course elle remplaçait l'unique séance de course de la semaine. Exclusion du débutant à
+ * confirmer par le fondateur ; celle de la blessure d'appui relève de la priorité 2.
+ *
  * Couplage readiness : AUCUN code de bypass n'est ajouté, et c'est délibéré. `sessionIntensity()`
  * (`src/readiness/dailyAdjuster.ts`) classe déjà tout step body en zone `.thr`/`.vo2` comme
  * « difficile » (`HARD_ZONES`) — la dose introduite ici (`rn.thr`) tombe donc automatiquement
@@ -5804,6 +5810,10 @@ const RN1_INTERVAL_SEMAINES = rule("RN1", "une dose d'entretien toutes les 3-4 s
 const RN1_ENTRETIEN_REPS = rule("RN1", "dose d'entretien seuil : 3 répétitions, gabarit de rappel plutôt que de développement", 3);
 /** Durée par répétition, en minutes. */
 const RN1_ENTRETIEN_DUR_MIN = rule("RN1", "durée par répétition de la dose d'entretien seuil course", 6);
+// La dose ne dépasse jamais la séance qu'elle remplace : 3 répétitions si elles tiennent, sinon
+// 2 (« deux à trois blocs », spec du fondateur), sinon la séance d'origine est gardée. Mesuré
+// sur le rendu, jamais par une formule recopiée de renderSess (règle 15).
+const RN1_ENTRETIEN_REPS_MIN = rule("RN1", "nombre minimal de répétitions de la dose d'entretien — en dessous, on ne substitue pas", 2);
 
 /**
  * C13e — L'ÉCHAUFFEMENT N'EST JAMAIS PLUS LONG QUE LE CORPS DE SÉANCE. Invariant DUR, sur les
@@ -18333,7 +18343,18 @@ function generatePlan(profile                , opts                             
   // (`readiness/dailyAdjuster.ts`) classe tout step `.thr`/`.vo2` en « difficile » via
   // `HARD_ZONES`, donc cette dose est automatiquement réduite/remplacée par `adjustDay` comme
   // n'importe quelle autre séance dure du plan, sans bypass.
-  if (a.sport === "tri" && a.intent === "competition") {
+  // Blessure d'APPUI déclarée (« course », ou toute zone d'impact — même lecture que le module
+  // duathlon) : la séance à allure marathon que le module a gardée pour un coureur fragile n'est
+  // pas convertie en seuil. Mesuré (11/09/2026) : sur `G/tri/Full/injury-tibia` la dose remplaçait
+  // l'UNIQUE séance de course de la semaine, sans aucun receveur facile. Priorité 2 avant 5.
+  // Débutant EXCLU (11/09/2026, à confirmer par le fondateur — voir `BUGS_OUVERTS.md` « RN1 ») :
+  // son plafond de temps dur (C26b/C26c, 25 min/sem) ne peut pas porter 18 min de seuil course
+  // EN PLUS du VO2max vélo. Mesuré sur `tri/70.3/confirme/debutant/competition` : la dose est
+  // posée, puis C26c la rabote à 2×6 et fait tomber le VO2 vélo de 6×4 à 3×4 au pic — la dose
+  // ne s'ajoute pas, elle DÉPLACE la qualité vélo, et la semaine perd 23-29 min au passage.
+  // Même logique que le module tri, qui n'offre pas « Allure course » au débutant en pic.
+  const injRn1 = readInjuries(a.injury);
+  if (a.sport === "tri" && a.intent === "competition" && String(a.level) !== "debutant" && !injRn1.list.includes("course") && !injRn1.impact) {
     const eligiblesRn = plan.weeks.filter((wk) => !wk.isRecup && (wk.phase.id === "spec" || wk.phase.id === "peak"));
     eligiblesRn.forEach((wk, idx) => {
       if (idx % RN1_INTERVAL_SEMAINES !== 0) return;
@@ -18350,36 +18371,89 @@ function generatePlan(profile                , opts                             
       if (!cible) return;
       const tailleAvant = cible.min || 0;
       const zone = medicalZone("rn.thr", r.medHold)                 ;
-      cible.name = "Seuil course (entretien)";
-      cible.note = "Dose d'entretien : le stimulus seuil ne disparaît pas complètement, il se fait plus rare. Deux à trois blocs contrôlés, sans forcer — juste assez pour garder l'adaptation jusqu'au jour J.";
-      cible.steps = [
-        { role: "warmup", durationMin: 15, text: "footing progressif + gammes" },
-        { role: "body", reps: RN1_ENTRETIEN_REPS, durationMin: RN1_ENTRETIEN_DUR_MIN, zone, intensity: intOf(zone)                     , recoveryText: "2min trot", recoveryMin: 2, suffix: "", prefix: "" }          ,
-        { role: "cooldown", durationMin: 10, text: "footing très facile" },
-      ];
-      renderSess(cible, refs, r.hz, r.baseRefs);
+      // La dose ne dépasse JAMAIS la séance qu'elle remplace (mesuré sur le RENDU, jamais sur une
+      // formule recopiée de renderSess — règle 15) : 3 répétitions si elles tiennent dans la
+      // séance d'origine, sinon 2, sinon la séance d'origine est gardée telle quelle. Sans cette
+      // borne, un `tri/S/confirme/debutant` recevait une dose de 45 min à la place d'une séance
+      // de 35, et la version précédente de ce bloc FINANÇAIT l'excédent en retirant 10 min à la
+      // sortie longue — pour que C26c rabote ensuite la dose à 2×6 : la longue payait une dose
+      // que la règle de sécurité refusait.
+      const origine = { name: cible.name, note: cible.note, det: cible.det, steps: cible.steps, min: cible.min };
+      let reps = RN1_ENTRETIEN_REPS;
+      for (;;) {
+        cible.name = "Seuil course (entretien)";
+        cible.note = "Dose d'entretien : le stimulus seuil ne disparaît pas complètement, il se fait plus rare. Deux à trois blocs contrôlés, sans forcer — juste assez pour garder l'adaptation jusqu'au jour J.";
+        cible.steps = [
+          { role: "warmup", durationMin: 15, text: "footing progressif + gammes" },
+          { role: "body", reps, durationMin: RN1_ENTRETIEN_DUR_MIN, zone, intensity: intOf(zone)                     , recoveryText: "2min trot", recoveryMin: 2, suffix: "", prefix: "" }          ,
+          { role: "cooldown", durationMin: 10, text: "footing très facile" },
+        ];
+        renderSess(cible, refs, r.hz, r.baseRefs);
+        if ((cible.min || 0) <= tailleAvant + 0.5) break;
+        if (reps <= RN1_ENTRETIEN_REPS_MIN) {
+          Object.assign(cible, origine);
+          renderSess(cible, refs, r.hz, r.baseRefs);
+          return;
+        }
+        reps--;
+      }
       // Neutralité en VOLUME (patron C30b/R4.1) — la dose est plus PETITE que la séance qu'elle
       // remplace (délibéré, § "entretien" plutôt que développement), mais une semaine ne doit
       // jamais rétrécir de ce fait : mesuré (règle 7), une substitution qui retire des minutes
       // sans les rendre a cassé `MONO-tri-history` (deux plans de longueur différente, la
       // substitution tombait sur des semaines DÉSALIGNÉES entre eux). Les minutes libérées sont
-      // rendues au footing de la même semaine, jamais ajoutées ni retirées ailleurs.
+      // rendues à une séance FACILE de course de la même semaine, jamais ajoutées ni retirées
+      // ailleurs.
+      //
+      // ⚠ CORRECTIF 11/09/2026 (bisection `lotPhysio`, T-27/T-48) — la première écriture
+      // cherchait le receveur par son LIBELLÉ (« Footing facile », règle 17) et ne trouvait rien
+      // dans 282 des 315 semaines RN1 du corpus : en spec/pic le créneau facile course s'appelle
+      // « Sortie longue CAP » (pièce A2). Le delta était PERDU, la semaine rétrécissait
+      // (`tri/S/ancien/inter/competition` S5 277 → 263), et C22 propageait la famine à toute la
+      // suite du plan (S6 302 → 290, S7 330 → 319, affûtage 181 → 149 avec un footing en moins —
+      // la monnaie interdite). « Une protection qui dépend d'une séance survivante rate le profil
+      // qui a le moins de séances » : le receveur se trouve désormais par une PROPRIÉTÉ (corps en
+      // zone facile), et quand aucune séance facile n'existe (`off-2j`, `dispo: partielle`,
+      // `tri/S/reprise`) la dose n'est PAS posée — voir la branche `else` plus bas et les deux
+      // replis mesurés puis retirés. La neutralité ne dépend d'aucune séance survivante : là où
+      // elle ne peut pas être tenue, la substitution n'a pas lieu.
+      //
+      // Ce qui reste et qui est PUBLIÉ : la boucle de réparation (C26c, plafond de temps dur)
+      // peut encore raboter la dose et le VO2 vélo chez les débutants, dont le plafond de dur
+      // est bas — la règle de sécurité gagne, et le VO2 au pic cède sur le corpus tri (cliquet
+      // T-48 ré-épinglé avec cette cause, chiffres dans `scripts/lotPhysio.mjs`).
       const delta = tailleAvant - (cible.min || 0);
       if (delta > 0.5) {
-        for (const d of wd) {
-          const footing = d.sessions.find((sx) => sx.d === "rn" && sx.name === "Footing facile");
-          if (!footing) continue;
-          const corps = (footing.steps || []).find((st) => st.role === "body");
-          if (corps && corps.durationMin != null) {
-            corps.durationMin += delta;
-            renderSess(footing, refs, r.hz, r.baseRefs);
-          }
-          break;
+        const EASY_RN = /^rn\.(easy|rec)$/;
+        const candidats                                    = [];
+        for (const d of wd) for (const sx of d.sessions) {
+          if (sx === cible || sx.d !== "rn" || sx.brick || sx.race) continue;
+          const corps = (sx.steps || []).find((st) => st.role === "body");
+          if (corps && corps.durationMin != null && EASY_RN.test(String(corps.zone))) candidats.push({ s: sx, corps });
+        }
+        // Une séance facile NON longue d'abord (le footing) ; à défaut la facile longue.
+        const receveur = candidats.find((c) => !c.s.long) ?? candidats[0];
+        if (receveur) {
+          receveur.corps.durationMin  += delta;
+          renderSess(receveur.s, refs, r.hz, r.baseRefs);
+        } else {
+          // Aucune séance facile de course cette semaine : on ne substitue PAS, la séance
+          // d'origine est rendue telle quelle. Deux replis ont été écrits et mesurés avant ce
+          // choix : allonger le retour au calme (inerte, C13b le borne à 50 % du corps) et poser
+          // un bloc facile DANS la dose (il relâche les clamps d'échauffement/retour au calme et
+          // la séance sort PLUS GROSSE que celle qu'elle remplace : 43 → 49 min sur la
+          // combinaison `tri/S/reprise/inter/competition` d'`audit:v1`, puis un saut de +28 %
+          // en S6 — violation DURE du manifeste). Une dose qui n'a nulle part où rendre ses
+          // minutes n'est pas posée ; c'est le correctif le moins coûteux qui tienne la
+          // propriété (règle 19), et il ne concerne que les semaines à un seul créneau course.
+          Object.assign(cible, origine);
+          renderSess(cible, refs, r.hz, r.baseRefs);
+          return;
         }
       }
       r.decisions.push({
         id: "RN1", what: "Seuil course : dose d'entretien en spécifique/pic (semaine " + wk.num + ")",
-        val: RN1_ENTRETIEN_REPS + " × " + RN1_ENTRETIEN_DUR_MIN + " min au seuil, toutes les " + RN1_INTERVAL_SEMAINES + " semaines",
+        val: reps + " × " + RN1_ENTRETIEN_DUR_MIN + " min au seuil, toutes les " + RN1_INTERVAL_SEMAINES + " semaines",
         why: "Ton profil accepte des marges resserrées : ce plan introduit une dose de seuil course à basse fréquence, absente par défaut. Surveille ta forme du jour — cette séance est réduite ou remplacée comme n'importe quelle autre si le readiness n'est pas vert.",
       });
     });

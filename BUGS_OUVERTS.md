@@ -12900,11 +12900,82 @@ Vérifié : `audit:v1` 459/459, `audit:invariants` 22/22, `audit:monotonie` 0 r�
 `audit:v6`/`v7`/`r13`/`r14`/`r14.1`/`r18` verts, golden recapturé (120 profils, tous tri), E2E
 27/27, `check:app`/`check:sw` synchronisés.
 
+### ⚠ CORRECTIF 11/09/2026 — la « neutralité en volume » ci-dessus était FAUSSE sur 282 des 315 semaines RN1, et `lotPhysio` n'avait pas été relu
+
+**Trouvé par la CI, pas par moi** : `audit.yml` sur `main` était rouge depuis `16f8454` (FV1+RC1,
+09/09) à l'étape `lotPhysio`, et cinq commits — dont RN1 et S15-css — l'ont traversée en annonçant
+une batterie verte qui OMETTAIT ce banc (le paragraphe « Vérifié » ci-dessus en est la preuve :
+`lotPhysio` n'y figure pas). C'est O-9 en récidive, et la liste de gates rédigée à la main est le
+mécanisme du silence — `npm run batterie` inclut `lotPhysio` par défaut, il suffisait de le lancer
+tel quel.
+
+**Bisection par worktree-par-commit** (`lotPhysio` rejoué sur `5d625c4` · `16f8454` · `926c5b2` ·
+`eddc3aa` · HEAD) : `16f8454` déplace T-39 (29 → 26) et T-48 (VO2 −136, la force vélo substitue
+du VO2 vélo : l'objet du lot) ; `926c5b2` immobile ; `eddc3aa` (RN1) pousse **S4 323 → 325**,
+VO2 −300, nage seuil −5 750 ; `9efa7fe` (S15-css) pousse S5 169 → 170 sur
+`G/swimrun/championship/master` — que j'avais annoncé « inchangé hors swimrun », vrai pour les
+plans, faux pour ce cliquet.
+
+**La cause du S4 était RN1 elle-même, et plus grave que le cliquet** : le receveur des minutes
+libérées était cherché par son LIBELLÉ (« Footing facile », règle 17) — en spec/pic le créneau
+facile course s'appelle « Sortie longue CAP » (pièce A2), donc **282 semaines RN1 sur 315
+perdaient leur delta**, et C22 propageait la famine : `tri/S/ancien/inter/competition` S5 277 →
+263, S6 302 → 290, S7 330 → 319, **affûtage 181 → 149 avec un footing en moins** — la monnaie
+interdite, sur la semaine où elle coûte le plus. Le S4 en affûtage (« Rappel allure course » 34 >
+longue 33) n'était que le bout visible de cette chaîne. « Une protection qui dépend d'une séance
+survivante rate le profil qui a le moins de séances », commise dans la passe écrite la veille.
+
+**Quatre écritures avant la bonne, chacune mesurée sur le corpus** (`rn1loss.mjs`, 122 profils
+tri/competition) :
+1. receveur par PROPRIÉTÉ (corps en `rn.easy`/`rn.rec`, non-longue d'abord) + repli « retour au
+   calme » → 282 → 67 semaines qui perdent ; le repli est INERTE, C13b borne le retour au calme à
+   50 % du corps ;
+2. repli en bloc FACILE de corps dans la dose + reprise de l'excédent au receveur quand la dose
+   est plus GROSSE que la séance remplacée → **pire chez le débutant** (5 → 15 min) : la longue
+   payait 10 min pour une dose de 45 que C26c rabotait ensuite à 30 ;
+3. **la dose ne dépasse jamais la séance qu'elle remplace** — 3 répétitions si elles tiennent
+   dans le RENDU (règle 15, pas une formule recopiée de `renderSess`), sinon 2, sinon on ne
+   substitue pas (`RN1_ENTRETIEN_REPS_MIN`) ; la décision publie les répétitions LIVRÉES ;
+   blessure d'appui EXCLUE (sur `G/tri/Full/injury-tibia` la dose remplaçait l'unique séance de
+   course de la semaine) → 31 semaines aval, 0 séance perdue, mais 29 semaines débutant perdent
+   encore 23-29 min ;
+4. **débutant EXCLU** (à confirmer par le fondateur) : son plafond de dur C26c (25 min) ne porte
+   pas 18 min de seuil course EN PLUS du VO2 vélo — mesuré, la dose faisait tomber le VO2 vélo de
+   6×4 à 3×4 au pic (`tri/70.3/confirme/debutant/competition` S17). La dose ne s'ajoutait pas,
+   elle DÉPLAÇAIT la qualité vélo. Même logique que le module tri, qui n'offre pas « Allure
+   course » au débutant en pic.
+5. **sans receveur facile, PAS de substitution** : le bloc facile posé dans la dose (écriture 2)
+   relâchait les clamps d'échauffement/retour au calme de `renderSess`, la séance sortait PLUS
+   GROSSE que celle qu'elle remplaçait (43 → 49 min) et la combinaison `audit:v1`
+   `tri/S/reprise/{inter,avance}/competition` (vol_max 10, 6 séances) prenait un saut de +28 % en
+   S6 — **violation DURE du manifeste**, trouvée par `npm run batterie` (qui inclut `audit:v1`),
+   pas par mon instrument. Une dose qui n'a nulle part où rendre ses minutes n'est pas posée.
+
+**État livré** : 240 semaines RN1 · **235 neutres à ±1 min (98 %)** · **0 semaine dont le nombre
+de séances change** · S4 revenu à 323. Résidu publié : `INJ/tri/70.3/{velo,cou}` S17 −33 min
+(C26c reprend du VO2 vélo sous un plafond réduit par la blessure), `PW/tri/M/plat` S69 −11 (rayon
+de la boucle de réparation), deux semaines `tri/Full/reprise` à +5 (arrondi C13b).
+
+**Ce que la dose COÛTE, publié au cliquet T-48** : sur 8 profils (`reprise`, blessures hors
+course), la boucle de réparation reprend les minutes de seuil course au VO2 vélo (−124 min au pic
+sur le corpus) et, sur `tri/70.3/reprise/{inter,avance}`, à la nage seuil (−2 075 m chacun). La
+dose ne s'AJOUTE pas au temps dur, elle le DÉPLACE — c'est C26c qui fait son travail.
+
+Cliquets ré-épinglés avec cause dans `scripts/lotPhysio.mjs` : S5 170 (S15-css), T-39 27
+(FV1+RC1 → 26, RN1 corrigé → 27 sur `PW/tri/M/plat`), T-48 8 636 min / 447 730 m.
+
 ```verify
 id: RN1
 quoi: la dose n'existe qu'en intent=competition, jamais en dev/taper ; réduite par adjustDay comme toute autre séance dure
 attendu: RN1 DOMAINE VERT / RN1 COUPLAGE READINESS VERT
 cmd: node scripts/verifyRN1.mjs 2>&1 | tail -2
+```
+
+```verify
+id: RN1-neutralite
+quoi: la substitution RN1 ne change ni le volume (≥ 95 % des semaines à ±1 min) ni le NOMBRE de séances d'aucune semaine — mesuré contre le moteur SANS RN1 (casser), jamais contre un jumeau d'intention
+attendu: RN1 NEUTRALITE VERT
+cmd: node scripts/verifyRN1Neutralite.mjs --dump /tmp/rn1-A.json >/dev/null 2>&1 && npm run casser -- --fichier src/generator/planGenerator.ts --avant 'a.sport === "tri" && a.intent === "competition" && String(a.level) !== "debutant"' --apres 'false' -- node scripts/verifyRN1Neutralite.mjs --dump /tmp/rn1-B.json >/dev/null 2>&1 && node scripts/verifyRN1Neutralite.mjs --compare /tmp/rn1-A.json /tmp/rn1-B.json 2>&1 | tail -1
 ```
 
 ## S15-css · swimrun : le seuil de nage disparaissait en spec/peak sur tout plan ≤ 14 semaines · ✅ **CORRIGÉ 11/09/2026**

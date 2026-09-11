@@ -997,6 +997,12 @@ export const RC1_LABEL_OFF = /^off\b|repos total/i;
  * SUBSTITUER une séance de qualité déjà là, jamais convertir un footing facile en séance dure —
  * exclut donc dev par construction, pas par oubli : publié pour arbitrage, pas décidé en silence.
  *
+ * ⚠ Domaine resserré le 11/09/2026 (voir `BUGS_OUVERTS.md` « RN1 », correctif) : le DÉBUTANT et
+ * toute blessure d'APPUI sont exclus. Mesuré : sous un plafond de temps dur de 25 min (C26c), la
+ * dose ne s'ajoute pas — elle fait tomber le VO2 vélo de 6×4 à 3×4 au pic ; et sur une blessure
+ * de course elle remplaçait l'unique séance de course de la semaine. Exclusion du débutant à
+ * confirmer par le fondateur ; celle de la blessure d'appui relève de la priorité 2.
+ *
  * Couplage readiness : AUCUN code de bypass n'est ajouté, et c'est délibéré. `sessionIntensity()`
  * (`src/readiness/dailyAdjuster.ts`) classe déjà tout step body en zone `.thr`/`.vo2` comme
  * « difficile » (`HARD_ZONES`) — la dose introduite ici (`rn.thr`) tombe donc automatiquement
@@ -1010,6 +1016,10 @@ export const RN1_INTERVAL_SEMAINES = rule("RN1", "une dose d'entretien toutes le
 export const RN1_ENTRETIEN_REPS = rule("RN1", "dose d'entretien seuil : 3 répétitions, gabarit de rappel plutôt que de développement", 3);
 /** Durée par répétition, en minutes. */
 export const RN1_ENTRETIEN_DUR_MIN = rule("RN1", "durée par répétition de la dose d'entretien seuil course", 6);
+// La dose ne dépasse jamais la séance qu'elle remplace : 3 répétitions si elles tiennent, sinon
+// 2 (« deux à trois blocs », spec du fondateur), sinon la séance d'origine est gardée. Mesuré
+// sur le rendu, jamais par une formule recopiée de renderSess (règle 15).
+export const RN1_ENTRETIEN_REPS_MIN = rule("RN1", "nombre minimal de répétitions de la dose d'entretien — en dessous, on ne substitue pas", 2);
 
 /**
  * C13e — L'ÉCHAUFFEMENT N'EST JAMAIS PLUS LONG QUE LE CORPS DE SÉANCE. Invariant DUR, sur les

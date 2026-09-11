@@ -1170,7 +1170,18 @@ T("T-22", "rouge", "toute séance qui nomme une allure a tous ses steps de corps
 // dépasse la sortie longue de sa discipline (S4/I14) et moins de plans culminent à une valeur
 // qu'aucun maillon R20.2 ne déclare (S5). Un cliquet qui BAISSE se ré-épingle comme un cliquet
 // qui monte : sinon la prochaine hausse passerait sous l'ancien seuil sans être vue.
-const SCEAU_ATTENDU = { S1: 2, S4: 323, S5: 169 };
+// S15-css (11/09/2026, `9efa7fe`) — S5 169 → **170**, attribué par worktree-par-commit (bisection
+// de la CI rouge, `lotPhysio` rejoué sur 5d625c4 · 16f8454 · 926c5b2 · eddc3aa · HEAD) : le seul
+// profil qui bouge est `G/swimrun/championship/master` — « plafond publié (boucle-growth) =
+// 5,28 h ≠ pic livré 5,10 h ». Le seuil de nage revenu en spec/peak sur les plans courts remplace
+// une nage longue par une séance css plus courte dans la semaine de pic, et aucun maillon R20.2 ne
+// déclare ce que le point fixe retire (famille O-35, rang « déclaré »). ⚠ Le même lot avait été
+// annoncé « neutre hors swimrun » sans que ce banc soit relu — la CI de `main` était rouge depuis
+// le 09/09 (`16f8454`) et cinq commits l'ont traversée. RN1 (`eddc3aa`) avait poussé S4 323 → 325
+// (deux `tri/S/ancien/*/competition`, « Rappel allure course CAP » 34 > longue 33 en affûtage) :
+// c'était la FAMINE propagée par C22 depuis une semaine RN1 qui avait perdu ses minutes (receveur
+// cherché par libellé, règle 17) — corrigé à la source, S4 revenu à 323.
+const SCEAU_ATTENDU = { S1: 2, S4: 323, S5: 170 };
 T("T-27", "vert", "le sceau est posé sur le plan livré : invariants DURS à zéro, déclarés au compte épinglé", () => {
   const compte = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
   let scelles = 0, nus = 0, dur = 0;
@@ -1599,7 +1610,18 @@ T("T-39", "vert", "un bloc ÉPINGLÉ n'est pas raboté par le plafond de dose (O
   // porte plus de volume, donc les budgets de séance mordent plus souvent sur les continuités
   // épinglées de B-17 (mécanisme O-54 §2, arbitré et ouvert — le plafond de SÉCURITÉ gagne, le
   // titre reste synchronisé sur le livré). Trois blocs de plus, tous en natation.
-  const RABOTES_ATTENDUS = 29;
+  // FV1 + RC1 (09/09/2026, `16f8454`) — 29 → **26**, attribué au COMMIT par bisection (moteur
+  //       rejoué sur le commit d'avant et sur celui-ci : 29 puis 26 ; `926c5b2` et `9efa7fe`
+  //       immobiles). Trois continuités B-17 de `G/tri/Full/vol-min` de MOINS sont rabotées :
+  //       la conversion d'une récup en OFF (RC1) et la force vélo (FV1) libèrent des minutes dans
+  //       les semaines SATURÉES de ce profil, même mécanisme qu'O-85 (« le volume excédentaire
+  //       part avant que les passes aval n'aient à raboter un bloc épinglé »). Non départagé
+  //       entre FV1 et RC1 — le motif de neutralisation n'a pas été trouvé tel quel dans le
+  //       worktree, et j'ai préféré publier « le commit » que deviner « la pièce ».
+  // RN1 corrigé (11/09/2026) — 26 → **27** : `PW/tri/M/plat`, « Nage continue — 1225 m » pour
+  //       1500. Rayon de la boucle de réparation autour d'une semaine RN1 (S42-S44 de ce profil se
+  //       recomposent), publié comme tel : la dose ne touche pas la nage, la boucle si.
+  const RABOTES_ATTENDUS = 27;
   let n = 0, ko = 0; const zones = {}, ex = [];
   for (const { key, plan } of goldenAvecMoteur()) {
     for (const w of plan?.weeks ?? []) for (const d of w.days ?? []) for (const s of d.sessions ?? [])
@@ -2089,7 +2111,18 @@ T("T-50", "vert", "PROPRIÉTÉ — la bande d'allure affichée se redérive du p
 // du début de plan, la nage seuil en récupère 7 579 m sur la population (444 401 → 451 980) et le
 // VO2 gagne 20 min (8 876 → 8 896). La composition ne s'inverse pas — C26c continue de faire
 // céder le VO2 devant la nage seuil, c'est l'AMPLEUR qui bouge, pas le sens.
-const PIC_ATTENDU = { vo2Min: 8896, seuilM: 451980, profils: 206 };
+// FV1 (09/09/2026, `16f8454`) — VO2 8 896 → **8 760** (−136 min), nage seuil IMMOBILE : sur
+// 7 profils `tri/*/competition`, la force vélo d'entretien SUBSTITUE une séance de qualité vélo
+// en spec/pic — le VO2 vélo cède exactement les minutes de la dose de force. C'est l'objet du
+// lot ; attribué par worktree-par-commit (bisection de la CI rouge, cinq commits rejoués).
+// RN1 corrigé (11/09/2026) — 8 760 → **8 636** (−124 min) · nage seuil 451 980 → **447 730 m**
+// (−4 250, dont 2 × 2 075 sur `tri/70.3/reprise/{inter,avance}`), sur 8 profils : `reprise` et
+// blessures hors course. La dose de seuil course ajoute 12-18 min de DUR dans une semaine dont le
+// plafond C26c est déjà tenu ; la boucle de réparation reprend ces minutes au VO2 vélo (5×4 → 4×4)
+// et, sur deux profils, à la nage seuil. La dose ne s'AJOUTE pas au dur, elle le DÉPLACE — publié.
+// Le débutant est exclu de RN1 pour cette raison (son plafond de 25 min faisait tomber le VO2
+// vélo de 6×4 à 3×4 au pic) ; avant cette exclusion, le VO2 cédait 300 min et non 124.
+const PIC_ATTENDU = { vo2Min: 8636, seuilM: 447730, profils: 206 };
 T("T-48", "vert", "la composition du PIC en tri est épinglée : le VO2 a cédé, la nage seuil a gagné (C26c)", () => {
   let vo2 = 0, seuil = 0, profils = 0;
   for (const { key, plan } of goldenAvecMoteur()) {
