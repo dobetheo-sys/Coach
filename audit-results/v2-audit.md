@@ -18,7 +18,7 @@ aucune ne se cite seule comme un effet.
 | run | 108 | 0.98 | 0.94–1.00 | 0 | 0 | 0 | 0.46 | 0 | 85% | 0 | 100 |
 | bike | 135 | 0.99 | 0.91–1.00 | 0 | 0 | 0 | 0.43 | 0 | 91% | 0 | 99 |
 | swim | 108 | 0.97 | 0.91–0.99 | 0 | 0 | 0 | 0.48 | 1 | 66% | 3 | 93 |
-| tri | 108 | 0.98 | 0.92–1.00 | 0 | 0 | 0 | 0.47 | 6 | 71% | 2 | 89 |
+| tri | 108 | 0.98 | 0.92–1.00 | 0 | 0 | 0 | 0.47 | 6 | 71% | 2 | 90 |
 | trail | 27 | 0.96 | 0.94–0.99 | 0 | 0 | 0 | 0.28 | 0 | 96% | 0 | 97 |
 | duathlon | 108 | 0.97 | 0.93–0.99 | 0 | 0 | 0 | 0.38 | 0 | 87% | 0 | 99 |
 
@@ -29,7 +29,7 @@ aucune ne se cite seule comme un effet.
 | run | 0.98 → 0.98 | 0.88 → 0.88 | 100 → 100 |
 | bike | 0.99 → 0.99 | 0.90 → 0.90 | 99 → 99 |
 | swim | 0.97 → 0.97 | 0.88 → 0.88 | 93 → 93 |
-| tri | 0.98 → 0.98 | 0.89 → 0.90 | 91 → 89 |
+| tri | 0.98 → 0.98 | 0.89 → 0.90 | 92 → 90 |
 | trail | NaN → 0.96 | 1.00 → 0.91 | NaN → 97 |
 | duathlon | NaN → 0.97 | 1.00 → 0.90 | NaN → 99 |
 
@@ -61,5 +61,5 @@ aucune ne se cite seule comme un effet.
 - **RC1** · Repos complet garanti (semaine 18) : `1 jour de repos total par semaine de charge, pas seulement de la récup active` — En multisport, chaque jour de la semaine porte une discipline — le seul jour qui restait pour souffler était étiqueté « récupération », ce qui laisse deviner qu'il faut encore faire quelque chose. Il ne prescrivait déjà rien : le nom dit maintenant ce qu'il est.
 - **RC1** · Repos complet garanti (semaine 19) : `1 jour de repos total par semaine de charge, pas seulement de la récup active` — En multisport, chaque jour de la semaine porte une discipline — le seul jour qui restait pour souffler était étiqueté « récupération », ce qui laisse deviner qu'il faut encore faire quelque chose. Il ne prescrivait déjà rien : le nom dit maintenant ce qu'il est.
 - **RC1** · Repos complet garanti (semaine 20) : `1 jour de repos total par semaine de charge, pas seulement de la récup active` — En multisport, chaque jour de la semaine porte une discipline — le seul jour qui restait pour souffler était étiqueté « récupération », ce qui laisse deviner qu'il faut encore faire quelque chose. Il ne prescrivait déjà rien : le nom dit maintenant ce qu'il est.
-- **allocation** · Répartition entre les trois disciplines : `vélo 43 % (visé 45) · course 38 % (visé 32) · natation 19 % (visé 23)` — La cible correspond à ton enveloppe déclarée (9 à 13 h/sem) : elle vient du partage du temps de ta COURSE, corrigé pour la natation — la technique se perd par la fréquence, pas par le volume, donc on nage plus que sa part de chrono. Ce que tu lis est ce que ton plan livre : l'écart vient de la structure de ta semaine (combien de créneaux portent quelle discipline), pas d'un réglage — le forcer reviendrait à prendre des minutes sous des planchers de séance qui existent pour te protéger.
+- **allocation** · Répartition entre les trois disciplines : `vélo 43 % (visé 45) · course 39 % (visé 32) · natation 19 % (visé 23)` — La cible correspond à ton enveloppe déclarée (9 à 13 h/sem) : elle vient du partage du temps de ta COURSE, corrigé pour la natation — la technique se perd par la fréquence, pas par le volume, donc on nage plus que sa part de chrono. Ce que tu lis est ce que ton plan livre : l'écart vient de la structure de ta semaine (combien de créneaux portent quelle discipline), pas d'un réglage — le forcer reviendrait à prendre des minutes sous des planchers de séance qui existent pour te protéger.
 - **frequence** · Fréquence par discipline : `30 semaine-discipline(s) sous la cible de 3 séances — au plus bas, natation à 1 séance` — La technique se maintient par la FRÉQUENCE, pas par le volume : c'est pour ça que tu nages plus que ta part de chrono. Ce plan ne force rien — avec 8 séances par semaine, deux séances par discipline deviennent tenables ; en dessous, donner deux créneaux à une discipline qui pèse un huitième de ta course reviendrait à les prendre à celles qui en pèsent sept. Le levier est le nombre de créneaux, donc le doublage, pas un réglage de répartition.

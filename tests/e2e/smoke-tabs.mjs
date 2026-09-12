@@ -179,9 +179,14 @@ const momA = await pA.evaluate(() => {
 });
 ok(momA.cibles === 1, "moment A : la déclaration de saison s'affiche sur un plan qui ne l'a jamais vue ("
   + momA.cibles + " overlay(s) porteur(s), " + momA.total + " au total) — « " + momA.titre.trim() + " »");
-await pA.click("#momentAClose");
-await pA.waitForTimeout(300);
-ok(await pA.locator(".eb-overlay").count() === 0, "…elle se ferme sur « Fermer »");
+// Le clic est GARDÉ : sans ça, une contre-preuve qui supprime l'overlay fait MOURIR la suite
+// sur un TimeoutError — code de sortie correct, mais aucune ligne de verdict, donc un rouge
+// qui ne dit pas ce qu'il a trouvé. C'est le défaut d'instrument déjà payé par `smoke-refus`
+// et `smoke-checkin` ; vérifié sur la cassure réelle (moment A neutralisé).
+const aFermer = (await pA.locator("#momentAClose").count()) === 1;
+if (aFermer) { await pA.click("#momentAClose"); await pA.waitForTimeout(300); }
+ok(aFermer && (await pA.locator(".eb-overlay").count()) === 0,
+  "…elle se ferme sur « Fermer »" + (aFermer ? "" : " — bouton jamais apparu"));
 await pA.reload({ waitUntil: "networkidle" });
 await pA.waitForTimeout(1200);
 ok(await pA.locator(".eb-overlay #momentAClose").count() === 0,
