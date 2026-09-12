@@ -13,7 +13,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      # Zéro dépendance : Node 22 exécute le TypeScript nativement (type stripping).
+      # Zéro dépendance JUSQU'À `check:app` : Node 22 exécute le TypeScript nativement
+      # (type stripping). Le `npm ci` plus bas est nommé et justifié à son étape (A2).
       # Chaque run échoue si une des 486 combinaisons a une violation dure
       # (règles « audit 2 » + manifeste note.md). v1 = produit Coach_Pro_V1.5.html ;
       # v2 = moteur de raisonnement Sprint 1 ; demo:repair = garanties de la boucle
@@ -43,6 +44,20 @@ jobs:
       - run: npm run demo:hrv
       - run: npm run demo:avatartri
       # Le bundle EBV2 committé dans le HTML doit correspondre aux sources src/
+      # A2 (12/09/2026) — LA PREMIÈRE DÉPENDANCE DU JOB `audit`, ET ELLE EST NOMMÉE.
+      # `check:app` rejoue `scripts/buildApp.mjs`, qui strippe désormais les commentaires du
+      # bundle livré (esbuild, devDependency de BUILD — jamais servie à l'athlète). Sans
+      # installation, ce gate — celui qui protège `main` contre un HTML désynchronisé de
+      # `src/` — sortirait en erreur de module au lieu d'un verdict. L'étape est posée ICI et
+      # pas en tête du job : tout ce qui précède reste sans dépendance, comme avant.
+      # `npm install` et PAS `npm ci` : `package-lock.json` est gitignoré dans ce dépôt (.gitignore:2),
+      # et `npm ci` REFUSE de tourner sans lockfile — la première écriture de cette étape aurait
+      # fait échouer le gate qui protège `main`, attrapée avant d'être poussée. C'est aussi ce que
+      # le job `e2e` fait déjà. La reproductibilité que le lockfile aurait donnée est obtenue
+      # autrement : `esbuild` est épinglé à une version EXACTE dans package.json (pas de `^`),
+      # sans quoi un correctif amont pourrait changer les octets du bundle et rendre `check:app`
+      # rouge en CI alors qu'il est vert en local.
+      - run: npm install --no-audit --no-fund
       - run: npm run check:app
       # O-24 — le service worker sert l'app en cache-first : tant que sa VERSION ne
       # change pas, un navigateur qui a déjà ouvert l'app NE VOIT AUCUN correctif.

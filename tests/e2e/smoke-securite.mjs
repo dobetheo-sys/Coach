@@ -50,8 +50,31 @@ ok(!/frame-ancestors/.test(csp),
 // Ma première écriture le faisait, « parce que l'URL du relais est configurable ».
 ok(!/connect-src[^;]*\shttps:(\s|;)/.test(csp),
   "…et `connect-src` ne contient PAS de `https:` global (qui annulerait toute la protection)");
-ok(/connect-src[^;]*workers\.dev/.test(csp),
-  "…le relais Strava est déclaré par son domaine (`*.workers.dev`), pas par un joker");
+// B3 (décision du fondateur, 12/09/2026) — L'HÔTE DU RELAIS EST ÉPINGLÉ, ET IL SE LIT DANS
+// `config.js`. `*.workers.dev` autorisait tout worker Cloudflare de la planète, ce qui est un
+// joker d'un cran plus fin que `https:` et pas autre chose. L'attendu n'est donc PAS écrit ici
+// (une garde qui porte sa copie de la règle mesure sa copie — leçon Z-05) : il est DÉRIVÉ de
+// `STRAVA_RELAY_DEFAULT`, la seule source de l'URL depuis que le réglage avancé est retiré.
+const relaisHote = new URL(
+  (/STRAVA_RELAY_DEFAULT\s*=\s*"([^"]+)"/.exec(lire("js/config.js")) || [])[1] || "https://introuvable.invalid",
+).host;
+ok(relaisHote !== "introuvable.invalid", "`config.js` déclare l'URL du relais (" + relaisHote + ")");
+ok(csp.includes("https://" + relaisHote),
+  "…et `connect-src` épingle CET hôte exact, dérivé de `config.js` (R11.1) — pas une valeur recopiée ici");
+ok(!/connect-src[^;]*\*\./.test(csp),
+  "…sans aucun joker de sous-domaine (`*.workers.dev` autorisait tout worker Cloudflare)");
+// Et le réglage « URL de relais » ne doit pas revenir : un champ que la CSP rend inopérant
+// est une promesse fausse. Le critère porte sur la LECTURE de la clé, pas sur un identifiant
+// d'input (règle 17 : un libellé se renomme, une lecture d'état se voit).
+// …en lisant le CODE et pas les COMMENTAIRES : ma première écriture de ce critère rougissait
+// sur le commentaire qui EXPLIQUE le retrait (« Avant : `S.answers.stravaRelay || …` »).
+// Onzième occurrence de la famille « mesurer ce qui est écrit au lieu de ce qui s'exécute »
+// (règle 15), cette fois dans la garde du lot qui la cite. Les commentaires de bloc et les
+// lignes de commentaire partent ; un `//` en fin de ligne de code reste, le retirer
+// demanderait de distinguer un `//` dans une chaîne — le piège même d'A2.
+const sansCommentaires = (t) => t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+ok(!/answers\.stravaRelay/.test(sansCommentaires(lire("js/strava.js")) + sansCommentaires(lire("js/ui/tab-profile.js"))),
+  "…et plus aucun CODE ne lit `answers.stravaRelay` : l'URL du relais a UNE source, `config.js`");
 
 // L'INSTRUMENT SAIT-IL VOIR ? La CSP ne doit pas se contenter d'exister : elle doit
 // couvrir ce que l'app appelle VRAIMENT. On relit les hôtes depuis le code, pas depuis

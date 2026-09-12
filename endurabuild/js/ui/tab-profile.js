@@ -594,14 +594,13 @@ function stravaCardHTML(a) {
       // padding vertical généreux malgré le texte réduit, geste rare mais pas piégeux.
       + '<button type="button" id="pfStravaOut" class="zn-pf-strava-out">Se déconnecter</button>';
   } else {
-    // R6 — UX guidée : UN bouton. L'URL du relais vit en config (déployée pour tous)
-    // ou dans les réglages avancés — l'utilisateur normal n'a rien à coller.
+    // R6 — UX guidée : UN bouton. B3 (12/09/2026) : le champ « Réglages avancés (relais) »
+    // est RETIRÉ — la CSP épingle l'hôte exact du relais, donc un autre hôte est bloqué par
+    // le navigateur avant la requête. Laisser un champ qui ne peut plus rien configurer,
+    // c'est promettre un réglage qui n'en est pas un. Le repli « jeton manuel » ci-dessous
+    // reste le chemin sans relais.
     h += '<div class="zn-pf-strava-btn"><button class="zn-btn" id="pfStravaConnect" type="button">🔗 Se connecter avec Strava</button></div>'
-      + '<div class="load-sub">Un clic → autorisation sur Strava → retour ici. Lecture seule (jamais d’écriture), tes activités alimentent tes références (FTP/allure/CSS).</div>'
-      + '<details><summary class="load-sub" style="cursor:pointer">Réglages avancés (relais)</summary>'
-      + '<div class="zn-pf-fields">'
-      + '<input type="text" id="pfStravaRelay" placeholder="URL du relais (voir server/README.md)" value="' + esc(a.stravaRelay || "") + '" aria-label="URL du relais Strava"></div>'
-      + '<div class="load-sub">Le relais garde le secret Strava hors de l’app — déploiement pas-à-pas dans server/README.md.</div></details>';
+      + '<div class="load-sub">Un clic → autorisation sur Strava → retour ici. Lecture seule (jamais d’écriture), tes activités alimentent tes références (FTP/allure/CSS).</div>';
   }
   h += (S._stravaError ? '<div class="load-sub zn-pf-bad">Connexion Strava refusée (' + esc(S._stravaError) + ") — réessaie ou utilise le jeton manuel.</div>" : "")
     + '<details><summary class="load-sub" style="cursor:pointer">Repli : jeton manuel (sans serveur)</summary>'
@@ -1415,11 +1414,13 @@ export function renderTabProfile(plan) {
   };
   const stravaConnBtn = $("pfStravaConnect");
   if (stravaConnBtn) stravaConnBtn.onclick = () => {
-    const typed = (($("pfStravaRelay") || {}).value || "").trim();
-    if (typed) { S.answers.stravaRelay = typed; ebSave(); }
     const m = $("pfStravaMsg");
+    // B3 — plus de lecture d'un champ « relais » : `stravaRelayUrl()` lit `config.js` et rien
+    // d'autre. Le garde reste pour le cas où la constante serait vide (relais pas déployé),
+    // et il ne nomme plus le réglage retiré — un message qui renvoie vers un écran absent
+    // est la famille U9.
     if (!stravaRelayUrl()) {
-      if (m) m.innerHTML = "La connexion en 1 clic sera active quand le relais sera en ligne (15 min, <b>server/README.md</b>). En attendant : « Réglages avancés » pour coller l’URL d’un relais, ou le jeton manuel ci-dessous — les deux marchent.";
+      if (m) m.innerHTML = "La connexion en 1 clic sera active quand le relais sera en ligne (15 min, <b>server/README.md</b>). En attendant, le jeton manuel ci-dessous marche.";
       return;
     }
     S._stravaError = null;

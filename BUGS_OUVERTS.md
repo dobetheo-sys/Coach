@@ -12924,23 +12924,91 @@ commenté dans `harness.mjs`. **Angle mort publié, non traité** : aucune suite
 moment A APPARAÎT — les dix suites qui touchent `.eb-overlay` le retirent ou testent la célébration ;
 l'overlay Format A n'est gardé nulle part côté E2E.
 
-**Non livré, et pourquoi (décisions au fondateur) :**
+**Décisions du fondateur (12/09/2026) sur les quatre points non livrés — trois appliquées,
+une refusée, et la CI a payé le prix d'A2 :**
 
-- **A2 — strip des commentaires du bundle** (`engine.js` 523 → 185 Ko gzip) : un strip « conservateur »
-  maison peut casser une chaîne contenant `//` ou `/*` ; le faire proprement demande un
-  minifieur (esbuild) en devDependency de BUILD — c'est la politique « zéro dépendance » qui est en
-  jeu, pas un correctif. À trancher.
-- **B1 (3) — chiffrement de l'export par phrase de passe** : une phrase oubliée = sauvegarde
-  perdue ; c'est une décision d'UX (et de support), pas de code.
-- **B3 (moitié CSP) — épingler l'hôte exact du relais** au lieu de `*.workers.dev` : rend l'URL de
-  relais « configurable en réglages avancés » inopérante hors de cet hôte. Soit on retire ce
-  réglage, soit on garde le joker — à trancher ; le code lit déjà l'hôte depuis `config.js`.
-- **B4 — rate-limit sur `/refresh`** : réglage Cloudflare (dashboard), humain.
+- **A2 — le bundle est livré SANS ses commentaires. OUI**, `esbuild` en devDependency de BUILD
+  (« la politique zéro dépendance vise le runtime livré, pas l'outillage »). **Mesuré avant
+  d'écrire, protocole d'A3** (Fast 3G émulé, contexte neuf, 3 tirages de chaque côté) — et la
+  méthode a dû changer sur un point qui décide : **le serveur du harnais E2E sert EN CLAIR
+  quand GitHub Pages gzippe**. A3 déplaçait des requêtes sans changer les octets, la
+  compression y était neutre ; A2 change les octets, donc mesurer sans gzip aurait surestimé
+  le gain d'un facteur ~3, dans le sens qui arrange. Les deux sont publiés :
+  **serveur gzippé (comme la prod) 5 578 · 5 561 · 5 581 → 3 912 · 3 915 · 3 917 ms (−1,7 s,
+  −30 %)** · serveur brut 14 441 · 14 439 · 14 423 → 9 343 · 9 357 · 9 349 ms. Poids
+  **527 → 166 Ko gzip (−68 %)**, bundle 1 566 → 529 Ko. C'est le même instrument qui a RETIRÉ
+  A3 (il coûtait 2 s) et qui valide celui-ci.
+  **`minifyWhitespace` seul, jamais `minifyIdentifiers`** : mangler les noms rend 15 Ko gzip de
+  plus et rend le moteur illisible — or il est public (S-1) et son explicabilité EST le
+  contre-positionnement du produit. Le mangling n'a donc pas été pris, et le chiffre du gain
+  abandonné est publié plutôt que tu.
+  **Deux choses survivent au strip, vérifiées AVANT d'écrire** : l'en-tête « généré, ne pas
+  éditer » (concaténé après le strip) et les marqueurs `/*__EBV2_START__*/` / `/*__EBV2_END__*/`
+  — des COMMENTAIRES, par lesquels `audit_v6.mjs` extrait le moteur du monolithe. Ils sont posés
+  AUTOUR de `bundle`, hors de portée du strip ; un strip est un producteur de masse de règle 17,
+  et celui-là aurait fait rougir un gate loin de sa cause. `audit:v6` 75 verts, marqueurs
+  intacts.
+  **⚠ CONSÉQUENCE NON ANTICIPÉE PAR LA DÉCISION, ET ELLE TOUCHE LA RÈGLE DE MÉTHODE 0** : le job
+  `audit` de la CI — celui qui protège `main` — n'installait **rien**, et c'est lui qui exécute
+  `check:app`, lequel rejoue ce build. Sans installation il serait sorti en erreur de module au
+  lieu d'un verdict. Une étape `npm ci` est posée **juste avant `check:app`** et pas en tête du
+  job : tout ce qui précède reste sans dépendance. La ligne « zéro dépendance » de `audit.yml`
+  est rectifiée plutôt que laissée fausse.
+  **Et ma première écriture de cette étape aurait cassé ce gate** : j'avais posé `npm ci`, or
+  `package-lock.json` est **gitignoré** dans ce dépôt (`.gitignore:2`) et `npm ci` REFUSE de
+  tourner sans lockfile — le job qui protège `main` serait sorti en erreur d'outil. Attrapé avant
+  la poussée en relisant ce que `git status` ne montrait PAS. Corrigé en `npm install`, ce que le
+  job `e2e` fait déjà ; et la reproductibilité que le lockfile aurait donnée est obtenue
+  autrement — **`esbuild` est épinglé à une version EXACTE** (`0.28.2`, pas `^0.28.2`), sans quoi
+  un correctif amont pourrait changer les octets du bundle et rendre `check:app` rouge en CI
+  pendant qu'il est vert en local.
+- **B1 — chiffrement de l'export : NON, pas maintenant** (décision). L'export ne porte plus de
+  secret depuis que les jetons en sont retirés ; une phrase de passe oubliée = sauvegarde
+  perdue, et le risque support dépasse le bénéfice. **Aucune écriture** ; l'option reste ici.
+- **B3 — l'hôte du relais est ÉPINGLÉ, et le réglage avancé est RETIRÉ. OUI.** `connect-src`
+  nomme l'hôte exact au lieu de `*.workers.dev`, qui autorisait tout worker Cloudflare de la
+  planète — un joker d'un cran plus fin que `https:`, pas autre chose. L'attendu de la garde
+  n'est pas recopié : il est **dérivé de `STRAVA_RELAY_DEFAULT`** (`config.js`), seule source de
+  l'URL depuis que le champ « Réglages avancés (relais) » quitte le Profil — un champ que la CSP
+  rend inopérant est une promesse fausse. **Trouvé en l'écrivant** : `stravaRelayUrl()` faisait
+  gagner la valeur collée par l'athlète sur la config, sous un commentaire qui annonçait
+  l'inverse (« celle de l'app d'abord ») — un commentaire qui décrivait le contraire de sa
+  ligne. `stravaRelay` quitte aussi `SHARED_KEYS` (entrée morte dans un contrat de partage) ;
+  une clé résiduelle dans un état déjà enregistré est ignorée, jamais effacée.
+  **Faute de mon propre critère, publiée** : ma première écriture cherchait `answers.stravaRelay`
+  dans le texte des modules et rougissait sur le COMMENTAIRE qui explique le retrait — onzième
+  occurrence de « mesurer ce qui est écrit au lieu de ce qui s'exécute » (règle 15), dans la
+  garde du lot qui la cite. Les commentaires sont retirés avant la recherche.
+  Conséquence documentée dans `server/README.md` : déployer un autre relais demande désormais
+  DEUX modifications de code (la config **et** la CSP), pas une.
+- **B4 — rate-limit sur `/refresh` : action humaine, documentée seulement.** `server/README.md`
+  liste les deux actions en attente, numérotées : redéployer le worker (c'est ce qui rend le
+  nonce STRICT) et poser la règle de limitation de débit Cloudflare. Aucune écriture de code.
+- **L'angle mort publié est fermé** : `smoke-tabs` §4 asserte que la **déclaration de saison
+  (moment A) APPARAÎT** sur un plan qui ne l'a jamais vue, se ferme, et **ne revient pas** au
+  rechargement — une fois et une seule. Dix suites touchaient `.eb-overlay` et toutes le
+  RETIRAIENT ; c'est ce trou qui a laissé cinq suites vertes PAR LE CHEMIN. La cible se trouve
+  par une propriété (l'overlay qui porte `#momentAClose`), jamais par un libellé, et le titre
+  trouvé est PUBLIÉ (règle 17).
+
+```verify
+id: AUDIT05-A2
+quoi: le bundle SERVI est stripé de ses commentaires (esbuild, minifyWhitespace seul) — propriété, pas valeur épinglée : le seuil laisse le moteur grossir sans périmer la garde
+attendu: STRIPPE
+cmd: node -e 'const z=require("node:zlib"),f=require("node:fs");const n=z.gzipSync(f.readFileSync("endurabuild/js/engine.js"),{level:9}).length;console.log(n<250000?"STRIPPE ("+Math.round(n/1024)+" Ko gzip)":"NON-STRIPPE ("+Math.round(n/1024)+" Ko gzip)")'
+```
+
+```verify
+id: AUDIT05-B3
+quoi: la CSP épingle l'hôte exact du relais et il est DÉRIVÉ de config.js (une source), aucun joker de sous-domaine
+attendu: EPINGLE
+cmd: node -e 'const f=require("node:fs");const h=new URL(/STRAVA_RELAY_DEFAULT\s*=\s*"([^"]+)"/.exec(f.readFileSync("endurabuild/js/config.js","utf8"))[1]).host;const c=/<meta http-equiv="Content-Security-Policy" content="([^"]+)"/.exec(f.readFileSync("endurabuild/index.html","utf8"))[1];console.log(c.includes("https://"+h)&&!/connect-src[^;]*\*\./.test(c)?"EPINGLE ("+h+")":"JOKER")'
+```
 
 ```verify
 id: AUDIT05-SECU
 quoi: A1 (une navigation au premier chargement, page contrôlée), A4/B5 (bandeau d'erreur et de sauvegarde), A5, A3 (AUCUN modulepreload — retiré sur mesure), nomodule, B1 (export sans jeton), B2 (effacement complet), B3/B4 — mesurés dans le navigateur ou sur la source
-attendu: TOUT PASSE — 47 assertions
+attendu: TOUT PASSE — 50 assertions
 cmd: node tests/e2e/smoke-securite.mjs 2>&1 | tail -1
 ```
 

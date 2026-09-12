@@ -15,7 +15,12 @@ const S = { sport:null, answers:{}, rules:[], step:0, tier:"free", started:false
 // du précédent XP/badges/streak (resté per-plan, `answers.done`) — mais ce précédent n'a
 // jamais eu de raison documentée, juste un effet de bord de `ebActivate()` qui échange
 // `S.answers` en bloc ; ça n'en fait pas la référence à suivre ici.
-const SHARED_KEYS=["readiness","painFlag","sickDates","weight","height","notifyTime","notifyDismissed","lastDailyNotif","lastWeeklyNotif","relanceSent","stravaRelay","stravaAuth","hrRestLog","educatifs","posture"];
+// B3 (12/09/2026) — `stravaRelay` a QUITTÉ cette liste : plus personne ne lit la clé depuis que
+// la CSP épingle l'hôte du relais. Une entrée morte dans un contrat de partage se relit comme
+// une fonctionnalité vivante. La clé peut subsister dans un état déjà enregistré : elle y est
+// inerte (ni lue, ni recopiée), on ne l'efface pas — on n'écrase pas la donnée de quelqu'un
+// pour faire propre.
+const SHARED_KEYS=["readiness","painFlag","sickDates","weight","height","notifyTime","notifyDismissed","lastDailyNotif","lastWeeklyNotif","relanceSent","stravaAuth","hrRestLog","educatifs","posture"];
 function liftShared(){for(const k of SHARED_KEYS)if(S.answers[k]!==undefined)S.shared[k]=S.answers[k];}
 function overlayShared(){for(const k of SHARED_KEYS)if(S.shared[k]!==undefined)S.answers[k]=S.shared[k];}
 // Échappement HTML pour toute valeur saisie réinjectée via innerHTML (anti-XSS, avant tout partage).

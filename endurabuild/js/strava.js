@@ -60,10 +60,18 @@ async function stravaFetch(url, opts, ms = STRAVA_TIMEOUT_MS) {
   }
 }
 
-/** URL du relais : celle de l'app (config, déployée pour tous) d'abord, sinon celle
- *  collée par l'utilisateur (réglages avancés). Clé partagée entre plans. */
+/** URL du relais : `config.js`, POINT UNIQUE (B3, décision du fondateur du 12/09/2026).
+ *
+ *  Avant : `S.answers.stravaRelay || STRAVA_RELAY_DEFAULT` — la valeur collée par l'athlète
+ *  dans « Réglages avancés » GAGNAIT sur la config, alors que le commentaire au-dessus
+ *  annonçait l'inverse (« celle de l'app d'abord ») : un commentaire qui décrivait le
+ *  contraire de sa ligne. Le réglage est retiré de l'UI parce que la CSP épingle désormais
+ *  l'hôte EXACT du relais — tout autre hôte est bloqué par le navigateur avant même la
+ *  requête, donc un réglage qui ne peut plus rien configurer. Une clé `stravaRelay`
+ *  résiduelle dans un état existant est ignorée : c'est le seul comportement honnête, la
+ *  laisser gagner enverrait vers un hôte que la page ne peut pas joindre. */
 function stravaRelayUrl() {
-  return String(S.answers.stravaRelay || STRAVA_RELAY_DEFAULT || "").trim().replace(/\/+$/, "");
+  return String(STRAVA_RELAY_DEFAULT || "").trim().replace(/\/+$/, "");
 }
 
 /** Lance la connexion : simple redirection vers le relais, qui gère tout. */

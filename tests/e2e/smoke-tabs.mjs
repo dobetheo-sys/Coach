@@ -152,6 +152,42 @@ const swimCheck = await page.evaluate(() => {
 });
 ok(swimCheck.n >= 3, "le glossaire nage exposé à l'UI porte ses éducatifs (" + swimCheck.n + ", ex. « " + swimCheck.first + " »)");
 
+// ---- 4. LE MOMENT A APPARAÎT — l'angle mort publié par l'audit 05 ----------------------
+//
+// Dix suites touchent `.eb-overlay` : toutes le RETIRENT ou testent la célébration d'après
+// séance. AUCUNE n'assertait que la déclaration de saison s'affiche. Elle s'affichait
+// pourtant, sur toute fixture sans `plan_start` — et c'est le rechargement parasite de la
+// première installation du service worker (le défaut A1) qui l'effaçait avant le premier
+// clic des suites. Retirer A1 a fait tomber cinq suites d'un coup : elles étaient vertes PAR
+// LE CHEMIN, pas par le critère. La fixture déclare désormais le moment vu ; ce bloc est la
+// moitié qui manquait — il le déclare NON vu et exige qu'il apparaisse, une fois et une seule.
+//
+// La cible se trouve par une PROPRIÉTÉ (l'overlay qui porte le bouton `#momentAClose`), pas
+// par un libellé (règle 17) — et le titre trouvé est PUBLIÉ, pour qu'un renommage se lise
+// dans le verdict au lieu de le rendre vacueux.
+const ctxA = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "fr-FR" });
+const pA = await ctxA.newPage();
+await pA.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "domcontentloaded" });
+await pA.evaluate((s) => { localStorage.clear(); localStorage.setItem("eb_state_v1", JSON.stringify(s)); },
+  (() => { const s = runnerStateV1(); delete s.answers.momentA_montre; return s; })());
+await pA.reload({ waitUntil: "networkidle" });
+await pA.waitForTimeout(1200);
+const momA = await pA.evaluate(() => {
+  const ovs = [...document.querySelectorAll(".eb-overlay")];
+  const cible = ovs.filter((o) => o.querySelector("#momentAClose"));
+  return { total: ovs.length, cibles: cible.length, titre: (cible[0] ? (cible[0].querySelector("h2") || {}).textContent : "") || "" };
+});
+ok(momA.cibles === 1, "moment A : la déclaration de saison s'affiche sur un plan qui ne l'a jamais vue ("
+  + momA.cibles + " overlay(s) porteur(s), " + momA.total + " au total) — « " + momA.titre.trim() + " »");
+await pA.click("#momentAClose");
+await pA.waitForTimeout(300);
+ok(await pA.locator(".eb-overlay").count() === 0, "…elle se ferme sur « Fermer »");
+await pA.reload({ waitUntil: "networkidle" });
+await pA.waitForTimeout(1200);
+ok(await pA.locator(".eb-overlay #momentAClose").count() === 0,
+  "…et elle ne revient PAS au rechargement suivant : une fois, et une seule (`momentA_montre` persisté)");
+await ctxA.close();
+
 ok(errs.length === 0, "aucune erreur JS (" + errs.length + (errs.length ? " — " + errs[0] : "") + ")");
 await browser.close();
 server.close();

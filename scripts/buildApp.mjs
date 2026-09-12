@@ -1,5 +1,10 @@
 /**
- * buildApp — bundle le moteur V2 dans Coach_Pro_V1.5.html, zéro dépendance.
+ * buildApp — bundle le moteur V2 dans Coach_Pro_V1.5.html.
+ *
+ * DEPUIS A2 (12/09/2026) CE SCRIPT A UNE DÉPENDANCE : `esbuild`, en devDependency de BUILD,
+ * jamais servie à l'athlète. La politique « zéro dépendance » vise le runtime livré, pas
+ * l'outillage (décision du fondateur). Conséquence à connaître : le job `audit` de la CI
+ * n'installait RIEN — il installe désormais avant `check:app`, qui rejoue ce build.
  *
  * 1. Concatène les modules src/ dans l'ordre des dépendances
  * 2. Retire types (node:module.stripTypeScriptTypes), imports et mots-clés export
@@ -165,12 +170,49 @@ function checkCollisions(scripts) {
 const _scripts = ORDER.map(moduleToScript);
 checkCollisions(_scripts);
 
-const bundle =
+// ---- A2 — LE BUNDLE EST LIVRÉ SANS SES COMMENTAIRES (décision du fondateur, 12/09/2026) ----
+//
+// MESURÉ AVANT D'ÊTRE ÉCRIT, protocole d'A3 (Fast 3G émulé par CDP, contexte neuf, 3 tirages
+// de chaque côté — règle 18), sur un serveur qui GZIPPE comme GitHub Pages : le serveur du
+// harnais E2E sert en clair, et mesurer là aurait surestimé le gain d'un facteur ~3, dans le
+// sens qui arrange (A3 changeait l'ordonnancement des requêtes, pas les octets : la
+// compression y était neutre ; ici elle décide).
+//   temps au premier contenu de #screen : 5 578 · 5 561 · 5 581 ms  →  3 912 · 3 915 · 3 917
+//   soit −1,7 s (−30 %) ; gzip 527 → 166 Ko (−68 %).
+// A3 avait été RETIRÉ sur la même mesure parce qu'il COÛTAIT 2 s : c'est le même instrument
+// qui valide celui-ci et qui a réfuté l'autre.
+//
+// `minifyWhitespace` et RIEN de plus : ni `minifyIdentifiers` ni `minifySyntax`. Le moteur
+// est public (arbitrage S-1) et son explicabilité EST le contre-positionnement du produit —
+// mangler les noms rendrait 15 Ko gzip de mieux et le rendrait illisible. Les identifiants et
+// la structure restent intacts ; seuls partent les octets qu'aucun navigateur n'exécute.
+//
+// DEUX CHOSES SURVIVENT AU STRIP, ET CE N'EST PAS UN DÉTAIL :
+//   · l'en-tête ci-dessous, concaténé APRÈS le strip — sans lui, quelqu'un ouvre un fichier
+//     généré de 500 Ko sans savoir d'où il vient ni comment le régénérer ;
+//   · les marqueurs `/*__EBV2_START__*/` et `/*__EBV2_END__*/`, qui sont des COMMENTAIRES et
+//     par lesquels `audit_v6.mjs` extrait le moteur du monolithe. Ils sont posés plus bas,
+//     AUTOUR de `bundle`, donc hors de portée du strip — vérifié avant d'écrire, parce qu'un
+//     strip est un producteur de masse de règle 17 (un marqueur qui disparaît fait rougir un
+//     gate loin de sa cause).
+let transformSync;
+try { ({ transformSync } = await import("esbuild")); } catch {
+  console.error("✖ esbuild introuvable — lancer `npm install` (devDependency de BUILD, jamais servie à l'athlète).");
+  console.error("  Depuis A2, le bundle livré est stripé : sans esbuild on produirait un bundle DIFFÉRENT");
+  console.error("  de celui du dépôt, et `check:app` rougirait sans dire pourquoi.");
+  process.exit(2);
+}
+const ENTETE =
   "/* __EBV2_BUNDLE__ généré par scripts/buildApp.mjs — NE PAS ÉDITER À LA MAIN.\n" +
-  "   Source de vérité : src/ (moteur V2). Reconstruire : npm run build:app */\n" +
-  "(function(){\n\"use strict\";\n" +
-  _scripts.join("\n") +
-  "\n})();\n";
+  "   Source de vérité : src/ (moteur V2, commenté). Reconstruire : npm run build:app\n" +
+  "   Commentaires et indentation retirés au build (A2) : 527 → 166 Ko gzip, −1,7 s au premier\n" +
+  "   affichage sur Fast 3G. Identifiants et structure INTACTS — le moteur reste lisible. */\n";
+const bundle =
+  ENTETE +
+  transformSync(
+    "(function(){\n\"use strict\";\n" + _scripts.join("\n") + "\n})();\n",
+    { minifyWhitespace: true, legalComments: "none", loader: "js" },
+  ).code;
 
 // ---- AUTO-TEST avant écriture : le bundle doit s'évaluer et générer un plan sain ----
 (0, eval)(bundle);

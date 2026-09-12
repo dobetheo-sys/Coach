@@ -650,6 +650,38 @@ retiré la protection accidentelle (5 `TimeoutError`). Ma première bisection ac
 un tirage par variante — réfutée en rejouant chaque variante. La fixture déclare le moment A vu ;
 angle mort publié : aucune suite n'asserte qu'il APPARAÎT.
 
+**DÉCISIONS DU FONDATEUR SUR LE RAPPORT 05 — A2 livré et mesuré, B3 livré, B1 refusé, B4
+documenté ; et A2 a coûté à la CI sa première dépendance** (12/09/2026 — voir `BUGS_OUVERTS.md`
+« AUDIT 05 », blocs `AUDIT05-A2` et `AUDIT05-B3`) : **A2** le bundle servi est livré sans ses
+commentaires (`esbuild` en devDependency de BUILD, jamais servie) — **mesuré avant d'être écrit,
+protocole d'A3**, et la méthode a dû changer sur le point qui décide : le serveur du harnais E2E
+sert EN CLAIR quand GitHub Pages gzippe, donc mesurer là aurait surestimé le gain d'un facteur
+~3 dans le sens qui arrange (A3 déplaçait des requêtes sans changer les octets, la compression y
+était neutre). Les deux sont publiés : **gzippé 5 578 → 3 913 ms (−1,7 s, −30 %)** · brut
+14 434 → 9 350 ms ; **527 → 166 Ko gzip**. `minifyWhitespace` SEUL — mangler les identifiants
+rendrait 15 Ko de plus et rendrait illisible un moteur public dont l'explicabilité est le
+contre-positionnement (S-1). **Deux commentaires survivent, vérifiés avant d'écrire** : l'en-tête
+« généré » et les marqueurs `/*__EBV2_START__*/` par lesquels `audit:v6` extrait le moteur du
+monolithe — un strip est un producteur de masse de règle 17. **⚠ Conséquence non anticipée par la
+décision** : le job `audit` de la CI, celui qui protège `main`, n'installait RIEN et c'est lui qui
+rejoue ce build — `npm ci` est posé juste AVANT `check:app`, tout ce qui précède reste sans
+dépendance, et la ligne « zéro dépendance » du workflow est rectifiée plutôt que laissée fausse.
+**Ma première écriture de cette étape aurait cassé ce même gate** : `npm ci` REFUSE de tourner
+sans lockfile, or `package-lock.json` est gitignoré ici — attrapé avant la poussée, corrigé en
+`npm install` (ce que le job `e2e` fait déjà), avec `esbuild` épinglé à une version EXACTE pour
+la reproductibilité que le lockfile aurait donnée ·
+**B3** la CSP épingle l'hôte EXACT du relais (`*.workers.dev` autorisait tout worker Cloudflare) et
+le champ « Réglages avancés (relais) » est retiré — un champ que la CSP rend inopérant est une
+promesse fausse ; l'attendu de la garde est DÉRIVÉ de `config.js`, et `stravaRelayUrl()` faisait
+justement gagner la valeur de l'athlète sur la config sous un commentaire qui annonçait l'inverse ·
+**B1** chiffrement de l'export REFUSÉ (l'export ne porte plus de secret, une phrase oubliée coûte
+la sauvegarde) · **B4** deux actions humaines numérotées dans `server/README.md`. **L'angle mort
+publié est fermé** : `smoke-tabs` §4 asserte que le moment A APPARAÎT, se ferme, et ne revient pas.
+**Une faute de mon propre critère publiée** : la garde B3 cherchait `answers.stravaRelay` dans le
+TEXTE et rougissait sur le commentaire qui explique le retrait — règle 15 dans la garde du lot qui
+la cite. Batterie **13/13**, E2E **27/27**, `golden:bundle` vert (le bundle stripé rend des plans
+identiques à la source), `audit:v6` 75 verts marqueurs intacts, `src/` byte-identique.
+
 **Chantier R21 (coach proactif), option A — Vague 2 LIVRÉE : R21 est enfin câblé pour de vrai,
 et deux défauts non anticipés trouvés en le câblant** (07/09/2026, décision
 `syntheses/945002a7-decisionvague2.md`, voir `BUGS_OUVERTS.md` « R21 ») : persistance

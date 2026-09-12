@@ -60,9 +60,21 @@ comme l'import FIT.
 > (`#strava_auth=…&strava_nonce=…`). L'app reste TOLÉRANTE tant que le worker en ligne est
 > l'ancien (elle accepte un retour sans nonce et le dit en console) ; dès que ce fichier est
 > redéployé, un retour dont le nonce ne correspond pas est REFUSÉ. Redéployer = Option A ou B
-> ci-dessus, rien d'autre à changer. Pensez aussi à poser une **règle de limitation de débit**
-> Cloudflare sur `/refresh` (dashboard → Security → WAF → Rate limiting rules) : le code ne peut
-> pas la porter.
+> ci-dessus, rien d'autre à changer.
+>
+> **Les deux actions humaines en attente, en clair :**
+> 1. **Redéployer ce worker** — c'est ce qui rend le nonce STRICT côté app (aujourd'hui tolérant).
+> 2. **Poser une règle de limitation de débit** sur `/refresh` (dashboard Cloudflare → Security →
+>    WAF → Rate limiting rules). Le code ne peut pas la porter : elle vit dans la configuration.
+
+> **⚠ DEPUIS B3 (12/09/2026), L'HÔTE DU RELAIS EST ÉPINGLÉ DANS LA CSP DE L'APP.**
+> `endurabuild/index.html` déclare `connect-src … https://fragrant-truth-668f.dobetheo.workers.dev`
+> — un hôte EXACT, plus `*.workers.dev`. Conséquence pour qui suit ce README pour déployer SON
+> relais : le navigateur bloquera les appels avant même qu'ils partent, et l'ancien réglage
+> « URL de relais » des réglages avancés a été RETIRÉ de l'app (un champ que la CSP rend
+> inopérant est une promesse fausse). Déployer un autre relais demande donc deux modifications
+> de code, pas une : `STRAVA_RELAY_DEFAULT` dans `endurabuild/js/config.js` **et** l'hôte dans
+> la CSP. Une garde de `smoke-securite` vérifie que les deux disent la même chose (R11.1).
 
 - Le `client_secret` ne quitte jamais Cloudflare (variable *Secret*, pas dans le code).
 - `APP_ORIGINS` est une liste blanche : le relais refuse tout autre site (redirections

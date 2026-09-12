@@ -105,6 +105,7 @@
     "batterie": "node scripts/batterie.mjs"
   },
   "devDependencies": {
+    "esbuild": "0.28.2",
     "playwright": "^1.49.0"
   },
   "engines": {

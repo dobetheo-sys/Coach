@@ -353,7 +353,16 @@ ok(Math.abs(brm.irregulier - 6) < 0.05,
 const t6 = await page.locator("#ebTabbar .tabbtn").all();
 await t6[0].click(); await page.waitForTimeout(300);
 ok(await page.locator("#pfStravaConnect").count() === 1, "bouton « Se connecter avec Strava » présent au Profil");
-ok(await page.locator("#pfStravaRelay").count() === 1, "champ URL du relais présent (server/README.md)");
+// B3 (12/09/2026) — CE CRITÈRE ENCODAIT LA DÉCISION RENVERSÉE, il est RÉÉCRIT et pas supprimé
+// (même geste que les deux critères « aucun total » de PW). Le champ « URL du relais » a été
+// retiré : la CSP épingle l'hôte EXACT du relais, donc tout autre hôte est bloqué par le
+// navigateur avant la requête — un champ qui ne peut plus rien configurer est une promesse
+// fausse. Ce qui est gardé ici est la propriété qui REMPLACE l'ancienne : l'URL n'est plus
+// saisissable, et le chemin qui comptait (connexion en 1 clic + repli jeton manuel) est intact.
+ok(await page.locator("#pfStravaRelay").count() === 0,
+  "…et AUCUN champ « URL du relais » : depuis B3 la CSP épingle l'hôte, le réglage ne pouvait plus rien configurer");
+ok(await page.locator("#pfStravaTok").count() === 1,
+  "…le repli « jeton manuel » reste offert (le retrait du réglage n'a pas emporté le chemin sans relais)");
 ok(await page.locator("#pfStravaTok").count() === 1, "repli jeton manuel conservé");
 // H-1 (03/08/2026) — CE CRITÈRE ASSERTAIT UN PRODUIT NON DÉPLOYÉ.
 // Il vérifiait « sans URL de relais → message d'aide, pas de redirection », et il tenait
