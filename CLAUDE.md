@@ -624,6 +624,32 @@ avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
 
+**AUDIT 05 (performance & robustesse, sécurité & données) — 8 axes sur 10 livrés, le premier
+des six rapports de l'audit multi-angles traité** (12/09/2026 — voir `BUGS_OUVERTS.md`
+« AUDIT 05 », garde `smoke-securite.mjs` 25 → 47 assertions) : **A1** le premier chargement ne
+recharge plus la page (mesuré 2 navigations → 1 ; `clients.claim()` → `controllerchange` →
+`location.reload()` sans contrôleur préalable, à 71 s sur Slow 3G en plein questionnaire) ·
+**A3** `modulepreload` ÉCRIT, MESURÉ, RETIRÉ — +2 s au premier contenu sur Fast 3G émulé (16,4 s
+contre 14,4, 3 tirages de chaque côté) : 64 requêtes d'emblée en concurrence avec `engine.js`, le
+volume borne, pas la profondeur ; le levier est A2 · **A4/B5** une erreur d'exécution et
+un échec d'écriture ont enfin une surface (bandeau `role="status"`, échecs réseau filtrés ;
+`ebSave` RELIT ce qu'il écrit et émet `eb:savefailed`) · **A5** `sw.js` ne met en cache que
+`res.ok`, une seule copie corrompue, `eb_state_v1` retirée après relecture · **nomodule** une
+phrase au lieu d'une page blanche · **B1** l'export JSON ne contient plus AUCUN jeton Strava et
+prévient du contenu de santé · **B2** « Effacer toutes mes données de cet appareil » (Strava,
+`eb_*`, caches, worker) · **B3** anti-cadrage JS · **B4** position arrondie à ~1 km, nonce OAuth
+des deux côtés (tolérant tant que le relais n'est pas redéployé — action humaine). **Non livré,
+décisions au fondateur** : strip des commentaires du bundle (une devDependency de build), chiffrement
+de l'export, épinglage de l'hôte CSP (tue le relais configurable), rate-limit Cloudflare. Règle 0
+appliquée : contre-preuve A1 rouge sans la garde, batterie citée verbatim dans le rapport, E2E
+27/27, `check:app`/`check:sw`/`check:dup` verts. **Et A1 a débusqué cinq suites E2E vertes PAR LE
+CHEMIN** : l'overlay « déclaration de saison » (moment A) s'ouvre sur toute fixture sans
+`plan_start` depuis toujours (vérifié sur un worktree HEAD pur), et c'était le rechargement
+parasite de la première installation qui l'effaçait avant le premier clic ; retirer le défaut a
+retiré la protection accidentelle (5 `TimeoutError`). Ma première bisection accusait `state.js` sur
+un tirage par variante — réfutée en rejouant chaque variante. La fixture déclare le moment A vu ;
+angle mort publié : aucune suite n'asserte qu'il APPARAÎT.
+
 **Chantier R21 (coach proactif), option A — Vague 2 LIVRÉE : R21 est enfin câblé pour de vrai,
 et deux défauts non anticipés trouvés en le câblant** (07/09/2026, décision
 `syntheses/945002a7-decisionvague2.md`, voir `BUGS_OUVERTS.md` « R21 ») : persistance

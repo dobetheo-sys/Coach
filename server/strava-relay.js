@@ -63,28 +63,35 @@ export default {
       try { retOrigin = new URL(ret).origin; } catch (e) { /* invalide */ }
       if (!retOrigin || !allowedOrigin(env, retOrigin))
         return new Response("Origine de retour non autorisée. Ajoute-la à APP_ORIGINS.", { status: 403 });
+      // B4 (audit 05) — `state` transporte l'URL de retour ET le nonce tiré par l'app ; sans
+      // nonce, un tiers pouvait faire atterrir ses propres jetons chez l'athlète (login-CSRF).
+      // Le nonce est renvoyé tel quel dans le fragment, c'est l'app qui le vérifie.
+      const nonce = (url.searchParams.get("nonce") || "").replace(/[^a-f0-9]/g, "").slice(0, 64);
       const p = new URLSearchParams({
         client_id: env.STRAVA_CLIENT_ID,
         response_type: "code",
         redirect_uri: url.origin + "/callback",
         approval_prompt: "auto",
         scope: SCOPE,
-        state: ret, // on retrouvera l'app au retour — re-validé au callback
+        state: JSON.stringify({ ret, nonce }), // on retrouvera l'app au retour — re-validé au callback
       });
       return Response.redirect(STRAVA_AUTH + "?" + p, 302);
     }
 
     // ---- 2. Retour de Strava : échange du code contre les tokens ----
     if (url.pathname === "/callback" && request.method === "GET") {
-      const ret = url.searchParams.get("state") || "";
+      const stateBrut = url.searchParams.get("state") || "";
+      let ret = stateBrut, nonce = "";
+      try { const st = JSON.parse(stateBrut); if (st && typeof st.ret === "string") { ret = st.ret; nonce = String(st.nonce || ""); } } catch (e) { /* ancien format : state = URL */ }
       let retOrigin = "";
       try { retOrigin = new URL(ret).origin; } catch (e) { /* invalide */ }
       if (!retOrigin || !allowedOrigin(env, retOrigin))
         return new Response("state invalide.", { status: 403 });
+      const suffixeNonce = nonce ? "&strava_nonce=" + encodeURIComponent(nonce) : "";
       const code = url.searchParams.get("code");
       if (!code) {
         // refus utilisateur ou erreur Strava → retour à l'app avec le motif, sans token
-        return Response.redirect(ret + "#strava_error=" + encodeURIComponent(url.searchParams.get("error") || "refus"), 302);
+        return Response.redirect(ret + "#strava_error=" + encodeURIComponent(url.searchParams.get("error") || "refus") + suffixeNonce, 302);
       }
       const r = await fetch(STRAVA_TOKEN, {
         method: "POST",
@@ -96,10 +103,10 @@ export default {
           grant_type: "authorization_code",
         }),
       });
-      if (!r.ok) return Response.redirect(ret + "#strava_error=" + encodeURIComponent("echange_code_" + r.status), 302);
+      if (!r.ok) return Response.redirect(ret + "#strava_error=" + encodeURIComponent("echange_code_" + r.status) + suffixeNonce, 302);
       const j = await r.json();
       const payload = btoa(JSON.stringify(slimTokens(j)));
-      return Response.redirect(ret + "#strava_auth=" + encodeURIComponent(payload), 302);
+      return Response.redirect(ret + "#strava_auth=" + encodeURIComponent(payload) + suffixeNonce, 302);
     }
 
     // ---- 3. Renouvellement d'un token expiré (appelé en fetch par l'app) ----

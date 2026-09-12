@@ -111,9 +111,6 @@ const COQUILLE = ["./", "./index.html", "./manifest.json"];
 const BINAIRES = EN_DUR.filter((p) => !COQUILLE.includes(p));
 const ASSETS = [...COQUILLE, ...listeCss.sort(), ...listeJs.sort(), ...listePolices.sort(), ...BINAIRES];
 
-// ---- L'EMPREINTE : le nom du fichier ET son contenu ----------------------------
-// Le NOM compte autant que le contenu : retirer un module du cache change ce que
-// l'app sert hors ligne, même si aucun octet des autres fichiers n'a bougé.
 const h = createHash("sha256");
 for (const a of ASSETS) {
   h.update(a);

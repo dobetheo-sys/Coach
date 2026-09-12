@@ -24,7 +24,10 @@ function requestWeather(){return new Promise(res=>{
   if(!navigator.geolocation)return res(null);
   const to=setTimeout(()=>res(null),3500);
   navigator.geolocation.getCurrentPosition(pos=>{
-    fetch("https://api.open-meteo.com/v1/forecast?latitude="+pos.coords.latitude+"&longitude="+pos.coords.longitude+"&daily=temperature_2m_max,precipitation_sum&forecast_days=1&timezone=auto")
+    // B4 (audit 05) — la position part ARRONDIE au centième de degré (≈ 1 km) : la météo n'a pas
+    // besoin du mètre, et l'UI promet « jamais stockée » — elle ne doit pas non plus partir à
+    // pleine précision vers un tiers.
+    fetch("https://api.open-meteo.com/v1/forecast?latitude="+pos.coords.latitude.toFixed(2)+"&longitude="+pos.coords.longitude.toFixed(2)+"&daily=temperature_2m_max,precipitation_sum&forecast_days=1&timezone=auto")
       .then(r=>r.json()).then(j=>{clearTimeout(to);res({tmaxC:j.daily.temperature_2m_max[0],precipMm:j.daily.precipitation_sum[0]});})
       .catch(()=>{clearTimeout(to);res(null);});
   },()=>{clearTimeout(to);res(null);},{timeout:3000,maximumAge:600000});

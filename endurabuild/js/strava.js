@@ -17,6 +17,20 @@ function stravaAuthFromHash() {
   }
   const m = location.hash.match(/strava_auth=([^&]+)/);
   if (!m) return false;
+  // B4 (audit 05) — NONCE OAUTH : sans lui, `state` n'était que l'URL de retour et un tiers
+  // pouvait faire atterrir SES jetons dans le navigateur de l'athlète (login-CSRF). Le nonce est
+  // tiré à la connexion, gardé en `sessionStorage`, et le relais le renvoie dans le fragment.
+  // Tolérance TRANSITOIRE : un relais pas encore redéployé ne le renvoie pas — on accepte et on
+  // le dit en console ; dès que le fragment porte `strava_nonce`, il DOIT correspondre.
+  const nm = location.hash.match(/strava_nonce=([^&]+)/);
+  let attendu = "";
+  try { attendu = sessionStorage.getItem("eb_strava_nonce") || ""; sessionStorage.removeItem("eb_strava_nonce"); } catch (e) { /* stockage indisponible */ }
+  if (nm && decodeURIComponent(nm[1]) !== attendu) {
+    S._stravaError = "connexion refusée : jeton de session inattendu (réessaie depuis Zenna)";
+    history.replaceState(null, "", location.pathname + location.search);
+    return false;
+  }
+  if (!nm) { try { console.warn("Zenna : le relais Strava n'a pas renvoyé de nonce — redéploie server/strava-relay.js (B4)."); } catch (e) { /* rien */ } }
   try {
     const t = JSON.parse(atob(decodeURIComponent(m[1])));
     if (!t.access_token || !t.refresh_token) return false;
@@ -56,7 +70,13 @@ function stravaRelayUrl() {
 function stravaConnect() {
   const relay = stravaRelayUrl();
   if (!relay) return false;
-  location.href = relay + "/auth?return=" + encodeURIComponent(location.origin + location.pathname);
+  let nonce = "";
+  try {
+    const b = new Uint8Array(16); crypto.getRandomValues(b);
+    nonce = Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+    sessionStorage.setItem("eb_strava_nonce", nonce);
+  } catch (e) { nonce = ""; }
+  location.href = relay + "/auth?return=" + encodeURIComponent(location.origin + location.pathname) + (nonce ? "&nonce=" + nonce : "");
   return true;
 }
 

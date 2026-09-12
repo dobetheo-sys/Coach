@@ -122,6 +122,122 @@ ok(/assertImportSize\(f\.name, f\.size\)[\s\S]{0,120}arrayBuffer\(\)/.test(profi
   "la taille est contrôlée AVANT `arrayBuffer()` — on ne lit pas 400 Mo pour les refuser ensuite");
 
 await ctx.close();
+
+// ================================================================================
+// AUDIT 05 (12/09/2026) — performance & robustesse, sécurité & données
+// Chaque critère mesure le COMPORTEMENT rendu quand c'est possible (A1, A4, B1, B2), la
+// source seulement là où le comportement n'est pas observable dans un navigateur de test
+// (le relais Cloudflare, le service worker sur un 500 réseau).
+// ================================================================================
+// A1 — le premier chargement ne recharge PAS la page. Mesuré avant le correctif : 2 navigations
+// (la seconde à 0,6-1,7 s, à 71 s sur Slow 3G), déclenchées par `clients.claim()` →
+// `controllerchange` → `location.reload()` sans contrôleur préalable.
+{
+  const c1 = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "fr-FR" });
+  const p1 = await c1.newPage();
+  let navs = 0;
+  p1.on("framenavigated", (f) => { if (f === p1.mainFrame()) navs++; });
+  await p1.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "load" });
+  await p1.waitForTimeout(3500);
+  const ctrl = await p1.evaluate(() => !!(navigator.serviceWorker && navigator.serviceWorker.controller));
+  ok(navs === 1, "A1 — le premier chargement fait UNE navigation, pas deux (" + navs + " mesurée(s) en 3,5 s)");
+  ok(ctrl === true, "A1 — …et la page est bien CONTRÔLÉE par le worker (hors ligne dès la prochaine ouverture)");
+  // A4 — une erreur d'exécution a une surface : un `throw` asynchrone fait apparaître le bandeau.
+  await p1.evaluate(() => { setTimeout(() => { throw new Error("test-audit05-erreur"); }, 0); });
+  await p1.waitForTimeout(300);
+  const bandeau = await p1.evaluate(() => { const b = document.getElementById("ebErrBar"); return b ? b.textContent : ""; });
+  ok(/n’a pas bougé/.test(bandeau), "A4 — une exception non rattrapée affiche le bandeau « ton plan n’a pas bougé »");
+  // …et un échec RÉSEAU (météo, Strava) n'en affiche PAS : ce n'est pas un défaut de l'app.
+  await p1.evaluate(() => { document.getElementById("ebErrBar")?.remove(); Promise.reject(new TypeError("Failed to fetch")); });
+  await p1.waitForTimeout(300);
+  const benin = await p1.evaluate(() => !!document.getElementById("ebErrBar"));
+  ok(benin === false, "A4 — un « Failed to fetch » (réseau) ne déclenche PAS le bandeau");
+  // B5 — l'échec d'écriture cesse d'être muet : l'événement émis par `ebSave` atteint le bandeau.
+  await p1.evaluate(() => document.dispatchEvent(new CustomEvent("eb:savefailed", { detail: { cause: "QuotaExceededError" } })));
+  await p1.waitForTimeout(200);
+  const save = await p1.evaluate(() => { const b = document.getElementById("ebErrBar"); return b ? b.textContent : ""; });
+  ok(/PAS sauvegardé/.test(save) && /QuotaExceededError/.test(save), "B5 — un échec de sauvegarde est DIT à l'athlète, avec sa cause");
+  await c1.close();
+}
+// A5 — le service worker ne met jamais en cache une réponse en erreur ; l'état ne garde qu'UNE
+// copie corrompue et retire l'ancienne clé v1 une fois la v2 relue intacte.
+ok(/if \(!res\.ok \|\| res\.type !== "basic"\) return res;/.test(sw), "A5 — sw.js ne met en cache que les réponses saines (`res.ok`, même origine)");
+const state = lire("js/state.js");
+ok(/startsWith\("eb_state_v2_corrompu_"\)\)localStorage\.removeItem/.test(state), "A5 — une seule copie corrompue est gardée (les anciennes sont purgées)");
+ok(/localStorage\.getItem\("eb_state_v2"\)!==json/.test(state), "B5 — `ebSave` RELIT ce qu'il vient d'écrire avant de croire l'écriture");
+ok(/removeItem\("eb_state_v1"\)/.test(state), "A5 — `eb_state_v1` est retirée une fois la v2 écrite et relue");
+// A3 — le graphe de modules est déclaré dans index.html, dérivé du DISQUE (pas d'une liste à
+// tenir) : tout module de js/ y est, sauf `nomodule.js` qui n'en est pas un.
+// A3 — MESURÉ puis RETIRÉ : le bloc `modulepreload` (53 modules + 11 feuilles) retardait le premier
+// contenu de 2 s sur Fast 3G émulé (16,4 s contre 14,4, trois tirages de chaque côté à ±5 ms) —
+// 64 requêtes d'emblée en concurrence avec engine.js, le chemin critique. La page ne doit pas le
+// réintroduire sans une mesure qui dise l'inverse.
+ok(!/<link[^>]*rel="modulepreload"/.test(html), "A3 — index.html ne porte PAS de <link rel=\"modulepreload\"> (mesuré : +2 s au premier contenu sur Fast 3G)");
+ok(/<script nomodule src="js\/nomodule\.js">/.test(html) && !/<link[^>]*nomodule\.js/.test(html), "hors-classement — `nomodule.js` est servi aux navigateurs sans modules ES, et jamais préchargé");
+// B3 — anti-cadrage en JS (frame-ancestors est ignoré en <meta>, GitHub Pages n'a pas d'en-tête).
+ok(/if \(self !== top\)/.test(app), "B3 — la page refuse de s'afficher dans un cadre étranger (anti-clickjacking JS)");
+// B4 — position arrondie (~1 km) ; nonce OAuth des deux côtés.
+const readinessSrc = lire("js/ui/readiness.js");
+ok(/latitude\.toFixed\(2\)/.test(readinessSrc) && /longitude\.toFixed\(2\)/.test(readinessSrc), "B4 — la position part arrondie au centième de degré vers Open-Meteo");
+const stravaSrc = lire("js/strava.js");
+ok(/sessionStorage\.setItem\("eb_strava_nonce"/.test(stravaSrc) && /&nonce=/.test(stravaSrc), "B4 — la connexion Strava tire un nonce et l'envoie au relais");
+ok(/strava_nonce=/.test(stravaSrc) && /!== attendu/.test(stravaSrc), "B4 — …et le retour est REFUSÉ si le nonce renvoyé ne correspond pas");
+const relais = readFileSync(fileURLToPath(new URL("../../server/strava-relay.js", import.meta.url)), "utf8");
+ok(/state: JSON\.stringify\(\{ ret, nonce \}\)/.test(relais) && /strava_nonce=/.test(relais), "B4 — le relais transporte le nonce dans `state` et le renvoie dans le fragment");
+// B1 — l'export ne contient JAMAIS les jetons Strava, et l'athlète est prévenu du contenu de santé.
+// B2 — l'effacement complet existe et vide réellement l'appareil.
+{
+  const c2 = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "fr-FR", acceptDownloads: true });
+  const p2 = await c2.newPage();
+  const { runnerStateV1 } = await import("./harness.mjs");
+  // Le marqueur d'injection n'est PAS une clé `eb_*` : après l'effacement complet (B2) la page se
+  // recharge, et l'état de test ne doit pas être ré-injecté — sinon le critère mesure l'instrument.
+  await p2.addInitScript((st) => { if (!localStorage.getItem("zenna_test_injecte")) { localStorage.setItem("zenna_test_injecte", "1"); localStorage.setItem("eb_state_v1", JSON.stringify(st)); } }, runnerStateV1());
+  await p2.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "networkidle" });
+  await p2.evaluate(() => { const st = JSON.parse(localStorage.getItem("eb_state_v2")); st.shared = st.shared || {}; st.shared.stravaAuth = { access_token: "SECRET-ACCESS", refresh_token: "SECRET-REFRESH", expires_at: 1 }; if (st.plans[0]) st.plans[0].answers.stravaAuth = st.shared.stravaAuth; localStorage.setItem("eb_state_v2", JSON.stringify(st)); });
+  await p2.reload({ waitUntil: "networkidle" });
+  await p2.evaluate(async () => { const { setTab } = await import("./js/ui/tabs.js"); setTab("profile"); });
+  await p2.waitForTimeout(600);
+  // les boutons de « Tes données » vivent dans le 3e sous-onglet ; on l'ouvre s'il existe
+  await p2.evaluate(() => { const b = [...document.querySelectorAll("button, .zn-seg-btn")].find((x) => /PARAM/i.test(x.textContent)); if (b) b.click(); });
+  await p2.waitForTimeout(400);
+  await p2.evaluate(() => { for (const d of document.querySelectorAll("details")) d.open = true; });
+  const note = await p2.evaluate(() => { const n = document.getElementById("pfBackupNote"); return n ? n.textContent : ""; });
+  ok(/réponses de santé/.test(note) && /jetons Strava/.test(note), "B1 — l'athlète est prévenu que l'export contient ses réponses de santé, et jamais ses jetons");
+  const [dl] = await Promise.all([p2.waitForEvent("download", { timeout: 5000 }).catch(() => null), p2.evaluate(() => { const b = document.getElementById("pfBackup"); if (b) b.click(); return !!b; })]);
+  let contenu = "";
+  if (dl) { const chemin = await dl.path(); contenu = readFileSync(chemin, "utf8"); }
+  ok(dl !== null && contenu.length > 100, "B1 — « Tout exporter » produit bien un fichier (" + contenu.length + " octets)");
+  ok(contenu.length > 0 && !/SECRET-REFRESH/.test(contenu) && !/SECRET-ACCESS/.test(contenu) && !/stravaAuth/.test(contenu), "B1 — le fichier exporté ne contient AUCUN jeton Strava (ni partagé, ni par plan)");
+  ok(/"plans"/.test(contenu) && /"shared"/.test(contenu), "B1 — …et reste une sauvegarde complète du reste (plans + état partagé)");
+  p2.on("dialog", (d) => d.accept());
+  // Le désenregistrement du worker et la purge des caches se passent AVANT le rechargement, dans
+  // une page qui n'existe plus ensuite : on les observe par la console, pas après coup.
+  const traces = [];
+  p2.on("console", (m) => { if (/^EB-TEST-/.test(m.text())) traces.push(m.text()); });
+  await p2.evaluate(() => {
+    const u = ServiceWorkerRegistration.prototype.unregister;
+    ServiceWorkerRegistration.prototype.unregister = function () { console.log("EB-TEST-UNREGISTER"); return u.call(this); };
+    const d = CacheStorage.prototype.delete;
+    CacheStorage.prototype.delete = function (k) { console.log("EB-TEST-CACHE-DELETE " + k); return d.call(this, k); };
+  });
+  const avant = await p2.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith("eb_")).length);
+  const clic = await p2.evaluate(() => { const b = document.getElementById("pfEffacerTout"); if (b) b.click(); return !!b; });
+  await p2.waitForTimeout(2500);
+  // Après rechargement l'app repart et peut réécrire un `eb_state_v2` VIDE : ce qui compte est
+  // qu'aucune clé ne porte encore un plan, une réponse ou un jeton.
+  const apres = await p2.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith("eb_")).map((k) => {
+    try { const v = JSON.parse(localStorage.getItem(k)); const plans = Array.isArray(v?.plans) ? v.plans : null; if (!plans) return k + "=?";
+      const pleins = plans.filter((p) => p && (p.sport || Object.keys(p.answers || {}).length > 0)).length;
+      return k + "=" + plans.length + " entrée(s), " + pleins + " avec sport/réponses, jeton=" + (v.shared && v.shared.stravaAuth ? "OUI" : "non"); } catch { return k + "=illisible"; } })).catch(() => ["?"]);
+  const vide = apres.every((k) => /^eb_state_v2=\d+ entrée\(s\), 0 avec sport\/réponses, jeton=non$/.test(k));
+  const ecran = await p2.evaluate(() => (document.getElementById("screen")?.innerText || "").slice(0, 400)).catch(() => "");
+  ok(clic && avant > 0 && vide, "B2 — « Effacer toutes mes données » ne laisse aucun plan, aucune réponse, aucun jeton (" + avant + " clé(s) → " + (apres.join(", ") || "aucune") + ")");
+  ok(traces.includes("EB-TEST-UNREGISTER") && traces.some((t) => /CACHE-DELETE eb-pwa-/.test(t)), "B2 — …désenregistre le service worker et purge son cache (" + traces.join(" · ") + ")");
+  ok(!/Sortie longue|Footing/.test(ecran) && /sport|plan/i.test(ecran), "B2 — …et l'app repart de zéro après rechargement (questionnaire d'accueil)");
+  await c2.close();
+}
+
 await browser.close();
 server.close();
 process.exit(report());

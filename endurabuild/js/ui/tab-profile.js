@@ -7,6 +7,15 @@ import { SPORTS, VLAB, VLAB_Q } from "../config.js";
 import { previewMeasured, measuredHours, refreshMeasured, clearMeasured } from "../measured.js";
 import { $, S, ebActivate, ebNewPlanEntry, ebSave, esc, todayISO, syncRefsFromTests } from "../state.js";
 import { curSteps, renderStep, reset, ebParseT, stravaImport } from "./steps.js";
+/** B1 (audit 05) — l'état exporté, sans AUCUN jeton Strava (état partagé et chaque plan). */
+function exportSansJetons(raw) {
+  try {
+    const d = JSON.parse(raw);
+    if (d && d.shared) delete d.shared.stravaAuth;
+    if (d && Array.isArray(d.plans)) for (const p of d.plans) if (p && p.answers) delete p.answers.stravaAuth;
+    return JSON.stringify(d);
+  } catch (e) { return raw; }
+}
 import { renderPlan } from "./plan-view.js";
 import { retestPlannerHTML, bindRetestPlanner } from "./retest.js";
 import { aide } from "./help.js";
@@ -1085,7 +1094,14 @@ function parametresHTML(a) {
     + '<div class="zn-pf-donnees-p">Dans ce navigateur, sur cet appareil. Aucun compte, aucun serveur — y compris tes réponses de santé. Corollaire honnête : si tu vides ton navigateur, tout part. Exporte une sauvegarde de temps en temps, et importe-la sur un nouvel appareil.</div>'
     + '<div class="zn-pf-donnees-btns"><button class="zn-btn-2" id="pfBackup" type="button">Tout exporter</button>'
     + '<label class="zn-btn-2" style="cursor:pointer;margin:0">Importer<input type="file" id="pfRestore" accept=".json,application/json" style="display:none"></label></div>'
-    + '<div id="pfBackupMsg" class="load-sub zn-pf-msg"></div></div>';
+    + '<div id="pfBackupMsg" class="load-sub zn-pf-msg"></div>'
+    // B1 (audit 05) — le fichier contient des données de SANTÉ (réponses médicales, douleur,
+    // maladie, VFC, FC de repos) : on le dit AVANT le geste, pas dans le message de confirmation.
+    + '<div class="zn-pf-note" id="pfBackupNote"><span class="zn-pf-note-ico" aria-hidden="true">!</span>Le fichier exporté contient tes réponses de santé (drapeaux médicaux, douleur, maladie, VFC, FC de repos) en clair. Garde-le pour toi ; tes jetons Strava n’y sont jamais écrits.</div>'
+    // B2 (audit 05) — le droit à l'effacement : avant, la seule suppression était par plan, et
+    // `S.shared` (douleur, maladie, jetons Strava, VFC) survivait à la suppression de tous.
+    + '<div class="zn-pf-donnees-btns" style="margin-top:8px"><button class="zn-btn-2" id="pfEffacerTout" type="button">Effacer toutes mes données de cet appareil</button></div>'
+    + '<div id="pfEffacerMsg" class="load-sub zn-pf-msg"></div></div>';
   return h;
 }
 
@@ -1236,14 +1252,35 @@ export function renderTabProfile(plan) {
   const bk = $("pfBackup");
   if (bk) bk.onclick = () => {
     ebSave();
-    const raw = localStorage.getItem("eb_state_v2") || "{}";
+    // B1 (audit 05) — JAMAIS les jetons Strava dans le fichier : un refresh token vaut un accès
+    // durable au compte, et Téléchargements est souvent synchronisé vers un cloud tiers. Le
+    // fichier reste une sauvegarde COMPLÈTE du reste ; à l'import, on se reconnecte à Strava.
+    const raw = exportSansJetons(localStorage.getItem("eb_state_v2") || "{}");
     const blob = new Blob([raw], { type: "application/json" });
     const u = URL.createObjectURL(blob);
     const l = document.createElement("a");
     l.href = u; l.download = "endurabuild-sauvegarde-" + todayISO() + ".json";
     document.body.appendChild(l); l.click();
     setTimeout(() => { document.body.removeChild(l); URL.revokeObjectURL(u); }, 200);
-    const m = $("pfBackupMsg"); if (m) m.textContent = "✓ Sauvegarde téléchargée (" + Math.round(raw.length / 1024) + " Ko).";
+    const m = $("pfBackupMsg"); if (m) m.textContent = "✓ Sauvegarde téléchargée (" + Math.round(raw.length / 1024) + " Ko) — sans tes jetons Strava, avec tes réponses de santé.";
+  };
+  // B2 (audit 05) — EFFACEMENT COMPLET, en un point : Strava déconnecté d'abord (le jeton vit dans
+  // l'état qu'on va effacer), puis toutes les clés `eb_*`, les caches du service worker et son
+  // enregistrement. Irréversible : l'export est proposé dans la confirmation elle-même.
+  const ef = $("pfEffacerTout");
+  if (ef) ef.onclick = async () => {
+    const m = $("pfEffacerMsg");
+    if (!confirm("Effacer TOUTES tes données Zenna de cet appareil ? Plans, réponses de santé, historique, connexion Strava, cache hors ligne. C’est irréversible — exporte d’abord si tu veux les garder.")) return;
+    try { stravaDisconnect(); } catch (e) { /* rien à déconnecter */ }
+    // L'état EN MÉMOIRE est vidé d'abord : un `ebSave` déclenché par un minuteur ou un
+    // `visibilitychange` entre l'effacement et le rechargement réécrirait sinon le plan entier.
+    try { S.plans = []; S.shared = {}; S.answers = {}; S.activePlanId = null; } catch (e) { /* rien */ }
+    try { for (const k of Object.keys(localStorage)) if (k.startsWith("eb_")) localStorage.removeItem(k); } catch (e) { /* stockage indisponible */ }
+    try { sessionStorage.clear(); } catch (e) { /* rien */ }
+    try { if (globalThis.caches) for (const k of await caches.keys()) await caches.delete(k); } catch (e) { /* pas de cache */ }
+    try { if (navigator.serviceWorker) for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); } catch (e) { /* pas de SW */ }
+    if (m) m.textContent = "✓ Tout est effacé sur cet appareil.";
+    location.reload();
   };
   const rs = $("pfRestore");
   if (rs) rs.onchange = async () => {

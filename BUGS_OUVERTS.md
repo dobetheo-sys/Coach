@@ -12854,6 +12854,96 @@ attendu: BQ1 RETRAIT CONFIRMÉ
 cmd: node scripts/verifyBQ1Retrait.mjs 2>&1 | tail -1
 ```
 
+## AUDIT 05 · Performance & robustesse, sécurité & données — 8 axes sur 10 livrés · ✅ **LIVRÉ 12/09/2026**
+
+Premier des six rapports de l'audit multi-angles traité (`AUDIT-MULTI-ANGLES.md` §9-§10, rapport
+`audit-parts/05-perf-securite.md`). Choisi en premier parce que huit de ses dix axes sont en
+effort S, hors moteur, et portent trois des dix priorités transverses.
+
+**Livré, chacun mesuré avant/après et gardé dans `tests/e2e/smoke-securite.mjs` (25 → 47
+assertions, contre-prouvé rouge sur A1 en retirant la garde) :**
+
+- **A1 — le premier chargement ne recharge plus la page.** Mesuré avant : **2 navigations**
+  (la seconde à 0,6-1,7 s sans bride réseau, à 71 s sur Slow 3G) — `clients.claim()` à
+  l'activation déclenchait `controllerchange`, que `app.js` traduisait en `location.reload()` sans
+  vérifier qu'un contrôleur existait avant. `avaitControleur` est lu AVANT `register()` ; un
+  rechargement n'a de sens que pour REMPLACER un worker. Après : 1 navigation, page contrôlée.
+- **A3 — `modulepreload` : ÉCRIT, MESURÉ, RETIRÉ.** Le bloc (53 modules + 11 feuilles, généré par
+  `buildSW.mjs`) a été chronométré au premier contenu de `#screen` sur Fast 3G émulé (CDP,
+  1,6 Mbit/s, 150 ms RTT), contexte neuf, trois tirages de chaque côté : **AVEC 16 421 · 16 420 ·
+  16 417 ms · SANS 14 416 · 14 416 · 14 410 ms** — le preload COÛTE 2 s. 64 requêtes lancées
+  d'emblée se disputent la bande passante avec `engine.js`, qui est le chemin critique : à ce
+  débit c'est le VOLUME qui borne, pas la profondeur du graphe (la prémisse de l'axe). Le levier
+  réel est A2. Ma première mesure était le mauvais instrument (règle 15) : U7 chronomètre
+  check-in → séance (1-2 ms), pas le chargement. La suite garde l'absence de preload avec le chiffre.
+- **A4 — une erreur d'exécution a une surface** : `error` + `unhandledrejection` → bandeau
+  `role="status"` « Quelque chose a échoué — ton plan n'a pas bougé », échecs réseau filtrés
+  (`AbortError`, `Failed to fetch`…) ; **B5 — l'échec d'écriture cesse d'être muet** : `ebSave`
+  RELIT ce qu'il vient d'écrire (`RelectureError` sinon) et émet `eb:savefailed`, que le même
+  bandeau affiche avec sa cause (« ce que tu viens de faire n'est PAS sauvegardé »).
+- **A5 — hygiène du cache et de l'état** : `sw.js` ne met en cache que `res.ok && type === "basic"`
+  (un 404 transitoire était servi jusqu'au prochain changement de VERSION) ; une seule copie
+  `eb_state_v2_corrompu_*` (les anciennes purgées) ; `eb_state_v1` retirée une fois la v2 écrite
+  ET relue intacte.
+- **Hors classement — `<script nomodule src="js/nomodule.js">`** : un navigateur sans modules ES
+  (iOS < 14, Chrome < 85) lisait une page blanche ; il lit une phrase en ES5.
+- **B1 — l'export JSON ne contient plus AUCUN jeton Strava** (`exportSansJetons` : état partagé et
+  chaque plan), et la carte prévient AVANT le geste que le fichier contient des réponses de santé.
+  Mesuré : un état à `stravaAuth` posé aux deux endroits → fichier exporté sans `SECRET-*` ni
+  `stravaAuth`, 1 459 octets, plans + shared intacts.
+- **B2 — « Effacer toutes mes données de cet appareil »** (Profil › Paramètres › Tes données) :
+  Strava déconnecté, état en mémoire vidé (sinon un `ebSave` de minuteur réécrivait le plan entre
+  l'effacement et le rechargement), clés `eb_*`, `sessionStorage`, caches du worker,
+  désenregistrement, rechargement. Mesuré par la console : `unregister` et `caches.delete` appelés,
+  l'app repart sur le questionnaire, l'entrée résiduelle est vide (0 sport, 0 réponse, 0 jeton).
+- **B3 (moitié JS) — anti-cadrage** `if (self !== top)` : `frame-ancestors` est ignoré en `<meta>`
+  et GitHub Pages ne pose aucun en-tête.
+- **B4 — position arrondie** (`toFixed(2)`, ≈ 1 km) vers Open-Meteo ; **nonce OAuth** des deux
+  côtés — l'app le tire (`crypto.getRandomValues`, `sessionStorage`), le relais le transporte dans
+  `state` (`{ret, nonce}`, l'ancien format `state = URL` reste accepté) et le renvoie dans le
+  fragment, l'app REFUSE un retour dont le nonce diffère. ⚠ Tolérance transitoire ÉCRITE : tant que
+  `server/strava-relay.js` n'est pas redéployé, le fragment ne porte pas de nonce et l'app accepte
+  en le disant en console — **le redéploiement du worker est une action HUMAINE** (voir
+  `server/README.md`), et c'est lui qui rend la garde stricte.
+
+**Trouvé en passant les gates — CINQ SUITES E2E ÉTAIENT VERTES PAR LE CHEMIN, PAS PAR LE CRITÈRE
+(famille « protégé par le chemin, pas par la borne »).** Après A1, `smoke-tabs`, `smoke-retention`,
+`smoke-improvements`, `smoke-dates` et `smoke-educatifs` mouraient sur `TimeoutError` : un
+`<div class="eb-overlay">` interceptait tout clic — la déclaration de saison (`maybeShowMomentA`,
+Format A), posée le « jour de création » parce que la fixture `runnerStateV1` ne porte pas de
+`plan_start`. Cet overlay a TOUJOURS été là : vérifié sur un worktree HEAD pur (`git worktree add
+… HEAD`), il y est aussi 1,5 s après le rechargement — et les suites passaient quand même, parce
+que le rechargement à la première installation du worker (le défaut A1 lui-même) recharge la page
+au moment où `momentA_montre` vient d'être persisté : au second chargement, plus d'overlay. Retirer
+le défaut a retiré la protection accidentelle. **Ma première bisection avait attribué la régression
+à `state.js`** (le retrait de `eb_state_v1` après relecture) sur un tirage de chaque variante — une
+observation sur un point, pas une mesure ; rejouée variante par variante (sans retrait v1, sans
+relecture, `state.js` de HEAD, HEAD pur), l'overlay est présent dans les quatre. La fixture déclare
+désormais `momentA_montre: true` (un athlète qui a déjà un plan a déjà vu sa déclaration de saison),
+commenté dans `harness.mjs`. **Angle mort publié, non traité** : aucune suite n'asserte que le
+moment A APPARAÎT — les dix suites qui touchent `.eb-overlay` le retirent ou testent la célébration ;
+l'overlay Format A n'est gardé nulle part côté E2E.
+
+**Non livré, et pourquoi (décisions au fondateur) :**
+
+- **A2 — strip des commentaires du bundle** (`engine.js` 523 → 185 Ko gzip) : un strip « conservateur »
+  maison peut casser une chaîne contenant `//` ou `/*` ; le faire proprement demande un
+  minifieur (esbuild) en devDependency de BUILD — c'est la politique « zéro dépendance » qui est en
+  jeu, pas un correctif. À trancher.
+- **B1 (3) — chiffrement de l'export par phrase de passe** : une phrase oubliée = sauvegarde
+  perdue ; c'est une décision d'UX (et de support), pas de code.
+- **B3 (moitié CSP) — épingler l'hôte exact du relais** au lieu de `*.workers.dev` : rend l'URL de
+  relais « configurable en réglages avancés » inopérante hors de cet hôte. Soit on retire ce
+  réglage, soit on garde le joker — à trancher ; le code lit déjà l'hôte depuis `config.js`.
+- **B4 — rate-limit sur `/refresh`** : réglage Cloudflare (dashboard), humain.
+
+```verify
+id: AUDIT05-SECU
+quoi: A1 (une navigation au premier chargement, page contrôlée), A4/B5 (bandeau d'erreur et de sauvegarde), A5, A3 (AUCUN modulepreload — retiré sur mesure), nomodule, B1 (export sans jeton), B2 (effacement complet), B3/B4 — mesurés dans le navigateur ou sur la source
+attendu: TOUT PASSE — 47 assertions
+cmd: node tests/e2e/smoke-securite.mjs 2>&1 | tail -1
+```
+
 ## RN1 · Dose d'entretien seuil course, tri, « marges resserrées » · ✅ **LIVRÉ 10/09/2026**
 
 Décision du fondateur (`spectrirndoseentretien.md`), suite de `MESURE-calibration-volume-dur-long.md`

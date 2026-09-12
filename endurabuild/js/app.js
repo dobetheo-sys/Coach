@@ -24,6 +24,54 @@ import { stravaAuthFromHash } from "./strava.js";
 // 11/08/2026). Il l'était seulement dans la vue à onglets ; le questionnaire restait le dernier
 // écran en thème « papier », et c'est le PREMIER que voit quelqu'un qui découvre le produit.
 document.body.classList.add("theme-zenna");
+// S-4 (audit 05, B3) — ANTI-CADRAGE EN JS : `frame-ancestors` est ignoré en <meta> et GitHub Pages
+// ne pose aucun en-tête HTTP, donc la seule défense contre le clickjacking vit ici. Une page
+// encadrée par une origine étrangère se cache et dit pourquoi ; `top.location` reste tentée
+// (elle lève en cross-origin, c'est le cas qu'on vise — l'athlète voit au moins le message).
+if (self !== top) {
+  try { document.documentElement.innerHTML = '<body style="font:16px sans-serif;padding:24px">Zenna ne s\u2019affiche pas dans un cadre. <a href="' + location.href + '" target="_top">Ouvrir Zenna</a></body>'; } catch (e) { /* rien */ }
+  try { top.location = self.location; } catch (e) { /* cross-origin : le message ci-dessus reste */ }
+}
+// A4 (audit 05) — UNE ERREUR D'EXÉCUTION A UNE SURFACE. Mesuré avant : 0 `onerror`, 0
+// `unhandledrejection`, `S.saveFailed` posé par `ebSave` et lu par PERSONNE — un import FIT qui
+// plantait après remplissage et avant `ebSave()` laissait un état incohérent sans un mot, et un
+// drapeau douleur refusé par le quota avait l'air enregistré (priorité 1 du manifeste). Un seul
+// bandeau `role="status"`, même gabarit qu'`ebUpdBar`, et le même filtre que les suites E2E :
+// les échecs RÉSEAU (météo, Strava, abort) ne sont pas des défauts de l'app.
+const EB_ERREURS_BENIGNES = /AbortError|Failed to fetch|NetworkError|Load failed|ResizeObserver loop/;
+function ebSignaler(msg) {
+  try {
+    let b = document.getElementById("ebErrBar");
+    if (!b) {
+      b = document.createElement("div");
+      b.id = "ebErrBar"; b.setAttribute("role", "status");
+      const barre = document.getElementById("ebTabbar");
+      const hBarre = barre ? Math.round(barre.getBoundingClientRect().height) : 0;
+      b.style.cssText = "position:fixed;left:12px;right:12px;bottom:calc(12px + " + hBarre + "px + env(safe-area-inset-bottom));"
+        + "z-index:9998;background:#2a1414;color:#fff;border:1px solid #e63946;border-radius:12px;padding:12px 14px;"
+        + "display:flex;gap:12px;align-items:center;justify-content:space-between;box-shadow:0 6px 24px rgba(0,0,0,.25);font-size:var(--fs-lg)";
+      b.innerHTML = '<span id="ebErrMsg"></span><button type="button" id="ebErrNo" aria-label="Fermer" style="min-height:44px;min-width:44px;border:0;border-radius:9px;background:transparent;color:#fff;font:inherit">OK</button>';
+      document.body.appendChild(b);
+      document.getElementById("ebErrNo").onclick = () => b.remove();
+    }
+    document.getElementById("ebErrMsg").textContent = msg;
+  } catch (e) { /* le bandeau lui-même ne doit jamais faire tomber la page */ }
+}
+addEventListener("error", (e) => {
+  const m = String((e && e.message) || (e && e.error && e.error.message) || "");
+  if (!m || EB_ERREURS_BENIGNES.test(m)) return;
+  ebSignaler("Quelque chose a échoué dans l\u2019application — ton plan n\u2019a pas bougé. Si ça se reproduit, exporte tes données (Profil › Tes données).");
+});
+addEventListener("unhandledrejection", (e) => {
+  const r = e && e.reason; const m = String((r && r.message) || r || "");
+  if (EB_ERREURS_BENIGNES.test(m) || (r && r.name === "AbortError")) return;
+  ebSignaler("Quelque chose a échoué dans l\u2019application — ton plan n\u2019a pas bougé. Si ça se reproduit, exporte tes données (Profil › Tes données).");
+});
+// B5 (audit 05) — l'échec d'ÉCRITURE cesse d'être muet : `state.js` émet l'événement, la surface
+// est ici (un seul bandeau, une seule voix). Le message dit ce qui n'est PAS enregistré.
+document.addEventListener("eb:savefailed", (e) => {
+  ebSignaler("Impossible d\u2019enregistrer sur cet appareil (" + ((e && e.detail && e.detail.cause) || "mémoire du navigateur") + ") : ce que tu viens de faire n\u2019est PAS sauvegardé. Libère de l\u2019espace ou exporte tes données.");
+});
 // R-ZENNA v7 — LE MOT-MARQUE DE L'ACCUEIL VIENT DU MÊME ENDROIT QUE CELUI DES ONGLETS.
 // Il était écrit en dur dans `index.html` (« ENDURA<em>BUILD</em> », le bloc orange de l'ancienne
 // DA) : c'était la première des quatre versions coexistantes. Quand le vrai logo arrivera, il se
@@ -93,6 +141,13 @@ if (globalThis.EB_STANDALONE) {
   console.info("Zenna : fichier autonome — pas de service worker (tout est déjà embarqué).");
 } else if ("serviceWorker" in navigator) {
   addEventListener("load", () => {
+    // A1 (audit 05) — LE PREMIER CHARGEMENT NE RECHARGE PAS LA PAGE. `sw.js` fait `clients.claim()`
+    // à l'activation (nécessaire : la première visite doit être contrôlée pour marcher hors ligne
+    // dès la seconde), ce qui déclenche `controllerchange`… que le gestionnaire ci-dessous
+    // traduisait en `location.reload()` SANS vérifier qu'un contrôleur existait avant. Mesuré :
+    // 2 navigations à 0,6-1,7 s sur un réseau libre, à 17 s sur Fast 3G, à **71 s sur Slow 3G** —
+    // en plein questionnaire. Un rechargement n'a de sens que pour REMPLACER un worker.
+    const avaitControleur = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.register("./sw.js")
       .then((reg) => {
         // S-CACHE — LA MISE À JOUR SE VOIT, ET ELLE SE CHOISIT.
@@ -145,6 +200,7 @@ if (globalThis.EB_STANDALONE) {
         let recharge = false;
         navigator.serviceWorker.addEventListener("controllerchange", () => {
           if (recharge) return; // une seule fois : `controllerchange` peut se répéter
+          if (!avaitControleur) return; // première installation : rien à remplacer, rien à recharger (A1)
           recharge = true;
           location.reload();
         });

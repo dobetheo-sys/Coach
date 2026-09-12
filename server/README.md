@@ -55,6 +55,15 @@ comme l'import FIT.
 
 ## Sécurité — ce que le relais garantit
 
+> **⚠ À REDÉPLOYER (12/09/2026, audit 05 B4)** — le relais transporte désormais un **nonce**
+> anti-CSRF dans `state` (`{ret, nonce}`) et le renvoie à l'app dans le fragment
+> (`#strava_auth=…&strava_nonce=…`). L'app reste TOLÉRANTE tant que le worker en ligne est
+> l'ancien (elle accepte un retour sans nonce et le dit en console) ; dès que ce fichier est
+> redéployé, un retour dont le nonce ne correspond pas est REFUSÉ. Redéployer = Option A ou B
+> ci-dessus, rien d'autre à changer. Pensez aussi à poser une **règle de limitation de débit**
+> Cloudflare sur `/refresh` (dashboard → Security → WAF → Rate limiting rules) : le code ne peut
+> pas la porter.
+
 - Le `client_secret` ne quitte jamais Cloudflare (variable *Secret*, pas dans le code).
 - `APP_ORIGINS` est une liste blanche : le relais refuse tout autre site (redirections
   `/auth`/`/callback` ET appels `/refresh` en CORS).

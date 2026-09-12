@@ -73,6 +73,12 @@
 <link rel="apple-touch-icon" href="assets/icon-192.png">
 <link rel="stylesheet" href="css/styles.css">
 <link rel="stylesheet" href="css/mobile.css">
+<!-- A3 (audit 05) — PAS de `modulepreload`, et c'est MESURÉ : le bloc a été généré (53 modules +
+     11 feuilles), puis chronométré sur Fast 3G émulé (1,6 Mbit/s, 150 ms) au premier contenu de
+     #screen, trois tirages de chaque côté — AVEC 16 421 · 16 420 · 16 417 ms, SANS 14 416 ·
+     14 416 · 14 410 ms. 64 requêtes lancées d'emblée se disputent la bande passante avec
+     engine.js, qui EST le chemin critique : à ce débit c'est le volume qui borne, pas la
+     profondeur du graphe. Le levier réel est la taille du bundle (A2), pas sa découverte. -->
 </head>
 <body>
 <div class="wrap">
@@ -88,6 +94,9 @@
   </main>
 </div>
 <noscript><p style="padding:20px;font-family:sans-serif">Zenna a besoin de JavaScript pour générer ton plan.</p></noscript>
+<!-- Hors classement (audit 05) — un navigateur sans modules ES (iOS < 14, Chrome < 85) restait
+     sur une page BLANCHE : `??=` et les modules ne se chargent pas, et rien ne le disait. -->
+<script nomodule src="js/nomodule.js"></script>
 <script type="module" src="js/app.js"></script>
 </body>
 </html>

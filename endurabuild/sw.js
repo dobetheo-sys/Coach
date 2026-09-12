@@ -13,7 +13,7 @@
    `npm run check:sw`, comme `check:app` pour le bundle du monolithe). */
 
 // __SW_VERSION__ (généré par scripts/buildSW.mjs — ne pas éditer à la main)
-const VERSION = "eb-pwa-b4b7c9bbde2b";
+const VERSION = "eb-pwa-c2af2b5845ed";
 // __/SW_VERSION__
 
 // __SW_ASSETS__ (généré par scripts/buildSW.mjs — ne pas éditer à la main)
@@ -48,6 +48,7 @@ const ASSETS = [
   "./js/engine.js",
   "./js/export.js",
   "./js/measured.js",
+  "./js/nomodule.js",
   "./js/notifications.js",
   "./js/projection-log.js",
   "./js/shop-catalog.js",
@@ -134,6 +135,9 @@ self.addEventListener("fetch", (e) => {
       (hit) =>
         hit ||
         fetch(e.request).then((res) => {
+          // A5 (audit 05) — un 404/500 transitoire mis en cache serait servi jusqu'au prochain
+          // changement de VERSION : on ne garde que les réponses saines de notre origine.
+          if (!res.ok || res.type !== "basic") return res;
           const copy = res.clone();
           caches.open(VERSION).then((c) => c.put(e.request, copy));
           return res;

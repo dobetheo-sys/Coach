@@ -152,15 +152,27 @@ let ebSaveKO=false;
 function ebSave(){
   try{
     ebSyncActive();liftShared();
-    localStorage.setItem("eb_state_v2",JSON.stringify({plans:S.plans,activePlanId:S.activePlanId,shared:S.shared}));
-    ebSaveKO=false;
+    const json=JSON.stringify({plans:S.plans,activePlanId:S.activePlanId,shared:S.shared});
+    localStorage.setItem("eb_state_v2",json);
+    // B5 (audit 05) — RELECTURE APRÈS ÉCRITURE : `setItem` peut réussir et rendre un contenu
+    // tronqué (quota atteint en cours d'écriture sur certains navigateurs). Le drapeau douleur
+    // et les réponses médicales passent par ici ; un « enregistré » qui ne l'est pas est un
+    // garde-fou qui a l'air posé (priorité 1). On relit, et on compare.
+    if(localStorage.getItem("eb_state_v2")!==json){const err=new Error("relecture différente de l'écriture");err.name="RelectureError";throw err;}
+    // A5 (audit 05) — l'ancienne clé mono-plan n'est retirée QU'UNE FOIS la v2 relue intacte :
+    // elle était gardée « par prudence » depuis la migration, et cette prudence coûtait une copie
+    // complète de l'état sur un quota de ~5 Mo, pour une clé que plus rien ne lit.
+    try{if(localStorage.getItem("eb_state_v1")!==null)localStorage.removeItem("eb_state_v1");}catch(_){}
+    ebSaveKO=false;S.saveFailed=false;
   }catch(e){
     if(!ebSaveKO){
       ebSaveKO=true;
       try{console.warn("EB: sauvegarde impossible —",e&&e.name);}catch(_){}
-      // Pas de modale : on ne bloque pas quelqu'un au milieu d'une séance. Un bandeau discret
-      // que l'UI peut lire (`S.saveFailed`) suffit à ce que l'information existe quelque part.
+      // Pas de modale : on ne bloque pas quelqu'un au milieu d'une séance. `S.saveFailed` reste
+      // lisible, et l'événement porte l'information jusqu'au bandeau d'`app.js` (A4/B5 audit 05) —
+      // avant, PERSONNE ne lisait ce drapeau et l'athlète cochait dans le vide.
       S.saveFailed=true;
+      try{document.dispatchEvent(new CustomEvent("eb:savefailed",{detail:{cause:(e&&e.name)||"inconnue"}}));}catch(_){}
     }
   }
 }
@@ -257,6 +269,9 @@ function ebLoad(){
     // reste quand tout le reste a disparu.
     try{
       const brut=localStorage.getItem("eb_state_v2");
+      // A5 (audit 05) — UNE seule copie de côté : chaque lecture illisible en créait une nouvelle
+      // sous une clé datée et rien ne les purgeait, chacune de la taille de l'état complet.
+      for(const k of Object.keys(localStorage))if(k.startsWith("eb_state_v2_corrompu_"))localStorage.removeItem(k);
       if(brut) localStorage.setItem("eb_state_v2_corrompu_"+todayISO(),brut);
     }catch(_){}
     return null;

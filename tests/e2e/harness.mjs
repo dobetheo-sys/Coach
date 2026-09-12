@@ -61,6 +61,15 @@ export function runnerStateV1(extra = {}) {
       // défaut), le portillon aurait relu un autre jour et bloqué toutes les suites qui passent
       // par cet état. On réplique la règle ici parce que ce code tourne côté NODE, avant que la
       // page existe — la constante vit dans `state.js` (JOUR_ENTRAINEMENT_DEBUT_H = 4).
+      // A1 (audit 05, 12/09/2026) — L'ATHLÈTE DE LA FIXTURE A DÉJÀ VU SA DÉCLARATION DE SAISON.
+      // Sans `plan_start`, la première ouverture est un « jour de création » et `maybeShowMomentA`
+      // pose l'overlay Format A, qui intercepte tout clic. Aucune suite ne le fermait, et toutes
+      // passaient quand même : `controllerchange` rechargeait la page à la PREMIÈRE installation du
+      // service worker (défaut A1), et au second chargement `momentA_montre` était déjà persisté.
+      // Retirer ce rechargement a fait tomber cinq suites d'un coup — protégées par le chemin, pas
+      // par le critère. Vérifié sur un worktree HEAD pur : l'overlay y est aussi, 1,5 s après le
+      // reload. La fixture le déclare vu, comme le serait celui d'un athlète qui a déjà un plan.
+      momentA_montre: true,
       readiness: { date: (() => { const d = new Date(); if (d.getHours() < 4) d.setDate(d.getDate() - 1); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); })(), sleepQuality: "bon", hrvStatus: "normale", energy: 80, feel: "frais" },
     }, extra),
     tier: "free", step: 10, started: true, onPlan: true,
