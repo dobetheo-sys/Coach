@@ -12964,6 +12964,25 @@ dose ne s'AJOUTE pas au temps dur, elle le DÉPLACE — c'est C26c qui fait son 
 Cliquets ré-épinglés avec cause dans `scripts/lotPhysio.mjs` : S5 170 (S15-css), T-39 27
 (FV1+RC1 → 26, RN1 corrigé → 27 sur `PW/tri/M/plat`), T-48 8 636 min / 447 730 m.
 
+### Décisions du fondateur appliquées le 12/09/2026 (1a / 1b)
+
+- **(1a) débutant exclu : CONFIRMÉ.** (1b) **`reprise` exclue** — un athlète en reprise ou en retour
+  de blessure ne porte pas cette prise de risque, même en mode compétition ; blessure d'appui
+  toujours exclue. Domaine final : `tri` · `intent = competition` · niveau ≠ débutant · historique
+  ≠ reprise · aucune blessure d'appui.
+- **Le déplacement plutôt que l'ajout est accepté, et il est DOCUMENTÉ par profil** : C26c
+  (`enforceHardTimeCap`) est rejoué DANS la passe RN1, sur la semaine substituée, ce qu'il reprend
+  au VO2 vélo ou à la nage seuil est rendu au facile de la même semaine, et la décision affichée
+  le dit — « 3 × 6 min au seuil, toutes les 4 semaines — VO2 vélo réduit de 12 min (plafond de
+  temps dur) », « 2 × 6 min … — nage seuil réduite de 1 475 m ». Sans ce rejeu, la coupe se
+  faisait dans la seconde `reconcileDeclaredVolume` de la boucle de réparation, hors de portée de
+  la décision. Mesuré après : **228 semaines RN1 · 226 neutres à ±1 min (99,1 %) · 0 séance
+  perdue** ; déplacement résiduel sur le corpus : 4 profils (blessures hors appui), **−48 min de
+  VO2 vélo, 0 m de nage seuil** (contre −124 min / −4 250 m avant l'exclusion de `reprise` et le
+  rejeu en place) ; `audit:v1` 459 à 0.
+- `RN1-neutralite` reste active (bloc `verify` ci-dessous) ; cliquet T-48 ré-épinglé avec cette
+  cause (VO2 8 712 min · nage seuil 451 980 m — la nage seuil revient à sa valeur d'avant RN1).
+
 ```verify
 id: RN1
 quoi: la dose n'existe qu'en intent=competition, jamais en dev/taper ; réduite par adjustDay comme toute autre séance dure
@@ -13046,6 +13065,12 @@ appliquée. Rien n'est écrit dans `src/` pour ce ticket. Ce qui reste à tranch
 pas un câblage : retirer le doublon `S2_MIN_WEEKS` de `tables.ts` (ou le faire pointer vers
 `MIN_WEEKS.swimrun`), et éventuellement donner au golden un sous-corpus swimrun long-format
 « prérequis satisfaits », sans quoi la branche 30 semaines reste hors photo (famille A-2).
+
+
+**12/09/2026 — doublon mort RETIRÉ** (décision du fondateur, 2a) : `S2_MIN_WEEKS` supprimée de
+`sports/swimrun/tables.ts`, `MIN_WEEKS.swimrun` reste la seule source ; `check:dup` compare désormais
+par VALEUR les tables réfléchies (`MIN_WEEKS.duathlon` ↔ `DUA_MIN_WEEKS`, `CAP_LONG` ↔ `durCaps.hi`
+de run/bike), contre-prouvé rouge en décalant une valeur.
 
 ```verify
 id: S2_MIN_WEEKS

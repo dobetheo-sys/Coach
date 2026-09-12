@@ -997,11 +997,13 @@ export const RC1_LABEL_OFF = /^off\b|repos total/i;
  * SUBSTITUER une séance de qualité déjà là, jamais convertir un footing facile en séance dure —
  * exclut donc dev par construction, pas par oubli : publié pour arbitrage, pas décidé en silence.
  *
- * ⚠ Domaine resserré le 11/09/2026 (voir `BUGS_OUVERTS.md` « RN1 », correctif) : le DÉBUTANT et
- * toute blessure d'APPUI sont exclus. Mesuré : sous un plafond de temps dur de 25 min (C26c), la
+ * ⚠ Domaine resserré les 11-12/09/2026 (décisions du fondateur, `BUGS_OUVERTS.md` « RN1 ») : le
+ * DÉBUTANT (confirmé), la REPRISE et toute blessure d'APPUI sont exclus. Mesuré : sous un plafond de temps dur de 25 min (C26c), la
  * dose ne s'ajoute pas — elle fait tomber le VO2 vélo de 6×4 à 3×4 au pic ; et sur une blessure
- * de course elle remplaçait l'unique séance de course de la semaine. Exclusion du débutant à
- * confirmer par le fondateur ; celle de la blessure d'appui relève de la priorité 2.
+ * de course elle remplaçait l'unique séance de course de la semaine. Un athlète en reprise ou
+ * en retour de blessure ne porte pas cette prise de risque, même en mode compétition. Le
+ * DÉPLACEMENT du dur (VO2 vélo, nage seuil) est accepté, rejoué par C26c dans la passe RN1
+ * elle-même, et écrit dans la décision affichée à l'athlète.
  *
  * Couplage readiness : AUCUN code de bypass n'est ajouté, et c'est délibéré. `sessionIntensity()`
  * (`src/readiness/dailyAdjuster.ts`) classe déjà tout step body en zone `.thr`/`.vo2` comme

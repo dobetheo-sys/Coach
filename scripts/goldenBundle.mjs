@@ -49,7 +49,7 @@ console.log("GOLDEN — la SOURCE contre le BUNDLE, même corpus, même canonisa
 // ── Passe 1 : la SOURCE ───────────────────────────────────────────────────────────────────
 const refSrc = globalThis.EBV2;
 if (!refSrc) { console.error("✖ EBV2 absent après l'import de bridge.ts"); process.exit(2); }
-const POPULATION = 1074;  // un zéro a besoin de sa population — 1074 depuis les trois courses intermédiaires d'O-111 (fiche 42), voir goldenMaster.mjs
+const POPULATION = 1080;  // un zéro a besoin de sa population — 1080 depuis la passe « SR » swimrun long format (12/09/2026) ; 1074 avant (trois courses intermédiaires d’O-111, fiche 42), voir goldenMaster.mjs
 const t0 = Date.now();
 const A = snapshot();
 if (A.n !== POPULATION) {

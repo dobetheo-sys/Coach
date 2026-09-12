@@ -2122,7 +2122,12 @@ T("T-50", "vert", "PROPRIÉTÉ — la bande d'allure affichée se redérive du p
 // et, sur deux profils, à la nage seuil. La dose ne s'AJOUTE pas au dur, elle le DÉPLACE — publié.
 // Le débutant est exclu de RN1 pour cette raison (son plafond de 25 min faisait tomber le VO2
 // vélo de 6×4 à 3×4 au pic) ; avant cette exclusion, le VO2 cédait 300 min et non 124.
-const PIC_ATTENDU = { vo2Min: 8636, seuilM: 447730, profils: 206 };
+// DÉCISIONS 1a/1b (12/09/2026) — 8 636 → **8 712** min · 447 730 → **451 980 m** (la nage seuil
+// REVIENT à sa valeur d'avant RN1). Deux causes, mesurées à facteur unique : `reprise` exclue du
+// domaine (4 des 8 profils déplacés), et C26c rejoué DANS la passe RN1 sur la semaine substituée
+// (ce qu'il prend est rendu au facile de la même semaine, et la décision affichée le dit). Le
+// déplacement résiduel est celui des 4 profils à blessure hors appui : −48 min de VO2 vélo, 0 m.
+const PIC_ATTENDU = { vo2Min: 8712, seuilM: 451980, profils: 206 };
 T("T-48", "vert", "la composition du PIC en tri est épinglée : le VO2 a cédé, la nage seuil a gagné (C26c)", () => {
   let vo2 = 0, seuil = 0, profils = 0;
   for (const { key, plan } of goldenAvecMoteur()) {

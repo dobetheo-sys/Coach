@@ -159,6 +159,18 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
 
 ## Comment travailler dans ce dépôt
 
+- **Règle de méthode 0 (décision du fondateur, 12/09/2026, suite à l'audit multi-angles) — trois
+  clauses non négociables.** (1) **`main` est protégée** : `audit.yml` (job `audit`, `lotPhysio`
+  compris, et job `e2e`) est un contrôle de statut REQUIS ; un rouge ne peut plus traverser cinq
+  commits (mesuré : rouge du 09/09 au 11/09 sous des messages de commit qui listaient une batterie
+  verte reconstituée à la main — `lotPhysio` n'y figurait pas). (2) **Chaque rapport cite la
+  sortie COMPLÈTE de `npm run batterie`** (les 13 gates nommés, tels qu'imprimés), jamais une
+  liste rédigée : un banc omis = rapport invalide. (3) **Toute spec qui affirme une propriété**
+  (« neutre en volume », « inchangé ailleurs », « idempotent ») **livre une garde `verify`
+  contre-prouvée ROUGE sur l'ancien code** avant d'être crue — RN1 a montré le coût de s'en
+  passer : sa « neutralité » était fausse sur 282 semaines sur 315 et personne ne l'a vu pendant
+  deux commits.
+
 - **Une garde se prouve dans les deux sens avant d'être crue** : rouge contre un état connu
   mauvais, verte contre un état connu bon. Un gate non contre-prouvé ne mesure que lui-même.
   (Règle issue de l'arbitrage B-25 §9, 14/08/2026 — démontrée le jour même par deux faux

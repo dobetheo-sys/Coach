@@ -28,5 +28,30 @@ for (const d of DOUBLONS) {
   console.log(`${n > d.plafond ? "✖" : "·"} ${d.quoi} : ${n}/${d.plafond} ${etat}`);
   if (n > d.plafond) echecs++;
 }
-console.log(echecs ? "\n✖ Z-03 : une valeur moteur a gagné une copie." : "\n✓ Z-03 cliquet : aucun doublon nouveau.");
+// ---- VALEURS RÉFLÉCHIES (12/09/2026, décision 2a après `RAPPORT-swimrun-css.md`) -----------
+// Une table recopiée « qui REFLÈTE » une autre est le même producteur de faux verts qu'un
+// renommage : rien ne rougit quand l'une bouge et pas l'autre. On compare donc par VALEUR, en
+// lisant ce qui s'EXÉCUTE (import des modules TS) partout où c'est possible ; les `durCaps` de
+// run/bike sont des littéraux locaux à une fonction, lus par regex sur la source — c'est écrit.
+const { MIN_WEEKS, CAP_LONG } = await import("../src/engine/constraintMatrix.ts");
+const { DUA_MIN_WEEKS } = await import("../src/sports/duathlon/tables.ts");
+const durCapsDe = (fichier) => {
+  const src = readFileSync(join(ROOT, fichier), "utf8");
+  const m = src.match(/const durCaps = \((\{[\s\S]*?\}) as Record/);
+  if (!m) throw new Error("check:dup — `const durCaps = ({…} as Record` introuvable dans " + fichier + " : le motif a bougé, ne pas rendre vert par défaut");
+  return Function("return (" + m[1] + ")")();
+};
+const REFLETS = [
+  { quoi: "MIN_WEEKS.duathlon ↔ DUA_MIN_WEEKS (duathlon/tables.ts)", a: MIN_WEEKS.duathlon, b: DUA_MIN_WEEKS },
+  { quoi: "CAP_LONG (course) ↔ durCaps.hi de run/index.ts", a: Object.fromEntries(Object.entries(durCapsDe("src/sports/run/index.ts")).map(([k, v]) => [k, v.hi])), b: Object.fromEntries(Object.keys(durCapsDe("src/sports/run/index.ts")).map((k) => [k, CAP_LONG[k]])) },
+  { quoi: "CAP_LONG (vélo) ↔ durCaps.hi de bike/index.ts", a: Object.fromEntries(Object.entries(durCapsDe("src/sports/bike/index.ts")).map(([k, v]) => [k, v.hi])), b: Object.fromEntries(Object.keys(durCapsDe("src/sports/bike/index.ts")).map((k) => [k, CAP_LONG[k]])) },
+];
+for (const r of REFLETS) {
+  const cles = new Set([...Object.keys(r.a), ...Object.keys(r.b)]);
+  const ecarts = [...cles].filter((k) => r.a[k] !== r.b[k]).map((k) => `${k}: ${r.a[k]} ≠ ${r.b[k]}`);
+  if (!cles.size) { console.log(`✖ ${r.quoi} : AUCUNE clé comparée — l'instrument ne mesure rien`); echecs++; continue; }
+  console.log(`${ecarts.length ? "✖" : "·"} ${r.quoi} : ${cles.size} clé(s)${ecarts.length ? " — " + ecarts.join(", ") : " identiques"}`);
+  if (ecarts.length) echecs++;
+}
+console.log(echecs ? "\n✖ Z-03 : une valeur moteur a gagné une copie, ou deux tables réfléchies divergent." : "\n✓ Z-03 cliquet : aucun doublon nouveau, tables réfléchies identiques.");
 process.exit(echecs ? 1 : 0);

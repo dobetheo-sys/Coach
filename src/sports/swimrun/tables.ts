@@ -36,12 +36,11 @@ export const S1_RACE_DEFAULTS: Record<SwimrunCategory, { swimM: number; runKm: n
   },
 );
 
-/** S2 — durée de préparation minimale par catégorie (§R10.3.1). */
-export const S2_MIN_WEEKS: Record<SwimrunCategory, number> = srule(
-  "S2",
-  "un championnat du monde de swimrun ne se prépare pas dans l'horizon d'une Experience",
-  { experience: 10, sprint: 12, series: 20, championship: 30 },
-);
+// S2 — durée de préparation minimale par catégorie (§R10.3.1) : la table vit dans
+// `src/engine/constraintMatrix.ts` (`MIN_WEEKS.swimrun`, consultée par `semainesDe()`). Le
+// doublon `S2_MIN_WEEKS` qui vivait ici était du code MORT (jamais importé) aux mêmes valeurs —
+// retiré le 12/09/2026 (R11.1, décision du fondateur suite à `RAPPORT-swimrun-css.md`) ; les
+// tables réfléchies sont désormais comparées par VALEUR dans `npm run check:dup`.
 
 /** S3 — plafonds horaires (h/sem au pic) par catégorie × historique. */
 export const S3_HISTORY_CAPS: Record<SwimrunCategory, Record<string, number>> = srule(

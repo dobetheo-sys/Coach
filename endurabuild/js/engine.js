@@ -4023,11 +4023,13 @@ const RC1_LABEL_OFF = /^off\b|repos total/i;
  * SUBSTITUER une séance de qualité déjà là, jamais convertir un footing facile en séance dure —
  * exclut donc dev par construction, pas par oubli : publié pour arbitrage, pas décidé en silence.
  *
- * ⚠ Domaine resserré le 11/09/2026 (voir `BUGS_OUVERTS.md` « RN1 », correctif) : le DÉBUTANT et
- * toute blessure d'APPUI sont exclus. Mesuré : sous un plafond de temps dur de 25 min (C26c), la
+ * ⚠ Domaine resserré les 11-12/09/2026 (décisions du fondateur, `BUGS_OUVERTS.md` « RN1 ») : le
+ * DÉBUTANT (confirmé), la REPRISE et toute blessure d'APPUI sont exclus. Mesuré : sous un plafond de temps dur de 25 min (C26c), la
  * dose ne s'ajoute pas — elle fait tomber le VO2 vélo de 6×4 à 3×4 au pic ; et sur une blessure
- * de course elle remplaçait l'unique séance de course de la semaine. Exclusion du débutant à
- * confirmer par le fondateur ; celle de la blessure d'appui relève de la priorité 2.
+ * de course elle remplaçait l'unique séance de course de la semaine. Un athlète en reprise ou
+ * en retour de blessure ne porte pas cette prise de risque, même en mode compétition. Le
+ * DÉPLACEMENT du dur (VO2 vélo, nage seuil) est accepté, rejoué par C26c dans la passe RN1
+ * elle-même, et écrit dans la décision affichée à l'athlète.
  *
  * Couplage readiness : AUCUN code de bypass n'est ajouté, et c'est délibéré. `sessionIntensity()`
  * (`src/readiness/dailyAdjuster.ts`) classe déjà tout step body en zone `.thr`/`.vo2` comme
@@ -9377,12 +9379,11 @@ const S1_RACE_DEFAULTS                                                          
   },
 );
 
-/** S2 — durée de préparation minimale par catégorie (§R10.3.1). */
-const S2_MIN_WEEKS                                  = srule(
-  "S2",
-  "un championnat du monde de swimrun ne se prépare pas dans l'horizon d'une Experience",
-  { experience: 10, sprint: 12, series: 20, championship: 30 },
-);
+// S2 — durée de préparation minimale par catégorie (§R10.3.1) : la table vit dans
+// `src/engine/constraintMatrix.ts` (`MIN_WEEKS.swimrun`, consultée par `semainesDe()`). Le
+// doublon `S2_MIN_WEEKS` qui vivait ici était du code MORT (jamais importé) aux mêmes valeurs —
+// retiré le 12/09/2026 (R11.1, décision du fondateur suite à `RAPPORT-swimrun-css.md`) ; les
+// tables réfléchies sont désormais comparées par VALEUR dans `npm run check:dup`.
 
 /** S3 — plafonds horaires (h/sem au pic) par catégorie × historique. */
 const S3_HISTORY_CAPS                                                  = srule(
@@ -16579,14 +16580,36 @@ function generatePlan(profile                , opts                             
   // duathlon) : la séance à allure marathon que le module a gardée pour un coureur fragile n'est
   // pas convertie en seuil. Mesuré (11/09/2026) : sur `G/tri/Full/injury-tibia` la dose remplaçait
   // l'UNIQUE séance de course de la semaine, sans aucun receveur facile. Priorité 2 avant 5.
-  // Débutant EXCLU (11/09/2026, à confirmer par le fondateur — voir `BUGS_OUVERTS.md` « RN1 ») :
-  // son plafond de temps dur (C26b/C26c, 25 min/sem) ne peut pas porter 18 min de seuil course
-  // EN PLUS du VO2max vélo. Mesuré sur `tri/70.3/confirme/debutant/competition` : la dose est
-  // posée, puis C26c la rabote à 2×6 et fait tomber le VO2 vélo de 6×4 à 3×4 au pic — la dose
-  // ne s'ajoute pas, elle DÉPLACE la qualité vélo, et la semaine perd 23-29 min au passage.
-  // Même logique que le module tri, qui n'offre pas « Allure course » au débutant en pic.
+  // Domaine resserré (décisions du fondateur, 11-12/09/2026, `BUGS_OUVERTS.md` « RN1 ») :
+  //   · DÉBUTANT exclu (confirmé) — sous un plafond de temps dur de 25 min (C26b/C26c), la dose ne
+  //     s'ajoutait pas, elle faisait tomber le VO2 vélo de 6×4 à 3×4 au pic ;
+  //   · REPRISE exclue — un athlète qui reprend ne porte pas cette prise de risque, même en mode
+  //     compétition (mesuré : 4 des 8 profils où la dose déplaçait du VO2 vélo étaient `reprise`) ;
+  //   · blessure d'APPUI exclue — sur `G/tri/Full/injury-tibia` la dose remplaçait l'unique séance
+  //     de course de la semaine. Priorité 2 avant 5.
+  // Le DÉPLACEMENT est accepté et DOCUMENTÉ : c'est le plafond de temps dur qui arbitre (principe
+  // du budget qualitatif, #4) — C26c est rejoué sur la semaine juste après la substitution, ce
+  // qu'il reprend au VO2 vélo ou à la nage seuil est rendu au facile de la même semaine, et la
+  // décision affichée à l'athlète dit combien (« VO2 vélo réduit de X min »).
   const injRn1 = readInjuries(a.injury);
-  if (a.sport === "tri" && a.intent === "competition" && String(a.level) !== "debutant" && !injRn1.list.includes("course") && !injRn1.impact) {
+  if (a.sport === "tri" && a.intent === "competition" && String(a.level) !== "debutant" && String(a.history) !== "reprise" && !injRn1.list.includes("course") && !injRn1.impact) {
+    const ctxCap = { history: a.history, level: a.level, injured: r.inj.count > 0, age: parseInt(String(a.age ?? "")) || undefined, refs: { cssSecPer100m: r.baseRefs.css || 130, thrPaceSecPerKm: r.baseRefs.thrPace || 330 } };
+    const EASY_RN = /^rn\.(easy|rec)$/;
+    const vo2VeloMin = (wd          ) => wd.reduce((t, d) => t + d.sessions.filter((s) => s.d === "bk").reduce((u, s) => u + (s.steps || []).filter((b) => /\.vo2$/.test(String(b.zone || ""))).reduce((v, b) => v + (b.reps || 1) * (b.durationMin || 0), 0), 0), 0);
+    const nageSeuilM = (wd          ) => wd.reduce((t, d) => t + d.sessions.filter((s) => s.d === "sw").reduce((u, s) => u + (s.steps || []).filter((b) => b.zone === "sw.css").reduce((v, b) => v + (b.reps || 1) * (b.distanceM || 0), 0), 0), 0);
+    // Receveur des minutes : une séance FACILE de course de la semaine, trouvée par PROPRIÉTÉ
+    // (corps en zone facile — jamais par libellé, règle 17), la non-longue d'abord. `null` si
+    // aucune n'existe : la neutralité ne dépend d'aucune séance survivante, là où elle ne peut
+    // pas être tenue la substitution n'a pas lieu.
+    const receveurFacile = (wd          , cible           ) => {
+      const candidats                                    = [];
+      for (const d of wd) for (const sx of d.sessions) {
+        if (sx === cible || sx.d !== "rn" || sx.brick || sx.race) continue;
+        const corps = (sx.steps || []).find((st) => st.role === "body");
+        if (corps && corps.durationMin != null && EASY_RN.test(String(corps.zone))) candidats.push({ s: sx, corps });
+      }
+      return candidats.find((c) => !c.s.long) ?? candidats[0] ?? null;
+    };
     const eligiblesRn = plan.weeks.filter((wk) => !wk.isRecup && (wk.phase.id === "spec" || wk.phase.id === "peak"));
     eligiblesRn.forEach((wk, idx) => {
       if (idx % RN1_INTERVAL_SEMAINES !== 0) return;
@@ -16601,15 +16624,13 @@ function generatePlan(profile                , opts                             
         if (cible) break;
       }
       if (!cible) return;
+      const receveur = receveurFacile(wd, cible);
+      if (!receveur) return; // aucune séance facile pour rendre les minutes : pas de dose (mesuré, voir BUGS_OUVERTS « RN1 » écriture 5)
       const tailleAvant = cible.min || 0;
       const zone = medicalZone("rn.thr", r.medHold)                 ;
       // La dose ne dépasse JAMAIS la séance qu'elle remplace (mesuré sur le RENDU, jamais sur une
       // formule recopiée de renderSess — règle 15) : 3 répétitions si elles tiennent dans la
-      // séance d'origine, sinon 2, sinon la séance d'origine est gardée telle quelle. Sans cette
-      // borne, un `tri/S/confirme/debutant` recevait une dose de 45 min à la place d'une séance
-      // de 35, et la version précédente de ce bloc FINANÇAIT l'excédent en retirant 10 min à la
-      // sortie longue — pour que C26c rabote ensuite la dose à 2×6 : la longue payait une dose
-      // que la règle de sécurité refusait.
+      // séance d'origine, sinon 2, sinon la séance d'origine est gardée telle quelle.
       const origine = { name: cible.name, note: cible.note, det: cible.det, steps: cible.steps, min: cible.min };
       let reps = RN1_ENTRETIEN_REPS;
       for (;;) {
@@ -16629,64 +16650,41 @@ function generatePlan(profile                , opts                             
         }
         reps--;
       }
-      // Neutralité en VOLUME (patron C30b/R4.1) — la dose est plus PETITE que la séance qu'elle
-      // remplace (délibéré, § "entretien" plutôt que développement), mais une semaine ne doit
-      // jamais rétrécir de ce fait : mesuré (règle 7), une substitution qui retire des minutes
-      // sans les rendre a cassé `MONO-tri-history` (deux plans de longueur différente, la
-      // substitution tombait sur des semaines DÉSALIGNÉES entre eux). Les minutes libérées sont
-      // rendues à une séance FACILE de course de la même semaine, jamais ajoutées ni retirées
-      // ailleurs.
-      //
-      // ⚠ CORRECTIF 11/09/2026 (bisection `lotPhysio`, T-27/T-48) — la première écriture
-      // cherchait le receveur par son LIBELLÉ (« Footing facile », règle 17) et ne trouvait rien
-      // dans 282 des 315 semaines RN1 du corpus : en spec/pic le créneau facile course s'appelle
-      // « Sortie longue CAP » (pièce A2). Le delta était PERDU, la semaine rétrécissait
-      // (`tri/S/ancien/inter/competition` S5 277 → 263), et C22 propageait la famine à toute la
-      // suite du plan (S6 302 → 290, S7 330 → 319, affûtage 181 → 149 avec un footing en moins —
-      // la monnaie interdite). « Une protection qui dépend d'une séance survivante rate le profil
-      // qui a le moins de séances » : le receveur se trouve désormais par une PROPRIÉTÉ (corps en
-      // zone facile), et quand aucune séance facile n'existe (`off-2j`, `dispo: partielle`,
-      // `tri/S/reprise`) la dose n'est PAS posée — voir la branche `else` plus bas et les deux
-      // replis mesurés puis retirés. La neutralité ne dépend d'aucune séance survivante : là où
-      // elle ne peut pas être tenue, la substitution n'a pas lieu.
-      //
-      // Ce qui reste et qui est PUBLIÉ : la boucle de réparation (C26c, plafond de temps dur)
-      // peut encore raboter la dose et le VO2 vélo chez les débutants, dont le plafond de dur
-      // est bas — la règle de sécurité gagne, et le VO2 au pic cède sur le corpus tri (cliquet
-      // T-48 ré-épinglé avec cette cause, chiffres dans `scripts/lotPhysio.mjs`).
+      // Neutralité en VOLUME (patron C30b/R4.1) — les minutes libérées par une dose plus petite
+      // sont rendues à la séance facile de la même semaine, jamais ajoutées ni retirées ailleurs.
+      // ⚠ Première écriture (10/09) : receveur cherché par LIBELLÉ (« Footing facile »), absent en
+      // spec/pic où le créneau facile s'appelle « Sortie longue CAP » — 282 semaines sur 315
+      // perdaient leur delta, C22 propageait la famine jusqu'à l'affûtage (un footing en moins).
       const delta = tailleAvant - (cible.min || 0);
-      if (delta > 0.5) {
-        const EASY_RN = /^rn\.(easy|rec)$/;
-        const candidats                                    = [];
-        for (const d of wd) for (const sx of d.sessions) {
-          if (sx === cible || sx.d !== "rn" || sx.brick || sx.race) continue;
-          const corps = (sx.steps || []).find((st) => st.role === "body");
-          if (corps && corps.durationMin != null && EASY_RN.test(String(corps.zone))) candidats.push({ s: sx, corps });
-        }
-        // Une séance facile NON longue d'abord (le footing) ; à défaut la facile longue.
-        const receveur = candidats.find((c) => !c.s.long) ?? candidats[0];
-        if (receveur) {
-          receveur.corps.durationMin  += delta;
-          renderSess(receveur.s, refs, r.hz, r.baseRefs);
-        } else {
-          // Aucune séance facile de course cette semaine : on ne substitue PAS, la séance
-          // d'origine est rendue telle quelle. Deux replis ont été écrits et mesurés avant ce
-          // choix : allonger le retour au calme (inerte, C13b le borne à 50 % du corps) et poser
-          // un bloc facile DANS la dose (il relâche les clamps d'échauffement/retour au calme et
-          // la séance sort PLUS GROSSE que celle qu'elle remplace : 43 → 49 min sur la
-          // combinaison `tri/S/reprise/inter/competition` d'`audit:v1`, puis un saut de +28 %
-          // en S6 — violation DURE du manifeste). Une dose qui n'a nulle part où rendre ses
-          // minutes n'est pas posée ; c'est le correctif le moins coûteux qui tienne la
-          // propriété (règle 19), et il ne concerne que les semaines à un seul créneau course.
-          Object.assign(cible, origine);
-          renderSess(cible, refs, r.hz, r.baseRefs);
-          return;
-        }
+      if (delta > 0.5) { receveur.corps.durationMin  += delta; renderSess(receveur.s, refs, r.hz, r.baseRefs); }
+      // Le plafond de temps dur (C26c) est REJOUÉ maintenant, sur cette semaine : la dose ajoute
+      // 12-18 min de dur, et si le budget est déjà tenu c'est le VO2 vélo ou la nage seuil qui
+      // cède — mesuré, pas supposé (T-48 : −124 min de VO2 sur le corpus avant l'exclusion de
+      // `reprise`). Faire la coupe ICI plutôt que de la laisser à la seconde `reconcileDeclaredVolume`
+      // de la boucle de réparation permet (1) de rendre les minutes au facile de la MÊME semaine,
+      // (2) de dire à l'athlète ce que la dose a déplacé. Les autres semaines sont déjà sous leur
+      // plafond : la passe n'y coupe rien (idempotente, vérifiée par `RN1-neutralite`).
+      const vo2Avant = vo2VeloMin(wd), cssAvant = nageSeuilM(wd);
+      const coupe = enforceHardTimeCap(plan, ctxCap, (s) => renderSess(s, refs, r.hz, r.baseRefs));
+      const retire = coupe.get(wk.num) || 0;
+      if (retire > 0.5) {
+        const recv2 = receveurFacile(wd, cible) ?? receveur;
+        recv2.corps.durationMin  += retire;
+        renderSess(recv2.s, refs, r.hz, r.baseRefs);
       }
+      const corpsDose = (cible.steps || []).find((st) => st.role === "body" && /\.thr$/.test(String(st.zone)));
+      const repsLivrees = corpsDose?.reps ?? reps;
+      const dVo2 = Math.round(vo2Avant - vo2VeloMin(wd)), dCss = Math.round(cssAvant - nageSeuilM(wd));
+      const deplace           = [];
+      if (dVo2 > 0) deplace.push("VO2 vélo réduit de " + dVo2 + " min");
+      if (dCss > 0) deplace.push("nage seuil réduite de " + dCss + " m");
       r.decisions.push({
         id: "RN1", what: "Seuil course : dose d'entretien en spécifique/pic (semaine " + wk.num + ")",
-        val: reps + " × " + RN1_ENTRETIEN_DUR_MIN + " min au seuil, toutes les " + RN1_INTERVAL_SEMAINES + " semaines",
-        why: "Ton profil accepte des marges resserrées : ce plan introduit une dose de seuil course à basse fréquence, absente par défaut. Surveille ta forme du jour — cette séance est réduite ou remplacée comme n'importe quelle autre si le readiness n'est pas vert.",
+        val: repsLivrees + " × " + RN1_ENTRETIEN_DUR_MIN + " min au seuil, toutes les " + RN1_INTERVAL_SEMAINES + " semaines"
+          + (deplace.length ? " — " + deplace.join(", ") + " (plafond de temps dur)" : ""),
+        why: "Ton profil accepte des marges resserrées : ce plan introduit une dose de seuil course à basse fréquence, absente par défaut."
+          + (deplace.length ? " Cette dose ne s'ajoute pas à ton temps dur, elle le déplace : le plafond hebdomadaire de travail dur est tenu, et ce qu'elle prend est rendu en facile la même semaine." : "")
+          + " Surveille ta forme du jour — cette séance est réduite ou remplacée comme n'importe quelle autre si le readiness n'est pas vert.",
       });
     });
   }

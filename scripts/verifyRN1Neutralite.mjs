@@ -13,11 +13,12 @@
  *   node scripts/verifyRN1Neutralite.mjs --compare A.json B.json
  *
  * `--compare` rend « RN1 NEUTRALITE VERT » si : aucune semaine RN1 ne change de NOMBRE de séances
- * (la monnaie interdite, C29), et ≥ 95 % des semaines RN1 gardent leur volume à ±1 min. Le résidu
- * publié (11/09/2026) : 10 semaines sur 248 — 8 à ±1-5 min (arrondi C13b), `PW/tri/M/plat` S69
- * (rayon de la boucle de réparation) et `INJ/tri/70.3/velo` S17 (C26c reprend 33 min de VO2 vélo
- * sous plafond de dur réduit par la blessure). Populations : tri · intent=competition · niveau ≠
- * débutant · sans blessure d'appui — exactement le domaine de RN1.
+ * (la monnaie interdite, C29), et ≥ 95 % des semaines RN1 gardent leur volume à ±1 min. Résidu
+ * publié (12/09/2026, après exclusion de `reprise` et rejeu de C26c dans la passe) : 2 semaines
+ * sur 228 — `PW/tri/M/plat` S69 (−11, rayon de la boucle de réparation) et `G/tri/Full/injury-dos`
+ * S26 (+3, arrondi). Population : tri · intent=competition · niveau ≠ débutant · sans blessure
+ * d'appui (le dump ne filtre pas `reprise` : ses semaines n'ont plus de dose et sortent du compte
+ * par construction).
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";

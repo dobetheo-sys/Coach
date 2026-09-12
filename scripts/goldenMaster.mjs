@@ -209,6 +209,17 @@ function* profiles() {
       yield { key: ["G", sport, format || "-", label].join("/"), sport, a };
     }
   }
+  // ---- Passe « swimrun long format, prérequis satisfaits » (12/09/2026) ------
+  // TROISIÈME FOIS que le golden apprend la leçon A-2 : `swimrunExtras()` ne déclare pas les deux
+  // clés de continuité, donc la porte R4.5 (`swimrunPrereqBlock`) RABAT series/championship sur
+  // le sprint pour tous les profils ci-dessus — la branche « 20/30 semaines » du swimrun n'était
+  // sur AUCUNE photo (mesuré : le profil golden exact rend 12 semaines, le même + les deux clés
+  // rend 30). Deux formats × trois historiques, niveau inter, intention compétition.
+  for (const format of ["series", "championship"]) for (const history of HISTORIES) {
+    const a = { ...base(), format, history, level: "inter", intent: "competition",
+      ...swimrunExtras(), swim_continuous: "oui", run_continuous: "oui" };
+    yield { key: ["SR", "swimrun", format, history].join("/"), sport: "swimrun", a };
+  }
   // ---- Passe « course datée » (N2) ----------------------------------------
   // ANGLE MORT MESURÉ : aucun des 714 profils précédents ne portait de `race_date`. Toute la
   // branche ancrée sur une course — durée déduite de l'échéance, grille alignée sur le jour J,
@@ -660,7 +671,7 @@ function canon(v) {
 // portent les SEPT sports — le chantier « unité de volume = cycle » ne pouvait valider sa
 // logique propre au cycle que sur 5 profils, soit deux familles. L'épingle monte AVEC sa
 // cause, et le moteur est byte-identique dans ce lot : ce qui bouge est le CORPUS.
-const POPULATION = 1074;  // +3 (fiche 42, O-111) : une course intermédiaire par priorité A−/B/C — sans eux le corpus ne voyait ni le défaut ni le correctif ; +2 (fiche 40, O-112) : un trail de 45 km à 17 et à 18 ans, de part et d'autre du nouveau seuil `AGE_MINI_TRAIL_KM = 42` — sans eux, « 0 écart » ne prouvait rien (tous les trails du corpus courent 62 km, au-dessus de l'ancien seuil comme du nouveau)
+const POPULATION = 1080;  // +6 (12/09/2026) : passe « SR » — swimrun series/championship × 3 historiques avec les deux clés de continuité déclarées ; sans elles R4.5 rabat tout sur le sprint et la branche 20/30 semaines n'était sur aucune photo (famille A-2, troisième occurrence) ; avant : +3 (fiche 42, O-111) : une course intermédiaire par priorité A−/B/C — sans eux le corpus ne voyait ni le défaut ni le correctif ; +2 (fiche 40, O-112) : un trail de 45 km à 17 et à 18 ans, de part et d'autre du nouveau seuil `AGE_MINI_TRAIL_KM = 42` — sans eux, « 0 écart » ne prouvait rien (tous les trails du corpus courent 62 km, au-dessus de l'ancien seuil comme du nouveau)
 
 function snapshot() {
   const snap = {};
