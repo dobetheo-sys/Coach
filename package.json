@@ -76,6 +76,7 @@
     "check:tokens": "node scripts/checkZennaTokens.mjs",
     "check:disc": "node scripts/checkDisciplineColors.mjs",
     "check:dup": "node scripts/checkEngineDup.mjs",
+    "lint:athlete": "node scripts/lintAthlete.mjs",
     "check:hosts": "node scripts/checkExternalHosts.mjs",
     "check:noop": "node scripts/checkEngineIsolation.mjs",
     "mesure:lot1": "node scripts/mesureLot1.mjs",

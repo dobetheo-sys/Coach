@@ -97,6 +97,18 @@ export interface Decision {
    *  ce qu'il compte — « 11 séances par semaine » et « une semaine ne contient que 10 séances »
    *  sur la même carte étaient tous deux vrais, et illisibles ensemble. */
   livre?: number;
+  /** B1 — la semaine à laquelle cette décision s'applique, quand elle en a une. Le nom est
+   *  celui que `repairLoop` lit déjà sur les décisions `C30b` : on ne crée pas un second nom
+   *  pour une grandeur qui en a un (R11.1). Absent = la décision porte sur le plan entier.
+   *  C'est LUI qui porte la semaine, jamais le libellé — un critère qui identifie sa cible
+   *  par un texte se casse au premier renommage (règle 17). */
+  wk?: number;
+  /** B1 — posés par `agregerDecisions` au point d'assemblage : le « quand » compacté
+   *  (« S3-S29 sauf S8, S15 »), le nombre d'occurrences agrégées (absent si une seule), et
+   *  le niveau de lecture (1 = choix de plan, 2 = mécanique répétée). Dérivés, jamais saisis. */
+  quand?: string;
+  n?: number;
+  niveau?: 1 | 2;
 }
 
 /**

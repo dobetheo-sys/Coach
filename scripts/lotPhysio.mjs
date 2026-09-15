@@ -2454,6 +2454,25 @@ T("T-53", "vert", "le volume hebdomadaire de nage tient sa borne de charge d'ép
  *   (4) le compte LIVRÉ de la décision `budget` se REDÉRIVE du plan livré (famille T-16d : ce
  *       qui est affiché se redérive du livré), et il est ≤ au prescrit — un livré au-dessus du
  *       budget serait un dépassement, pas une étiquette.
+ *
+ * B1 (rapport 06, 15/09/2026) — RÉÉCRIT SUR LE NOUVEAU COMPTE, PAS SUPPRIMÉ. La carte affiche
+ * désormais un compte AGRÉGÉ (« 21 décisions · 27 répétitions agrégées »), donc deux propriétés
+ * de plus, et elles sont la raison d'être de l'agrégation :
+ *   (5) plus AUCUN doublon exact (`id + what + val + why`) — c'est la définition même de la
+ *       grandeur affichée, mesurée sur le livré et non supposée ;
+ *   (6) toute décision agrégée RÉPOND À « QUAND ? », et la réponse est COMPLÈTE.
+ *
+ * ⚠ MA PREMIÈRE ÉCRITURE DE (6) ÉTAIT SOUS-SPÉCIFIÉE, ET LA CONTRE-PREUVE L'A DIT. Elle portait
+ * « `n > 1` implique un `quand` non vide » — or le correctif le moins coûteux qui la satisfait
+ * est de ne JAMAIS poser `n` (règle 19 : demander quel est le correctif le moins cher qui
+ * passerait le test, AVANT de l'écrire). Mesuré : neutraliser la pose de `n` laissait T-54
+ * VERTE pendant que la position était intégralement perdue — le défaut même que le critère
+ * existe pour empêcher. (6) porte donc sur deux propriétés qu'aucune suppression ne satisfait :
+ *   (6a) IDENTITÉ COMPTABLE — la somme des `n − 1` vaut exactement `repetitions`. Jeter les
+ *        doublons en silence donne 0 ≠ 36.
+ *   (6b) LE « QUAND » SE DÉCOMPRESSE en exactement `n` semaines distinctes. C'est l'opération
+ *        INVERSE de la compaction, pas une seconde copie de son algorithme (R11.1) : elle
+ *        attrape une liste tronquée, un « … », un arrondi.
  */
 T("T-54", "vert", "la carte « Pourquoi ce plan » : maillon chiffré, secours nommé, limite dite, comptes étiquetés", () => {
   const pb = [];
@@ -2476,7 +2495,35 @@ T("T-54", "vert", "la carte « Pourquoi ce plan » : maillon chiffré, secours n
     if (dB.livre !== livre) pb.push(`(4) livré annoncé ${dB.livre} ≠ livré recompté ${livre}`);
     if (+dB.val < dB.livre) pb.push(`(4) le livré (${dB.livre}) dépasse le prescrit (${dB.val})`);
   }
-  return { ok: pb.length === 0, detail: pb.length ? pb.join(" · ") : `R20.2 « ${String(dR.val).slice(0, 60)} » · secours ✓ · limite dite ✓ · budget ${dB.val} prescrites / ${dB.livre} livrées ✓` };
+  // (5) + (6) — B1 : le compte affiché est un compte SANS doublon, et chaque agrégat dit quand.
+  const vus = new Map();
+  for (const d of v2.decisions ?? []) {
+    const cle = [d.id, d.what, String(d.val), d.why].join(" ");
+    vus.set(cle, (vus.get(cle) ?? 0) + 1);
+  }
+  const doublons = [...vus.values()].filter((n) => n > 1).length;
+  if (doublons) pb.push(`(5) ${doublons} décision(s) en double exact sur la carte`);
+  const agr = (v2.decisions ?? []).filter((d) => (d.n ?? 1) > 1);
+  const somme = agr.reduce((t, d) => t + (d.n - 1), 0);
+  if (somme !== (v2.repetitions ?? 0)) pb.push(`(6a) ${somme} répétition(s) portée(s) par les agrégats ≠ ${v2.repetitions ?? 0} annoncée(s) : la position a été perdue en route`);
+  // (6b) — DÉCOMPRESSION : « S3-S29 sauf S8, S15 » et « S1, S3, S5 » redonnent leurs semaines.
+  const decompacter = (s) => {
+    const [corps, sauf] = String(s).split(" sauf ");
+    const ex = new Set((sauf ?? "").split(",").map((x) => +x.trim().replace(/^S/, "")).filter(Number.isFinite));
+    const out = new Set();
+    for (const seg of corps.split(",").map((x) => x.trim())) {
+      const m = /^S(\d+)(?:-S(\d+))?$/.exec(seg);
+      if (!m) return null;
+      for (let v = +m[1]; v <= (m[2] ? +m[2] : +m[1]); v++) if (!ex.has(v)) out.add(v);
+    }
+    return out;
+  };
+  for (const d of agr) {
+    const ns = String(d.quand ?? "").trim() ? decompacter(d.quand) : null;
+    if (!ns) { pb.push(`(6b) ${d.id} : « quand » absent ou illisible (« ${d.quand ?? ""} »)`); continue; }
+    if (ns.size !== d.n) pb.push(`(6b) ${d.id} : « ${d.quand} » rend ${ns.size} semaines pour ${d.n} occurrences`);
+  }
+  return { ok: pb.length === 0, detail: pb.length ? pb.join(" · ") : `R20.2 « ${String(dR.val).slice(0, 60)} » · secours ✓ · limite dite ✓ · budget ${dB.val} prescrites / ${dB.livre} livrées ✓ · ${v2.decisions.length} décisions, ${v2.repetitions ?? 0} répétitions repliées, ${agr.length} agrégat(s) tous datés ✓` };
 });
 
 /**

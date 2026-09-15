@@ -995,6 +995,43 @@ for (const [h, attendu, interdit] of [[7, "point du matin", null], [14, "point d
     ok(o96.liste, "O-96 — « Les décisions du moteur » porte la MÊME phrase — le second rendu ne rend plus le val brut");
     ok(o96.temoin, "O-96 — témoin : quand livré = prescrit, aucune étiquette (la phrase n'apparaît que quand elle a un objet)");
   }
+
+  // B1 (rapport 06) — LE COMPTE AGRÉGÉ PUBLIE SES DEUX NOMBRES, ET L'AGRÉGAT DIT « QUAND ».
+  //
+  // Le moteur replie les décisions identiques (`agregerDecisions`) : sur le profil réel,
+  // 55 lignes deviennent 19 et 36 répétitions sont repliées. L'écran ne doit pas hériter d'un
+  // compte amputé sans dire ce qu'il a replié — c'est le défaut qu'O-96 a fermé trois blocs
+  // plus haut, dans l'autre sens. Fixture FABRIQUÉE, pour la raison exacte d'O-96 : le profil
+  // par défaut de la suite ne produit AUCUNE répétition (mesuré : 10 décisions, 0 repliée),
+  // un critère assis dessus serait vacueux.
+  //
+  // Le témoin garde la seconde moitié : à 0 répétition, le second nombre n'apparaît pas —
+  // « 19 décisions · 0 répétition agrégée » serait du bruit sur la moitié du corpus (558 des
+  // 1 080 profils ne portent aucun doublon).
+  {
+    const b1 = await page.evaluate(async () => {
+      const mod = await import("./js/ui/plan-view.js");
+      const fab = (repetitions, extra) => ({ _v2: { score: 100, hardViolations: [], warnings: [], repairs: [], repetitions,
+        decisions: [
+          { id: "courbe", what: "Courbe de charge", val: "base 0.6→pic 1.0", why: "…", niveau: 1 },
+          Object.assign({ id: "RC1", what: "Repos complet garanti", val: "1 jour", why: "…", niveau: 2 }, extra),
+        ] } });
+      const h = mod.decisionsCardHTML(fab(36, { quand: "S1-S41 sauf S4, S8", n: 31 }));
+      const t = mod.decisionsCardHTML(fab(0, {}));
+      const txt = (s) => s.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+      return {
+        deuxNombres: /2 décisions · 36 répétitions agrégées/.test(txt(h)),
+        quand: /S1-S41 sauf S4, S8/.test(txt(h)) && /\(31×\)/.test(txt(h)),
+        niveaux: txt(h).indexOf("Courbe de charge") < txt(h).indexOf("semaine par semaine")
+          && txt(h).indexOf("semaine par semaine") < txt(h).indexOf("Repos complet garanti"),
+        temoin: !/répétition/.test(txt(t)) && /moteur \(2\)/.test(txt(t)),
+      };
+    });
+    ok(b1.deuxNombres, "B1 — le titre publie les DEUX nombres : décisions affichées ET répétitions repliées");
+    ok(b1.quand, "B1 — une décision agrégée répond « quand ? » : la liste compacte des semaines et son compte sont à l'écran");
+    ok(b1.niveaux, "B1 — deux niveaux : les choix de PLAN d'abord, les mécaniques par semaine sous leur intertitre");
+    ok(b1.temoin, "B1 — témoin : sans répétition repliée, le second nombre n'apparaît pas");
+  }
   await ctx.close();
 }
 

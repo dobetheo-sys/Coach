@@ -36,6 +36,131 @@ assumés entre deux règles, les chantiers humains, et les entrées de registre 
 
 ## §1 — Défauts ouverts, par gravité
 
+### B1 + B2 (rapport 06) FERMÉS — la liste des décisions cesse d'être un mur, et le vocabulaire interne n'atteint plus l'écran · ✅
+
+*Arbitrage du fondateur, 15/09/2026 : B2 en option (a) — **gate sur la SORTIE**, population
+épinglée et publiée, dictionnaire et non interdit, identifiants dérivés par motif ; B1 en option
+(a) — **agrégation dans le MOTEUR**, deux nombres publiés, **la position n'est pas perdue**, tri
+en deux niveaux par un critère DÉRIVÉ. Même lot, une seule recapture golden.*
+
+**B1 — mesuré avant d'être écrit, sur les 1 080 profils.** La carte « Les décisions du moteur »
+annonçait **22 962 lignes pour 1 066 plans** ; `RC1` comptait à lui seul **8 778 occurrences sur
+501 plans pour UN SEUL couple (pourquoi + valeur)** — la même phrase de 262 caractères, une fois
+par semaine de charge. Sur le profil réel (`REEL/tri/70.3/nage-limitante`) : **55 lignes**, dont
+36 répétitions. Une liste où trente lignes disent la même chose enseigne à ne plus la lire, et
+c'est là que vivent les décisions qui comptent (ce qui borne le plan, les paliers de nage, le
+manque, la fréquence).
+
+`src/engine/agregerDecisions.ts` regroupe sur le QUADRUPLET `id + what + val + why` — deux doses
+qui ne déplacent pas la même chose (`RN1` porte 5 valeurs distinctes sur le corpus) restent deux
+lignes. **Le « quand » est conservé** : la semaine vit dans `wk`, le nom que `repairLoop` lit
+déjà sur les décisions `C30b` (R11.1 — on ne crée pas un second nom pour une grandeur qui en a
+un), et `compacterSemaines` rend la PLUS COURTE de deux formes toutes deux EXACTES
+(« S1-S41 sauf S4, S8, S12… » ou « S1-S3, S5-S7… ») — **aucun seuil à choisir**, donc aucun
+nombre épinglé sur une borne (règle 19).
+
+| | avant | après |
+|---|---|---|
+| décisions, corpus entier | 22 962 | **14 399** (−8 563, −37 %) |
+| médiane par plan | 17 | **13** |
+| pire cas (`PW/tri/S`) | 86 | **18** |
+| profil réel `REEL` | 55 | **19** (36 repliées) |
+| plans sans AUCUNE répétition | — | **558 sur 1 066 (52 %)** |
+
+**Le 52 % est publié parce qu'il est la moitié honnête du résultat** : l'agrégation est INERTE
+sur un plan sur deux. Elle sert les plans longs et multisport, pas le 10 km de quatorze semaines.
+
+**Le tri en deux niveaux est DÉRIVÉ, jamais une liste d'identifiants** (qui divergerait du
+registre à la première règle ajoutée) : une décision attachée à une semaine décrit une MÉCANIQUE
+qui se répète (niveau 2), une décision sans semaine est un choix de PLAN (niveau 1) — celui que
+l'athlète est venu lire. ⚠ **Le critère naïf « cite une valeur déclarée » a été essayé et
+retiré** : « semaine 12 » coïncide avec un `vol_max: 12` déclaré, et le tri devenait un tirage.
+
+**Cinq sites d'émission normalisés, et un FILTRE qui identifiait sa cible par un LIBELLÉ.**
+`RC1`, `FV1`, `RN1`, `C30b`, `C31` portaient leur semaine dans le TEXTE (`« (semaine 12) »`).
+En la déplaçant dans `wk`, trois lecteurs se seraient tus en silence : le filtre qui retire une
+décision `C31` déclassée (`dc.what.includes("(sem. " + wk.num + ")")`) et **deux extractions par
+regex dans `repairLoop`** (`/sem\. (\d+)/.exec(d.what)`). Les trois lisent `d.wk`. C'est la
+règle 17 dans sa forme de PRODUCTEUR DE MASSE — un renommage de donnée produit ne touche aucune
+structure et passe tous les gates.
+
+---
+
+**B2 — deux prémisses du rapport 06 rectifiées par la mesure, dont une qui inverse son
+classement.** (1) Le `**` de l'avertissement d'eau libre n'était pas « le premier avertissement
+de tout le monde » mais **28 profils sur 1 080 (2,6 %)** — le rapport citait une chaîne trouvée
+dans un COMMENTAIRE (règle 15, quatrième occurrence de cette famille dans le dépôt, et cette
+fois dans le rapport qui l'audite). (2) Le jargon, lui, est **UNIVERSEL** : deux décisions émises
+pour *chaque* plan le portaient (`courbe` : « Bandes normalisées × pic, récup ×0.62, lissage C22 »
+— `budget` : « Budget déclaré ∧ budget implicite du volume »). B2 est donc plus gros que B1 en
+portée, l'inverse du classement du rapport.
+
+**`npm run lint:athlete` — 14ᵉ gate CI, sur la SORTIE.** Il génère les 1 080 profils et lit les
+champs que l'athlète VOIT : `decisions.what/val/why`, `warnings`, et pour chaque séance `name`,
+`det`, `note` — **487 465 champs, 51,8 millions de caractères**. Un gate sur la SOURCE aurait été
+trompé par un commentaire, précisément l'erreur du rapport. Deux familles, deux traitements :
+les identifiants sont **dérivés par motif** (`C\d+`, `R\d+\.\d+`, `V\d\.\d`, `X-\d+`, `I\d+`)
+avec six **faux amis nommés un par un** (`R1`/`R2` sont les courses d'un duathlon, `T1`/`T2` les
+transitions d'un triathlon) ; les mots de métier sont un **DICTIONNAIRE** qui porte le
+remplacement français à côté du terme — celui qui fait rougir le gate y trouve la phrase à
+écrire, pas seulement celle à ne pas écrire.
+
+**Population ÉPINGLÉE** (« un zéro a besoin de sa population ») : `plans générés + refus typés`
+doit boucler sur 1 080, sinon le « 0 fuite » serait indiscernable d'un balayage vide.
+Contre-prouvé — tronquer le corpus à 612 profils rend « 0 fuite » ET refuse de conclure.
+
+**18 fuites trouvées, 18 fermées à la source** (population publiée, plans sur 1 066 générés) :
+
+| texte | plans |
+|---|---|
+| `budget` : « Budget déclaré **∧** budget implicite du volume » | 1 066 |
+| `courbe` : « **Bandes normalisées** × pic, récup ×0.62, **lissage C22** » | 1 066 |
+| `« OFF (lissage) »` → `« OFF (allègement) »` | 233 (370 séances) |
+| `C20` : « Une séance **C15** ≈ 25min » | 233 |
+| `V2.1` : « Promesse calibrée par **sonde de capacité** » / « (formats, **C15/C21/C24**) » | 226 |
+| avertissement « **C29d —** … » | 117 |
+| `RN1` : « si le **readiness** n'est pas vert » | 74 |
+| blessure/âge : « plafond de charge (**R6.2/R6.3**) » | 37 |
+| `**` de l'avertissement d'eau libre | 28 |
+| `O-83` : « ne peut pas dépasser 850 m (**C15**) » | 78 |
+| `recup` : « cadence resserrée (**R6.3**) » | 11 |
+| `B17-continuite` : « la course, pas le plan (**O-17**) » | 3 |
+| mineur : « la VO2max attendra la majorité (**R6.3**) » | 1 (6 séances) |
+
+⚠ **Les deux dernières lignes n'étaient PAS dans mon balayage préparatoire**, qui lisait la photo
+golden STOCKÉE : elle datait d'avant `O-83`. Le gate, lui, GÉNÈRE — c'est la différence entre
+lire une photo et mesurer ce qui s'exécute, et elle a valu deux fuites de plus.
+
+**RAYON GOLDEN : 1 066 profils sur 1 080 (les 14 autres sont des refus typés), et pas une
+minute déplacée.** Mesuré champ par champ sur les deux photos : **0 champ numérique, 0 `steps`,
+0 compte de séance** change. Les seuls champs qui bougent sont des TEXTES
+(`decisions.why` 4 208 · `.val` 2 694 · `.what` 2 427 · `warnings` 175 · `sessions.name` 370,
+toutes le renommage `OFF` · `.det`/`.note` 6+6, le mineur) et les métadonnées B1
+(`niveau` 14 399 · `repetitions` 1 066 · `quand` 648 · `wk` 615 · `n` 581).
+
+```verify
+id: B1-agregation
+quoi: les décisions identiques sont-elles repliées, et l'agrégat dit-il QUAND ?
+attendu: /B1-AGREGE OK/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');for(const{key,sport,a}of profiles()){if(!key.startsWith('REEL'))continue;const p=globalThis.EBV2.buildPlan(sport,a);const v=p._v2;const cles=new Set(v.decisions.map(d=>[d.id,d.what,d.val,d.why].join('|')));const agr=v.decisions.filter(d=>(d.n||1)>1);const somme=agr.reduce((t,d)=>t+d.n-1,0);const ok=cles.size===v.decisions.length&&somme===v.repetitions&&agr.every(d=>String(d.quand||'').trim());console.log(v.decisions.length+' décisions · '+v.repetitions+' repliées · '+agr.length+' agrégats'+(ok?' · B1-AGREGE OK':' · B1-ROUGE'));break;}"
+```
+
+```verify
+id: B2-lint-athlete
+quoi: un identifiant de règle ou un terme interne atteint-il encore un champ lu par l'athlète ?
+attendu: /0 fuite/
+cmd: npm run lint:athlete
+```
+
+```verify
+id: B2-population
+quoi: le gate refuse-t-il de conclure sur un corpus tronqué (un zéro a besoin de sa population) ?
+attendu: /1080 profils \(1080 attendus\)/
+cmd: npm run lint:athlete
+```
+
+---
+
 ### O-112 FERMÉ — le seuil trail est aligné sur le marathon (50 → 42 km) · ✅
 
 **Ouvert** en fiche 39 (balayage des 23 formats × âges 16/17/18), **fermé** en fiche 40 sur
@@ -11131,11 +11256,20 @@ décision `budget`, donc sur presque tous les plans ; décisions seules, aucune 
 minute. `audit:v1` 459 à 0 · invariants 22×54 · v6 74 · 0 régression · `lotPhysio` **27 verts ·
 23 rouges attendus · 0 régression**.
 
+> **Bloc `verify` RÉANCRÉ SUR LA PROPRIÉTÉ (15/09/2026, lot B1/B2 du rapport 06).** Il citait
+> `livre=10`, la valeur du jour de sa fermeture ; deux lots l'ont depuis déplacée à **8**, et il
+> basculait en « ne reproduit plus » alors que le mécanisme est intact. **Vérifié À LA MAIN
+> contre le moteur d'AVANT ce lot** (worktree sur `639ed1e`) : `val=11 · livre=8` des deux
+> côtés — la bascule est ANTÉRIEURE, ce lot ne déplace aucune minute (mesuré : 0 champ
+> numérique, 0 step, 0 compte de séance changé sur les 1 080 profils). Règle 17 : un `attendu`
+> qui cite un NOMBRE mesure la date de son écriture ; il porte désormais la PROPRIÉTÉ — les
+> deux comptes existent et le livré ne dépasse pas le prescrit — et PUBLIE ce qu'il trouve.
+
 ```verify
 id: O-87
-quoi: la décision budget porte-t-elle son compte livré, égal au nSess du message structurel ?
-attendu: /val=11 · livre=10/
-cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');for(const{key,sport,a}of profiles()){if(!key.startsWith('REEL'))continue;const p=globalThis.EBV2.buildPlan(sport,a);const d=(p._v2?.decisions??[]).find(x=>x.id==='budget');console.log('val='+d?.val+' · livre='+d?.livre);break;}"
+quoi: la décision budget porte-t-elle son compte livré, ET le livré est-il ≤ au prescrit ?
+attendu: /O87-DEUX-COMPTES-ETIQUETES/
+cmd: node --input-type=module -e "await import('./src/app/bridge.ts');const {profiles}=await import('./scripts/goldenMaster.mjs');for(const{key,sport,a}of profiles()){if(!key.startsWith('REEL'))continue;const p=globalThis.EBV2.buildPlan(sport,a);const d=(p._v2?.decisions??[]).find(x=>x.id==='budget');const ok=d&&d.livre!=null&&+d.livre<=+d.val;console.log('val='+d?.val+' · livre='+d?.livre+(ok?' · O87-DEUX-COMPTES-ETIQUETES':' · O87-ROUGE'));break;}"
 ```
 
 ## O-88 · Le nombre d'accélérations était DÉRIVÉ de la longueur du bloc — le plus grand nombre de répétitions techniques au moment où le geste est le moins bon · ✅ **FERMÉ (constat du fondateur sur son plan réel, 19/08/2026)**

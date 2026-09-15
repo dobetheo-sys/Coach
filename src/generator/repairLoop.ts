@@ -415,18 +415,17 @@ export function generateAudited(profile: AthleteProfile, auditOpts?: Partial<Aud
   // décision précisément là où elle a le mieux marché. Le libellé du dernier passage prime,
   // c'est lui qui décrit le plan livré.
   const _frais = new Map(_c30b.map((d) => [d.wk, d]));
-  const _c30bFinal = reasoned.decisions.filter((d) => d.id === "C30b").map((d) => {
-    const w = Number((/sem\. (\d+)/.exec(String(d.what)) || [])[1]);
-    return _frais.get(w) || d;
-  });
+  // B1 — la semaine se lit sur `d.wk`, jamais dans le libellé : depuis que l'agrégation existe,
+  // le « (sem. N) » a quitté le texte, et une extraction par regex sur un libellé se serait
+  // tue en silence (règle 17 — un renommage de donnée produit est un producteur de masse).
+  const _c30bFinal = reasoned.decisions.filter((d) => d.id === "C30b").map((d) => _frais.get(d.wk as number) || d);
   for (const d of _c30b) if (!_c30bFinal.includes(d)) _c30bFinal.push(d);
   // …et le CHIFFRE est relu sur le plan livré, jamais gardé de l'instant où la passe a agi :
   // entre les deux, le point fixe C22 a pu rescaler la semaine. Une décision qui annonce
   // « 64 min, soit 33 % » sur un plan qui en porte 61 est un mensonge de quelques minutes,
   // c'est-à-dire exactement le genre que ce dépôt passe son temps à traquer.
   for (const d of _c30bFinal) {
-    const w = Number((/sem\. (\d+)/.exec(String(d.what)) || [])[1]);
-    const wk = best.plan.weeks.find((x) => x.num === w);
+    const wk = best.plan.weeks.find((x) => x.num === d.wk);
     if (!wk) continue;
     const ss = wk.days.flatMap((x) => x.sessions).filter((x) => x.d !== "rs");
     const lg = ss.find((x) => x.long && !x.race);

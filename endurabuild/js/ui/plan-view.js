@@ -538,7 +538,15 @@ function decisionsCardHTML(plan){
     // l'est pas, et cette question-là est tranchée par les violations DURES, qui sont listées
     // juste en dessous. Le score reste dans `plan._v2.score` pour le développement et les
     // bancs ; il ne s'affiche plus.
-    h+='<details class="load-card" id="motorDecisions" style="cursor:pointer"><summary class="load-title">\ud83e\udde0 Les d\u00e9cisions du moteur ('+v2.decisions.length+')</summary><ul class="exp-list">';
+    // B1 \u2014 DEUX NOMBRES, JAMAIS UN SEUL. L'agr\u00e9gation vit dans le moteur ; l'\u00e9cran PUBLIE ce
+    // qu'elle a repli\u00e9 plut\u00f4t que de le taire \u2014 \u00ab un compte se publie avec ce qu'il compte \u00bb.
+    // Sans cette seconde moiti\u00e9, un plan qui portait 87 lignes en afficherait 19 sans que rien
+    // ne dise o\u00f9 sont pass\u00e9es les 68 autres, et O-96 a d\u00e9j\u00e0 pay\u00e9 ce prix ici m\u00eame.
+    const _rep=v2.repetitions|0;
+    // Le second nombre porte SON MOT (\u00ab r\u00e9p\u00e9titions agr\u00e9g\u00e9es \u00bb) et le premier le sien : \u00ab (19 \u00b7
+    // 36) \u00bb serait deux comptes sans \u00e9tiquette sur la carte qui a ferm\u00e9 O-96 pour cette raison.
+    const _titre=_rep?v2.decisions.length+' d\u00e9cision'+(v2.decisions.length>1?'s':'')+' \u00b7 '+_rep+' r\u00e9p\u00e9tition'+(_rep>1?'s':'')+' agr\u00e9g\u00e9e'+(_rep>1?'s':''):String(v2.decisions.length);
+    h+='<details class="load-card" id="motorDecisions" style="cursor:pointer"><summary class="load-title">\ud83e\udde0 Les d\u00e9cisions du moteur ('+_titre+')</summary><ul class="exp-list">';
     // D1 (audit v6) — les règles non satisfaites sont calculées et attachées au plan :
     // on ne les jette plus à l'affichage. Langage neutre (pas de bandeau rouge — décision
     // R5 du fondateur), mais EN TÊTE de liste, pas cachées.
@@ -549,7 +557,18 @@ function decisionsCardHTML(plan){
     // justification descend en gris aéré. Aucun mot retiré.
     // O-96 — le pendant LIVRÉ suit la décision ICI AUSSI : ce rendu affichait « 12 » brut
     // pendant que « ce qui borne » disait 9, trois blocs plus haut (voir `suffixeLivre`).
-    v2.decisions.forEach(d=>{h+='<li class="exp-row"><div class="exp-lbl">'+d.what+'</div><div class="exp-val">'+d.val+suffixeLivre(d,false)+'</div><div class="exp-why">'+d.why+'</div></li>';});
+    // B1 — DEUX NIVEAUX DE LECTURE, ET LE CRITÈRE EST DÉRIVÉ (`niveau`, posé par le moteur
+    // selon qu'une décision porte une semaine ou non) : une liste d'identifiants écrite ici
+    // divergerait du registre à la première règle ajoutée. Les choix de PLAN d'abord — ce que
+    // l'athlète est venu lire —, les mécaniques répétées ensuite, sans rien retirer.
+    // Le « quand » N'EST PAS PERDU : une décision agrégée répond « S3-S29 sauf S8, S15 ».
+    const _ligne=d=>'<li class="exp-row"><div class="exp-lbl">'+d.what+(d.quand?' <span style="opacity:.7;font-weight:400">— '+d.quand+(d.n>1?' ('+d.n+'×)':'')+'</span>':'')+'</div><div class="exp-val">'+d.val+suffixeLivre(d,false)+'</div><div class="exp-why">'+d.why+'</div></li>';
+    const _plan=v2.decisions.filter(d=>d.niveau!==2), _meca=v2.decisions.filter(d=>d.niveau===2);
+    _plan.forEach(d=>{h+=_ligne(d);});
+    if(_meca.length){
+      h+='<li class="exp-row"><div class="exp-lbl" style="opacity:.75">Ce que le moteur a ajusté semaine par semaine ('+_meca.length+')</div></li>';
+      _meca.forEach(d=>{h+=_ligne(d);});
+    }
     if(v2.warnings.length)h+='<li class="exp-row"><div class="exp-lbl">Limites connues de ce plan</div><div class="exp-why">'+v2.warnings.join(" ")+'</div></li>';
     if(v2.repairs&&v2.repairs.length){
       h+='<li class="exp-row"><details style="cursor:pointer"><summary>Réparations tentées par le moteur ('+v2.repairs.length+')</summary><div style="color:#555;margin-top:4px">'+v2.repairs.map(x=>'· '+x).join('<br>')+'</div></details></li>';

@@ -96,6 +96,17 @@ dépôt — historique git si besoin.
   échauffement ≤ corps, la sortie longue est la plus longue de sa discipline, le plan s'arrête le
   jour J… Il sortait en code 0 quoi qu'il trouve et n'était pas en CI — d'où les quatre familles
   d'échecs qu'il a portées sous une documentation qui le disait vert (O-9). Il bloque désormais.
+- `npm run lint:athlete` — **le gate de VOCABULAIRE** (B2 du rapport 06, **14ᵉ gate CI**), et il
+  porte sur la **SORTIE** : il génère les 1 080 profils et lit les champs que l'athlète VOIT —
+  `decisions.what/val/why`, `warnings`, `name`/`det`/`note` de chaque séance, soit **487 465
+  champs et 51,8 M de caractères**. Un gate sur la SOURCE aurait été trompé par un commentaire —
+  c'est l'erreur que le rapport 06 a commise lui-même en annonçant « quatre astérisques à
+  l'écran » d'après une chaîne lue dans un commentaire (règle 15). Deux familles, deux
+  traitements : les identifiants sont **dérivés par motif** (`C\d+`, `R\d+\.\d+`…) avec des faux
+  amis NOMMÉS un par un (`R1`/`R2` sont les courses d'un duathlon) ; les mots de métier sont un
+  **DICTIONNAIRE** qui porte le remplacement français à côté du terme — pas un interdit, une
+  traduction. **Population épinglée** : `plans générés + refus typés` doit boucler sur 1 080,
+  sinon le « 0 fuite » serait indiscernable d'un balayage vide.
 - `npm run registry:check` — **le registre s'exécute** (R15.9) : chaque entrée mesurable de
   `BUGS_OUVERTS.md` porte un bloc ` ```verify ` (`id`, `quoi`, `attendu`, `cmd`), le script les
   enchaîne et range chacune en **reproduit** / **ne reproduit plus (→ §4)** / **commande
@@ -623,6 +634,49 @@ laisser vert.** Les règles vérifiées (spec « audit 2 » + manifeste) sont li
 avoir un effet — sinon la documenter comme UI pure.
 
 ## État courant
+
+**RAPPORT 06, LOT 1 (B1 + B2) LIVRÉ — la liste des décisions cesse d'être un mur, le vocabulaire
+interne n'atteint plus l'écran, et deux prémisses du rapport ont été rectifiées par la mesure**
+(15/09/2026, arbitrage `feu-vert-rapport-06.md` — voir `BUGS_OUVERTS.md` « B1 + B2 », module
+`src/engine/agregerDecisions.ts`, **14ᵉ gate CI `npm run lint:athlete`**) : **B1** — la carte
+annonçait **22 962 décisions pour 1 066 plans**, `RC1` comptant à lui seul **8 778 occurrences
+sur 501 plans pour UN SEUL couple (pourquoi + valeur)** ; l'agrégation regroupe sur le QUADRUPLET
+`id + what + val + why` et **la position n'est pas perdue** — la semaine vit dans `wk` (le nom
+que `repairLoop` lit déjà sur `C30b`, R11.1) et `compacterSemaines` rend la PLUS COURTE de deux
+formes toutes deux EXACTES, donc **aucun seuil à choisir** (règle 19). Corpus **22 962 → 14 399
+(−37 %)**, médiane par plan **17 → 13**, pire cas `PW/tri/S` **86 → 18**, profil réel **55 → 19**.
+**Le 52 % est publié parce qu'il est la moitié honnête du résultat** : 558 plans sur 1 066 ne
+portent AUCUNE répétition — la pièce sert les plans longs et multisport, pas le 10 km de quatorze
+semaines. L'écran publie **DEUX nombres** (« 19 décisions · 36 répétitions agrégées ») et deux
+niveaux dont le critère est **DÉRIVÉ** (attachée à une semaine = mécanique) ; ⚠ le critère naïf
+« cite une valeur déclarée » a été essayé et RETIRÉ — « semaine 12 » coïncide avec un `vol_max: 12`
+déclaré, le tri devenait un tirage. **Un FILTRE et deux extractions par regex identifiaient leur
+cible par un LIBELLÉ** (`dc.what.includes("(sem. " + n + ")")`, `/sem\. (\d+)/.exec(d.what)`) :
+déplacer la semaine dans `wk` les aurait tus en silence — règle 17 dans sa forme de producteur de
+masse, les trois lisent `d.wk`. **B2** — **deux prémisses du rapport rectifiées, dont une qui
+INVERSE son classement** : le `**` de l'eau libre n'était pas universel mais **28 profils sur
+1 080 (2,6 %)** — le rapport citait une chaîne trouvée dans un COMMENTAIRE (règle 15, quatrième
+occurrence, cette fois dans le rapport qui audite) —, tandis que le jargon, lui, l'était
+(`courbe` et `budget` sur **100 %** des plans). **18 fuites trouvées, 18 fermées à la source** :
+`∧` et « budget implicite », « Bandes normalisées / lissage C22 », « OFF (lissage) » → « OFF
+(allègement) » (370 séances), « sonde de capacité », « C15/C21/C24 », l'avertissement « C29d — »,
+« readiness », « (R6.2/R6.3) », « (O-17) », les astérisques. ⚠ **Deux de ces fuites n'étaient pas
+dans mon balayage préparatoire**, qui lisait la photo golden STOCKÉE (antérieure à O-83) : le gate
+GÉNÈRE, et c'est la différence entre lire une photo et mesurer ce qui s'exécute. **RAYON GOLDEN :
+1 066 profils sur 1 080, et pas une minute déplacée** — mesuré champ par champ, **0 champ
+numérique, 0 `steps`, 0 compte de séance** ne change ; seuls bougent des TEXTES et les métadonnées
+B1. **Cinq contre-preuves rouges** : agrégation désactivée · `n` jamais posé · `quand` tronqué ·
+une décision perdant sa semaine · un identifiant remis dans un texte athlète — plus une sixième
+sur la POPULATION (corpus tronqué à 612 → « 0 fuite » ET refus de conclure). ⚠ **Ma première
+écriture du critère (6) de `T-54` était SOUS-SPÉCIFIÉE et la contre-preuve l'a dit** : « `n > 1`
+implique un `quand` non vide » est satisfait en ne posant JAMAIS `n` (règle 19, posée avant
+d'écrire et commise quand même) — il porte désormais l'IDENTITÉ COMPTABLE (`Σ(n−1) = repetitions`)
+et la DÉCOMPRESSION du « quand » en exactement `n` semaines. **Règle 17 appliquée
+mécaniquement** : `registry:check` rejoué des DEUX côtés du lot (worktree sur `639ed1e`) —
+**0 entrée ne bascule en « ne reproduit plus » à cause du lot** ; `O-87` basculait déjà avant (son
+`attendu` citait `livre=10`, deux lots l'ont déplacé à 8 — vérifié à la main, `val=11 · livre=8`
+des deux côtés) et est **réancré sur la PROPRIÉTÉ**. Batterie **14/14**, `audit:v1` 459 à 0,
+E2E **27/27**, `check:app`/`check:sw`/`check:dup` verts.
 
 **AUDIT 05 (performance & robustesse, sécurité & données) — 8 axes sur 10 livrés, le premier
 des six rapports de l'audit multi-angles traité** (12/09/2026 — voir `BUGS_OUVERTS.md`

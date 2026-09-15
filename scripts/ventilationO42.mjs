@@ -176,7 +176,7 @@ for (const [sport, fmts] of Object.entries(SP))
         // un mécanisme neuf — et si un seul cas ne la vérifie pas, c'est lui le vrai résidu.
         const cibleMonte = dB > dA + 1e-9;
         // SECONDE CAUSE NOMMÉE — le moteur ÉCRIT sa raison dans le nom de la séance qu'il
-        // retire : « OFF (lissage) », « OFF (équilibre du bloc) », « OFF (fréquence nage) »,
+        // retire : « OFF (allègement) », « OFF (équilibre du bloc) », « OFF (fréquence nage) »,
         // « OFF (budget séances) ». Une semaine qui perd des minutes en gagnant un de ces OFF
         // est expliquée par une règle qui se nomme elle-même ; c'est le §6-3 au pied de la
         // lettre. On le LIT sur la sortie plutôt que de le déduire (règle 15).

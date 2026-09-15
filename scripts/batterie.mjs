@@ -32,6 +32,10 @@ const SOCLE = [
   // fixture de banc gardé qui dérive une date de calendrier depuis « maintenant » (7 occurrences
   // de la famille R20.7/A-6, chacune ancrée individuellement, et la 8e serait arrivée).
   "check:dates",
+  // B2 (rapport 06) — le gate de VOCABULAIRE, sur la SORTIE. Il regarde ce que l'athlète LIT :
+  // 1 080 profils générés, ~487 000 champs. Il ne peut pas être trompé par un commentaire —
+  // précisément l'erreur que le rapport 06 a commise sur les quatre astérisques.
+  "lint:athlete",
 ];
 const EXTRA = { lotPhysio: ["node", ["scripts/lotPhysio.mjs"]] };
 

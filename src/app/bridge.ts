@@ -14,6 +14,7 @@ import { SEAL_COUNTERS } from "../generator/seal.ts";
 import { knownSports, sportModule } from "../sports/registry.ts";
 import { generatePlan } from "../generator/planGenerator.ts";
 import { longRunSpecificityFloor } from "../engine/longRunSpecificity.ts";
+import { agregerDecisions } from "../engine/agregerDecisions.ts";
 import { swimDivergence } from "../engine/swimContinuity.ts";
 import { runHoursPerWeekOf } from "../engine/planVolume.ts";
 import { adjustDay, type DayAdjustment } from "../readiness/dailyAdjuster.ts";
@@ -55,7 +56,11 @@ export function toProfile(sport: string, answers: AppAnswers): AthleteProfile {
 }
 
 export interface V2PlanMeta {
-  decisions: { id: string; what: string; val: string | number; why: string }[];
+  decisions: { id: string; what: string; val: string | number; why: string; quand?: string; n?: number; niveau?: 1 | 2 }[];
+  /** B1 — combien de lignes l'agrégation a repliées. Publié À CÔTÉ du compte, jamais à sa
+   *  place : « 21 décisions · 27 répétitions agrégées » — un compte se publie avec ce qu'il
+   *  compte, et O-96 a déjà payé le prix de deux comptes sans étiquette sur cette carte. */
+  repetitions: number;
   warnings: string[];
   repairs: string[];
   score: number;
@@ -188,8 +193,13 @@ export function buildPlanV2(sport: string, answers: AppAnswers): V1Plan & { _v2?
     return { num: w.num, e: Math.round(e), m: Math.round(m), h: Math.round(h) };
   });
   const tot = Math.max(1, cE + cM + cH);
+  // B1 — L'AGRÉGATION VIT DANS LE MOTEUR, à l'unique point d'assemblage. La faire à
+  // l'affichage donnerait deux comptes pour une grandeur (le moteur en annoncerait 48,
+  // l'écran en montrerait 18) — exactement le défaut qu'O-96 a fermé sur cette carte-là.
+  const _agr = agregerDecisions(res.decisions);
   plan._v2 = {
-    decisions: res.decisions,
+    decisions: _agr.decisions,
+    repetitions: _agr.repetitions,
     warnings: res.warnings,
     repairs: res.repairs,
     score: res.audit.score,

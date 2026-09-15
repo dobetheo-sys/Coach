@@ -6192,3 +6192,66 @@ Les cinq écarts connus du §7 du handoff (le stub `headOffset_cm`, la pFSA jama
 une vraie photo, `DeviceOrientationEvent.requestPermission()` absent sur iOS, l'amplitude de
 cheville à 0, `ankle_unstable` non traduit) restent **entiers** : ils vivent dans l'UI ou dans
 la mesure terrain, pas dans ce qui est porté ici.
+
+---
+
+## B1 + B2 (rapport 06, lot 1) — l'agrégation des décisions et le gate de vocabulaire
+
+### B1 — `src/engine/agregerDecisions.ts`
+
+**Où elle vit et pourquoi.** L'agrégation est appelée en UN point, `src/app/bridge.ts`, juste
+avant l'assemblage de `plan._v2`. La faire à l'AFFICHAGE donnerait deux comptes pour une
+grandeur — le moteur annoncerait 55, l'écran 19 — c'est-à-dire le défaut qu'**O-96** a fermé sur
+cette carte précise ; et l'export comme le journal en profitent gratuitement.
+
+**La clé est le QUADRUPLET `id + what + val + why`.** Agréger sur le seul `why` effacerait la
+valeur : `RN1` porte cinq valeurs distinctes sur le corpus, et deux doses qui ne déplacent pas la
+même chose sont deux décisions. Un compte se publie avec ce qu'il compte.
+
+**Le « quand » se transporte par `wk`, pas par le libellé.** `repairLoop` lit déjà `d.wk` sur les
+décisions `C30b` : on ne crée pas un second nom pour une grandeur qui en a un (R11.1). Les cinq
+sites d'émission (`RC1`, `FV1`, `RN1`, `C30b`, `C31`) l'y posent désormais, et le `« (semaine N) »`
+quitte le texte. **Trois lecteurs identifiaient leur cible par ce libellé** — le filtre de
+déclassement `C31` et deux `/sem\. (\d+)/.exec(d.what)` dans `repairLoop` — et se seraient tus en
+silence : c'est la règle 17 dans sa forme de producteur de masse, un renommage de donnée produit
+ne touche aucune structure et passe tous les gates.
+
+**`compacterSemaines` rend la PLUS COURTE de deux formes, toutes deux EXACTES** — « S3-S7, S9-S14 »
+quand les trous sont nombreux, « S3-S29 sauf S8, S15 » quand ils sont rares. Il n'y a donc **aucun
+seuil à choisir**, donc aucune valeur qu'un test satisfait en l'épinglant sur sa borne (règle 19).
+Jamais un arrondi, jamais un « … ».
+
+**`niveau` est STRUCTUREL.** Une décision attachée à une semaine décrit une mécanique qui se
+répète (niveau 2) ; une décision sans semaine est un choix de plan (niveau 1) — celui que
+l'athlète est venu lire. Une liste d'identifiants écrite à l'affichage divergerait du registre à
+la première règle ajoutée. ⚠ Le critère « cite une valeur déclarée par l'athlète » a été essayé
+et retiré : « semaine 12 » coïncide avec un `vol_max: 12` déclaré, et le tri devenait un tirage.
+
+**Gardes.** Moteur : `T-54` (banc `lotPhysio`) gagne deux propriétés — (5) aucun doublon exact,
+(6a) `Σ(n − 1) = repetitions`, (6b) le « quand » se DÉCOMPRESSE en exactement `n` semaines.
+Écran : `smoke-usage` B1 (quatre critères, fixture fabriquée parce que le profil par défaut de la
+suite ne produit AUCUNE répétition — un critère assis dessus serait vacueux).
+
+### B2 — `scripts/lintAthlete.mjs` (14ᵉ gate CI)
+
+**Il porte sur la SORTIE, et c'est le point qui décide.** Il génère les 1 080 profils du corpus
+golden et lit `decisions.what/val/why`, `warnings`, et `name`/`det`/`note` de chaque séance —
+487 465 champs. Un gate sur la source aurait été trompé par un commentaire : le rapport 06
+lui-même annonçait « quatre astérisques à l'écran » d'après une chaîne lue dans un commentaire,
+quand la mesure sur le livré donne 28 profils sur 1 080. Les identifiants de règle vivent
+LÉGITIMEMENT dans les commentaires, les champs `id`, les bancs et les registres ; ce qui est
+interdit, c'est qu'ils atteignent un ÉCRAN.
+
+**Deux familles, deux traitements.** Les identifiants sont **dérivés par motif** — le prix de la
+dérivation est le faux positif, et il se paie en **exclusions NOMMÉES une par une avec leur
+raison** (`R1`/`R2` sont les courses d'un duathlon, `T1`/`T2` les transitions d'un triathlon),
+jamais en rétrécissant le motif jusqu'à ne plus rien voir. Les mots de métier n'ont aucune source
+dérivable : ils sont déclarés dans un **DICTIONNAIRE qui porte le remplacement français à côté du
+terme**. Ce n'est pas un interdit, c'est une traduction — celui qui rouvre le fichier après avoir
+fait rougir le gate y trouve la phrase à écrire, pas seulement celle à ne pas écrire.
+
+**La population est ÉPINGLÉE et PUBLIÉE.** Le succès de ce gate est « 0 fuite », c'est-à-dire la
+valeur qu'un balayage VIDE rendrait aussi — un zéro a besoin de sa population. `plans générés +
+refus typés` doit boucler sur 1 080, et le nombre de champs lus est imprimé : la MESURE se prouve
+séparément de son RÉSULTAT. Contre-prouvé en tronquant le corpus à 612 profils, où le gate rend
+« 0 fuite » ET refuse de conclure.

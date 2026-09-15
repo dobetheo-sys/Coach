@@ -1576,7 +1576,7 @@ export function reconcileDeclaredVolume(
       corps[0].durationMin = Math.min(capSeance, (corps[0].durationMin || 0) + pris);
       if (render) render(lg);
       _c30b.push({
-        wk: wk.num, id: "C30b", what: "Sortie longue portée à sa cible de spécificité (sem. " + wk.num + ")",
+        wk: wk.num, id: "C30b", what: "Sortie longue portée à sa cible de spécificité",
         val: Math.round(lg.min || 0) + " min, soit " + Math.round(100 * (lg.min || 0) / weekMinOf(wk)) + " % de la semaine",
         why: "Ta course demande environ " + Math.round(cibleSpec) + " min de spécificité. En semaine de pic, la sortie longue peut prendre jusqu'à " + Math.round(C30_PART_SEMAINE_PIC * 100) + " % du volume : le volume de la semaine ne change pas, ce sont les séances faciles qui cèdent les minutes.",
       });
@@ -2087,7 +2087,9 @@ export function reconcileDeclaredVolume(
     // O-116 — la courbe se réconcilie de nouveau : C29d vient de rendre des jours et T-56 de
     // raboter des doses ; l'annonce écrite en amont ne décrit plus le plan.
     reconcilierCourbe();
-    if (rendus > 0) warnings.push("C29d — " + rendus + " jour(s) facile(s) rendu(s) à des semaines de décharge qui étaient tombées sous le quart de leurs voisines : une décharge se fait par le contenu (volume réduit, tout facile), pas par l'interruption.");
+    // B2 — l'identifiant reste dans le code et le registre ; l'avertissement LU commence par ce
+    // qui a changé dans le plan, pas par le nom de la passe qui l'a changé.
+    if (rendus > 0) warnings.push(rendus + " jour(s) facile(s) rendu(s) à des semaines de décharge qui étaient tombées sous le quart de leurs voisines : une décharge se fait par le contenu (volume réduit, tout facile), pas par l'interruption.");
   }
   // …et la garantie A− se REJOUE : O-93 peut réduire la semaine qui précède une course A−,
   // ce qui invalide le « ≤ 60 % de la précédente » posé plus haut (mesuré : R23.18-D à 63 %).
@@ -3090,7 +3092,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         sx.steps = [{ role: "body", d: "rn", zone: "rn.easy", durationMin: b2bMin, bnd: { floor: Math.min(45, b2bMin), cap: b2bMin } }];
         renderSess(sx, refs, r.hz, r.baseRefs);
         r.decisions.push({
-          id: "C31", what: "Back-to-back — la longue coupée en deux (sem. " + wn + ")",
+          wk: wn, id: "C31", what: "Back-to-back — la longue coupée en deux",
           val: "longue plafonnée à 3 h + " + b2bMin + " min le lendemain",
           why: "Ta course demande ~" + Math.round(spec31!.target) + " min de spécificité ; une seule sortie au-delà de 3 h coûte plus en récupération qu'elle n'apporte (Daniels). Deux jours d'affilée donnent le même stimulus pour moins de casse — la méthode des ultras, bornée aux week-ends de pic.",
         });
@@ -3472,8 +3474,9 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       if (capacityH > 0) _sondeCapH = capacityH; // R20.2 — la mesure structurelle, binding ou non
       if (capacityH > 0 && capacityH < peakH * 0.95) {
         r.decisions.push({
-          id: "V2.1", what: "Promesse calibrée par sonde de capacité", val: capacityH.toFixed(1) + "h (au lieu de " + peakH.toFixed(1) + "h)",
-          why: "Les plafonds de séance (formats, C15/C21/C24" + (r.inj.count > 0 ? ", et surtout tes séances aménagées pour ta zone fragile" : "") + (plafondEpauleM ? ", et la borne de charge d'épaule" : "") + ") ne permettent pas plus : promettre davantage serait mentir",
+          // B2 — la décision dit ce qui borne, pas le nom de la sonde ni celui des règles.
+          id: "V2.1", what: "Promesse calibrée sur ce que tes séances peuvent contenir", val: capacityH.toFixed(1) + "h (au lieu de " + peakH.toFixed(1) + "h)",
+          why: "Les durées maximales de séance de ton format" + (r.inj.count > 0 ? ", et surtout tes séances aménagées pour ta zone fragile" : "") + (plafondEpauleM ? ", et la borne de charge d'épaule" : "") + " ne permettent pas plus : promettre davantage serait mentir",
         });
         peakH = capacityH;
       }
@@ -3625,7 +3628,8 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
     const victim = cand.reduce((x, y) => (dayMin(y) < dayMin(x) ? y : x));
     victim.charge = "off";
     victim.slot = "off";
-    victim.sessions = [{ d: "rs", name: "OFF (lissage)", det: "repos — " + why, steps: [] }];
+    // B2 — « lissage » est le nom de la mécanique ; l'athlète lit ce que la journée devient.
+    victim.sessions = [{ d: "rs", name: "OFF (allègement)", det: "repos — " + why, steps: [] }];
     return true;
   };
   // Coupe par SÉANCE (plus fine que par jour) : la plus petite séance non-longue saute.
@@ -4977,7 +4981,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       sx.name = "Footing facile";
       sx.note = "Endurance fondamentale : allure de conversation. Ce volume facile construit l'aérobie sans user.";
       renderSess(sx, refs, r.hz, r.baseRefs);
-      r.decisions = r.decisions.filter((dc) => !(dc.id === "C31" && dc.what.includes("(sem. " + wk.num + ")")));
+      r.decisions = r.decisions.filter((dc) => !(dc.id === "C31" && dc.wk === wk.num));
     }
   }
 
@@ -5023,7 +5027,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       ];
       renderSess(cible, refs, r.hz, r.baseRefs);
       r.decisions.push({
-        id: "FV1", what: "Force vélo : dose d'entretien en spécifique/pic (semaine " + wk.num + ")",
+        wk: wk.num, id: "FV1", what: "Force vélo : dose d'entretien en spécifique/pic",
         val: FV1_ENTRETIEN_REPS + " × " + FV1_ENTRETIEN_DUR_MIN + " min à 50-60 rpm, toutes les " + FV1_INTERVAL_SEMAINES + " semaines",
         why: "Ton programme de course porte du dénivelé : le geste musculaire du gros braquet se perd s'il disparaît complètement pendant la phase la plus spécifique. Une dose réduite l'entretient sans reprendre la fatigue résiduelle d'un bloc complet.",
       });
@@ -5146,12 +5150,12 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       if (dVo2 > 0) deplace.push("VO2 vélo réduit de " + dVo2 + " min");
       if (dCss > 0) deplace.push("nage seuil réduite de " + dCss + " m");
       r.decisions.push({
-        id: "RN1", what: "Seuil course : dose d'entretien en spécifique/pic (semaine " + wk.num + ")",
+        wk: wk.num, id: "RN1", what: "Seuil course : dose d'entretien en spécifique/pic",
         val: repsLivrees + " × " + RN1_ENTRETIEN_DUR_MIN + " min au seuil, toutes les " + RN1_INTERVAL_SEMAINES + " semaines"
           + (deplace.length ? " — " + deplace.join(", ") + " (plafond de temps dur)" : ""),
         why: "Ton profil accepte des marges resserrées : ce plan introduit une dose de seuil course à basse fréquence, absente par défaut."
           + (deplace.length ? " Cette dose ne s'ajoute pas à ton temps dur, elle le déplace : le plafond hebdomadaire de travail dur est tenu, et ce qu'elle prend est rendu en facile la même semaine." : "")
-          + " Surveille ta forme du jour — cette séance est réduite ou remplacée comme n'importe quelle autre si le readiness n'est pas vert.",
+          + " Surveille ta forme du jour — cette séance est réduite ou remplacée comme n'importe quelle autre si ton point du matin n'est pas au vert.", // B2
       });
     });
   }
@@ -5193,7 +5197,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
       candidat.s.name = "OFF";
       candidat.s.det = "repos total";
       r.decisions.push({
-        id: "RC1", what: "Repos complet garanti (semaine " + wk.num + ")",
+        wk: wk.num, id: "RC1", what: "Repos complet garanti",
         val: "1 jour de repos total par semaine de charge, pas seulement de la récup active",
         why: "En multisport, chaque jour de la semaine porte une discipline — le seul jour qui restait pour souffler était étiqueté « récupération », ce qui laisse deviner qu'il faut encore faire quelque chose. Il ne prescrivait déjà rien : le nom dit maintenant ce qu'il est.",
       });
@@ -5432,7 +5436,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
         // comme une perte était faux. L'explication vit désormais sur le plafond `declared`.
         { id: "load", f: lf, quoi: r.inj.count > 0 ? "tes zones fragiles" : "ton âge", retire: 0,
           pourquoi: (r.inj.count > 0 ? "Ta ou tes zones fragiles (" + r.inj.list.join(", ") + ")" : "Ton âge")
-            + " abaissent volontairement le plafond de charge (R6.2/R6.3). Ce n'est pas un réglage à contourner : la marge que tu perds ici est celle qui te garde entier." },
+            + " abaissent volontairement le plafond de charge. Ce n'est pas un réglage à contourner : la marge que tu perds ici est celle qui te garde entier." }, // B2
       ];
       const Q = facteurs.reduce((q, x) => q * x.f, 1);
 
@@ -5490,7 +5494,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
           pourquoi: _cibleMax.src === "ramp"
             ? "Tu repars de " + h(isFinite(volRecent) ? volRecent : 0) + "/sem : la montée est bornée à +10 % par semaine, et sur " + r.weeks + " semaines elle n'a pas le temps de rejoindre ce que tes plafonds autorisent. Avec plus de semaines devant toi, le même profil monterait plus haut."
             : _cibleMax.src === "ref"
-              ? (r.inj.count > 0 ? "Ta ou tes zones fragiles (" + r.inj.list.join(", ") + ")" : "Ton âge") + " abaissent volontairement le plafond de charge (R6.2/R6.3), semaine par semaine. La marge que tu perds ici est celle qui te garde entier."
+              ? (r.inj.count > 0 ? "Ta ou tes zones fragiles (" + r.inj.list.join(", ") + ")" : "Ton âge") + " abaissent volontairement le plafond de charge, semaine par semaine. La marge que tu perds ici est celle qui te garde entier." // B2
               : "Sur " + r.weeks + " semaines, la charge monte progressivement (≤ +10 % par semaine sur ce qui a réellement été livré) et atteint " + h(_cibleMax.h) + "/sem au pic — pas encore ce que tes capacités autorisent. Avec plus de semaines devant toi, le même profil monterait plus haut.",
         });
       // LE STRUCTUREL — nombre de séances × durée maximale de chacune. C'est le cas d'O-10, et
@@ -5778,7 +5782,7 @@ export function generatePlan(profile: AthleteProfile, opts?: { noLoadFactor?: bo
               id: "O-83",
               what: "Ton plan de nage est borné à ~" + Math.round(moySeance) + " min par séance",
               val: Math.round(minTot) + " min/semaine livrées pour " + h(L.declared) + " déclarées",
-              why: "Ta séance ne peut pas dépasser " + C15_BEGINNER_SWIM_SESSION_CAP_M + " m (C15) : la technique passe avant le volume, parce qu'au-delà le risque porte sur l'épaule. Ce plafond ne dépend ni du nombre de séances par semaine ni du volume que tu déclares — c'est pour ça que le plan ne grossit plus au-delà d'un certain point. Ce n'est pas un réglage à trouver : c'est ta vitesse actuelle qui fixe la durée de chaque séance.",
+              why: "Ta séance ne peut pas dépasser " + C15_BEGINNER_SWIM_SESSION_CAP_M + " m : la technique passe avant le volume, parce qu'au-delà le risque porte sur l'épaule. Ce plafond ne dépend ni du nombre de séances par semaine ni du volume que tu déclares — c'est pour ça que le plan ne grossit plus au-delà d'un certain point. Ce n'est pas un réglage à trouver : c'est ta vitesse actuelle qui fixe la durée de chaque séance.",
             });
           }
         }

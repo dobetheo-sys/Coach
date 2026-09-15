@@ -152,6 +152,13 @@ jobs:
       # personne ne l'aurait su. Même correctif structurel que le crochet du journal après O-41 :
       # ne pas compter sur la discipline là où un mécanisme suffit.
       - run: node scripts/lotPhysio.mjs
+      # B2 (rapport 06) — LE VOCABULAIRE QUI ATTEINT L'ÉCRAN. Gate sur la SORTIE : il génère les
+      # 1 080 profils et lit les champs que l'athlète voit (décisions, avertissements, nom/détail/
+      # note de chaque séance). Un gate sur la SOURCE aurait été trompé par un commentaire — c'est
+      # l'erreur que le rapport 06 a commise lui-même, et la quatrième occurrence de la règle 15
+      # dans ce dépôt. Population ÉPINGLÉE : plans générés + refus typés doivent boucler sur 1 080,
+      # sans quoi le « 0 fuite » serait indiscernable d'un balayage vide.
+      - run: npm run lint:athlete
       # A-2 — COUVERTURE DE L'ESPACE DES DÉCISIONS. RAPPORT, PAS GATE : elle imprime et ne bloque
       # pas. R20.6 dit *trier avant de bloquer* ; il ne dit pas *cacher avant de trier*. Une liste
       # « à relire quand une règle apprend à lire une clé » est une dépendance à la mémoire, et ce

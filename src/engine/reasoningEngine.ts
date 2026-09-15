@@ -202,7 +202,8 @@ export class TrainingReasoningEngine {
           // s'applique pas — rien n'est mesuré, donc rien n'est ÉTABLI comme infranchissable —, et
           // dès que la réponse arrive la conséquence graduée s'applique normalement.
           warnings.push("En eau libre, le risque ne se voit pas avant d'arriver : pas de mur, pas de fond, et la panique vient vite et loin du bord. Ici, " + manque
-            + ", pour " + g0.courseM + " m à nager le jour J. **L'évaluation de ta natation est donc EN ATTENTE** : ton plan garde ton format, "
+            // B2 — l'écran ne rend pas le Markdown : les astérisques s'affichaient telles quelles.
+            + ", pour " + g0.courseM + " m à nager le jour J. L'ÉVALUATION DE TA NATATION EST DONC EN ATTENTE : ton plan garde ton format, "
             + "et ta première séance de nage en phase spécifique est un TEST — nage sans t'arrêter aussi loin que tu peux, en bassin, et note la distance. "
             + "Reporte-la dans ton profil : le plan s'ajustera dessus, et c'est seulement à ce moment-là qu'on saura si ton format tient. "
             + "En attendant, la progression avance sur une hypothèse de " + g0.departM + " m.");
@@ -214,7 +215,7 @@ export class TrainingReasoningEngine {
             + ", pour " + g0.courseM + " m à nager le jour J. Ton plan garde ton format et CONSTRUIT cette continuité — il part de " + g0.departM
             + " m et monte jusqu'à la distance de course. NE PRENDS PAS LE DÉPART avant d'avoir fait cette nage continue.");
           D("B17-continuite", "Continuité de nage à construire", g0.departM + " m → " + g0.courseM + " m",
-            "Le format n'est PAS rabattu : l'écart se referme dans le temps disponible, et rabattre supprimerait justement la progression qui le referme. L'événement irréversible est la course, pas le plan (O-17)");
+            "Le format n'est PAS rabattu : l'écart se referme dans le temps disponible, et rabattre supprimerait justement la progression qui le referme. L'événement irréversible est la course, pas le plan."); // B2
         }
       }
       const pool = poolOnlyNotice(a as Record<string, unknown>);
@@ -376,13 +377,14 @@ export class TrainingReasoningEngine {
     // le bilan mesuré et `use10-cycle-10-jours.patch` pour le diff. Le cycle est la semaine
     // pour tout le monde ; `shift_ok` n'est plus posée, et une réponse persistée est ignorée.
     const recupEvery = master ? Math.min(RECUP_EVERY[history], R6_AGE_LOAD.master.recupEvery) : RECUP_EVERY[history];
-    D("recup", "Semaine de récupération", "toutes les " + recupEvery + " semaines", master ? "60+ : la récupération se rallonge avec l'âge — cadence resserrée (R6.3)" : history === "reprise" ? "Reprise : récupération plus fréquente" : "Assimilation régulière de la charge");
+    D("recup", "Semaine de récupération", "toutes les " + recupEvery + " semaines", master ? "60+ : la récupération se rallonge avec l'âge — cadence resserrée" : history === "reprise" ? "Reprise : récupération plus fréquente" : "Assimilation régulière de la charge");
 
     const volBudget = Math.min(volMax, caps, util) * marg;
     const avgH = AVG_SESSION_H[sp];
     const volSessCap = avgH ? Math.max(3, Math.round(volBudget / avgH)) : 7;
     const budgetPerWeek = Math.min(parseInt(a.sessions_max || "7") || 7, volSessCap);
-    D("budget", "Séances par semaine", budgetPerWeek, "Budget déclaré ∧ budget implicite du volume (" + volBudget.toFixed(1) + "h ÷ " + (avgH ?? "—") + "h/séance)");
+    // B2 — le symbole logique et le mot « implicite » disaient la mécanique, pas la décision.
+    D("budget", "Séances par semaine", budgetPerWeek, "Le plus petit des deux : ce que tu as déclaré, et ce que ton volume permet (" + volBudget.toFixed(1) + " h à répartir, environ " + (avgH ?? "—") + " h par séance)");
 
     const injuries = inj.list;
     let maxRunDays: number | null = null;
@@ -501,7 +503,8 @@ export class TrainingReasoningEngine {
             : "La continuité se construit par une MONTÉE, jamais par un test unique à la fin : découvrir la distance trois semaines avant l'épreuve laisse le temps de s'inquiéter, pas celui de s'adapter — et le nombre est borné par la place réellement disponible");
       }
     }
-    D("courbe", "Courbe de charge", "base " + BANDS.base[0] + "→peak 1.0→affûtage " + BANDS.taper[1], "Bandes normalisées × pic, récup ×" + RECUP_WEEK_FACTOR + ", lissage C22 ≤+" + Math.round((C22_MAX_WEEKLY_GROWTH - 1) * 100) + "%/sem");
+    // B2 — la FORME de la courbe, pas sa normalisation ni le nom de la règle qui la lisse.
+    D("courbe", "Courbe de charge", "base " + BANDS.base[0] + "→pic 1.0→affûtage " + BANDS.taper[1], "La charge monte vers le pic puis redescend avant la course ; les semaines de décharge valent " + Math.round(RECUP_WEEK_FACTOR * 100) + " % de leurs voisines, et le plan ne monte jamais de plus de " + Math.round((C22_MAX_WEEKLY_GROWTH - 1) * 100) + " % d'une semaine à l'autre");
 
     const medFactor = medHold ? 0.4 : 1;
     const theoPeak = Math.min(_volMaxEau, caps, util) * marg * recupFactor;
@@ -520,7 +523,7 @@ export class TrainingReasoningEngine {
       if (peakH > cap20) {
         peakH = cap20;
         c20Cap = cap20;
-        D("C20", "Promesse calibrée", peakH.toFixed(1) + "h max", "Une séance C15 ≈ 25min : promettre plus serait mentir");
+        D("C20", "Promesse calibrée", peakH.toFixed(1) + "h max", "Une séance de nage de débutant tient environ 25 min : promettre plus serait mentir"); // B2
       }
     }
     // V2.1 — le générateur affine ensuite par SONDE DE CAPACITÉ : il génère la semaine pic,
